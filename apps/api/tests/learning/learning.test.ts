@@ -1475,6 +1475,51 @@ test('a retry two days overdue is selected before fresh lessons but respects the
   expect(freshLearnCount).toBe(1);
 });
 
+test('P9 schedules both stalled-lesson prerequisites before an unrelated overdue retry', () => {
+  const courseId = 'ml-foundations';
+  const stalled = 'gaussian-distribution';
+  const overdue = 'train-test-split';
+  const prerequisites = ['descriptive-statistics', 'probability-basics'];
+  const state = studyState([courseId]);
+  const course = required(courseContent.coursesById.get(courseId), courseId);
+  state.lessonRuns = [...course.units.flatMap((unit) => unit.concepts)]
+    .filter((id) => id !== stalled && id !== overdue)
+    .map((conceptId) => ({ conceptId, status: 'completed' as const }));
+  state.lessonRuns.push(
+    { conceptId: stalled, status: 'needs_retry', retryAfter: now },
+    {
+      conceptId: overdue,
+      status: 'needs_retry',
+      retryAfter: new Date(now.getTime() - 3 * 86_400_000),
+    },
+  );
+  state.remediationFlags = prerequisites.map((targetPrereqId) => ({
+    conceptId: stalled,
+    targetPrereqId,
+    status: 'open',
+  }));
+  state.cards = prerequisites.map((conceptId) => ({
+    conceptId,
+    dimension: 'conceptual',
+    dueAt: now.toISOString(),
+  }));
+  const tightPlan = planSession(state, courseContent, now, 20);
+  expect(plannedReviewTopics(tightPlan, courseContent)).toEqual(
+    expect.arrayContaining(prerequisites),
+  );
+  expect(tightPlan.activities.every(({ kind }) => kind === 'review')).toBe(true);
+
+  const reviewMinutes = tightPlan.activities.reduce(
+    (sum, activity) => sum + activity.plannedMinutes,
+    0,
+  );
+  const plan = planSession(state, courseContent, now, 20 + reviewMinutes);
+  expect(plan.activities.map(({ kind, conceptId }) => [kind, conceptId])).toEqual([
+    ['review', null],
+    ['learn', overdue],
+  ]);
+});
+
 test('a focused overdue retry wins when the budget fits one lesson', () => {
   const retryConceptId = 'vectors';
   const inProgressConceptId = 'probability-basics';

@@ -249,6 +249,7 @@ export class LearnerRepository {
         .where(
           and(
             eq(reviewCards.userId, this.userId),
+            sql`coalesce(${reviewLogs.fsrsLog}->>'source', '') <> 'mixed_quiz'`,
             gte(reviewLogs.createdAt, new Date(now.getTime() - 36 * 60 * 60 * 1000)),
             lt(reviewLogs.createdAt, startOfNextCalendarDay(now, user?.timezone ?? 'UTC')),
           ),

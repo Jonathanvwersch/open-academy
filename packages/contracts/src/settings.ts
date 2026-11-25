@@ -13,4 +13,5 @@ export type DailyStudyMinutes = Record<StudyDay, number>;
 
 export interface SettingsPayload {
   dailyMinutes: DailyStudyMinutes;
+  quizTimeMultiplier?: number;
 }

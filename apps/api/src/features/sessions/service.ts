@@ -41,6 +41,7 @@ import {
   masteryEvents,
   sessionActivities,
   studySessions,
+  users,
   xpEvents,
 } from '../../db/schema.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
@@ -50,6 +51,7 @@ import {
 } from '../../learning/review-completion.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { replanSessionActivities } from '../course/service.js';
+import { quizOffer } from '../quizzes/offer.js';
 
 function withReviewTopics<T extends { kind: string; exerciseIds: string[]; status?: string }>(
   activity: T,
@@ -74,6 +76,11 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const subjectTitle = index.curriculum?.subject?.title;
   const sessionKind = sessionKindForDate(localDateKey(now, request.timeZone));
   const budget = sessionBudget(sessionKind, prefs, localDateKey(now, request.timeZone));
+  const availableQuiz = await quizOffer(repo, index, now, state.activeCourseId);
+  state.pendingQuiz =
+    availableQuiz.plannedMinutes === undefined
+      ? undefined
+      : { plannedMinutes: availableQuiz.plannedMinutes };
   const [active, enrollments, placementRuns] = await Promise.all([
     repo.activeSession(now),
     repo.courseEnrollments(),
@@ -205,6 +212,11 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
       }),
     ).size,
     budgetMinutes: budget,
+    quizOffer: {
+      xpBalance: availableQuiz.xpBalance,
+      plannedMinutes: availableQuiz.plannedMinutes ?? null,
+      active: Boolean(availableQuiz.active),
+    },
     sessionKind,
     activeSessionId,
     tutorEnabled: tutorProvider !== null,
@@ -229,6 +241,21 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
 }
 
 export async function postSessions(deps: FeatureServices, request: FeatureRequest) {
+  return deps.db.transaction(async (tx) => {
+    await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, request.userId))
+      .for('no key update');
+    const db = tx as unknown as Database;
+    return createSession(
+      { ...deps, db },
+      { ...request, repo: new LearnerRepository(db, request.userId) },
+    );
+  });
+}
+
+async function createSession(deps: FeatureServices, request: FeatureRequest) {
   const { db, content } = deps;
   const body = z
     .object({
@@ -307,6 +334,11 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
     }
     state.inProgressConceptId = body.data.focusConceptId;
   }
+  const availableQuiz = await quizOffer(repo, index, now, state.activeCourseId);
+  state.pendingQuiz =
+    availableQuiz.plannedMinutes === undefined
+      ? undefined
+      : { plannedMinutes: availableQuiz.plannedMinutes };
   const plan = planSession(state, index, now, budgetMinutes, sessionKind, undefined, undefined, {
     focusConceptId: body.data.focusConceptId,
   });
@@ -479,6 +511,7 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
   return session
     ? serviceResult({
         ...session,
+        quizFollowUp: (session.plan as { quizFollowUp?: string }).quizFollowUp,
         xp,
         activities: activities.map((activity) => ({
           ...withReviewTopics(
@@ -579,6 +612,9 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
   let activity = session?.activities.find((item) => item.id === request.params.aid);
   if (!activity) {
     return serviceResult({ error: 'Activity not found' }, 404);
+  }
+  if (activity.kind === 'mixed_quiz') {
+    return serviceResult({ error: 'Use the timed quiz to complete this activity' }, 409);
   }
   const attemptedByActivity =
     activity.kind === 'review'
@@ -764,6 +800,11 @@ async function replanSession(deps: FeatureServices, request: FeatureRequest) {
     .object({ remainingBudgetMinutes: z.number().int().min(0).max(600).optional() })
     .safeParse(request.body);
   if (!body.success) return serviceResult({ error: 'Invalid replan request' }, 400);
+  if ((session.plan as { quizFollowUp?: string }).quizFollowUp) {
+    return serviceResult({
+      activities: session.activities.map((activity) => withReviewTopics(activity, index)),
+    });
+  }
   const state = await request.repo.schedulerState(now, index);
   const activities = session.activities as unknown as PlannedActivity[];
   const existingMinutes = activities

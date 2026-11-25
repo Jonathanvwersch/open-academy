@@ -10,13 +10,15 @@ import {
   buildReviewActivityForConcept,
   interleaveReviewExercises,
 } from '@academy/aesop/planner/scheduler';
-import { and, asc, desc, eq, gt, inArray, isNull, notInArray, or } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, notInArray, or } from 'drizzle-orm';
 import { type Card, Rating } from 'ts-fsrs';
 import type { Database } from '../db/client.js';
 import { drizzleLearnerStore } from '../db/learner-store.js';
 import type { LearnerRepository } from '../db/repository.js';
 import {
   attempts,
+  quizItems,
+  quizRuns,
   remediationFlags,
   reviewCards,
   reviewLogs,
@@ -431,6 +433,23 @@ export async function completeReviewActivity(
     ),
   ];
   if (reviewedConceptIds.length > 0) {
+    await db
+      .update(quizItems)
+      .set({ followUpActivityId: activity.id })
+      .where(
+        and(
+          eq(quizItems.followUp, true),
+          isNull(quizItems.followUpActivityId),
+          inArray(quizItems.conceptId, reviewedConceptIds),
+          inArray(
+            quizItems.runId,
+            db
+              .select({ id: quizRuns.id })
+              .from(quizRuns)
+              .where(and(eq(quizRuns.userId, userId), isNotNull(quizRuns.finalizedAt))),
+          ),
+        ),
+      );
     await db
       .update(remediationFlags)
       .set({ status: 'resolved', resolvedAt: now })

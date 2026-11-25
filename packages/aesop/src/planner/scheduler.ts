@@ -43,6 +43,7 @@ export type ActivityKind =
   | 'lab'
   | 'reflect'
   | 'teachback'
+  | 'mixed_quiz'
   | 'paper';
 
 export const SCHEDULER_CONFIG = {
@@ -86,6 +87,7 @@ export interface PlannedActivity {
 }
 
 export interface SchedulerState {
+  pendingQuiz?: { plannedMinutes: number };
   timezone?: string;
   activeCourseId: string | null;
   studyCourseIds: string[];
@@ -171,6 +173,7 @@ export interface ReviewSelectionExplanation {
   exerciseIds: string[];
   exerciseDimensions: string[];
   candidateMinutes?: number;
+  selectionOrder?: number;
   reviewMinutes: number;
   reviewCap: number;
   usedMinutes: number;
@@ -183,6 +186,7 @@ type ReviewSelectionTrace = {
   coveringConceptIds: Map<string, string>;
   exerciseIds: Map<string, string[]>;
   candidateMinutes: Map<string, number>;
+  selectionOrder: string[];
   metrics: Map<
     string,
     Pick<
@@ -428,12 +432,22 @@ export function planSession(
     state,
     content,
     now,
-    Math.max(0, budgetMinutes),
+    budgetMinutes,
     excludedLearnConceptIds,
     excludedReviewConceptIds,
     undefined,
     options,
   );
+}
+
+function plannedQuiz(state: SchedulerState, budgetMinutes: number): PlannedActivity | undefined {
+  if (!state.pendingQuiz || state.pendingQuiz.plannedMinutes > budgetMinutes) return undefined;
+  return {
+    kind: 'mixed_quiz',
+    exerciseIds: [],
+    plannedMinutes: state.pendingQuiz.plannedMinutes,
+    reason: staticReason('Timed mixed quiz'),
+  };
 }
 
 export function explainReviewSelection(
@@ -452,13 +466,14 @@ export function explainReviewSelection(
     coveringConceptIds: new Map(),
     exerciseIds: new Map(),
     candidateMinutes: new Map(),
+    selectionOrder: [],
     metrics: new Map(),
   };
   packWeekday(
     state,
     content,
     now,
-    Math.max(0, budgetMinutes),
+    budgetMinutes,
     options.excludedLearnConceptIds ?? new Set(),
     excludedReviewConceptIds,
     trace,
@@ -472,6 +487,7 @@ export function explainReviewSelection(
       ...trace.results.keys(),
     ]),
   ].sort();
+  const reviewOrder = new Map(trace.selectionOrder.map((conceptId, index) => [conceptId, index]));
   return conceptIds.map((conceptId) => ({
     conceptId,
     result: trace.results.get(conceptId) ?? 'rejected:other',
@@ -479,6 +495,9 @@ export function explainReviewSelection(
       ? { coveringConceptId: trace.coveringConceptIds.get(conceptId) }
       : {}),
     exerciseIds: trace.exerciseIds.get(conceptId) ?? [],
+    ...(trace.results.get(conceptId)?.startsWith('selected')
+      ? { selectionOrder: reviewOrder.get(conceptId) }
+      : {}),
     ...(trace.candidateMinutes.has(conceptId)
       ? { candidateMinutes: trace.candidateMinutes.get(conceptId) }
       : {}),
@@ -589,7 +608,16 @@ function replanInputs(
     ),
   );
   return {
-    state: { ...state, usedExerciseIds },
+    state: {
+      ...state,
+      usedExerciseIds,
+      pendingQuiz: [...inProgress, ...completed].some((activity) => activity.kind === 'mixed_quiz')
+        ? undefined
+        : (state.pendingQuiz ??
+          existingActivities.find(
+            (activity) => activity.kind === 'mixed_quiz' && activity.status === 'planned',
+          )),
+    },
     inProgress,
     excludedLearnConceptIds,
     coveredReviewConceptIds,
@@ -736,7 +764,7 @@ function packWeekday(
   state: SchedulerState,
   content: ContentIndex,
   now: Date,
-  budget: number,
+  sessionBudgetMinutes: number,
   excludedLearnConceptIds: ReadonlySet<string> = new Set(),
   excludedReviewConceptIds: ReadonlySet<string> = new Set(),
   reviewSelectionTrace?: ReviewSelectionTrace,
@@ -783,6 +811,15 @@ function packWeekday(
       reviewSelectionTrace?.results.set(conceptId, 'not_candidate:excludedByReplan');
     }
   }
+  const focusCandidate =
+    focusConceptId === undefined
+      ? undefined
+      : (candidates.find(
+          (candidate) =>
+            candidate.activity.kind === 'learn' && candidate.activity.conceptId === focusConceptId,
+        ) ?? createManualFocusCandidate(state, content, focusConceptId));
+  const quiz = plannedQuiz(state, sessionBudgetMinutes - (focusCandidate?.adjustedMinutes ?? 0));
+  const budget = Math.max(0, sessionBudgetMinutes - (quiz?.plannedMinutes ?? 0));
   const selected: Candidate[] = [];
   let usedMinutes = 0;
   let reviewMinutes = 0;
@@ -791,7 +828,9 @@ function packWeekday(
   const selectedConcepts = new Set<string>();
   const selectedLearnConcepts = new Set<string>();
   let learnBudget = budget;
-  const plannedActivityCount = (items: Candidate[]) => mixReviewActivities(items, content).length;
+  const reservedSlots = quiz ? 1 : 0;
+  const plannedActivityCount = (items: Candidate[]) =>
+    reservedSlots + mixReviewActivities(items, content).length;
   const addRejectionReason = (candidate: Candidate) => {
     const reviewAlongsideLesson =
       candidate.activity.kind === 'review' &&
@@ -828,6 +867,9 @@ function packWeekday(
   ) => {
     if (!reviewSelectionTrace) return;
     reviewSelectionTrace.results.set(conceptId, result);
+    if (result === 'selected' || result === 'selected:overdue') {
+      reviewSelectionTrace.selectionOrder.push(conceptId);
+    }
     if (coveringConceptId) {
       reviewSelectionTrace.coveringConceptIds.set(conceptId, coveringConceptId);
     }
@@ -928,17 +970,24 @@ function packWeekday(
       lessonRetryOverdue(state, conceptId, now),
     ),
   );
+  const haltedLessonConcepts = new Set(
+    state.lessonRuns
+      ?.filter(({ status }) => status === 'needs_retry')
+      .map(({ conceptId }) => conceptId),
+  );
+  const haltedPrereqIds = new Set(
+    state.remediationFlags.flatMap(({ conceptId, targetPrereqId, status }) =>
+      status !== 'resolved' && targetPrereqId && haltedLessonConcepts.has(conceptId)
+        ? [targetPrereqId]
+        : [],
+    ),
+  );
+  const priorityRemediation = new Set<Candidate>();
+  let checkedPriorityRemediation = false;
   const unfinishedLessonConcepts = new Set([
     ...resumedLessonConcepts,
     ...retryEligibleLessonConcepts,
   ]);
-  const focusCandidate =
-    focusConceptId === undefined
-      ? undefined
-      : (candidates.find(
-          (candidate) =>
-            candidate.activity.kind === 'learn' && candidate.activity.conceptId === focusConceptId,
-        ) ?? createManualFocusCandidate(state, content, focusConceptId));
   if (focusCandidate) {
     selected.push(focusCandidate);
     usedMinutes += focusCandidate.adjustedMinutes;
@@ -997,6 +1046,21 @@ function packWeekday(
     .sort(compareLearnCandidates)) {
     if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
     const conceptId = candidate.activity.conceptId;
+    if (conceptId && overdueRetryLessonConcepts.has(conceptId) && !checkedPriorityRemediation) {
+      checkedPriorityRemediation = true;
+      for (const review of candidates
+        .filter(
+          ({ remediation, activity }) =>
+            remediation && activity.conceptId && haltedPrereqIds.has(activity.conceptId),
+        )
+        .sort((left, right) => right.score - left.score)) {
+        if (!add(review)) continue;
+        priorityRemediation.add(review);
+        reviewMinutes += review.adjustedMinutes;
+        if (review.activity.conceptId)
+          recordReviewResult(review.activity.conceptId, 'selected:overdue', review);
+      }
+    }
     const added =
       conceptId && overdueRetryLessonConcepts.has(conceptId)
         ? canSelectLearn(candidate) && add(candidate)
@@ -1056,7 +1120,7 @@ function packWeekday(
         learnTaskCanCoverDueReviews(candidate.activity.conceptId) &&
         coveredByTaskConcept(candidate.activity.conceptId).has(dueConceptId),
     );
-  let reservedReviewMinutes = 0;
+  let reservedReviewMinutes = reviewMinutes;
   let reservedMinutes = 0;
   let fallbackReservation: Candidate | undefined;
   let fallbackReservationMinutes = 0;
@@ -1067,6 +1131,7 @@ function packWeekday(
       left.index - right.index,
   )) {
     const candidate = detail.candidate;
+    if (priorityRemediation.has(candidate)) continue;
     if (!candidate.remediation && !dueConceptIds.has(candidate.activity.conceptId ?? '')) {
       continue;
     }
@@ -1325,18 +1390,19 @@ function packWeekday(
       continue;
     }
     if (candidate.remediation) {
-      const rejectionReason = addRejectionReason(candidate);
-      if (rejectionReason) {
-        recordReviewResult(conceptId, `rejected:${rejectionReason}`, candidate);
-        continue;
-      }
-      if (add(candidate)) {
+      if (!priorityRemediation.has(candidate)) {
+        const rejectionReason = addRejectionReason(candidate);
+        if (rejectionReason) {
+          recordReviewResult(conceptId, `rejected:${rejectionReason}`, candidate);
+          continue;
+        }
+        if (!add(candidate)) continue;
         reviewMinutes += candidate.adjustedMinutes;
         recordReviewResult(conceptId, next.overdue ? 'selected:overdue' : 'selected', candidate);
-        for (const dueId of reviewCoverage(candidate)) {
-          uncoveredDueConcepts.delete(dueId);
-          coveredBy.set(dueId, conceptId);
-        }
+      }
+      for (const dueId of reviewCoverage(candidate)) {
+        uncoveredDueConcepts.delete(dueId);
+        coveredBy.set(dueId, conceptId);
       }
       continue;
     }
@@ -1529,17 +1595,15 @@ function packWeekday(
       ) {
         return -1;
       }
-      if (
-        candidate.activity.kind === 'learn' &&
-        (resumedLessonConcepts.has(conceptId) || overdueRetryLessonConcepts.has(conceptId))
-      ) {
-        return 0;
-      }
-      if (candidate.activity.kind === 'review') return 1;
+      if (candidate.activity.kind === 'learn' && resumedLessonConcepts.has(conceptId)) return 0;
+      if (priorityRemediation.has(candidate)) return 1;
+      if (candidate.activity.kind === 'learn' && overdueRetryLessonConcepts.has(conceptId))
+        return 2;
+      if (candidate.activity.kind === 'review') return 3;
       if (candidate.activity.kind === 'learn' && retryEligibleLessonConcepts.has(conceptId)) {
-        return 3;
+        return 5;
       }
-      return candidate.activity.kind === 'learn' ? 2 : 4;
+      return candidate.activity.kind === 'learn' ? 4 : 6;
     };
     return priority(left) - priority(right);
   });
@@ -1548,7 +1612,7 @@ function packWeekday(
     state,
     content,
     Math.max(0, budget - usedMinutes),
-    mixedReviewCandidates.length,
+    reservedSlots + mixedReviewCandidates.length,
     selected.find((candidate) => candidate.activity.kind === 'learn')?.courseId,
   );
   const activities = [
@@ -1558,10 +1622,11 @@ function packWeekday(
   if (reviewSelectionTrace) {
     reviewSelectionTrace.finalMetrics = {
       ...metrics(),
-      plannedActivityCount: activities.length,
+      plannedActivityCount: reservedSlots + activities.length,
     };
   }
-  return { activities, reasons: activities.map((activity) => activity.reason) };
+  const plan = quiz ? [quiz, ...activities] : activities;
+  return { activities: plan, reasons: plan.map((activity) => activity.reason) };
 }
 
 export function mixReviewActivities(selected: Candidate[], content: ContentIndex): Candidate[] {

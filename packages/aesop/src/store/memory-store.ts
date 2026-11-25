@@ -4,6 +4,7 @@ import type {
   LearnerStore,
   MasteryEventRecord,
   OpenRemediationFlag,
+  ReviewLogRecord,
   StoredReviewCard,
 } from './learner-store.js';
 
@@ -19,6 +20,7 @@ type LearnerState = {
   mastery: Map<string, MasteryRecord>;
   events: MasteryEventRecord[];
   cards: Map<string, StoredReviewCard>;
+  reviewLogs: Array<ReviewLogRecord & { cardId: string }>;
   flags: Map<string, OpenRemediationFlag>;
 };
 
@@ -45,7 +47,13 @@ export function memoryStore(): MemoryLearnerStore {
   function stateFor(learnerId: string): LearnerState {
     let state = learners.get(learnerId);
     if (!state) {
-      state = { mastery: new Map(), events: [], cards: new Map(), flags: new Map() };
+      state = {
+        mastery: new Map(),
+        events: [],
+        cards: new Map(),
+        reviewLogs: [],
+        flags: new Map(),
+      };
       learners.set(learnerId, state);
     }
     return state;
@@ -91,6 +99,16 @@ export function memoryStore(): MemoryLearnerStore {
       const stored = structuredClone({ ...card, id: `card-${++cardCount}` });
       cards.set(cardKey, stored);
       return structuredClone(stored);
+    },
+    async recordReview(learnerId, conceptId, dimension, compute) {
+      const { cards, reviewLogs } = stateFor(learnerId);
+      const cardKey = key(conceptId, dimension);
+      const current = cards.get(cardKey);
+      const { card, log } = compute(structuredClone(current));
+      const id = current?.id ?? `card-${++cardCount}`;
+      cards.set(cardKey, structuredClone({ ...card, conceptId, dimension, id }));
+      reviewLogs.push(structuredClone({ ...log, cardId: id }));
+      return true;
     },
     async updateReviewCardIfDue(learnerId, cardId, expectedDueAt, next) {
       const card = [...(learners.get(learnerId)?.cards.values() ?? [])].find(

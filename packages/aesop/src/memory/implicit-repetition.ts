@@ -41,6 +41,7 @@ export function implicitRepetition(
   const dueAt = new Date(
     card.dueAt.getTime() + input.weight * (full.due.getTime() - card.dueAt.getTime()),
   );
+  if (dueAt.getTime() === card.dueAt.getTime()) return undefined;
   return {
     fsrs: {
       ...card.fsrs,
