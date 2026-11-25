@@ -259,8 +259,7 @@ export function LessonRunner({
       const available =
         Boolean(lesson.final) &&
         (step === 'explain'
-          ? !state.quiz.current &&
-            (finalAnswered || state.status === 'quiz' || state.status === 'completed')
+          ? !state.quiz.current && !finalAnswered && state.status === 'quiz'
           : Boolean(state.quiz.current) || finalAnswered || state.status === 'completed');
       if (!available) {
         onStepChange(fallback, true);
