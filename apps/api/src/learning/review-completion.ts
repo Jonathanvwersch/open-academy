@@ -203,7 +203,8 @@ export async function recordReviewRating(
                     inArray(reviewCards.conceptId, hardPrerequisiteIds),
                     isNull(reviewCards.suspendedAt),
                   ),
-                );
+                )
+                .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension));
               const coveredDimensionKeys = new Set(
                 (activity?.exerciseIds ?? []).flatMap((exerciseId) => {
                   const exercise = index.exercisesById.get(exerciseId);
