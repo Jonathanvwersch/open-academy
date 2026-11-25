@@ -1,4 +1,5 @@
 import { type Exercise, ExerciseSchema } from '@academy/aesop/course/schemas';
+import { instantiateExercise } from '@academy/aesop/course/templates';
 import {
   quizQuestionsPerStep,
   scoreLessonQuiz,
@@ -99,6 +100,22 @@ test('quiz recovery excludes the same generated prompt even when every seed is f
     { recoveryItems: [{ exerciseId: template.id, seed: 15 }] },
   );
   expect(items).toEqual([]);
+});
+
+test('quiz recovery samples again if the first six seeds repeat an existing prompt', () => {
+  const template = ExerciseSchema.parse({
+    ...exercise('template', 1, true),
+    params: { x: { min: 1, max: 2 } },
+  });
+  const items = select(
+    { knowledge_points: [point('step', [template.id])] },
+    new Map([[template.id, template]]),
+    { seed: 31, recoveryItems: [{ exerciseId: template.id, seed: 0 }] },
+  );
+  const prompts = new Set(
+    items.map((item) => instantiateExercise(template, item.seed ?? 0).exercise.prompt),
+  );
+  expect(prompts).toEqual(new Set(['Calculate 2.']));
 });
 
 test('the selector skips a used seed that it would otherwise generate', () => {

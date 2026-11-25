@@ -117,7 +117,8 @@ export function selectQuizItems(input: {
       }
 
       const generated: Candidate[] = [];
-      for (let index = 0; index < quota; index += 1) {
+      const sampleLimit = existingPrompts.size > 0 ? quota * 3 : quota;
+      for (let sample = 0; sample < sampleLimit && generated.length < quota; sample += 1) {
         let templateSeed = Math.floor(random() * 0x7fffffff);
         while (usedSeeds.has(templateSeed)) {
           templateSeed = (templateSeed + 1) % 0x7fffffff;
