@@ -422,7 +422,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: In the worked example's code, why is `X @ W_Q`, of shape `(3, 4)`, reshaped and transposed into shape `(2, 3, 2)`?
+    prompt: The query product for three tokens has three rows and four columns. Why keep it as a stack of two tables of shape $(3,2)$ when computing separate attention heads?
     options:
       - id: a
         text: Columns 1–2 are head 1's queries and columns 3–4 are head 2's, so this gives each head its own $3\times2$ block.
@@ -551,7 +551,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A model runs multi-head attention over $T=10$ tokens with embedding width $d=768$ and $h=12$ heads. In NumPy, its attention weights for all heads are stored in one array with the head first. What is that array's shape?
+    prompt: A model runs multi-head attention over $T=10$ tokens with embedding width $d=768$ and $h=12$ heads. Its attention weights for all heads are stored in one array with the head first. What is that array's shape?
     options:
       - id: a
         text: "`(12, 10, 10)`, one $10\\times10$ weight matrix for each of the 12 heads."

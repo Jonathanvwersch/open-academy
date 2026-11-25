@@ -8,7 +8,7 @@ recap:
   - concept: loss-functions
     text: "A loss is one number that measures how wrong a model's predictions are. For squared error, $(\\hat y-y)^2$, the slope with respect to the prediction is twice the error, $2(\\hat y-y)$."
   - concept: linear-regression
-    text: "A linear model predicts $\\hat y=w\\cdot x+b$: it multiplies each input by its weight, adds them up and adds a bias. A weight says how much the prediction rises when its input rises by one."
+    text: "A linear model predicts $\\hat y=w\\cdot x+b$. The list $x$ holds the inputs, $w$ holds their weights, and $b$ is the bias."
 where_this_fits: |
   ### What is gradient descent?
 
@@ -76,7 +76,7 @@ knowledge_points:
 
       ### The update rule
 
-      **Gradient descent** repeatedly moves the current point a small amount against the gradient. We write the point as $\mathbf p$, in bold because it's a list of numbers, one for each input. One step is
+      **Gradient descent** takes small steps against the gradient. Here $\mathbf p$ is the point we're starting from. Its two entries give the coordinates in our example. Write one step as
 
       $$\mathbf p_{\text{new}}=\mathbf p-\eta\,\nabla f(\mathbf p).$$
 
@@ -494,7 +494,7 @@ knowledge_points:
 
       ### Find the weight slopes for a batch
 
-      To take a step with a **batch**, a group of examples we use together, we need an average slope for each weight. As in linear regression, we put one example in each row of $X$, so $Xw$ gives one prediction per example. We'll use two inputs per example and leave out the bias. The vector $r=Xw-y$ holds all the errors $e$ for the batch. These errors are also called residuals. There are $n$ examples.
+      A **batch** is a group of examples used for one update. Put their inputs in the rows of $X$ and their known answers in the same order in $y$. Use two weights $w$ and no bias. Then $Xw$ gives one prediction per row. For the error list $r$, subtract the matching answer from each prediction: $r=Xw-y$. Here $n$ counts the examples.
 
       1. **Make one error per row.** With inputs $(2,1)$ and $(3,2)$ and weights $(1,1)$, the predictions are 3 and 5. Both targets are 7.
          $$r=(3-7,\ 5-7)=(-4,-2).$$
@@ -502,25 +502,11 @@ knowledge_points:
       2. **Average the slopes for the first weight.** Each example contributes $2e\,x_1$, twice its first input times its error. Add those contributions and divide by the number of examples, $n=2$.
          $$\frac{2\times(-4)\times2+2\times(-2)\times3}{2}=-14.$$
 
-      3. **Get both slopes at once.** In the matrices lesson, transposing a matrix turned its columns into rows. The product $X^\top r$ takes a dot product of each of those rows with the errors. Multiplying by 2 and dividing by $n$ gives the average of $2e\,x_j$ for each weight $w_j$. The result, $\nabla_w L$, is the vector of slopes for the weights.
+      3. **Get both slopes at once.** We need all the first inputs to get the first slope, and all the second inputs to get the second. Transpose $X$ to put those groups on separate rows: $(2,3)$ and $(1,2)$. In each row, multiply each input by its example's error and add. Multiplying each sum by 2 and dividing by $n$ gives the two average slopes, written $\nabla_w L$.
          $$\nabla_w L=\frac{2X^\top r}{n}=\frac{2}{2}\begin{bmatrix}2&3\\1&2\end{bmatrix}\begin{bmatrix}-4\\-2\end{bmatrix}=\begin{bmatrix}-14\\-8\end{bmatrix}.$$
 
-      In NumPy, `X.T` transposes the input matrix, `@` takes the matrix product, and `len(y)` counts the targets. The code gives the slopes for this batch and then updates both weights.
-
-      ```python
-      import numpy as np
-
-      X = np.array([[2., 1.], [3., 2.]])
-      w = np.array([1., 1.])
-      y = np.array([7., 7.])
-      lr = 0.05
-
-      r = X @ w - y
-      dw = 2 * X.T @ r / len(y)
-      w = w - lr * dw
-      print(dw)  # [-14.  -8.]
-      print(w)   # [1.7 1.4]
-      ```
+      4. **Update both weights.** Multiply each of the two slopes by the learning rate $0.05$ and subtract it from the matching weight. Write $w_{\text{new}}$ for the two updated weights.
+         $w_{\text{new}}=(1,1)-0.05(-14,-8)=(1.7,1.4).$
     problems:
       - gd-training-loop-basics
       - gdp-loop-self-explain

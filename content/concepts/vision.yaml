@@ -7,10 +7,10 @@ concepts:
       difficulty: 1,
       est_minutes: 15,
       goal_weight: 2,
-      dimensions: [conceptual, implementation],
+      dimensions: [conceptual, math],
       prereqs: [{ id: matrices }],
-      encompassings: [{ id: matrices, weight: 0.27 }],
-      objectives: [{ text: "Convert between image layouts and shapes", dimension: implementation }],
+      encompassings: [{ id: matrices, weight: 0.31 }],
+      objectives: [{ text: "Convert between image layouts and shapes", dimension: math }],
       status: authored,
     }
   - {
@@ -20,14 +20,14 @@ concepts:
       difficulty: 3,
       est_minutes: 35,
       goal_weight: 2,
-      dimensions: [conceptual, math, implementation],
+      dimensions: [conceptual, math],
       prereqs: [{ id: images-as-tensors }, { id: mlp-forward-pass }],
       encompassings:
         [
-          { id: images-as-tensors, weight: 0.2 },
-          { id: mlp-forward-pass, weight: 0.11 },
+          { id: images-as-tensors, weight: 0.23 },
+          { id: mlp-forward-pass, weight: 0.14 },
           { id: activation-functions, weight: 0.02 },
-          { id: dot-product, weight: 0.05 },
+          { id: dot-product, weight: 0.06 },
         ],
       objectives: [{ text: "Compute output shapes of conv layers", dimension: math }],
       projects: [image-classifier],

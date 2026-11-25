@@ -548,103 +548,6 @@ exercises:
           feedback: "You stopped one step early: multiply by $\\partial z/\\partial w_1 = x = 2$.",
         }
     solution: "The forward pass gives $z = 3$, $h = 3$ and $y = -3$. Start the backward pass with $\\partial L/\\partial y = 2(-3 - 1) = -8$. Multiplying by $w_2 = -1$ gives $\\partial L/\\partial h = 8$. ReLU's derivative is 1 because $z > 0$. Finally, multiplying by $x = 2$ gives $\\partial L/\\partial w_1 = 16$."
-  - id: bp-shapes
-    dimension: implementation
-    type: mc
-    role: core
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A house-price network processes 64 houses, with one row per house and 100 inputs per row in `X`. Its 32-unit layer computes `Z = X @ W`, with `X.shape == (64, 100)` and `W.shape == (100, 32)`. The loss gradient `G = dL/dZ` has shape `(64, 32)`. Which expression gives `dL/dW`?"
-    options:
-      - { id: a, text: "`X.T @ G`", correct: true }
-      - {
-          id: b,
-          text: "`G @ X.T`",
-          correct: false,
-          category: implementation_error,
-          feedback: "Matrix multiplication requires the inner sizes to match. Here they are 32 and 100, so this product is not defined.",
-        }
-      - {
-          id: c,
-          text: "`G.T @ X`",
-          correct: false,
-          category: implementation_error,
-          feedback: "That gives shape (32, 100), the transpose of what you need.",
-        }
-      - {
-          id: d,
-          text: "`G @ W.T`",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "That is `dL/dX`, the gradient passed to the previous layer.",
-        }
-    hints: ["The gradient must have the same shape as `W`: (100, 32)."]
-    solution: "`X.T @ G` has shape (100,64)@(64,32) = (100,32), matching `W`."
-  - id: bp-complete-relu
-    dimension: implementation
-    type: code_complete
-    role: core
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A house-price network applies ReLU to each entry of `z1`, its saved input to that operation. For example, an input of -2 gives output 0, while 3 gives output 3. The array `g_h1` contains the loss derivatives for those outputs and has the same shape as `z1`. Complete the backward step that gives the loss derivatives for `z1`."
-    code: |
-      g_z1 = ____
-    accept:
-      [
-        "g_h1 * (z1 > 0)",
-        "(z1 > 0) * g_h1",
-        "g_h1 * (z1 > 0).astype(float)",
-        "np.where(z1 > 0, g_h1, 0)",
-        "np.where(z1 > 0, g_h1, 0.0)",
-        "g_h1 * (z1 >= 0)",
-      ]
-    solution: "`g_z1 = g_h1 * (z1 > 0)`: the gradient passes where the unit was active and is blocked elsewhere."
-  - id: bp-debug-bias
-    dimension: transfer
-    type: debug
-    role: transfer
-    difficulty: 3
-    est_minutes: 4
-    prompt: "A house-price network processes a batch of 64 houses. A gradient check estimates the bias gradient for `b1` as about 64 times the value returned by this backward code. The other gradients agree with the check. Which line is wrong, and what is the fix?"
-    code: |
-      g_y = 2 * (y_hat - y) / len(y)
-      dW2 = h1.T @ g_y
-      db2 = g_y.sum(axis=0)
-      g_h1 = g_y @ W2.T
-      g_z1 = g_h1 * (z1 > 0)
-      dW1 = X.T @ g_z1
-      db1 = g_z1.mean(axis=0)  # .mean(axis=0) takes the average down each column
-    buggy_line: 7
-    fix_options:
-      - {
-          id: a,
-          text: "`db1 = g_z1.sum(axis=0)`. The bias is shared by every row, so its gradient sums the per-example contributions",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "`db1 = g_z1.sum(axis=1)`",
-          correct: false,
-          feedback: "That adds across the units instead of across the houses. It gives one answer per house, shape `(B,)`, rather than one per bias, shape `(H,)`.",
-        }
-      - {
-          id: c,
-          text: "`db1 = g_z1`",
-          correct: false,
-          feedback: "Shape `(B, H)` does not match `b1`'s shape `(H,)`.",
-        }
-      - {
-          id: d,
-          text: "Divide `g_y` by `len(y)` a second time",
-          correct: false,
-          feedback: "That would make every gradient smaller, not fix `b1`.",
-        }
-    hints:
-      [
-        "A gradient off by exactly the batch size points to a mean that should be a sum (or the reverse).",
-        "Compare how `db2` is computed.",
-      ]
-    solution: "Here $B = 64$ is the number of houses. The division by $B$ in the mean loss is already included in `g_y`. Using `.mean` for `db1` divides by 64 a second time. Because the same bias affects every house, add all their contributions with `.sum(axis=0)`, just as the code does for `db2`."
   - id: bp-review-why-cache
     dimension: conceptual
     type: mc
@@ -913,7 +816,7 @@ exercises:
     knowledge_point: bp-arrays
     difficulty: 1
     est_minutes: 0.5
-    prompt: "For a batch with examples as rows, $G$ holds the loss slope for every score, one neuron per column. The bias slope vector is obtained by taking the ____ of $G$. Name the operation in words or write it as a NumPy expression."
+    prompt: "For a batch with examples as rows, $G$ holds the loss slope for every score, one neuron per column. The bias slope vector is obtained by taking the ____ of $G$. Name the operation in words."
     accept:
       [
         "column sums",
@@ -927,12 +830,10 @@ exercises:
         "add across the rows",
         "G.sum(axis=0)",
         "G.sum(0)",
-        "np.sum(G, axis=0)",
-        "np.sum(G, 0)",
         "sum(axis=0)",
         "sum along axis 0",
       ]
-    regex: '^\s*(?:(?:the\s+)?column[\s-]+sums?|(?:the\s+)?sum(?:s|ming)?\s+(?:(?:of|down|within)\s+)?(?:each|every|individual)\s+column|(?:sum|add)(?:s|ing)?\s+(?:over|across|down)\s+(?:(?:all|the|its)\s+)?(?:rows|examples)|(?:sum|add)(?:s|ing)?\s+down\s+(?:(?:all|the|its)\s+)?columns?|add\s+(?:down\s+)?(?:each|every)\s+column|sum\s+(?:along|over|on)\s+axis\s*0|(?:g\s*\.\s*)?sum\s*\(\s*(?:axis\s*=\s*)?0\s*\)|(?:(?:np|numpy)\s*\.\s*)?sum\s*\(\s*g\s*,\s*(?:axis\s*=\s*)?0\s*\))\s*[.!]?\s*$'
+    regex: '^\s*(?:(?:the\s+)?column[\s-]+sums?|(?:the\s+)?sum(?:s|ming)?\s+(?:(?:of|down|within)\s+)?(?:each|every|individual)\s+column|(?:sum|add)(?:s|ing)?\s+(?:over|across|down)\s+(?:(?:all|the|its)\s+)?(?:rows|examples)|(?:sum|add)(?:s|ing)?\s+down\s+(?:(?:all|the|its)\s+)?columns?|add\s+(?:down\s+)?(?:each|every)\s+column|sum\s+(?:along|over|on)\s+axis\s*0|(?:g\s*\.\s*)?sum\s*\(\s*(?:axis\s*=\s*)?0\s*\)|sum\s*\(\s*g\s*,\s*(?:axis\s*=\s*)?0\s*\))\s*[.!]?\s*$'
     solution: "Sum down each column of $G$. Each bias changes every example's score in its own column by the same amount."
   - id: bp-recall-check-say
     dimension: conceptual

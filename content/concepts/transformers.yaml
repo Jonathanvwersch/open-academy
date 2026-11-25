@@ -24,7 +24,7 @@ concepts:
       encompassings:
         [
           { id: tokenization, weight: 0.04 },
-          { id: matrices, weight: 0.19 },
+          { id: matrices, weight: 0.26 },
           { id: dot-product, weight: 0.2 },
           { id: vectors, weight: 0.05 },
         ],
@@ -62,10 +62,10 @@ concepts:
       prereqs: [{ id: attention }, { id: embeddings }],
       encompassings:
         [
-          { id: attention, weight: 0.14 },
+          { id: attention, weight: 0.18 },
           { id: embeddings, weight: 0 },
-          { id: dot-product, weight: 0.07 },
-          { id: matrices, weight: 0.21 },
+          { id: dot-product, weight: 0.08 },
+          { id: matrices, weight: 0.29 },
         ],
       objectives:
         [{ text: "Track shapes through multi-head attention", dimension: implementation }],
@@ -108,14 +108,14 @@ concepts:
         ],
       encompassings:
         [
-          { id: multi-head-attention, weight: 0.04 },
+          { id: multi-head-attention, weight: 0.08 },
           { id: positional-encoding, weight: 0 },
-          { id: weight-init-normalization, weight: 0.06 },
-          { id: mlp-forward-pass, weight: 0.08 },
-          { id: activation-functions, weight: 0.03 },
-          { id: attention, weight: 0.04 },
+          { id: weight-init-normalization, weight: 0.05 },
+          { id: mlp-forward-pass, weight: 0.11 },
+          { id: activation-functions, weight: 0.02 },
+          { id: attention, weight: 0.05 },
           { id: chain-rule, weight: 0.04 },
-          { id: vectors, weight: 0.14 },
+          { id: vectors, weight: 0.11 },
         ],
       objectives:
         [{ text: "Draw and explain a pre-norm transformer block", dimension: conceptual }],
@@ -132,9 +132,9 @@ concepts:
       prereqs: [{ id: attention }],
       encompassings:
         [
-          { id: attention, weight: 0.2 },
-          { id: classification-softmax, weight: 0.14 },
-          { id: matrices, weight: 0.08 },
+          { id: attention, weight: 0.21 },
+          { id: classification-softmax, weight: 0.18 },
+          { id: matrices, weight: 0.05 },
         ],
       objectives:
         [{ text: "Build a causal mask and explain its effect", dimension: implementation }],
@@ -151,7 +151,7 @@ concepts:
       prereqs: [{ id: causal-masking }, { id: transformer-block }, { id: classification-softmax }],
       encompassings:
         [
-          { id: causal-masking, weight: 0.06 },
+          { id: causal-masking, weight: 0.12 },
           { id: transformer-block, weight: 0 },
           { id: classification-softmax, weight: 0.1 },
           { id: probability-basics, weight: 0.07 },
@@ -172,9 +172,9 @@ concepts:
       prereqs: [{ id: transformer-block }, { id: classification-softmax }],
       encompassings:
         [
-          { id: transformer-block, weight: 0 },
+          { id: transformer-block, weight: 0.04 },
           { id: classification-softmax, weight: 0 },
-          { id: matrices, weight: 0.08 },
+          { id: matrices, weight: 0.09 },
           { id: mlp-forward-pass, weight: 0.02 },
           { id: vectors, weight: 0.04 },
         ],

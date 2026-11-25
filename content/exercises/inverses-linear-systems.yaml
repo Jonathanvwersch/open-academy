@@ -493,153 +493,6 @@ exercises:
         correct: false
         feedback: Symmetry does not require equal diagonal entries.
     solution: $A^\top A$ is symmetric, so entries $(i,j)$ and $(j,i)$ match.
-  - id: inv-numpy-basics
-    dimension: conceptual
-    type: mc
-    role: basics
-    difficulty: 1
-    target_seconds: 30
-    est_minutes: 2
-    prompt: Which NumPy call returns $x$ for $Ax=b$?
-    options:
-      - id: a
-        text: "`np.linalg.inv(A)`"
-        correct: false
-        feedback: This returns the entire inverse.
-      - id: b
-        text: "`np.eye(3)`"
-        correct: false
-        feedback: This builds an identity matrix.
-      - id: c
-        text: "`np.linalg.solve(A, b)`"
-        correct: true
-        feedback: The matrix comes first and the right-hand side second.
-    solution: Use `np.linalg.solve(A, b)` to obtain the solution vector.
-  - id: inv-np-self-explain
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: In the NumPy worked example, why check `np.allclose(A @ x, b)`?
-    options:
-      - id: a
-        text: It checks that A equals the identity within rounding.
-        correct: false
-        feedback: Checking A times its inverse is a separate calculation.
-      - id: b
-        text: It checks that the prices reproduce totals within rounding.
-        correct: true
-        feedback: A solution must reproduce b when multiplied by A.
-      - id: c
-        text: It checks that prices equal totals within rounding.
-        correct: false
-        feedback: Prices must first be multiplied by A.
-    solution: Multiplying by A reconstructs the totals, and allclose allows tiny rounding differences.
-    lesson_only: true
-  - id: inv-np-complete-solve
-    dimension: implementation
-    type: code_complete
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: Complete the call that solves $Ax=b$. NumPy is imported as `np`.
-    code: |
-      x = np.linalg.solve(____)
-    accept:
-      - A, b
-    solution: "Pass the matrix first and the right-hand side second: `A, b`."
-  - id: inv-np-read-solve
-    dimension: implementation
-    type: code_read
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: What number does this code print?
-    code: |
-      import numpy as np
-      A = np.array([[3, 1], [1, 1]])
-      b = np.array([13, 7])
-      x = np.linalg.solve(A, b)
-      print(x[1])
-    answer: 4
-    solution: The solution is $(3,4)$. Index 1 selects the second entry, so the code prints 4.0.
-    tolerance:
-      abs: 0.000001
-  - id: inv-np-why-solve
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: Why prefer `np.linalg.solve(A, b)` to `np.linalg.inv(A) @ b` for one right-hand side?
-    options:
-      - id: a
-        text: It uses less arithmetic and usually introduces less rounding error.
-        correct: true
-        feedback: Solving directly avoids computing the entire inverse.
-      - id: b
-        text: It stores exact fractions and has no rounding error.
-        correct: false
-        feedback: NumPy still stores numbers with limited precision.
-      - id: c
-        text: It gives a unique solution for a singular matrix.
-        correct: false
-        feedback: A singular matrix still causes an error.
-    solution: Solving directly avoids the extra arithmetic of computing every inverse entry.
-  - id: inv-np-singular
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: Matrix $A$ has rows $(2,2)$ and $(1,1)$, and $b=(8,5)$. What happens when NumPy runs solve?
-    options:
-      - id: a
-        text: It returns a zero vector.
-        correct: false
-        feedback: The zero vector does not reproduce these totals.
-      - id: b
-        text: It returns an identity matrix.
-        correct: false
-        feedback: Solve returns a solution vector when a unique solution exists.
-      - id: c
-        text: "It raises `LinAlgError: Singular matrix`."
-        correct: true
-        feedback: The determinant is zero, so there is no unique solution.
-    solution: The matrix is singular, so NumPy raises a singular-matrix error.
-  - id: inv-np-robot-debug
-    dimension: implementation
-    type: debug
-    role: practice
-    difficulty: 3
-    est_minutes: 3
-    prompt:
-      A robot solves for two motor settings. Its check should accept tiny rounding differences.
-      Select the line to fix and its replacement.
-    code: |
-      import numpy as np
-      A = np.array([[0.1, 0.2], [0.3, 0.5]])
-      b = np.array([0.1, 0.1])
-      x = np.linalg.solve(A, b)
-      print(A @ x == b)
-    buggy_line: 5
-    fix_options:
-      - id: a
-        text: print(np.allclose(A @ x, b))
-        correct: true
-        feedback: This checks reconstructed totals with tolerance for rounding.
-      - id: b
-        text: print(np.allclose(x, b))
-        correct: false
-        feedback: The settings must be multiplied by A before comparing with totals.
-      - id: c
-        text: print(np.allclose(A @ b, x))
-        correct: false
-        feedback: This reverses the roles of settings and totals.
-    solution:
-      Replace line 5 with `print(np.allclose(A @ x, b))`. Exact equality can reject a correct
-      solution because of rounding.
   - id: inv-explain-solve
     dimension: conceptual
     type: explain
@@ -648,8 +501,7 @@ exercises:
     est_minutes: 5
     prompt:
       For invertible $A$, explain how the inverse describes the solution of $Ax=b$. Describe how
-      elimination finds the solution. Explain why you would use `np.linalg.solve(A, b)` instead of
-      computing the inverse.
+      elimination finds the solution and how you can check it in the original system.
     rubric:
       - id: inverse
         criterion: Explain that the inverse undoes A, giving x = A^{-1}b.
@@ -661,18 +513,15 @@ exercises:
           solved values back.
         weight: 1
         required: true
-      - id: solve
-        criterion:
-          Explain that solve works directly on b with less arithmetic and usually less rounding
-          error than computing the whole inverse.
+      - id: check
+        criterion: Explain that multiplying the proposed solution by the original matrix should give b.
         weight: 1
         required: true
     exemplar:
       The inverse undoes $A$, so $x=A^{-1}b$. Elimination subtracts multiples of equations until
-      one unknown can be solved, then puts values back into the other equations. NumPy solve works
-      directly on this $b$, avoiding the whole inverse, so it uses less arithmetic and usually
-      introduces less rounding error.
-    solution: Connect undoing $A$ with finding its input. Elimination and solve find that input directly.
+      one unknown can be solved, then puts values back into the other equations. Multiply $A$ by
+      the proposed solution and check that the result is $b$.
+    solution: The inverse and elimination give the same input. Multiplying that input by the original $A$ should recover $b$.
   - id: inv-recall-identity-inverse-say
     dimension: conceptual
     type: explain
@@ -857,63 +706,8 @@ exercises:
       - B^top A^top
       - B^\top A^\top
       - B^{\top}A^{\top}
-      - B.T @ A.T
       - transpose(B) transpose(A)
       - BᵀAᵀ
       - Bᵀ Aᵀ
-      - transpose(B) @ transpose(A)
-    regex: ^\s*(?:b\s*\^\s*\{?\s*\\?(?:t|top)\s*\}?\s*(?:\*|\\cdot)?\s*a\s*\^\s*\{?\s*\\?(?:t|top)\s*\}?|b\s*\.\s*t\s*@\s*a\s*\.\s*t|transpose\s*\(\s*b\s*\)\s*\*?\s*transpose\s*\(\s*a\s*\))\s*$
+    regex: ^\s*(?:b\s*\^\s*\{?\s*\\?(?:t|top)\s*\}?\s*(?:\*|\\cdot)?\s*a\s*\^\s*\{?\s*\\?(?:t|top)\s*\}?|b\s*\.\s*t\s*@\s*a\s*\.\s*t|transpose\s*\(\s*b\s*\)\s*[@*]?\s*transpose\s*\(\s*a\s*\))\s*$
     solution: "Transposing a product reverses the order: $(AB)^\\top=B^\\top A^\\top$."
-  - id: inv-recall-numpy-say
-    dimension: conceptual
-    type: explain
-    role: recall
-    knowledge_point: inv-numpy
-    difficulty: 1
-    est_minutes: 1
-    prompt: In one or two sentences, why use `np.linalg.solve(A, b)` to solve a system, and how should you check the resulting output?
-    rubric:
-      - id: meaning
-        criterion: Explain that `solve` runs elimination directly and avoids calculating the whole inverse.
-        weight: 1
-        required: true
-      - id: rule
-        criterion: Explain that `np.allclose(A @ x, b)` allows tiny rounding differences when checking the answer.
-        weight: 1
-        required: true
-    exemplar: "`solve` runs elimination directly, so it skips the extra arithmetic of finding the whole inverse. Check with `np.allclose(A @ x, b)`, which allows tiny rounding differences."
-  - id: inv-recall-numpy-contrast
-    dimension: conceptual
-    type: mc
-    role: recall
-    knowledge_point: inv-numpy
-    difficulty: 1
-    target_seconds: 30
-    est_minutes: 0.5
-    prompt: A computed solution reproduces $b$ apart from a tiny last-digit rounding difference. Which check fits this situation?
-    options:
-      - id: a
-        text: "`np.allclose(A @ x, b)`"
-        correct: true
-        feedback: "`np.allclose` allows tiny differences caused by rounding."
-      - id: b
-        text: "`A @ x == b`"
-        correct: false
-        feedback: Exact equality can reject a good answer over a tiny rounding difference.
-      - id: c
-        text: "`np.allclose(A @ b, x)`"
-        correct: false
-        feedback: "This swaps the unknowns and the right-hand side. The check is whether `A @ x` gives back `b`."
-    solution: Use `np.allclose(A @ x, b)` to check the original equations. It allows tiny rounding differences.
-  - id: inv-recall-numpy-formula
-    dimension: math
-    type: text
-    role: recall
-    knowledge_point: inv-numpy
-    difficulty: 1
-    est_minutes: 0.5
-    prompt: "Fill in the NumPy function name: `x = np.linalg.____(A, b)` returns the $x$ with $Ax=b$ without first finding the inverse."
-    accept:
-      - solve
-    regex: ^\s*solve\s*(?:\(\s*a\s*,\s*b\s*\))?\s*$
-    solution: "`np.linalg.solve(A, b)` uses the matrix first and the right-hand side second."

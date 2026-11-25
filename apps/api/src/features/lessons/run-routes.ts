@@ -21,7 +21,7 @@ import {
   submitLessonQuiz,
 } from '@academy/aesop/lessons/run-commands';
 import type { LessonRuntime } from '@academy/aesop/lessons/run-recovery';
-import { readLessonState, readPassedQuiz } from '@academy/aesop/lessons/run-state';
+import { readLessonState } from '@academy/aesop/lessons/run-state';
 import type { applyMastery } from '@academy/aesop/memory/mastery-service';
 import type { LessonRun } from '@academy/aesop/store/lesson-store';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
@@ -29,7 +29,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
-import { drizzleLearnerStore } from '../../db/learner-store.js';
+import { drizzleLearnerStore, readPassedLessonQuizItems } from '../../db/learner-store.js';
 import type { LearnerRepository } from '../../db/repository.js';
 import {
   lessonProblems,
@@ -533,8 +533,8 @@ export function registerLessonRunRoutes(
     const resolved = await lessonFor(conceptId);
     if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
     const userId = context.get('userId');
-    const attemptId = context.req.param('attemptId');
-    const rows = await readPassedQuiz(store, userId, conceptId, attemptId);
+    const attemptId = context.req.param('attemptId').toLowerCase();
+    const rows = await readPassedLessonQuizItems(deps.db, userId, conceptId, attemptId);
     if (!rows) {
       return context.json({ error: 'Quiz review is available after passing' }, 403);
     }

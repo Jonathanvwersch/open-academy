@@ -6,17 +6,17 @@ recap:
   - concept: computational-graphs
     text: "A computational graph splits a calculation into small operations, and a local derivative is one operation's slope for one of its inputs. To get the output's slope, we multiply local derivatives along each path and add the paths."
   - concept: mlp-forward-pass
-    text: "A layer weights its inputs, adds a bias and applies an activation. ReLU keeps a positive score and turns a negative one into $0$. In a batch, each example is one row of $X$."
+    text: "A layer multiplies inputs by weights, adds a bias and applies an activation such as ReLU. A batch groups several examples. We can put their inputs in a matrix with one row per example."
   - concept: loss-functions
     text: "For squared error $(\\hat y-y)^2$, the slope for the prediction $\\hat y$ is twice the error, $2(\\hat y-y)$. The mean squared error (MSE) averages the squared errors over the examples."
   - concept: partial-derivatives
-    text: "A partial derivative such as $\\partial L/\\partial w$ is the slope of $L$ when only $w$ changes and everything else stays fixed."
+    text: "Write $L$ for the loss, a number that measures prediction error. The partial derivative $\\partial L/\\partial w$ gives how fast $L$ changes as weight $w$ changes with other weights held fixed."
 where_this_fits: |
   ### What is backpropagation?
 
   Backpropagation is a way of finding how the loss changes with every weight and bias of a model, in one sweep that runs backwards from the loss towards the inputs.
 
-  We need it because training lowers the loss by changing every parameter, and to know which way to change each one, it needs that parameter's slope. In the computational graphs lesson, we found one slope by multiplying local derivatives along paths. But different parameters' paths share their last stretch, the part nearest the loss. Handling one parameter at a time redoes that stretch for each of a network's millions of parameters. Backpropagation works out each shared piece once.
+  To lower the loss, we can subtract a small multiple of each slope from its weight or bias. A weight and a bias can affect the same prediction. Backpropagation finds the prediction's effect on the loss once, then uses it to find both slopes.
 knowledge_points:
   - id: bp-why-backprop
     key_prereqs: [computational-graphs, loss-functions]
@@ -30,7 +30,7 @@ knowledge_points:
 
       Let's start with the smallest model, which predicts $\hat y=wx+b$ from one input $x$. It has two parameters, a weight $w$ and a bias $b$, and we want the loss's partial derivative for each. We'll take one example with input $x=2$ and target $y=0$, and start from $w=1$ and $b=1$.
 
-      The forward pass follows the grey arrows:
+      First calculate the prediction and the loss. The grey arrows in the diagram below follow these calculations.
 
       $$
       \begin{aligned}
@@ -39,7 +39,7 @@ knowledge_points:
       \end{aligned}
       $$
 
-      We keep these values for the way back, where, for example, the weight's local derivative is the input $x$.
+      Save these forward values to use in the slopes. For example, the prediction is $wx+b$, so each unit added to $w$ adds $x=2$ to the prediction. The backward pass uses that saved input as the local derivative.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="Computational graph for the prediction 2w plus b. Grey arrows run forward from w equals 1 and b equals 1 to the prediction 3, then to the loss 9. Blue arrows run back. The loss hands the slope 6 to the prediction once, and the prediction hands 6 times 2, which is 12, to w and 6 times 1, which is 6, to b">
@@ -216,7 +216,7 @@ knowledge_points:
       \end{aligned}
       $$
 
-      The subscript $i$ identifies the example. Each prediction's slope equals its error because the MSE divides by two.
+      The index $i$ numbers the examples. Each squared error has slope $2(\hat y_i-y_i)$ with respect to its prediction. Changing one prediction changes only its own error term. The loss takes half of each term, so each prediction's loss slope is $\hat y_i-y_i$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" aria-label="One weight w equals 2 feeds two predictions with grey arrows, 3 for the input 1 and 5 for the input 2, and both feed the mean squared error 10. The predictions get the slopes 2 and 4. In blue, the weight collects 2 times 1, which is 2, from the first example and 4 times 2, which is 8, from the second, and adds them to get 10">
@@ -247,7 +247,7 @@ knowledge_points:
 
       $$\frac{\partial L}{\partial w}=X^\top G$$
 
-      Each entry of $X^\top G$ is the dot product of one column of inputs with $G$. The same holds for a layer: for scores $Z=XW$, with one column of $W$ per neuron and $G$ holding the slopes of $Z$, the weight slopes $X^\top G$ form a matrix the same shape as $W$. The bias slopes are the column sums of $G$.
+      For several neurons, column $j$ of the score matrix $Z=XW$ contains neuron $j$'s scores, one per example. Write $G_{ij}$ for the loss slope with respect to score $Z_{ij}$. Each entry of $X^\top G$ pairs one input column with one slope column. For a neuron's bias, add all slopes in just its column of $G$ because every example uses the same bias.
 
       ### ReLU on a whole array
 
@@ -264,19 +264,8 @@ knowledge_points:
       3. **Add the slopes for the bias.** The bias moves every prediction by the same amount.
          $$\frac{\partial L}{\partial b}=2+4=6$$
 
-      In NumPy, `X.T` is the transpose, `@` multiplies matrices and `G.sum(axis=0)` adds down each column, while `Z > 0` gives `True` or `False`, which count as $1$ or $0$.
-
-      ```python
-      import numpy as np
-      X = np.array([[1.], [2.]])    # one example per row
-      G = np.array([[2.], [4.]])    # prediction slopes
-      print(X.T @ G, G.sum(axis=0))
-      Z = np.array([[2.], [-2.]])   # saved ReLU scores
-      print(6 * (Z > 0))
-      ```
-
-      It prints `[[10.]] [6.]`, then `[[6] [0]]`: only the positive score lets the $6$ through.
-      `np.where(z > 0, g, 0)` keeps each entry of `g` where `z` is positive and puts $0$ everywhere else.
+      4. **Pass slopes through ReLU.** In a separate two-entry example, the scores before ReLU are $(2,-2)$ and each output has an incoming slope of $6$. ReLU has slope $1$ at $2$ and slope $0$ at $-2$. Multiply each incoming slope by its matching ReLU slope.
+         $\begin{pmatrix}6\\6\end{pmatrix}\odot\begin{pmatrix}1\\0\end{pmatrix}=\begin{pmatrix}6\\0\end{pmatrix}.$
     problems:
       [
         bp-arrays-basics,
@@ -368,7 +357,7 @@ knowledge_points:
       ]
 final: bp-explain
 summary: |
-  - Backpropagation finds every parameter's loss slope in one backward sweep, multiplying arriving slopes by local derivatives and reusing shared ones.
+  - Backpropagation begins at the loss and works backward. It finds the slope for each weight and bias, using the slope of a shared calculation wherever it is needed.
   - The forward pass saves values the backward steps need. For example, ReLU passes a slope back only where its saved score was positive.
   - A shared parameter adds up its contributions, so the weight slopes are $X^\top G$ and the bias slopes are the column sums of $G$.
   - A gradient check compares a few slopes with the central difference $\frac{L(w+\varepsilon)-L(w-\varepsilon)}{2\varepsilon}$.

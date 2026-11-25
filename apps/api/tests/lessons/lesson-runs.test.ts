@@ -1913,13 +1913,17 @@ test('passing and retaking a quiz awards quiz XP only once and enables review', 
     expect(log?.rating).toBe(String(card.dimension === hardDimension ? Rating.Hard : Rating.Good));
   }
   const firstPassLogCount = (await db.select().from(reviewLogs)).length;
-  const review = await app.request(
-    `/api/lessons/${conceptId}/quiz/${result.run.quiz.last.attemptId}/review`,
-    { headers },
-  );
+  const firstReviewPath = `/api/lessons/${conceptId}/quiz/${result.run.quiz.last.attemptId}/review`;
+  const review = await app.request(firstReviewPath, { headers });
   expect(review.status).toBe(200);
   const reviewBody = await review.json();
   expect(reviewBody.items).toHaveLength(firstItems.length);
+  const uppercaseReview = await app.request(
+    `/api/lessons/${conceptId}/quiz/${result.run.quiz.last.attemptId.toUpperCase()}/review`,
+    { headers },
+  );
+  expect(uppercaseReview.status).toBe(200);
+  expect(await uppercaseReview.json()).toEqual(reviewBody);
   expect(reviewBody.items[0]).toMatchObject({
     exercise: { prompt: expect.any(String) },
     yourAnswer: expect.any(String),
@@ -1936,6 +1940,9 @@ test('passing and retaking a quiz awards quiz XP only once and enables review', 
   result = await secondPass.json();
   expect(result.xpAwarded).toBe(0);
   expect(result.run.quiz.bestPassed).toBe(true);
+  const firstReviewAfterRetake = await app.request(firstReviewPath, { headers });
+  expect(firstReviewAfterRetake.status).toBe(200);
+  expect(await firstReviewAfterRetake.json()).toEqual(reviewBody);
   expect(await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))).toHaveLength(
     firstPassCards.length,
   );

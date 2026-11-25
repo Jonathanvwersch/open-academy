@@ -393,195 +393,23 @@ exercises:
       $$t=11-6$$
 
       $$t=5$$
-  - id: mat-batches-transpose-basics
-    dimension: conceptual
-    type: mc
-    role: basics
-    difficulty: 1
-    target_seconds: 30
-    est_minutes: 1
-    prompt: In NumPy, each row of `X` is a house and `w` holds one weight per measurement. What does `X @ w` compute?
-    options:
-      - id: a
-        text: One weighted prediction for each house row in $X$, returned as a vector.
-        correct: true
-        feedback: Each row's dot product with `w` combines that house's measurements into one prediction.
-      - id: b
-        text: The products of each house row with the weights in matching positions, with no sum.
-        correct: false
-        feedback: That multiplies matching positions only; `@` also adds the products into one prediction per house.
-      - id: c
-        text: One shared prediction formed by adding every measurement across all house rows.
-        correct: false
-        feedback: That collapses rows together; matrix multiplication returns a separate result for each row.
-      - id: d
-        text: A column sum of the input matrix, scaled by the matching model weights.
-        correct: false
-        feedback: A column sum combines houses; `X @ w` instead takes a weighted sum within each house row.
-    solution: "`X @ w` takes each house row's dot product with the measurement weights, producing one prediction per row."
-  - id: matp-batch-self-explain
-    lesson_only: true
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: In the worked example, why does adding `b` raise both prices by 20 and both rents by 100?
-    options:
-      - id: a
-        text: "`b` has one entry per output column, and broadcasting adds those same two entries to every house's row."
-        correct: true
-        feedback: Each of the 2 entries of `b` lines up with one column of `X @ W` and is reused for every row.
-      - id: b
-        text: "`b` gives one entry per house: 20 is added to house 1's row and 100 to house 2's row."
-        correct: false
-        category: misunderstood_definition
-        feedback: Then house 1's price and rent would both rise by 20. The entries of `b` belong to columns, not rows.
-      - id: c
-        text: "`b` is added to the weights before multiplying, so every weight in $W$ grows."
-        correct: false
-        category: incorrect_reasoning
-        feedback: "`X @ W` is computed first; `b` is then added to the product, so the weights are unchanged."
-      - id: d
-        text: NumPy adds the total of `b`, 120, to every entry of the product.
-        correct: false
-        category: misunderstood_definition
-        feedback: Broadcasting reuses each entry in its own column; it never adds the entries of `b` together.
-    solution: "`b` is a one-dimensional array with shape (2,), meaning it has two entries and no row dimension. One entry matches each output column, and NumPy reuses both entries for every row."
-  - id: matp-broadcast
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 1
-    target_seconds: 30
-    est_minutes: 2
-    prompt: A NumPy product holds sale-price and monthly-rent predictions for five houses, shape (5, 2). You add b, an array of shape (2,) holding a sale-price bias and a rent bias. What does broadcasting do?
-    solution: NumPy reuses the two bias entries across the five rows, so every house's sale price gets the first bias and every rent gets the second. The output shape stays (5, 2).
-    options:
-      - id: a
-        text: It adds the first bias to every house's sale price and the second to every house's rent.
-        correct: true
-        feedback: Each output column receives its matching bias for every house.
-      - id: b
-        text: It adds the first bias to house 1's row and the second bias to house 2's row.
-        correct: false
-        category: misunderstood_definition
-        feedback: b has one entry per column, so it lines up with the columns and is reused for all five rows.
-      - id: c
-        text: It adds the sum of both biases to every entry of the (5, 2) array.
-        correct: false
-        category: misunderstood_definition
-        feedback: The biases stay separate. Each column gets its own bias.
-      - id: d
-        text: It raises an error, because b has 2 entries and the array has 5 rows.
-        correct: false
-        category: misunderstood_definition
-        feedback: NumPy matches the two bias entries to the two output columns, then reuses them across all five rows.
-  - id: matp-code
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: A model stores five houses with three measurements each in NumPy array X, shape (5, 3). W holds weights for sale price and monthly rent, shape (3, 2), and b holds one bias for each prediction, shape (2,). Which line gives both predictions, with their biases, for every house?
-    solution: X rows dot W columns, giving shape (5, 2). Adding b broadcasts one bias per output across all five houses.
-    options:
-      - id: a
-        text: "`Y = X @ W + b`"
-        correct: true
-        feedback: The product has shape (5, 2), and the two biases repeat across rows.
-      - id: b
-        text: "`Y = W @ X + b`"
-        correct: false
-        feedback: W has shape (3, 2) and X has shape (5, 3), so the inner sizes 2 and 5 don't match in that order.
-      - id: c
-        text: "`Y = X @ W.T + b`"
-        correct: false
-        feedback: W.T has shape (2, 3), so the inner sizes 3 and 2 don't match.
-  - id: matp-bias-template
+  - id: matp-adjusted-prediction
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A robot predicts its wheel speed, in centimetres per second, from two sensor readings, $({{=a}},{{=b}})$. The model has weights $(2,-1)$ and a bias of ${{=c}}$, and a negative speed means the wheel turns backwards. What speed does it predict?
-    solution: 'First take the dot product: $2\cdot{{=a}}-{{=b}}={{=2*a-b}}$. Add the bias to get ${{=2*a-b}}+({{=c}})={{=2*a-b+c}}$.'
-    tolerance:
-      abs: 1.0e-06
-    params:
-      a:
-        min: 1
-        max: 8
-      b:
-        min: 1
-        max: 5
-      c:
-        min: -2
-        max: 4
-    answer_expr: 2*a-b+c
-  - id: matp-transpose
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: W stores the sale-price and monthly-rent weights as rows, with three measurements per output, shape (2, 3). X stores five houses with the same measurements, shape (5, 3). Which product gives both predictions for every house?
-    solution: Transpose swaps the two weight rows into columns without changing their values. Then (5, 3) times (3, 2) gives (5, 2).
-    options:
-      - id: a
-        text: "`X @ W.T`, with shape (5, 2)"
-        correct: true
-        feedback: Transposing makes W shape (3, 2), matching the three house measurements.
-      - id: b
-        text: "`X @ W`, which is undefined"
-        correct: false
-        feedback: Without the transpose, the inner sizes 3 and 2 differ.
-      - id: c
-        text: "`X.T @ W`, which is undefined"
-        correct: false
-        feedback: X.T has shape (3, 5), so the inner sizes 5 and 2 differ.
-  - id: matp-why-batch
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: You could price houses one at a time, dotting each house row with each weight column. How does `X @ W` relate to doing that, and why isn't `X * W` a substitute?
-    solution: Each entry of `X @ W` is one house row dotted with one weight column, exactly what pricing house by house computes; `@` does them all in one line. For house row $(12,3,20)$ and price weights $(25,10,-1)$ that entry is $12\cdot25+3\cdot10+20\cdot(-1)=310$. `*` multiplies matching positions and never adds them up.
-    options:
-      - id: a
-        text: "`X @ W` does the same row-column dot products in one line, while `*` never adds the products."
-        correct: true
-        feedback: Same dot products, one line. `*` only multiplies numbers in matching positions.
-      - id: b
-        text: Pricing one house at a time gives different predictions, because `@` pairs the weights differently.
-        correct: false
-        feedback: Each entry of `X @ W` is the same row-column dot product, so the predictions are identical.
-      - id: c
-        text: "`*` gives the same predictions as `@` whenever both arrays have equal row and column counts."
-        correct: false
-        feedback: "Even for equal shapes, `*` multiplies matching positions and adds nothing, so no dot product is formed."
-  - id: matp-robot-dot-count
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: A robot logs 50 moments, each with 4 sensor readings, in `X` of shape (50, 4). Its weights for 2 wheel speeds are stored one row per wheel, in `W_rows` of shape (2, 4). How many dot products does `X @ W_rows.T` compute?
-    answer: 100
-    tolerance:
-      abs: 0
-    solution: |-
-      `W_rows.T` has shape (4, 2), so the product has shape (50, 2). Each entry is one dot product of a reading row with a weight column.
-
-      $$50\times2=100$$
+    prompt: One house has measurements $(2,3)$. A weight matrix has sale weights $(4,1)$ in its first row and rent weights $(2,5)$ in its second row. Transpose it to put the weights in columns, then multiply the house row by that matrix. Add a sale adjustment of 5 and a rent adjustment of 1. What is the adjusted rent?
+    answer: 20
+    tolerance: { abs: 0 }
+    solution: The second column of the transpose is $(2,5)$, so the product gives rent $2\times2+3\times5=19$. Add the rent adjustment to get $19+1=20$.
   - id: mat-explain-batch
     dimension: conceptual
     type: explain
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: For houses with area in tens of square metres, bedroom count and age in years, explain how NumPy can predict both sale price and monthly rent for five houses. State the shapes of $X$, $W$ and $XW$, and explain adding one fixed amount per output.
+    prompt: Five houses each have three measurements in the rows of $X$. The columns of $W$ hold separate weights for sale price and monthly rent. How does $XW$ give both predictions for every house? State the shapes of $X$, $W$ and $XW$, and explain how to add a fixed price adjustment and a fixed rent adjustment.
     rubric:
       - id: rows
         criterion: Compute each output entry by dotting one house row with one output-weight column.
@@ -592,11 +420,11 @@ exercises:
         weight: 2
         required: true
       - id: bias
-        criterion: Add a bias of shape `(2,)` in `X @ W + b`, reusing the same price and rent adjustments for each house.
+        criterion: Repeat the row of price and rent adjustments for every house and add the matching entries.
         weight: 1
         required: true
-    exemplar: Each output entry is one house row dotted with one output-weight column. Five houses with three measurements give X shape (5, 3). Sale-price and monthly-rent weights give W shape (3, 2), so X @ W has shape (5, 2). Adding b with shape (2,) reuses one fixed adjustment for each output across all five rows.
-    solution: Each house row meets both output-weight columns. The matching inner measurement counts produce two predictions per house, and broadcasting adds one fixed adjustment per output without changing the shape.
+    exemplar: Each entry in $XW$ is a dot product of one house row and one weight column. The shapes are $5\times3$ for $X$, $3\times2$ for $W$ and $5\times2$ for $XW$. Write the two adjustments as a row and repeat it five times. Add each entry to the prediction in the matching row and column.
+    solution: The matching inner sizes let us take two dot products per house. Adding the same pair of adjustments to each row keeps the product's shape.
   - id: mat-check-shape
     dimension: math
     type: mc
@@ -673,48 +501,6 @@ exercises:
       - Row 2 of $A$ dotted with column 1 of $B$.
       - Row 2 of $A$ is $(1, 3, -1)$; column 1 of $B$ is $(1, 0, 4)$.
     solution: $1\cdot1 + 3\cdot0 + (-1)\cdot4 = -3$.
-  - id: mat-code-read
-    dimension: implementation
-    type: code_read
-    role: core
-    difficulty: 2
-    est_minutes: 3
-    prompt: This NumPy code uses `np.ones` to fill X with decimal (float) numbers equal to one. It fills W with the numbers 0 through 5, arranged into three rows and two columns. Array positions count from zero, so `out[0, 1]` selects the first row's second entry. What does it print? You may write the final number as an integer or a decimal.
-    code: |
-      import numpy as np
-      X = np.ones((5, 3))
-      W = np.arange(6).reshape(3, 2)
-      out = X @ W
-      print(out.shape, out[0, 1])
-    accept:
-      - (5, 2) 9.0
-      - (5,2) 9.0
-      - (5, 2) 9
-      - (5,2) 9
-    regex: ^\s*\(\s*5\s*,\s*2\s*\)\s+9(?:\.0)?\s*$
-    hints:
-      - "`np.arange(6).reshape(3, 2)` is [[0, 1], [2, 3], [4, 5]]."
-      - Each row of `X` is all ones, so `out[0, 1]` is the sum of column 1 of `W`.
-    solution: 'Shape $(5,3)(3,2) \to (5,2)$. Row 0 of `X` is all ones, so `out[0,1]` = 1 + 3 + 5 = 9.0 (a float because `np.ones` is float). Output: `(5, 2) 9.0`.'
-  - id: mat-complete-batch
-    dimension: implementation
-    type: code_complete
-    role: review
-    difficulty: 2
-    est_minutes: 2
-    prompt: Complete the line so Y holds the scores for several houses together. X holds n house rows with d measurements each, shape `(n, d)`. W holds weights for k scores, shape `(d, k)`. b holds one fixed adjustment per score, shape `(k,)`.
-    code: |
-      import numpy as np
-      Y = ____
-    accept:
-      - X @ W + b
-      - np.dot(X, W) + b
-      - np.matmul(X, W) + b
-      - X.dot(W) + b
-      - b + X @ W
-    hints:
-      - Which order of `X` and `W` makes the inner dimensions match?
-    solution: '`Y = X @ W + b`: $(n\times d)(d \times k) = n \times k$, and `b` broadcasts across the `n` rows.'
   - id: mat-recall-rows-shapes-say
     dimension: conceptual
     type: explain
@@ -837,61 +623,3 @@ exercises:
       - m·p
     regex: ^\s*\(?\s*m\s*(?:×|x|\*|·|,|by|times|\\times|\\cdot)\s*p\s*\)?\s*$
     solution: The outer sizes give the output shape $m\times p$.
-  - id: mat-recall-batches-transpose-say
-    dimension: conceptual
-    type: explain
-    role: recall
-    knowledge_point: mat-batches-transpose
-    difficulty: 1
-    est_minutes: 1
-    prompt: In one or two sentences, what does the bias do in `X @ W + b`, and what does transposing a matrix do?
-    rubric:
-      - id: meaning
-        criterion: Explain that the bias adds a fixed amount to each prediction, with its one row reused for every house.
-        weight: 1
-        required: true
-      - id: rule
-        criterion: Explain that transposing swaps rows and columns.
-        weight: 1
-        required: true
-    exemplar: The bias row is added to every row of predictions, giving each prediction column its own fixed addition. Transposing swaps a matrix’s rows and columns.
-  - id: mat-recall-batches-transpose-contrast
-    dimension: conceptual
-    type: mc
-    role: recall
-    knowledge_point: mat-batches-transpose
-    difficulty: 1
-    target_seconds: 30
-    est_minutes: 0.5
-    prompt: A NumPy array `X` has one row per house and one column per measurement. `W_rows` has one row of weights per prediction and one column per measurement. Which expression gives every prediction for every house?
-    options:
-      - id: a
-        text: "`X @ W_rows.T`"
-        correct: true
-        feedback: Transposing puts each prediction’s weights in a column for the row-by-column product.
-      - id: b
-        text: "`X.T @ W_rows`"
-        correct: false
-        feedback: Transposing `X` gives one row per measurement, so its columns no longer line up with the rows of `W_rows`.
-      - id: c
-        text: "`X * W_rows.T`"
-        correct: false
-        feedback: The star multiplies matching entries and does not add them into dot products.
-    solution: Transpose the weight rows into columns, then multiply with `@`.
-  - id: mat-recall-batches-transpose-formula
-    dimension: math
-    type: text
-    role: recall
-    knowledge_point: mat-batches-transpose
-    difficulty: 1
-    est_minutes: 0.5
-    prompt: "Fill in the blank: `Y = ____ + b` predicts for every row of `X`, with prediction weights in the columns of `W`. Type the missing NumPy expression."
-    accept:
-      - X @ W
-      - np.dot(X,W)
-      - np.matmul(X,W)
-      - X.dot(W)
-      - numpy.dot(X,W)
-      - numpy.matmul(X,W)
-    regex: ^\s*\(?\s*(?:x\s*@\s*w|(?:np|numpy)\s*\.\s*(?:dot|matmul)\s*\(\s*x\s*,\s*w\s*\)|x\s*\.\s*dot\s*\(\s*w\s*\))\s*\)?\s*$
-    solution: "`X @ W` takes every row-by-column dot product, then `b` is added to every output row."

@@ -172,20 +172,6 @@ export async function readLessonState(
   };
 }
 
-export async function readPassedQuiz(
-  store: LessonStore,
-  userId: string,
-  conceptId: string,
-  attemptId: string,
-) {
-  const run = await store.getLessonRun(userId, { conceptId });
-  if (!run) return;
-  const quiz = await store.readLessonQuiz(userId, run.id);
-  const attempt = quiz.quizAttempts.find((item) => item.id === attemptId);
-  if (!attempt?.submittedAt || attempt.passed !== true) return;
-  return quiz.quizItems.filter((item) => item.quizAttemptId === attempt.id);
-}
-
 export async function readLessonReviewStatus(
   store: LessonStore,
   userId: string,
