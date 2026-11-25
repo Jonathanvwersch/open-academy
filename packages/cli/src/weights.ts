@@ -9,11 +9,11 @@ function verifyEdge(
   exerciseIds: string[],
   stepIds: Set<string>,
   edge: string,
-): number {
+): number | undefined {
   if (!isRecord(entry) || !isRecord(entry.uses)) {
     throw new Error(`${edge}: expected {weight, exercises, steps, uses}.`);
   }
-  if (stepIds.size === 0) {
+  if (exerciseIds.length > 0 && stepIds.size === 0) {
     throw new Error(`${edge}: verification requires prerequisite steps.`);
   }
   if (entry.exercises !== exerciseIds.length || entry.steps !== stepIds.size) {
@@ -45,6 +45,8 @@ function verifyEdge(
     throw new Error(`${edge}: missing uses for ${[...eligibleExercises].join(', ')}.`);
   }
 
+  if (exerciseIds.length === 0) return undefined;
+
   const weight = Math.round((100 * usedSteps) / (exerciseIds.length * stepIds.size)) / 100;
   if (entry.weight !== weight) {
     throw new Error(`${edge}: expected weight ${weight.toFixed(2)} from uses.`);
@@ -63,7 +65,7 @@ export function verifyWeights(content: ContentIndex, uses: unknown): number {
     const exerciseIds = (content.exercisesByConcept.get(concept.id) ?? [])
       .filter(({ role }) => role !== 'recall')
       .map(({ id }) => id);
-    if (exerciseIds.length === 0) continue;
+    const hasExercises = exerciseIds.length > 0;
 
     const required = new Set(
       concept.prereqs.filter(({ strength }) => strength === 'hard').map(({ id }) => id),
@@ -79,18 +81,21 @@ export function verifyWeights(content: ContentIndex, uses: unknown): number {
     }
 
     const recorded = new Map(concept.encompassings?.map(({ id, weight }) => [id, weight]));
-    for (const id of recorded.keys()) {
-      if (!required.has(id)) {
-        throw new Error(`${concept.id} -> ${id}: unexpected encompassing in concept file.`);
+    if (hasExercises) {
+      for (const id of recorded.keys()) {
+        if (!required.has(id)) {
+          throw new Error(`${concept.id} -> ${id}: unexpected encompassing in concept file.`);
+        }
       }
     }
-    for (const id of required) {
+    for (const id of hasExercises ? required : Object.keys(entries)) {
       const edge = `${concept.id} -> ${id}`;
       if (!Object.hasOwn(entries, id)) throw new Error(`${edge}: missing edge in uses.`);
       const stepIds = new Set(
         content.lessonsByConcept.get(id)?.knowledge_points?.map(({ id }) => id),
       );
       const weight = verifyEdge(entries[id], exerciseIds, stepIds, edge);
+      if (weight === undefined) continue;
       if (recorded.get(id) !== weight) {
         throw new Error(
           `${edge}: expected encompassing weight ${weight.toFixed(2)} in concept file.`,

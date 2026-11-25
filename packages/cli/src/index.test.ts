@@ -240,7 +240,7 @@ describe('academy CLI', () => {
     }
   });
 
-  it('skips prerequisite edges from planned topics without questions', () => {
+  it('makes uses optional for planned topics but checks any supplied edges and IDs', () => {
     const parent = temporaryDirectory();
     try {
       const pack = join(parent, 'pack');
@@ -258,11 +258,33 @@ describe('academy CLI', () => {
         pack,
       ]);
       expect(planned.status, planned.stderr).toBe(0);
-      const uses = join(parent, 'uses.yaml');
-      writeFileSync(uses, '{}\n');
-      const verified = run(['weights', 'verify', uses, '--pack', pack]);
-      expect(verified.status, verified.stderr).toBe(0);
-      expect(verified.stdout).toContain('Verified 0 encompassing weights.');
+
+      function verify(data: unknown) {
+        writeFileSync(join(parent, 'uses.yaml'), stringify(data));
+        return runWithInitCwd(['weights', 'verify', 'uses.yaml', '--pack', 'pack'], parent);
+      }
+
+      const prerequisite = 'applied-science-first-topic';
+      const entry = { weight: 0, exercises: 0, steps: 0, uses: {} };
+      for (const data of [{}, { 'second-topic': { [prerequisite]: entry } }]) {
+        const verified = verify(data);
+        expect(verified.status, verified.stderr).toBe(0);
+        expect(verified.stdout).toContain('Verified 0 encompassing weights.');
+      }
+
+      for (const [data, message] of [
+        [{ 'missing-topic': { [prerequisite]: entry } }, 'Unknown concept "missing-topic"'],
+        [{ 'second-topic': { 'missing-prereq': entry } }, 'unexpected edge in uses'],
+        [{ [prerequisite]: { 'second-topic': entry } }, 'unexpected edge in uses'],
+        [
+          { 'second-topic': { [prerequisite]: { ...entry, uses: { 'missing-exercise': [] } } } },
+          'unexpected exercise id "missing-exercise"',
+        ],
+      ] as const) {
+        const result = verify(data);
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain(message);
+      }
     } finally {
       rmSync(parent, { recursive: true, force: true });
     }
