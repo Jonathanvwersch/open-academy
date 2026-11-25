@@ -97,7 +97,10 @@ export function verifyWeights(content: ContentIndex, uses: unknown): number {
       );
       const weight = verifyEdge(entries[id], exerciseIds, stepIds, edge);
       const recordedWeight = recorded.get(id);
-      if ((hasExercises || recordedWeight !== undefined) && recordedWeight !== weight) {
+      if (recordedWeight === undefined) {
+        throw new Error(`${edge}: missing encompassing in concept file.`);
+      }
+      if (recordedWeight !== weight) {
         throw new Error(
           `${edge}: expected encompassing weight ${weight.toFixed(2)} in concept file.`,
         );

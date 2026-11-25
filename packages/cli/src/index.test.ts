@@ -270,9 +270,9 @@ describe('academy CLI', () => {
       expect(omitted.status, omitted.stderr).toBe(0);
       expect(omitted.stdout).toContain('Verified 0 encompassing weights.');
       const supplied = { 'second-topic': { [prerequisite]: entry } };
-      const verified = verify(supplied);
-      expect(verified.status, verified.stderr).toBe(0);
-      expect(verified.stdout).toContain('Verified 1 encompassing weight.');
+      const missing = verify(supplied);
+      expect(missing.status).toBe(1);
+      expect(missing.stderr).toContain('missing encompassing in concept file');
 
       for (const [data, message] of [
         [{ 'missing-topic': { [prerequisite]: entry } }, 'Unknown concept "missing-topic"'],
@@ -308,6 +308,7 @@ describe('academy CLI', () => {
       writeFileSync(file, stringify(data));
       const match = verify(supplied);
       expect(match.status, match.stderr).toBe(0);
+      expect(match.stdout).toContain('Verified 1 encompassing weight.');
     } finally {
       rmSync(parent, { recursive: true, force: true });
     }
