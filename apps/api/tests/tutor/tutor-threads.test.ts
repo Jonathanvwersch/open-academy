@@ -1425,7 +1425,8 @@ test('a failed retry with an existing client ID keeps one saved learner message'
   const messages = await db
     .select({ role: tutorMessages.role, clientId: tutorMessages.clientId })
     .from(tutorMessages)
-    .where(eq(tutorMessages.threadId, threadId));
+    .where(eq(tutorMessages.threadId, threadId))
+    .orderBy(asc(tutorMessages.seq));
   expect(messages).toHaveLength(2);
   expect(messages).toEqual([
     { role: 'user', clientId: clientMessageId },
