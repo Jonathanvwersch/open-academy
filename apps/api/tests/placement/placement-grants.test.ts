@@ -14,6 +14,9 @@ import {
   placementGrants,
   remediationFlags,
   reviewCards,
+  reviewLogs,
+  sessionActivities,
+  studySessions,
   users,
   xpEvents,
 } from '../../src/db/schema.js';
@@ -297,4 +300,43 @@ test('later answers on a withdrawn topic do not restore credit before its lesson
       .every((record) => masteryRank(record.state) < masteryRank('assisted') && !record.inferred),
   ).toBe(true);
   expect(after.grants.find((grant) => grant.conceptId === 'vectors')?.state).toBe('withdrawn');
+});
+
+test('withdrawal removes the placement card and skips planned work the topic no longer unlocks', async () => {
+  await seedGrant('vectors', 'conditional');
+  const [reviewed] = await db
+    .select({ id: reviewCards.id })
+    .from(reviewCards)
+    .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, 'vectors')))
+    .limit(1);
+  if (!reviewed) throw new Error('Missing seeded card');
+  await db.insert(reviewLogs).values({ cardId: reviewed.id, rating: 'good', fsrsLog: {} });
+  const [session] = await db
+    .insert(studySessions)
+    .values({ userId, plannedMinutes: 30 })
+    .returning();
+  if (!session) throw new Error('Could not insert session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: 'derivatives',
+      plannedMinutes: 20,
+    })
+    .returning();
+  if (!activity) throw new Error('Could not insert activity');
+
+  expect((await answer('vectors', 0)).result.withdrawn).toEqual(['vectors']);
+  const cards = await db
+    .select({ id: reviewCards.id })
+    .from(reviewCards)
+    .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, 'vectors')));
+  expect(cards).toEqual([]);
+  const [skipped] = await db
+    .select({ status: sessionActivities.status })
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, activity.id));
+  expect(skipped?.status).toBe('skipped');
 });

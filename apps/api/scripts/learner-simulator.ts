@@ -46,7 +46,6 @@ import { createApp } from '../src/app.js';
 import type { Database } from '../src/db/client.js';
 import { LearnerRepository } from '../src/db/repository.js';
 import {
-  diagnosticRuns,
   lessonQuizAttempts,
   lessonQuizItems,
   lessonRuns,
@@ -3203,6 +3202,7 @@ export function auditP15Trace(
 
     const sourceRating = minimumRatingByConcept.get(event.sourceConceptId);
     if (sourceRating === undefined) {
+      if (withdrawnConceptIds.has(event.sourceConceptId)) continue;
       violations.push(`trace source ${event.sourceConceptId} has no activity rating`);
     } else if (
       event.rating === Rating.Again
@@ -3355,6 +3355,7 @@ export function auditP15Trace(
     const actual = afterById.get(cardId);
     if (!actual) {
       const target = cardsById.get(cardId);
+      if (target && withdrawnConceptIds.has(target.conceptId)) continue;
       violations.push(
         `${target ? p15CardIdentity(target) : 'unknown target'}: trace target is missing from final card state`,
       );
@@ -3383,6 +3384,16 @@ export function attributeActivityLogs<T extends { id: string }>(
   const newLogs = afterLogs.filter(({ id }) => !beforeIds.has(id) && !checkedIds.has(id));
   for (const { id } of afterLogs) checkedIds.add(id);
   return newLogs;
+}
+
+/** The API skips planned work that a placement withdrawal no longer unlocks. */
+async function activityWasSkipped(db: Database, activityId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ status: sessionActivities.status })
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, activityId))
+    .limit(1);
+  return row?.status === 'skipped';
 }
 
 async function processActivityWithMetrics(
@@ -4865,6 +4876,7 @@ async function simulateProfile(
         );
         daily.offers.push(...activities.map(sessionOffer));
         for (const activity of activities) {
+          if (await activityWasSkipped(db, activity.id)) continue;
           const activityProgress = await readProgress(db, userId);
           const activityState = await new LearnerRepository(db, userId).schedulerState(
             now,
@@ -4970,6 +4982,7 @@ async function simulateProfile(
           );
           daily.offers.push(...newActivities.map(sessionOffer));
           for (const activity of newActivities) {
+            if (await activityWasSkipped(db, activity.id)) continue;
             const activityProgress = await readProgress(db, userId);
             const activityState = await new LearnerRepository(db, userId).schedulerState(
               now,
@@ -5064,6 +5077,7 @@ async function simulateProfile(
             );
             daily.offers.push(...focusedActivities.map(sessionOffer));
             for (const activity of focusedActivities) {
+              if (await activityWasSkipped(db, activity.id)) continue;
               const activityProgress = await readProgress(db, userId);
               const activityState = await new LearnerRepository(db, userId).schedulerState(
                 now,
@@ -5155,6 +5169,7 @@ async function simulateProfile(
           );
           daily.offers.push(...focusedActivities.map(sessionOffer));
           for (const activity of focusedActivities) {
+            if (await activityWasSkipped(db, activity.id)) continue;
             const activityProgress = await readProgress(db, userId);
             const activityState = await new LearnerRepository(db, userId).schedulerState(
               now,

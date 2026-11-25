@@ -1,5 +1,10 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
-import { keyPrereqsForPoint } from '@academy/aesop/graph/prerequisites';
+import {
+  createPrerequisiteChecker,
+  keyPrereqsForPoint,
+  labActivityReady,
+  masteryKey,
+} from '@academy/aesop/graph/prerequisites';
 import {
   capWithdrawnMastery,
   classifyPlacementGrants,
@@ -11,16 +16,19 @@ import {
   planWithdrawal,
 } from '@academy/aesop/placement/grants';
 import type { PlacementState } from '@academy/aesop/placement/placement';
-import { and, eq, inArray, ne } from 'drizzle-orm';
+import { and, eq, inArray, ne, or } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import type { LearnerRepository } from '../db/repository.js';
 import {
   attempts,
+  courseEnrollments,
   lessonRuns,
   masteryEvents,
   placementGrants,
   remediationFlags,
   reviewCards,
+  sessionActivities,
+  studySessions,
 } from '../db/schema.js';
 
 export async function placementGrantStates(
@@ -124,11 +132,7 @@ export async function applyPlacementGrantOutcome(input: {
       const capped = capWithdrawnMastery(record);
       if (capped) await input.repo.saveMastery(capped);
     }
-    await input.db
-      .delete(reviewCards)
-      .where(
-        and(eq(reviewCards.userId, input.userId), eq(reviewCards.conceptId, exercise.concept)),
-      );
+    await deletePlacementOnlyCards(input.db, input.userId, [exercise.concept]);
   }
   if (![...states.values()].includes('conditional')) return none;
   const decision = grantAnswerDecision(states.get(exercise.concept), {
@@ -298,9 +302,8 @@ async function withdrawGrants(input: {
       });
     }
   }
-  await input.db
-    .delete(reviewCards)
-    .where(and(eq(reviewCards.userId, input.userId), inArray(reviewCards.conceptId, conceptIds)));
+  await deletePlacementOnlyCards(input.db, input.userId, conceptIds);
+  await reopenPlanAfterWithdrawal(input, conceptIds);
   await input.db
     .update(remediationFlags)
     .set({ status: 'resolved', resolvedAt: input.now })
@@ -312,6 +315,93 @@ async function withdrawGrants(input: {
       ),
     );
   return conceptIds;
+}
+
+/** Removes placement-only cards; withdrawal only reaches topics the learner never studied. */
+async function deletePlacementOnlyCards(db: Database, userId: string, conceptIds: string[]) {
+  await db
+    .delete(reviewCards)
+    .where(and(eq(reviewCards.userId, userId), inArray(reviewCards.conceptId, conceptIds)));
+}
+
+/** Reopens courses that hold a withdrawn topic and skips planned work it no longer unlocks. */
+async function reopenPlanAfterWithdrawal(
+  input: { db: Database; repo: LearnerRepository; userId: string; content: ContentIndex },
+  conceptIds: string[],
+) {
+  const affectedCourseIds = input.content.courses
+    .filter((course) =>
+      course.units.some((unit) => unit.concepts.some((id) => conceptIds.includes(id))),
+    )
+    .map((course) => course.id);
+  if (affectedCourseIds.length > 0) {
+    await input.db
+      .update(courseEnrollments)
+      .set({ status: 'active', completedAt: null })
+      .where(
+        and(
+          eq(courseEnrollments.userId, input.userId),
+          eq(courseEnrollments.status, 'completed'),
+          inArray(courseEnrollments.courseId, affectedCourseIds),
+        ),
+      );
+  }
+  const sessions = await input.db
+    .select({ id: studySessions.id })
+    .from(studySessions)
+    .where(eq(studySessions.userId, input.userId));
+  if (sessions.length === 0) return;
+  const openActivities = or(
+    eq(sessionActivities.status, 'planned'),
+    eq(sessionActivities.status, 'in_progress'),
+  );
+  const activities = await input.db
+    .select({
+      id: sessionActivities.id,
+      conceptId: sessionActivities.conceptId,
+      kind: sessionActivities.kind,
+      projectId: sessionActivities.projectId,
+    })
+    .from(sessionActivities)
+    .where(
+      and(
+        inArray(
+          sessionActivities.sessionId,
+          sessions.map((session) => session.id),
+        ),
+        openActivities,
+      ),
+    );
+  const [masteryRecords, runRows] = await Promise.all([
+    input.repo.masteryRecords(),
+    input.db
+      .select({ conceptId: lessonRuns.conceptId, status: lessonRuns.status })
+      .from(lessonRuns)
+      .where(eq(lessonRuns.userId, input.userId)),
+  ]);
+  const masteryByKey = new Map(
+    masteryRecords.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
+  const checker = createPrerequisiteChecker(masteryByKey, runRows, input.content);
+  const blocked = activities
+    .filter((activity) => {
+      if (activity.kind === 'lab') {
+        return !labActivityReady(activity, masteryByKey, runRows, input.content);
+      }
+      if ((activity.kind !== 'learn' && activity.kind !== 'practice') || !activity.conceptId) {
+        return false;
+      }
+      return (
+        input.content.conceptsById.has(activity.conceptId) &&
+        !checker.chainReady(activity.conceptId)
+      );
+    })
+    .map((activity) => activity.id);
+  if (blocked.length === 0) return;
+  await input.db
+    .update(sessionActivities)
+    .set({ status: 'skipped' })
+    .where(and(inArray(sessionActivities.id, blocked), openActivities));
 }
 
 /** True when the topic's placement credit was withdrawn and its lesson was never started. */
