@@ -4,14 +4,6 @@ const svgNamespace = 'http://www.w3.org/2000/svg';
 const forbiddenElement = /^(?:script|foreignObject)$/i;
 
 export function checkTutorSvg(source: string): TutorSvg {
-  if (
-    /<\s*(script|foreignObject)\b/i.test(source) ||
-    /\bon[a-z0-9_-]*\s*=/i.test(source) ||
-    /\b(?:xlink:)?href\s*=\s*(['"])(?!#)[\s\S]*?\1/i.test(source)
-  ) {
-    return { status: 'unsafe' };
-  }
-
   const document = new DOMParser().parseFromString(source, 'image/svg+xml');
   const root = document.documentElement;
   if (

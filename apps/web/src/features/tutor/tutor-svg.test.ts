@@ -42,6 +42,15 @@ test('checks XML and uses the root accessible label for a valid diagram', () => 
   expect(parse).toHaveBeenCalledWith(source, 'image/svg+xml');
 });
 
+test('allows diagram text that resembles an attribute', () => {
+  stubParser({ elements: [{ localName: 'text', attributes: [] }] });
+  expect(
+    checkTutorSvg(
+      `<svg xmlns="${namespaceURI}"><text>on = 1, href = "the horizontal axis"</text></svg>`,
+    ),
+  ).toEqual({ status: 'valid', label: 'A projection' });
+});
+
 test.each([{ errors: [{}] }, { rootName: 'html' }, { namespace: '' }])(
   'rejects parser errors or a non-SVG root (%j)',
   (parsed) => {
@@ -51,15 +60,21 @@ test.each([{ errors: [{}] }, { rootName: 'html' }, { namespace: '' }])(
 );
 
 test.each([
-  '<svg><script>',
-  '<svg><foreignObject>',
-  '<svg><g onLoad="handler()">',
-  '<svg><image href="https://example.test/image.svg"/>',
-  '<svg><use xlink:href="other.svg#arrow"/>',
-])('rejects forbidden markup even before the diagram is complete: %s', (source) => {
-  const parse = stubParser();
-  expect(checkTutorSvg(source)).toEqual({ status: 'unsafe' });
-  expect(parse).not.toHaveBeenCalled();
+  ['<script/>', { localName: 'script', attributes: [] }],
+  ['<foreignObject/>', { localName: 'foreignObject', attributes: [] }],
+  ['<g onLoad="handler()"/>', { localName: 'g', attributes: [{ localName: 'onLoad' }] }],
+  [
+    '<image href="https://example.test/image.svg"/>',
+    {
+      localName: 'image',
+      attributes: [{ localName: 'href', value: 'https://example.test/image.svg' }],
+    },
+  ],
+])('rejects forbidden parsed markup: %s', (source, element) => {
+  stubParser({ elements: [element] });
+  expect(checkTutorSvg(`<svg xmlns="${namespaceURI}">${source}</svg>`)).toEqual({
+    status: 'unsafe',
+  });
 });
 
 test('checks decoded, namespaced hrefs', () => {
