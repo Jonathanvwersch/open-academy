@@ -1,7 +1,7 @@
+import { countHintsSincePreviousAttempt } from '@academy/aesop/memory/hints';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Database } from '../../db/client.js';
 import { attempts, hintEvents } from '../../db/schema.js';
-import { countHintsSincePreviousAttempt } from '../../learning/hints.js';
 export async function hintsSincePreviousAttempt(
   db: Database,
   userId: string,

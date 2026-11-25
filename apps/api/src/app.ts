@@ -1,9 +1,9 @@
+import type { ContentIndex } from '@academy/aesop/course/types';
 import { HealthResponseSchema } from '@academy/contracts/health';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { getCookie, setCookie } from 'hono/cookie';
-import type { ContentIndex } from './content/types.js';
 import type { Database } from './db/client.js';
 import {
   type AuthOptions,

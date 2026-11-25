@@ -1,10 +1,10 @@
+import { subjectForCourse } from '@academy/aesop/course/index';
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { initialMastery } from '@academy/aesop/memory/types';
+import { buildProgress } from '@academy/aesop/progress/progress';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { subjectForCourse } from '../../src/content/index.js';
 import { loadContent } from '../../src/content/load.js';
-import type { ContentIndex } from '../../src/content/types.js';
 import { buildProgressSubjects } from '../../src/features/progress/service.js';
-import { buildProgress } from '../../src/learning/progress.js';
-import { initialMastery } from '../../src/learning/types.js';
 
 let content: ContentIndex;
 

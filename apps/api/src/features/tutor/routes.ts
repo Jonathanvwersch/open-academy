@@ -1,12 +1,14 @@
+import { serializedOptionOrder } from '@academy/aesop/course/serialize';
+import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { courseFoundationIds } from '@academy/aesop/graph/prerequisites';
+import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
 import { tutorLessonStages } from '@academy/contracts/tutor';
 import { onScreenOptions } from '@academy/shared/shuffle';
 import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '@academy/shared/tutor';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
-import { serializedOptionOrder } from '../../content/serialize.js';
-import { instantiateExercise, isTemplate } from '../../content/templates.js';
-import type { ContentIndex } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
 import {
@@ -23,8 +25,6 @@ import {
   users,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
-import { courseFoundationIds } from '../../learning/prerequisites.js';
-import { attemptAllowsRetry } from '../../learning/retry.js';
 import { buildCoursePayload } from '../course/service.js';
 import { extractPaperPages } from '../papers/service.js';
 import {

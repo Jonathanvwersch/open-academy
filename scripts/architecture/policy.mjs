@@ -48,3 +48,19 @@ export const sourceEntries = {
 
 // The Vercel entry point is a deployment adapter, not a second application.
 export const deploymentImports = new Set(['apps/api/dist-vercel/server.mjs']);
+
+export const browserForbiddenPackages = new Set(['@academy/aesop']);
+
+export const sharedPackageDependencies = new Set(['zod', '@academy/contracts', '@academy/shared']);
+
+export const aesopDependencies = new Set([
+  '@academy/contracts',
+  'mathjs',
+  'ts-fsrs',
+  'yaml',
+  'zod',
+]);
+
+export const aesopBuiltins = new Set(['node:crypto', 'node:fs/promises', 'node:path']);
+
+export const cliDependencies = new Set(['@academy/api', '@academy/aesop', 'tsx', 'yaml']);

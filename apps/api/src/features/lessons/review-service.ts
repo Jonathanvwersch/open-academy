@@ -1,10 +1,10 @@
+import { getLessonPrerequisites } from '@academy/aesop/course/index';
+import { serializeExercise, serializeLesson } from '@academy/aesop/course/serialize';
+import { isTemplate } from '@academy/aesop/course/templates';
+import { deriveLessonState } from '@academy/aesop/lessons/lesson-runner';
+import { masteryRank } from '@academy/aesop/memory/types';
 import { eq } from 'drizzle-orm';
-import { getLessonPrerequisites } from '../../content/index.js';
-import { serializeExercise, serializeLesson } from '../../content/serialize.js';
-import { isTemplate } from '../../content/templates.js';
 import { lessonProblems, lessonRuns } from '../../db/schema.js';
-import { deriveLessonState } from '../../learning/lesson-runner.js';
-import { masteryRank } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { courseTopicState } from '../course/service.js';
 import { resolveLessonCourse } from './course-context.js';

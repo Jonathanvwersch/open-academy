@@ -1,9 +1,10 @@
+import type { ContentIndex, IndexedExercise } from '@academy/aesop/course/types';
+import { initialMastery } from '@academy/aesop/memory/types';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
-import type { ContentIndex, IndexedExercise } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import {
   attempts,
@@ -15,7 +16,6 @@ import {
   reviewCards,
   users,
 } from '../../src/db/schema.js';
-import { initialMastery } from '../../src/learning/types.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000123';

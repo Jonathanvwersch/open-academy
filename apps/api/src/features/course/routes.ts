@@ -1,9 +1,59 @@
+import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
+import { subjectForCourse } from '@academy/aesop/course/index';
+import type { ContentIndex } from '@academy/aesop/course/types';
+import {
+  filterMasteryRecordsForContent,
+  filterSchedulerStateForContent,
+  sessionActivityIsInContent,
+} from '@academy/aesop/graph/content-filters';
+import { buildCourseStartState, needsCourseChoice } from '@academy/aesop/graph/course-start';
+import { topicIsComplete } from '@academy/aesop/graph/course-status';
+import {
+  activeCourseFor,
+  courseFoundationIds,
+  createPrerequisiteChecker,
+  labActivityReady,
+  learnActivitiesWithUnmetPrerequisites,
+  masteryKey,
+} from '@academy/aesop/graph/prerequisites';
+import { isLessonRetryReady } from '@academy/aesop/lessons/lesson-retry';
+import { deriveLessonState } from '@academy/aesop/lessons/lesson-runner';
+import { isDueToday } from '@academy/aesop/memory/fsrs';
+import { masteryRank } from '@academy/aesop/memory/types';
+import {
+  courseTopicAttribution,
+  type ProjectionCourse,
+  projectCourseFinishes,
+} from '@academy/aesop/planner/finish-projection';
+import { reviewTopicsForActivity } from '@academy/aesop/planner/review-topics';
+import type {
+  PlannedActivity,
+  SchedulerState,
+  SessionPreferences,
+} from '@academy/aesop/planner/scheduler';
+import {
+  currentLearnerUnit,
+  effectiveFocusSubjectId,
+  isLearnableConcept,
+  planSession,
+  type SessionKind,
+  schedulerRecentLearnMinutesBySubject,
+  sessionBudget,
+} from '@academy/aesop/planner/scheduler';
+import { buildStreak } from '@academy/aesop/progress/streak';
+import {
+  averageDailyXp,
+  coursePercent,
+  defaultAverageDailyXp,
+  estimateTaskXp,
+  localDateKey,
+  sessionKindForDate,
+  weekXp,
+  xpGoalFor,
+} from '@academy/aesop/progress/xp';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
-import { orderCourseIdsBySubject } from '../../content/course-order.js';
-import { subjectForCourse } from '../../content/index.js';
-import type { ContentIndex } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
 import {
@@ -19,56 +69,6 @@ import {
   xpEvents,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
-import {
-  filterMasteryRecordsForContent,
-  filterSchedulerStateForContent,
-  sessionActivityIsInContent,
-} from '../../learning/content-filters.js';
-import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
-import { topicIsComplete } from '../../learning/course-status.js';
-import {
-  courseTopicAttribution,
-  type ProjectionCourse,
-  projectCourseFinishes,
-} from '../../learning/finish-projection.js';
-import { isDueToday } from '../../learning/fsrs.js';
-import { isLessonRetryReady } from '../../learning/lesson-retry.js';
-import { deriveLessonState } from '../../learning/lesson-runner.js';
-import {
-  activeCourseFor,
-  courseFoundationIds,
-  createPrerequisiteChecker,
-  labActivityReady,
-  learnActivitiesWithUnmetPrerequisites,
-  masteryKey,
-} from '../../learning/prerequisites.js';
-import { reviewTopicsForActivity } from '../../learning/review-topics.js';
-import type {
-  PlannedActivity,
-  SchedulerState,
-  SessionPreferences,
-} from '../../learning/scheduler.js';
-import {
-  currentLearnerUnit,
-  effectiveFocusSubjectId,
-  isLearnableConcept,
-  planSession,
-  type SessionKind,
-  schedulerRecentLearnMinutesBySubject,
-  sessionBudget,
-} from '../../learning/scheduler.js';
-import { buildStreak } from '../../learning/streak.js';
-import { masteryRank } from '../../learning/types.js';
-import {
-  averageDailyXp,
-  coursePercent,
-  defaultAverageDailyXp,
-  estimateTaskXp,
-  localDateKey,
-  sessionKindForDate,
-  weekXp,
-  xpGoalFor,
-} from '../../learning/xp.js';
 import {
   buildCoursePayload,
   courseQueueStatus,

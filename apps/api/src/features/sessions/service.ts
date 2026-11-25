@@ -1,6 +1,37 @@
+import type { ContentIndex } from '@academy/aesop/course/types';
+import {
+  filterSchedulerStateForContent,
+  sessionActivityIsInContent,
+} from '@academy/aesop/graph/content-filters';
+import { buildCourseStartState, needsCourseChoice } from '@academy/aesop/graph/course-start';
+import { topicIsComplete } from '@academy/aesop/graph/course-status';
+import {
+  activeCourseFor,
+  compareOutlinePosition,
+  createPrerequisiteChecker,
+  labActivityReady,
+  learnActivitiesWithUnmetPrerequisites,
+  masteryKey,
+} from '@academy/aesop/graph/prerequisites';
+import { answerDisplay } from '@academy/aesop/lessons/answer-display';
+import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
+import { isLessonRetryReady } from '@academy/aesop/lessons/lesson-retry';
+import { recordLessonViewed } from '@academy/aesop/memory/mastery';
+import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
+import {
+  attemptedExerciseIdsByActivity,
+  reviewTopicsForActivity,
+} from '@academy/aesop/planner/review-topics';
+import type { PlannedActivity, SessionPreferences } from '@academy/aesop/planner/scheduler';
+import {
+  currentLearnerUnit,
+  planSession,
+  replan,
+  sessionBudget,
+} from '@academy/aesop/planner/scheduler';
+import { localDateKey, sessionKindForDate, xpGoalFor } from '@academy/aesop/progress/xp';
 import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { z } from 'zod';
-import type { ContentIndex } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import { LearnerRepository } from '../../db/repository.js';
 import {
@@ -12,38 +43,7 @@ import {
   studySessions,
   xpEvents,
 } from '../../db/schema.js';
-import { answerDisplay } from '../../learning/answer-display.js';
-import { answerOptionsFor } from '../../learning/answer-options.js';
-import {
-  filterSchedulerStateForContent,
-  sessionActivityIsInContent,
-} from '../../learning/content-filters.js';
-import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
-import { topicIsComplete } from '../../learning/course-status.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
-import { isLessonRetryReady } from '../../learning/lesson-retry.js';
-import { recordLessonViewed } from '../../learning/mastery.js';
-import {
-  activeCourseFor,
-  compareOutlinePosition,
-  createPrerequisiteChecker,
-  labActivityReady,
-  learnActivitiesWithUnmetPrerequisites,
-  masteryKey,
-} from '../../learning/prerequisites.js';
-import { attemptAllowsRetry } from '../../learning/retry.js';
-import {
-  attemptedExerciseIdsByActivity,
-  reviewTopicsForActivity,
-} from '../../learning/review-topics.js';
-import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
-import {
-  currentLearnerUnit,
-  planSession,
-  replan,
-  sessionBudget,
-} from '../../learning/scheduler.js';
-import { localDateKey, sessionKindForDate, xpGoalFor } from '../../learning/xp.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { replanSessionActivities } from '../course/service.js';
 

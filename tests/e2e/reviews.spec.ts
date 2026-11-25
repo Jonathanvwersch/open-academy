@@ -1,8 +1,9 @@
+import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
+import { newReviewCard } from '@academy/aesop/memory/fsrs';
 import { expect, test } from '@playwright/test';
 import { eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
 import { loadContent } from '../../apps/api/src/content/load.js';
-import { instantiateExercise, isTemplate } from '../../apps/api/src/content/templates.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
   courseEnrollments,
@@ -11,7 +12,6 @@ import {
   studySessions,
   users,
 } from '../../apps/api/src/db/schema.js';
-import { newReviewCard } from '../../apps/api/src/learning/fsrs.js';
 import { enrollInDefaultCourse } from './course-start.js';
 
 const db = createDb(env.TEST_DATABASE_URL);

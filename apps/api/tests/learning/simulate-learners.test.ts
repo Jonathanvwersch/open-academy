@@ -1,3 +1,6 @@
+import { newReviewCard, scheduleReview } from '@academy/aesop/memory/fsrs';
+import { implicitRepetition } from '@academy/aesop/memory/implicit-repetition';
+import type { SchedulerState } from '@academy/aesop/planner/scheduler';
 import { type Card, Rating, State } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';
 import {
@@ -34,9 +37,6 @@ import {
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
-import { newReviewCard, scheduleReview } from '../../src/learning/fsrs.js';
-import { implicitRepetition } from '../../src/learning/implicit-repetition.js';
-import type { SchedulerState } from '../../src/learning/scheduler.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const invariants: InvariantId[] = [

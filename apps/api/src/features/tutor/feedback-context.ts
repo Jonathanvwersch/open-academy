@@ -1,5 +1,5 @@
-import type { IndexedExercise } from '../../content/types.js';
-import { answerDisplay } from '../../learning/answer-display.js';
+import type { IndexedExercise } from '@academy/aesop/course/types';
+import { answerDisplay } from '@academy/aesop/lessons/answer-display';
 
 export function graderVerdictFor(correct: number | null | undefined): string {
   if (correct === null || correct === undefined) return '';

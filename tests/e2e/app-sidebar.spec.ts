@@ -1,4 +1,5 @@
 import { mkdirSync } from 'node:fs';
+import { newReviewCard } from '@academy/aesop/memory/fsrs';
 import { expect, type Route, test } from '@playwright/test';
 import { and, eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
@@ -10,7 +11,6 @@ import {
   studySessions,
   users,
 } from '../../apps/api/src/db/schema.js';
-import { newReviewCard } from '../../apps/api/src/learning/fsrs.js';
 import { enrollInDefaultCourse } from './course-start.js';
 
 const db = createDb(env.TEST_DATABASE_URL);

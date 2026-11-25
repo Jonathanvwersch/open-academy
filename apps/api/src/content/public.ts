@@ -1,4 +1,10 @@
-export { buildContentIndex, getLessonPrerequisites, subjectForCourse } from './index.js';
+export {
+  buildContentIndex,
+  getLessonPrerequisites,
+  subjectForCourse,
+} from '@academy/aesop/course/index';
+export type { ContentIndex, ContentIssue, ContentSourceData } from '@academy/aesop/course/types';
+export { contentWarnings } from '@academy/aesop/course/warnings';
 export {
   ContentValidationError,
   loadContent,
@@ -6,5 +12,3 @@ export {
   loadContentUnchecked,
   resolveContentDirectory,
 } from './load.js';
-export type { ContentIndex, ContentIssue, ContentSourceData } from './types.js';
-export { contentWarnings } from './warnings.js';

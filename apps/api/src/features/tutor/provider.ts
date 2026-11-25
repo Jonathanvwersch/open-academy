@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
+import type { ContentIndex } from '@academy/aesop/course/types';
 import OpenAI from 'openai';
 import { zodTextFormat } from 'openai/helpers/zod';
-import type { ContentIndex } from '../../content/types.js';
 import { repositoryPath } from '../../paths.js';
 import {
   type ExplanationContext,

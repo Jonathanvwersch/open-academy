@@ -1,4 +1,4 @@
-import type { ContentIndex } from '../src/content/types.js';
+import type { ContentIndex } from '@academy/aesop/course/types';
 
 export function withStubConcept(content: ContentIndex, conceptId: string): ContentIndex {
   const concept = content.conceptsById.get(conceptId);

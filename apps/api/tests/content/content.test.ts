@@ -1,8 +1,6 @@
 import { resolve } from 'node:path';
 import { deserialize, serialize } from 'node:v8';
-import { expect, test } from 'vitest';
-import { buildContentIndex, subjectForCourse } from '../../src/content/index.js';
-import { loadContent } from '../../src/content/load.js';
+import { buildContentIndex, subjectForCourse } from '@academy/aesop/course/index';
 import {
   ConceptSchema,
   CurriculumSchema,
@@ -10,11 +8,13 @@ import {
   LessonSchema,
   normalizeLesson,
   PaperSchema,
-} from '../../src/content/schemas.js';
-import { serializeExercise } from '../../src/content/serialize.js';
-import type { ContentIndex, ContentSourceData } from '../../src/content/types.js';
-import { validateContent } from '../../src/content/validate.js';
-import { keyPrereqsForPoint } from '../../src/learning/prerequisites.js';
+} from '@academy/aesop/course/schemas';
+import { serializeExercise } from '@academy/aesop/course/serialize';
+import type { ContentIndex, ContentSourceData } from '@academy/aesop/course/types';
+import { validateContent } from '@academy/aesop/course/validate';
+import { keyPrereqsForPoint } from '@academy/aesop/graph/prerequisites';
+import { expect, test } from 'vitest';
+import { loadContent } from '../../src/content/load.js';
 
 function required<T>(value: T | undefined, label: string): T {
   if (value === undefined) {

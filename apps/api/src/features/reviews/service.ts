@@ -1,10 +1,10 @@
+import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
+import { courseConceptIds, courseFoundationIds } from '@academy/aesop/graph/prerequisites';
+import { isDueToday } from '@academy/aesop/memory/fsrs';
+import { localDateKey } from '@academy/aesop/progress/xp';
 import { asc, eq } from 'drizzle-orm';
-import { orderCourseIdsBySubject } from '../../content/course-order.js';
 import { reviewCards } from '../../db/schema.js';
 import { localDateDifference, shiftLocalDate } from '../../http/request-context.js';
-import { isDueToday } from '../../learning/fsrs.js';
-import { courseConceptIds, courseFoundationIds } from '../../learning/prerequisites.js';
-import { localDateKey } from '../../learning/xp.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 
 export async function getReviews(deps: FeatureServices, request: FeatureRequest) {

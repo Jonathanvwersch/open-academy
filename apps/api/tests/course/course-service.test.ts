@@ -1,13 +1,13 @@
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { courseFoundationIds } from '@academy/aesop/graph/prerequisites';
 import type { CourseTopicStatus } from '@academy/contracts/course';
 import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
-import type { ContentIndex } from '../../src/content/types.js';
 import {
   courseQueueStatus,
   type courseTopicState,
   suggestedNextCourses,
 } from '../../src/features/course/service.js';
-import { courseFoundationIds } from '../../src/learning/prerequisites.js';
 import { withStubConcept } from '../content-test-utils.js';
 
 let content: ContentIndex;

@@ -13,7 +13,31 @@ function fixture(files, run) {
       name: '@academy/web',
       dependencies: { '@academy/contracts': 'workspace:*' },
     }),
-    'apps/api/package.json': JSON.stringify({ name: '@academy/api' }),
+    'apps/api/package.json': JSON.stringify({
+      name: '@academy/api',
+      dependencies: { '@academy/aesop': 'workspace:*' },
+    }),
+    'packages/aesop/package.json': JSON.stringify({
+      name: '@academy/aesop',
+      exports: {
+        './course/*': './src/course/*.ts',
+        './graph/*': './src/graph/*.ts',
+        './memory/*': './src/memory/*.ts',
+        './planner/*': './src/planner/*.ts',
+        './lessons/*': './src/lessons/*.ts',
+        './lessons/grading/*': './src/lessons/grading/*.ts',
+        './placement/*': './src/placement/*.ts',
+        './progress/*': './src/progress/*.ts',
+      },
+      dependencies: {
+        '@academy/contracts': 'workspace:*',
+        mathjs: '15.2.0',
+        'ts-fsrs': '6.0.0',
+        yaml: '2.9.1',
+        zod: '4.6.7',
+      },
+    }),
+    'packages/aesop/src/planner/scheduler.ts': 'export const schedule = 1;',
     'packages/contracts/package.json': JSON.stringify({
       name: '@academy/contracts',
       exports: { './lessons': './src/lessons.ts' },
@@ -51,6 +75,77 @@ test('permits the API Vercel entry point and generated deployment adapter', () =
       'api/index.ts': "export {default} from '../apps/api/dist-vercel/server.mjs';",
     },
     (errors) => assert.deepEqual(errors, []),
+  );
+});
+
+test('permits API and CLI imports through Aesop folder exports', () => {
+  fixture(
+    {
+      'apps/api/src/learning/scheduler.ts':
+        "import {schedule} from '@academy/aesop/planner/scheduler'; export {schedule};",
+      'packages/aesop/src/course/load.ts':
+        "import {createHash} from 'node:crypto'; import {readFile} from 'node:fs/promises'; import {resolve} from 'node:path'; export {createHash,readFile,resolve};",
+      'packages/cli/package.json': JSON.stringify({
+        name: '@academy/cli',
+        dependencies: { '@academy/aesop': 'workspace:*' },
+      }),
+      'packages/cli/src/scheduler.ts':
+        "import {schedule} from '@academy/aesop/planner/scheduler'; export {schedule};",
+    },
+    (errors) => assert.deepEqual(errors, []),
+  );
+});
+
+test('forbids browser imports of Aesop', () => {
+  fixture(
+    {
+      'apps/web/package.json': JSON.stringify({
+        name: '@academy/web',
+        dependencies: {
+          '@academy/aesop': 'workspace:*',
+          '@academy/contracts': 'workspace:*',
+        },
+      }),
+      'apps/web/src/features/lessons/page.ts':
+        "import {schedule} from '@academy/aesop/planner/scheduler'; export {schedule};",
+    },
+    (errors) =>
+      assert.ok(
+        errors.some((error) => error.includes('apps/web cannot import @academy/aesop')),
+        errors.join('\n'),
+      ),
+  );
+});
+
+test('forbids Aesop imports of database and application code', () => {
+  fixture(
+    {
+      'apps/api/src/config.ts': 'export const value=1;',
+      'packages/aesop/src/planner/database.ts':
+        "import {sql} from 'drizzle-orm'; import {Hono} from 'hono'; export {sql,Hono};",
+      'packages/aesop/src/planner/api.ts':
+        "import {value} from '../../../../apps/api/src/config.js'; export {value};",
+      'packages/aesop/src/planner/files.ts':
+        "import {readFile} from 'node:fs/promises'; export {readFile};",
+    },
+    (errors) => {
+      assert.ok(
+        errors.some((error) => error.includes('browser-safe code cannot import node:fs/promises')),
+        errors.join('\n'),
+      );
+      assert.ok(
+        errors.some((error) => error.includes('drizzle-orm does not belong')),
+        errors.join('\n'),
+      );
+      assert.ok(
+        errors.some((error) => error.includes('hono does not belong')),
+        errors.join('\n'),
+      );
+      assert.ok(
+        errors.some((error) => error.includes('shared packages cannot depend on applications')),
+        errors.join('\n'),
+      );
+    },
   );
 });
 

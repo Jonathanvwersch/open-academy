@@ -1,8 +1,8 @@
+import { buildContentIndex } from '@academy/aesop/course/index';
+import type { Concept, Course, Lesson } from '@academy/aesop/course/schemas';
+import type { ContentSourceData } from '@academy/aesop/course/types';
+import { contentWarnings } from '@academy/aesop/course/warnings';
 import { describe, expect, it } from 'vitest';
-import { buildContentIndex } from '../../src/content/index.js';
-import type { Concept, Course, Lesson } from '../../src/content/schemas.js';
-import type { ContentSourceData } from '../../src/content/types.js';
-import { contentWarnings } from '../../src/content/warnings.js';
 
 function topic(id: string, prereqs: Concept['prereqs'] = []): Concept {
   return {

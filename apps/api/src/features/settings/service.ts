@@ -1,8 +1,8 @@
+import { dailyStudyMinutes, type SessionPreferences } from '@academy/aesop/planner/session-budget';
 import { studyDays } from '@academy/contracts/settings';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { users } from '../../db/schema.js';
-import { dailyStudyMinutes, type SessionPreferences } from '../../learning/session-budget.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 
 export async function getSettings(deps: FeatureServices, request: FeatureRequest) {
