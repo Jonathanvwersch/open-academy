@@ -1377,13 +1377,14 @@ function activityLabel(
   if (kind === 'review') return 'Review';
   if (kind === 'lab') return 'Project';
   if (kind === 'paper') return 'Paper';
-  if (kind === 'quick_check') return 'Quiz';
+  if (kind === 'quick_check' || kind === 'mixed_quiz') return 'Quiz';
   return 'Practice';
 }
 
 function titleForKind(kind: string): string {
   if (kind === 'paper') return 'Paper reading';
   if (kind === 'quick_check') return 'Quick check';
+  if (kind === 'mixed_quiz') return 'Timed quiz';
   if (kind === 'reflect') return 'Reflection';
   if (kind === 'teachback') return 'Teach-back';
   if (kind === 'practice') return 'Mixed practice';

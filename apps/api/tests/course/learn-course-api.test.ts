@@ -1405,6 +1405,11 @@ test('Home previews the same quiz-first activities as a new session', async () =
   const { activities } = await session.json();
   expect(activities[0].kind).toBe('mixed_quiz');
   const { tasks } = await home.json();
+  expect(tasks[0]).toMatchObject({
+    activityKind: 'mixed_quiz',
+    label: 'Quiz',
+    title: 'Timed quiz',
+  });
   expect(tasks.map(({ activityKind }: { activityKind: string }) => activityKind)).toEqual(
     activities.map(({ kind }: { kind: string }) => kind),
   );
