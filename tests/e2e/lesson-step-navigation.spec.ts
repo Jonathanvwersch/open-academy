@@ -446,9 +446,17 @@ test('lesson step tabs are restored from URL and invalid steps fall back', async
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON() as {
         question: string;
+        lessonStage?: string;
         threadId?: string;
         clientMessageId: string;
       };
+      if (body.lessonStage === 'explain') {
+        const response = await route.fetch();
+        const payload = (await response.json()) as { thread: { id: string } };
+        threadId = payload.thread.id;
+        await route.fulfill({ response, json: payload });
+        return;
+      }
       threadId = body.threadId ?? threadId;
       messageCount += 1;
       const userMessage = {
