@@ -190,7 +190,8 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
     const targets = [];
     for (let request of importRequests(parsed.program)) {
       if (builtins.has(request)) {
-        const aesopBuiltin = own === 'packages/aesop' && aesopBuiltins.has(request);
+        const aesopBuiltin =
+          file.startsWith('packages/aesop/src/course/') && aesopBuiltins.has(request);
         if (
           !isTest &&
           !file.startsWith('packages/cli/src/') &&

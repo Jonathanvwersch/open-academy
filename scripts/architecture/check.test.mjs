@@ -125,8 +125,14 @@ test('forbids Aesop imports of database and application code', () => {
         "import {sql} from 'drizzle-orm'; import {Hono} from 'hono'; export {sql,Hono};",
       'packages/aesop/src/planner/api.ts':
         "import {value} from '../../../../apps/api/src/config.js'; export {value};",
+      'packages/aesop/src/planner/files.ts':
+        "import {readFile} from 'node:fs/promises'; export {readFile};",
     },
     (errors) => {
+      assert.ok(
+        errors.some((error) => error.includes('browser-safe code cannot import node:fs/promises')),
+        errors.join('\n'),
+      );
       assert.ok(
         errors.some((error) => error.includes('drizzle-orm does not belong')),
         errors.join('\n'),
