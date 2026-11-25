@@ -14,6 +14,7 @@ import {
   getTableColumns,
   gte,
   inArray,
+  isNotNull,
   isNull,
   like,
   lt,
@@ -89,6 +90,31 @@ function mapReviewCard(row: typeof reviewCards.$inferSelect): StoredReviewCard {
     reps: row.reps,
     lapses: row.lapses,
   };
+}
+
+export async function readPassedLessonQuizItems(
+  db: Database,
+  learnerId: string,
+  conceptId: string,
+  attemptId: string,
+) {
+  const rows = await db
+    .select({ item: lessonQuizItems })
+    .from(lessonQuizAttempts)
+    .innerJoin(lessonRuns, eq(lessonRuns.id, lessonQuizAttempts.runId))
+    .leftJoin(lessonQuizItems, eq(lessonQuizItems.quizAttemptId, lessonQuizAttempts.id))
+    .where(
+      and(
+        eq(lessonQuizAttempts.id, attemptId),
+        eq(lessonRuns.userId, learnerId),
+        eq(lessonRuns.conceptId, conceptId),
+        isNotNull(lessonQuizAttempts.submittedAt),
+        eq(lessonQuizAttempts.passed, true),
+      ),
+    )
+    .orderBy(lessonQuizItems.position, lessonQuizItems.id);
+  if (rows.length === 0) return;
+  return rows.flatMap(({ item }) => (item ? [item] : []));
 }
 
 export function drizzleLearnerStore(
