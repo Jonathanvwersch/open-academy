@@ -74,6 +74,33 @@ describeLearnerStoreContract('memoryStore', async (options) => {
   };
 });
 
+it('clears activity links for both learners when their seeded hint is shared', async () => {
+  const otherLearnerId = 'other';
+  const hint = {
+    exerciseId: 'vectors-q1',
+    activityId: 'activity-1',
+    createdAt: new Date('2026-01-17T12:00:00Z'),
+    level: 1,
+  };
+  const store = memoryStore({
+    hints: new Map([
+      [learnerId, [hint]],
+      [otherLearnerId, [hint]],
+    ]),
+  });
+  const session = await store.insertSession(learnerId, sessionRow(hint.createdAt));
+  const [activity] = await store.insertActivities(learnerId, session.id, [activityRow(0)]);
+  expect(activity.id).toBe(hint.activityId);
+
+  await store.transaction((tx) => tx.deleteActivities(learnerId, { ids: [activity.id] }));
+
+  for (const owner of [learnerId, otherLearnerId]) {
+    expect((await store.readHintEvidence(owner, hint.exerciseId)).hints).toEqual([
+      { activityId: null, createdAt: hint.createdAt, level: hint.level },
+    ]);
+  }
+});
+
 it('does not expose mutable mastery records or cards from memoryStore', async () => {
   const store = memoryStore();
   const record = initialMastery('vectors', 'math');

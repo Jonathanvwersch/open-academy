@@ -581,12 +581,17 @@ function scopedStore(
           markWrite(owner);
         }
       }
+      const linksToDeletedActivity = ({ activityId }: Hint) =>
+        activityId !== null && deleted.has(activityId);
       for (const [owner, hints] of data.hints) {
-        for (const hint of hints) {
-          if (hint.activityId === null || !deleted.has(hint.activityId)) continue;
-          hint.activityId = null;
-          markWrite(owner);
-        }
+        if (!hints.some(linksToDeletedActivity)) continue;
+        data.hints.set(
+          owner,
+          hints.map((hint) =>
+            linksToDeletedActivity(hint) ? { ...hint, activityId: null } : hint,
+          ),
+        );
+        markWrite(owner);
       }
     },
     async readSchedulerFacts(learnerId, query) {
