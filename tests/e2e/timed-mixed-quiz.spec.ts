@@ -177,8 +177,15 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
     'href',
     `/session/${sessionId}`,
   );
-  await expect(page.getByRole('button', { name: 'Retake quiz' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Reviews done. Your retake is unlocked.' }),
+  ).toBeVisible();
+  await expect(page.getByRole('link', { name: /Skip the retake/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Retake quiz now' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('timed-quiz-retake-mobile.png') });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.screenshot({ path: testInfo.outputPath('timed-quiz-retake-desktop.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Retake quiz' }).click();
   await expect(page.getByRole('heading', { name: 'Quiz retake' })).toBeVisible();
   const retakeId = new URL(page.url()).pathname.split('/').at(-1) ?? '';
