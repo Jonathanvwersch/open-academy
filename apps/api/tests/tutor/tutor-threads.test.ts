@@ -1062,7 +1062,9 @@ test('session page context uses the answered lesson problem KP and sanitized aut
   expect(pageContent).toContain(sanitizePageContent(firstPoint.explain));
   expect(pageContent).toContain(firstPoint.worked);
   expect(pageContent).not.toContain(otherPoint.explain);
-  expect(pageContent).toContain('[diagram]');
+  expect(pageContent).toContain(
+    '[diagram: The curve d equals t squared, the distance in metres a car has driven after t seconds. An orange straight line joins the points at t equals 3 and t equals 4 with slope 7, the average speed over that second. A blue line just touches the curve at t equals 3 with slope 6, the speed at that instant]',
+  );
   expect(pageContent).not.toContain('```svg');
   if ('solution' in exercise && exercise.solution) {
     expect(pageContent).not.toContain(exercise.solution);

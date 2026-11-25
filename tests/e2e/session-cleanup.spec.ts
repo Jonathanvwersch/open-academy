@@ -176,6 +176,36 @@ test('session hints stack in order and remain until the answer is graded', async
   await expect(solution).toHaveCount(0);
 });
 
+test('session hints render valid SVG and replace malformed SVG', async ({ page }) => {
+  const sessionId = await createActivity('derivatives', 'derivatives-fixture-practice-1');
+  await page.route('**/api/hints', (route) =>
+    route.fulfill({
+      json: {
+        level: 1,
+        revealedSolution: false,
+        hasMore: false,
+        text: [
+          'Follow the line.',
+          '',
+          '```svg',
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" aria-label="A rising line"><path d="M0 64L320 0" stroke="#475569"/></svg>',
+          '```',
+          '',
+          '```svg',
+          '<svg xmlns="http://www.w3.org/2000/svg" aria-label="Broken hint diagram"><path',
+          '```',
+        ].join('\n'),
+      },
+    }),
+  );
+  await page.goto(`/session/${sessionId}`);
+  await page.getByRole('button', { name: 'Hint', exact: true }).click();
+
+  await expect(page.getByRole('img', { name: 'A rising line' })).toBeVisible();
+  await expect(page.getByText("Diagram couldn't be shown")).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Broken hint diagram' })).toHaveCount(0);
+});
+
 test('session completion shows XP and daily goal progress', async ({ page }) => {
   const sessionId = await createActivity('vectors', 'vectors-magnitude');
   await page.setViewportSize({ width: 1280, height: 900 });
