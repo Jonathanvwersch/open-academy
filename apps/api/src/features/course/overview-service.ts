@@ -1,16 +1,16 @@
-import type { StudyMapPayload } from '@academy/contracts/course';
-import { and, eq } from 'drizzle-orm';
-import { serializeConcept } from '../../content/serialize.js';
-import { diagnosticRuns, lessonRuns } from '../../db/schema.js';
-import { deriveLearningDebt } from '../../learning/debt.js';
+import { serializeConcept } from '@academy/aesop/course/serialize';
 import {
   activeCourseFor,
   compareOutlinePosition,
   courseFoundationIds,
-} from '../../learning/prerequisites.js';
-import type { MasteryRecord } from '../../learning/types.js';
+} from '@academy/aesop/graph/prerequisites';
+import { deriveLearningDebt } from '@academy/aesop/memory/debt';
+import type { MasteryRecord } from '@academy/aesop/memory/types';
+import type { StudyMapPayload } from '@academy/contracts/course';
+import { eq } from 'drizzle-orm';
+import { lessonRuns, placementGrants } from '../../db/schema.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
-import { courseTopicState, placedOutConceptsFromRuns } from './service.js';
+import { courseTopicState, placedOutConceptsFromGrants } from './service.js';
 
 export async function getStudyMap(deps: FeatureServices, request: FeatureRequest) {
   const index = await deps.content();
@@ -21,17 +21,20 @@ export async function getStudyMap(deps: FeatureServices, request: FeatureRequest
     request.repo.masteryRecords(),
     deps.db.select().from(lessonRuns).where(eq(lessonRuns.userId, request.userId)),
     deps.db
-      .select({ state: diagnosticRuns.state })
-      .from(diagnosticRuns)
-      .where(
-        and(
-          eq(diagnosticRuns.userId, request.userId),
-          eq(diagnosticRuns.kind, 'placement'),
-          eq(diagnosticRuns.status, 'completed'),
-        ),
-      ),
+      .select({
+        conceptId: placementGrants.conceptId,
+        state: placementGrants.state,
+        createdAt: placementGrants.createdAt,
+      })
+      .from(placementGrants)
+      .where(eq(placementGrants.userId, request.userId)),
   ]);
-  const topicState = courseTopicState(index, mastery, runs, placedOutConceptsFromRuns(placements));
+  const topicState = courseTopicState(
+    index,
+    mastery,
+    runs,
+    placedOutConceptsFromGrants(placements),
+  );
   const groupByConcept = new Map<string, string>();
   const courseConcepts = new Map<string, Set<string>>();
   for (const courseId of courseIds) {

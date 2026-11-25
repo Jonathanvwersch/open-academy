@@ -1,21 +1,5 @@
-import { fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
-import { beforeAll, expect, test } from 'vitest';
-import { loadContent } from '../../src/content/load.js';
-import { isTemplate } from '../../src/content/templates.js';
-import type { ContentIndex } from '../../src/content/types.js';
-import { deriveLearningDebt } from '../../src/learning/debt.js';
-import {
-  mapReviewRating,
-  newReviewCard,
-  scheduleInitialReview,
-  scheduleReview,
-} from '../../src/learning/fsrs.js';
-import { countHintsSincePreviousAttempt } from '../../src/learning/hints.js';
-import {
-  calculateCredit,
-  DefaultMasteryModel,
-  recordLessonViewed,
-} from '../../src/learning/mastery.js';
+import { isTemplate } from '@academy/aesop/course/templates';
+import type { ContentIndex } from '@academy/aesop/course/types';
 import {
   compareOutlinePosition,
   courseFoundationIds,
@@ -24,9 +8,23 @@ import {
   masteryKey,
   outlinePosition,
   prerequisiteMet,
-} from '../../src/learning/prerequisites.js';
-import { reviewTopicsForActivity } from '../../src/learning/review-topics.js';
-import type { Candidate, PlannedActivity, SchedulerState } from '../../src/learning/scheduler.js';
+} from '@academy/aesop/graph/prerequisites';
+import { deriveLearningDebt } from '@academy/aesop/memory/debt';
+import {
+  mapReviewRating,
+  newReviewCard,
+  scheduleInitialReview,
+  scheduleReview,
+} from '@academy/aesop/memory/fsrs';
+import { countHintsSincePreviousAttempt } from '@academy/aesop/memory/hints';
+import {
+  calculateCredit,
+  DefaultMasteryModel,
+  recordLessonViewed,
+} from '@academy/aesop/memory/mastery';
+import { initialMastery } from '@academy/aesop/memory/types';
+import { reviewTopicsForActivity } from '@academy/aesop/planner/review-topics';
+import type { Candidate, PlannedActivity, SchedulerState } from '@academy/aesop/planner/scheduler';
 import {
   buildReviewActivityForConcept,
   currentLearnerUnit,
@@ -38,8 +36,10 @@ import {
   planSession,
   replan,
   SCHEDULER_CONFIG,
-} from '../../src/learning/scheduler.js';
-import { initialMastery } from '../../src/learning/types.js';
+} from '@academy/aesop/planner/scheduler';
+import { fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
+import { beforeAll, expect, test } from 'vitest';
+import { loadContent } from '../../src/content/load.js';
 import { hardPrerequisiteAncestors, withStubConcept } from '../content-test-utils.js';
 
 const now = new Date('2026-01-14T12:00:00.000Z');
@@ -1473,6 +1473,51 @@ test('a retry two days overdue is selected before fresh lessons but respects the
   expect(learned).toHaveLength(2);
   expect(learned).toContain('vectors');
   expect(freshLearnCount).toBe(1);
+});
+
+test('P9 schedules both stalled-lesson prerequisites before an unrelated overdue retry', () => {
+  const courseId = 'ml-foundations';
+  const stalled = 'gaussian-distribution';
+  const overdue = 'train-test-split';
+  const prerequisites = ['descriptive-statistics', 'probability-basics'];
+  const state = studyState([courseId]);
+  const course = required(courseContent.coursesById.get(courseId), courseId);
+  state.lessonRuns = [...course.units.flatMap((unit) => unit.concepts)]
+    .filter((id) => id !== stalled && id !== overdue)
+    .map((conceptId) => ({ conceptId, status: 'completed' as const }));
+  state.lessonRuns.push(
+    { conceptId: stalled, status: 'needs_retry', retryAfter: now },
+    {
+      conceptId: overdue,
+      status: 'needs_retry',
+      retryAfter: new Date(now.getTime() - 3 * 86_400_000),
+    },
+  );
+  state.remediationFlags = prerequisites.map((targetPrereqId) => ({
+    conceptId: stalled,
+    targetPrereqId,
+    status: 'open',
+  }));
+  state.cards = prerequisites.map((conceptId) => ({
+    conceptId,
+    dimension: 'conceptual',
+    dueAt: now.toISOString(),
+  }));
+  const tightPlan = planSession(state, courseContent, now, 20);
+  expect(plannedReviewTopics(tightPlan, courseContent)).toEqual(
+    expect.arrayContaining(prerequisites),
+  );
+  expect(tightPlan.activities.every(({ kind }) => kind === 'review')).toBe(true);
+
+  const reviewMinutes = tightPlan.activities.reduce(
+    (sum, activity) => sum + activity.plannedMinutes,
+    0,
+  );
+  const plan = planSession(state, courseContent, now, 20 + reviewMinutes);
+  expect(plan.activities.map(({ kind, conceptId }) => [kind, conceptId])).toEqual([
+    ['review', null],
+    ['learn', overdue],
+  ]);
 });
 
 test('a focused overdue retry wins when the budget fits one lesson', () => {

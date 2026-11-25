@@ -1,9 +1,10 @@
+import { dailyStudyMinutes, type SessionPreferences } from '@academy/aesop/planner/session-budget';
 import { studyDays } from '@academy/contracts/settings';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { users } from '../../db/schema.js';
-import { dailyStudyMinutes, type SessionPreferences } from '../../learning/session-budget.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
+import { quizAccommodation } from '../quizzes/offer.js';
 
 export async function getSettings(deps: FeatureServices, request: FeatureRequest) {
   const { tutorProvider } = deps;
@@ -11,6 +12,7 @@ export async function getSettings(deps: FeatureServices, request: FeatureRequest
   return serviceResult({
     dailyMinutes: dailyStudyMinutes((user?.prefs ?? {}) as SessionPreferences),
     tutorEnabled: tutorProvider !== null,
+    quizTimeMultiplier: quizAccommodation(user?.prefs),
   });
 }
 
@@ -24,8 +26,14 @@ export async function putSettings(deps: FeatureServices, request: FeatureRequest
       sundayMinutes: z.number().int().min(5).max(600).optional(),
       startDate: z.iso.date().optional(),
       goal: z.string().optional(),
+      quizTimeMultiplier: z.number().min(1).max(5).optional(),
     })
-    .refine((value) => value.dailyMinutes !== undefined || value.scheduleMinutes !== undefined)
+    .refine(
+      (value) =>
+        value.dailyMinutes !== undefined ||
+        value.scheduleMinutes !== undefined ||
+        value.quizTimeMultiplier !== undefined,
+    )
     .safeParse(request.body);
   if (!body.success) {
     return serviceResult({ error: 'Invalid settings' }, 400);

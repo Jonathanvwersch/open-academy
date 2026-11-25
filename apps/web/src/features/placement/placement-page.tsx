@@ -65,6 +65,12 @@ export function PlacementPage({
   }, [initialRunId, startRun]);
 
   const question = nextQuery.data;
+  const questionShownAt = useRef<{ exerciseId: string; at: number } | null>(null);
+  const currentExerciseId = question && !question.complete ? question.exercise.id : null;
+  useEffect(() => {
+    if (currentExerciseId)
+      questionShownAt.current = { exerciseId: currentExerciseId, at: Date.now() };
+  }, [currentExerciseId]);
   useEffect(() => {
     if (!runId || !question?.complete || resultsNavigationRequested.current) return;
     resultsNavigationRequested.current = true;
@@ -79,6 +85,9 @@ export function PlacementPage({
     answerPlacement.mutate({
       exerciseId: question.exercise.id,
       ...(dontKnow ? { dontKnow: true } : { answer }),
+      ...(questionShownAt.current
+        ? { durationMs: Math.max(0, Math.round(Date.now() - questionShownAt.current.at)) }
+        : {}),
     });
   };
 

@@ -1,15 +1,16 @@
+import type { ContentIndex } from '@academy/aesop/course/types';
 import type { CourseDetailPayload, StudyMapPayload } from '@academy/contracts/course';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
-import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import {
   courseEnrollments,
   diagnosticRuns,
   lessonRuns,
   mastery,
+  placementGrants,
   users,
 } from '../../src/db/schema.js';
 
@@ -114,12 +115,26 @@ test('deduplicates study topics, connects groups and shares course progress inpu
       })),
     ),
   );
-  await db.insert(diagnosticRuns).values({
-    userId,
-    kind: 'placement',
-    status: 'completed',
-    state: { known: ['foundation', 'shared'] },
-  });
+  const [placementRun] = await db
+    .insert(diagnosticRuns)
+    .values({
+      userId,
+      kind: 'placement',
+      status: 'completed',
+      state: { known: ['foundation', 'shared'] },
+    })
+    .returning();
+  if (!placementRun) throw new Error('Could not create placement run');
+  await db.insert(placementGrants).values(
+    ['foundation', 'shared'].map((conceptId) => ({
+      userId,
+      runId: placementRun.id,
+      conceptId,
+      origin: 'inferred' as const,
+      state: 'confirmed' as const,
+      reason: 'legacy_confirmed',
+    })),
+  );
   const response = await app.request('/api/study-map');
   expect(response.status).toBe(200);
   const payload: StudyMapPayload = await response.json();

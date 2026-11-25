@@ -1,0 +1,32 @@
+{
+  "name": "@academy/aesop",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "exports": {
+    "./course/*": "./src/course/*.ts",
+    "./graph/*": "./src/graph/*.ts",
+    "./memory/*": "./src/memory/*.ts",
+    "./planner/*": "./src/planner/*.ts",
+    "./lessons/*": "./src/lessons/*.ts",
+    "./lessons/grading/*": "./src/lessons/grading/*.ts",
+    "./placement/*": "./src/placement/*.ts",
+    "./progress/*": "./src/progress/*.ts",
+    "./store/*": "./src/store/*.ts",
+    "./quizzes/*": "./src/quizzes/*.ts"
+  },
+  "dependencies": {
+    "@academy/contracts": "workspace:*",
+    "mathjs": "15.2.0",
+    "ts-fsrs": "6.0.0",
+    "yaml": "2.9.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2",
+    "vitest": "5.1.0"
+  }
+}

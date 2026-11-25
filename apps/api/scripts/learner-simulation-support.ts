@@ -1,5 +1,5 @@
-import { instantiateExercise, isTemplate } from '../src/content/templates.js';
-import type { ContentIndex, IndexedExercise } from '../src/content/types.js';
+import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
+import type { ContentIndex, IndexedExercise } from '@academy/aesop/course/types';
 
 export function exerciseFor(content: ContentIndex, exerciseId: string, seed = 0): IndexedExercise {
   const indexed = content.exercisesById.get(exerciseId);

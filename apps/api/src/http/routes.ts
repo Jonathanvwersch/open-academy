@@ -1,8 +1,10 @@
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { applyMastery } from '@academy/aesop/memory/mastery-service';
+import { localDateKey } from '@academy/aesop/progress/xp';
 import { asc, eq } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { env } from '../config.js';
-import type { ContentIndex } from '../content/types.js';
 import type { Database } from '../db/client.js';
 import { LearnerRepository } from '../db/repository.js';
 import { users, xpEvents } from '../db/schema.js';
@@ -16,6 +18,7 @@ import { registerPaperRoutes } from '../features/papers/routes.js';
 import { registerPlacementRoutes } from '../features/placement/routes.js';
 import { registerProgressRoutes } from '../features/progress/routes.js';
 import { registerProjectsRoutes } from '../features/projects/routes.js';
+import { registerQuizRoutes } from '../features/quizzes/routes.js';
 import { registerReviewsRoutes } from '../features/reviews/routes.js';
 import { registerSessionsRoutes } from '../features/sessions/routes.js';
 import { registerSettingsRoutes } from '../features/settings/routes.js';
@@ -26,8 +29,6 @@ import {
 } from '../features/tutor/provider.js';
 import { registerTutorThreadRoutes } from '../features/tutor/routes.js';
 import { TutorService } from '../features/tutor/service.js';
-import { applyMastery } from '../learning/mastery-service.js';
-import { localDateKey } from '../learning/xp.js';
 import type { ApiEnv } from './context.js';
 import { isValidTimeZone, requestNow } from './request-context.js';
 export function createApiRoutes(deps: {
@@ -82,7 +83,10 @@ export function createApiRoutes(deps: {
     await next();
   });
   const withRepo = (context: Context<ApiEnv>) =>
-    new LearnerRepository(db, context.get('userId'), context.get('user'));
+    new LearnerRepository(db, context.get('userId'), context.get('user'), {
+      load: content,
+      now: () => requestNow(context),
+    });
   const tutor = (context: Context<ApiEnv>) =>
     tutorProvider &&
     new TutorService(
@@ -118,5 +122,6 @@ export function createApiRoutes(deps: {
   registerProjectsRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
   registerProgressRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
   registerReviewsRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
+  registerQuizRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
   return api;
 }

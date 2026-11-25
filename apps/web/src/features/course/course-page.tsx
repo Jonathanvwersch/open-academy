@@ -376,6 +376,12 @@ export function CoursePage() {
                                     </span>
                                   )}
                                 </div>
+                                {topic.movedBack ? (
+                                  <p className="text-xs text-muted-foreground">
+                                    Moved back into your plan: you missed a question that depends on
+                                    it.
+                                  </p>
+                                ) : null}
                               </div>
                             </div>
                             {topic.hasLesson ? (

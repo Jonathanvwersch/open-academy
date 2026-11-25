@@ -1,15 +1,15 @@
-import { Rating, State } from 'ts-fsrs';
-import { describe, expect, it } from 'vitest';
+import {
+  bringWeakestPrerequisiteCardDueNow,
+  canBringPrerequisiteDueNow,
+} from '@academy/aesop/lessons/prerequisite-review';
 import {
   isDueToday,
   mapReviewRating,
   newReviewCard,
   reviewActivityRating,
-} from '../../src/learning/fsrs.js';
-import {
-  bringWeakestPrerequisiteCardDueNow,
-  canBringPrerequisiteDueNow,
-} from '../../src/learning/prerequisite-review.js';
+} from '@academy/aesop/memory/fsrs';
+import { Rating, State } from 'ts-fsrs';
+import { describe, expect, it } from 'vitest';
 
 describe('reviewActivityRating', () => {
   it.each([

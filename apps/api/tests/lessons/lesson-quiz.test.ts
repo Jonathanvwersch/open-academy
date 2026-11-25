@@ -1,11 +1,12 @@
-import { expect, test } from 'vitest';
-import { loadContent } from '../../src/content/load.js';
-import { type Exercise, ExerciseSchema } from '../../src/content/schemas.js';
+import { type Exercise, ExerciseSchema } from '@academy/aesop/course/schemas';
+import { instantiateExercise } from '@academy/aesop/course/templates';
 import {
   quizQuestionsPerStep,
   scoreLessonQuiz,
   selectQuizItems,
-} from '../../src/learning/lesson-quiz.js';
+} from '@academy/aesop/lessons/lesson-quiz';
+import { expect, test } from 'vitest';
+import { loadContent } from '../../src/content/load.js';
 
 function exercise(id: string, difficulty: number, template = false): Exercise {
   return ExerciseSchema.parse({
@@ -68,6 +69,64 @@ test('uses the specified per-step quotas for one through four steps', () => {
       );
     }
   }
+});
+
+test('quiz recovery can use a new instance of a template already in the quiz', () => {
+  const template = exercise('template', 1, true);
+  const fixed = exercise('fixed', 1);
+  const items = select(
+    { knowledge_points: [point('step', [fixed.id, template.id])] },
+    new Map([
+      [fixed.id, fixed],
+      [template.id, template],
+    ]),
+    {
+      recoveryItems: [
+        { exerciseId: fixed.id, seed: null },
+        { exerciseId: template.id, seed: 0 },
+      ],
+    },
+  );
+  expect(items.length).toBeGreaterThan(0);
+  expect(items.every((item) => item.exerciseId === template.id && item.seed !== null)).toBe(true);
+  expect(new Set(items.map((item) => item.seed)).size).toBe(items.length);
+});
+
+test('quiz recovery excludes the same generated prompt even when every seed is fresh', () => {
+  const template = { ...exercise('template', 1, true), prompt: 'Calculate 1 + 1.' };
+  const items = select(
+    { knowledge_points: [point('step', [template.id])] },
+    new Map([[template.id, template]]),
+    { recoveryItems: [{ exerciseId: template.id, seed: 15 }] },
+  );
+  expect(items).toEqual([]);
+});
+
+test('quiz recovery samples again if the first six seeds repeat an existing prompt', () => {
+  const template = ExerciseSchema.parse({
+    ...exercise('template', 1, true),
+    params: { x: { min: 1, max: 2 } },
+  });
+  const items = select(
+    { knowledge_points: [point('step', [template.id])] },
+    new Map([[template.id, template]]),
+    { seed: 31, recoveryItems: [{ exerciseId: template.id, seed: 0 }] },
+  );
+  const prompts = new Set(
+    items.map((item) => instantiateExercise(template, item.seed ?? 0).exercise.prompt),
+  );
+  expect(prompts).toEqual(new Set(['Calculate 2.']));
+});
+
+test('the selector skips a used seed that it would otherwise generate', () => {
+  const template = exercise('template', 1, true);
+  const lesson = { knowledge_points: [point('step', [template.id])] };
+  const exercises = new Map([[template.id, template]]);
+  const blockedSeed = 166292415;
+  expect(select(lesson, exercises).map((item) => item.seed)).toContain(blockedSeed);
+  expect(
+    select(lesson, exercises, { usedSeeds: new Set([blockedSeed]) }).map((item) => item.seed),
+  ).not.toContain(blockedSeed);
 });
 
 test('spreads two-question steps across lowest and highest difficulty', () => {

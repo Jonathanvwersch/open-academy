@@ -1,3 +1,4 @@
+import { newReviewCard } from '@academy/aesop/memory/fsrs';
 import { expect, type Page, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
@@ -7,7 +8,6 @@ import {
   studySessions,
   users,
 } from '../../apps/api/src/db/schema.js';
-import { newReviewCard } from '../../apps/api/src/learning/fsrs.js';
 
 const sessionStart = new Date('2026-01-01T12:00:00.000Z');
 const reviewExerciseIds = ['vectors-magnitude', 'vectors-component-sum', 'vectors-dot-product'];

@@ -1,39 +1,13 @@
-import { and, eq, inArray } from 'drizzle-orm';
-import type { Context, Hono } from 'hono';
-import { z } from 'zod';
-import { orderCourseIdsBySubject } from '../../content/course-order.js';
-import { subjectForCourse } from '../../content/index.js';
-import type { ContentIndex } from '../../content/types.js';
-import type { Database } from '../../db/client.js';
-import type { LearnerRepository } from '../../db/repository.js';
-import {
-  diagnosticRuns,
-  lessonProblems,
-  lessonRuns,
-  masteryEvents,
-  paperProgress,
-  projectProgress,
-  remediationFlags,
-  sessionActivities,
-  studySessions,
-  xpEvents,
-} from '../../db/schema.js';
-import type { ApiEnv } from '../../http/context.js';
+import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
+import { subjectForCourse } from '@academy/aesop/course/index';
+import type { ContentIndex } from '@academy/aesop/course/types';
 import {
   filterMasteryRecordsForContent,
   filterSchedulerStateForContent,
   sessionActivityIsInContent,
-} from '../../learning/content-filters.js';
-import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
-import { topicIsComplete } from '../../learning/course-status.js';
-import {
-  courseTopicAttribution,
-  type ProjectionCourse,
-  projectCourseFinishes,
-} from '../../learning/finish-projection.js';
-import { isDueToday } from '../../learning/fsrs.js';
-import { isLessonRetryReady } from '../../learning/lesson-retry.js';
-import { deriveLessonState } from '../../learning/lesson-runner.js';
+} from '@academy/aesop/graph/content-filters';
+import { buildCourseStartState, needsCourseChoice } from '@academy/aesop/graph/course-start';
+import { topicIsComplete } from '@academy/aesop/graph/course-status';
 import {
   activeCourseFor,
   courseFoundationIds,
@@ -41,13 +15,22 @@ import {
   labActivityReady,
   learnActivitiesWithUnmetPrerequisites,
   masteryKey,
-} from '../../learning/prerequisites.js';
-import { reviewTopicsForActivity } from '../../learning/review-topics.js';
+} from '@academy/aesop/graph/prerequisites';
+import { isLessonRetryReady } from '@academy/aesop/lessons/lesson-retry';
+import { deriveLessonState } from '@academy/aesop/lessons/lesson-runner';
+import { isDueToday } from '@academy/aesop/memory/fsrs';
+import { masteryRank } from '@academy/aesop/memory/types';
+import {
+  courseTopicAttribution,
+  type ProjectionCourse,
+  projectCourseFinishes,
+} from '@academy/aesop/planner/finish-projection';
+import { reviewTopicsForActivity } from '@academy/aesop/planner/review-topics';
 import type {
   PlannedActivity,
   SchedulerState,
   SessionPreferences,
-} from '../../learning/scheduler.js';
+} from '@academy/aesop/planner/scheduler';
 import {
   currentLearnerUnit,
   effectiveFocusSubjectId,
@@ -56,9 +39,8 @@ import {
   type SessionKind,
   schedulerRecentLearnMinutesBySubject,
   sessionBudget,
-} from '../../learning/scheduler.js';
-import { buildStreak } from '../../learning/streak.js';
-import { masteryRank } from '../../learning/types.js';
+} from '@academy/aesop/planner/scheduler';
+import { buildStreak } from '@academy/aesop/progress/streak';
 import {
   averageDailyXp,
   coursePercent,
@@ -68,12 +50,32 @@ import {
   sessionKindForDate,
   weekXp,
   xpGoalFor,
-} from '../../learning/xp.js';
+} from '@academy/aesop/progress/xp';
+import { and, eq, inArray } from 'drizzle-orm';
+import type { Context, Hono } from 'hono';
+import { z } from 'zod';
+import type { Database } from '../../db/client.js';
+import type { LearnerRepository } from '../../db/repository.js';
+import {
+  diagnosticRuns,
+  lessonProblems,
+  lessonRuns,
+  masteryEvents,
+  paperProgress,
+  placementGrants,
+  projectProgress,
+  remediationFlags,
+  sessionActivities,
+  studySessions,
+  xpEvents,
+} from '../../db/schema.js';
+import type { ApiEnv } from '../../http/context.js';
+import { quizOffer } from '../quizzes/offer.js';
 import {
   buildCoursePayload,
   courseQueueStatus,
   courseTopicState,
-  placedOutConceptsFromRuns,
+  placedOutConceptsFromGrants,
   replanSessionActivities,
   restartTopic,
   suggestedNextCourses,
@@ -295,15 +297,13 @@ export function registerLearnCourseRoutes(
         repo.activePlacementRuns(),
         repo.courseEnrollments(),
         deps.db
-          .select({ state: diagnosticRuns.state })
-          .from(diagnosticRuns)
-          .where(
-            and(
-              eq(diagnosticRuns.userId, userId),
-              eq(diagnosticRuns.kind, 'placement'),
-              eq(diagnosticRuns.status, 'completed'),
-            ),
-          ),
+          .select({
+            conceptId: placementGrants.conceptId,
+            state: placementGrants.state,
+            createdAt: placementGrants.createdAt,
+          })
+          .from(placementGrants)
+          .where(eq(placementGrants.userId, userId)),
       ]);
     const mastery = filterMasteryRecordsForContent(index, masteryRows);
     const activeCourseId = index.coursesById.has(user?.activeCourseId ?? '')
@@ -358,7 +358,7 @@ export function registerLearnCourseRoutes(
       lessonRuns: runRows,
       activePlacementRuns: placementRuns,
     });
-    const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
+    const placedOutConcepts = placedOutConceptsFromGrants(completedPlacementRuns);
     const todayLocal = localDateKey(now, timeZone);
     const totalXp = events.reduce((total, event) => total + event.amount, 0);
     const todayXp = events
@@ -447,7 +447,7 @@ export function registerLearnCourseRoutes(
         : null;
     const activities: Array<ActivityRecord | PlannedActivity> = activeSessionId
       ? activeActivities
-      : plannedActivities(await loadSchedulerState(), index, prefs, timeZone, now);
+      : await plannedActivities(repo, await loadSchedulerState(), index, prefs, timeZone, now);
 
     const tasks = activities.map((activity, taskIndex) => {
       const conceptId = activity.conceptId;
@@ -1066,15 +1066,13 @@ export function registerLearnCourseRoutes(
       repo.courseEnrollments(),
       repo.activePlacementRuns(),
       deps.db
-        .select({ state: diagnosticRuns.state })
-        .from(diagnosticRuns)
-        .where(
-          and(
-            eq(diagnosticRuns.userId, context.get('userId')),
-            eq(diagnosticRuns.kind, 'placement'),
-            eq(diagnosticRuns.status, 'completed'),
-          ),
-        ),
+        .select({
+          conceptId: placementGrants.conceptId,
+          state: placementGrants.state,
+          createdAt: placementGrants.createdAt,
+        })
+        .from(placementGrants)
+        .where(eq(placementGrants.userId, context.get('userId'))),
     ]);
     const mastery = filterMasteryRecordsForContent(index, masteryRows);
     const requestedCourseId = context.req.query('course');
@@ -1106,7 +1104,7 @@ export function registerLearnCourseRoutes(
       enrollments,
       placementRuns,
     });
-    const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
+    const placedOutConcepts = placedOutConceptsFromGrants(completedPlacementRuns);
     const payload = buildCoursePayload(
       index,
       activeCourseId,
@@ -1241,15 +1239,13 @@ async function loadCourseSnapshot(
     repo.courseEnrollments(),
     repo.activePlacementRuns(),
     db
-      .select({ state: diagnosticRuns.state })
-      .from(diagnosticRuns)
-      .where(
-        and(
-          eq(diagnosticRuns.userId, userId),
-          eq(diagnosticRuns.kind, 'placement'),
-          eq(diagnosticRuns.status, 'completed'),
-        ),
-      ),
+      .select({
+        conceptId: placementGrants.conceptId,
+        state: placementGrants.state,
+        createdAt: placementGrants.createdAt,
+      })
+      .from(placementGrants)
+      .where(eq(placementGrants.userId, userId)),
     db
       .select()
       .from(remediationFlags)
@@ -1264,7 +1260,7 @@ async function loadCourseSnapshot(
       .map((row) => [row.paperId, row.completedAt ? 'completed' : 'reading'] as const),
   );
   const projectStatuses = new Map(projectRows.map((row) => [row.projectId, row.status]));
-  const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
+  const placedOutConcepts = placedOutConceptsFromGrants(completedPlacementRuns);
 
   return {
     studyCourseIds,
@@ -1324,19 +1320,21 @@ async function completePayloadCourses(
   await repo.completeCourses(newlyCompleted, completedAt);
 }
 
-function plannedActivities(
+async function plannedActivities(
+  repo: LearnerRepository,
   state: Awaited<ReturnType<LearnerRepository['schedulerState']>>,
   index: ContentIndex,
   preferences: unknown,
   timeZone: string,
   now: Date,
-): PlannedActivity[] {
+): Promise<PlannedActivity[]> {
   const prefs = (preferences ?? {}) as SessionPreferences;
   const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(now);
   const kind: SessionKind =
     weekday === 'Sat' ? 'saturday' : weekday === 'Sun' ? 'sunday' : 'weekday';
+  const { plannedMinutes } = await quizOffer(repo, index, now, state.activeCourseId);
   return planSession(
-    state,
+    { ...state, pendingQuiz: plannedMinutes === undefined ? undefined : { plannedMinutes } },
     index,
     now,
     sessionBudget(kind, prefs, localDateKey(now, timeZone)),
@@ -1379,13 +1377,14 @@ function activityLabel(
   if (kind === 'review') return 'Review';
   if (kind === 'lab') return 'Project';
   if (kind === 'paper') return 'Paper';
-  if (kind === 'quick_check') return 'Quiz';
+  if (kind === 'quick_check' || kind === 'mixed_quiz') return 'Quiz';
   return 'Practice';
 }
 
 function titleForKind(kind: string): string {
   if (kind === 'paper') return 'Paper reading';
   if (kind === 'quick_check') return 'Quick check';
+  if (kind === 'mixed_quiz') return 'Timed quiz';
   if (kind === 'reflect') return 'Reflection';
   if (kind === 'teachback') return 'Teach-back';
   if (kind === 'practice') return 'Mixed practice';

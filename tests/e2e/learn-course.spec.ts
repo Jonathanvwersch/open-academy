@@ -1,10 +1,10 @@
 import { mkdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { LessonSchema, normalizeLesson } from '@academy/aesop/course/schemas';
 import { expect, type Page, test } from '@playwright/test';
 import { eq } from 'drizzle-orm';
 import { parse } from 'yaml';
 import { env } from '../../apps/api/src/config.js';
-import { LessonSchema, normalizeLesson } from '../../apps/api/src/content/schemas.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
   courseEnrollments,

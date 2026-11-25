@@ -18,6 +18,7 @@ export interface TodayPayload {
   unit: number;
   dueReviews: number;
   budgetMinutes: number;
+  quizOffer?: { xpBalance: number; plannedMinutes: number | null; active: boolean };
   sessionKind: 'weekday' | 'saturday' | 'sunday';
   activeSessionId: string | null;
   plan: {
@@ -78,6 +79,7 @@ export interface ActiveSessionPayload {
 
 export interface SessionPayload {
   activities: SessionActivity[];
+  quizFollowUp?: string;
   plannedMinutes: number;
   startedAt?: string;
   serverNow?: string;

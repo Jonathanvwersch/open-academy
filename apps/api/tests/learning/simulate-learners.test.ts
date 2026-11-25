@@ -1,9 +1,21 @@
+import { newReviewCard, scheduleReview } from '@academy/aesop/memory/fsrs';
+import { implicitRepetition } from '@academy/aesop/memory/implicit-repetition';
+import type { SchedulerState } from '@academy/aesop/planner/scheduler';
 import { type Card, Rating, State } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';
+import {
+  lessonRunConceptsAtWithdrawal,
+  p20HasWithdrawnCreditViolation,
+  p20OpenDependentIds,
+  p21HasUnboundedWithdrawalViolation,
+  p22HasProtectedWithdrawalViolation,
+  p23ChangedHistoryIds,
+} from '../../scripts/learner-simulation-placement.js';
 import {
   attributeActivityLogs,
   auditP11DescendantCard,
   auditP15Trace,
+  auditP24Offer,
   type InvariantId,
   newActivitiesForReplan,
   p5HasNoWorkWindow,
@@ -23,7 +35,9 @@ import {
   planUsageMinutes,
   renderMarkdownReport,
   requireP17ReviewMinutes,
+  retryDecisionEvidence,
   reviewFeasible,
+  reviewOverdueDaysForAudit,
   SimulatedApiFailureError,
   type SimulationProfile,
   scenarioCourseFilterSkipReason,
@@ -34,9 +48,6 @@ import {
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
-import { newReviewCard, scheduleReview } from '../../src/learning/fsrs.js';
-import { implicitRepetition } from '../../src/learning/implicit-repetition.js';
-import type { SchedulerState } from '../../src/learning/scheduler.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const invariants: InvariantId[] = [
@@ -59,7 +70,74 @@ const invariants: InvariantId[] = [
   'P17',
   'P18',
   'P19',
+  'P20',
+  'P21',
+  'P22',
+  'P23',
+  'P24',
+  'P25',
+  'P26',
+  'P27',
 ];
+
+test('P24 distinguishes a missed in-window opportunity from a legitimate late offer', () => {
+  const check = {
+    budget: 20,
+    positions: [0],
+    pendingRuns: 0,
+    pendingActivities: 1,
+    completedOriginals: 2,
+  };
+  const early = { xpBalance: 170, plannedMinutes: 10, active: false };
+  const late = { ...early, xpBalance: 181 };
+  const missed = auditP24Offer({ ...check, offer: early, positions: [], pendingActivities: 0 });
+  expect(missed.violation).toBeDefined();
+  const history = [{ day: 4, invariant: 'P24' as const, evidence: missed.evidence }];
+  expect(auditP24Offer({ ...check, offer: late, previous: history }).violation).toContain('day 4');
+  expect(
+    auditP24Offer({ ...check, offer: late, previous: history, completedOriginals: 3 }).violation,
+  ).toBeUndefined();
+  const didNotFit = auditP24Offer({
+    ...check,
+    offer: early,
+    budget: 5,
+    positions: [],
+    pendingActivities: 0,
+  });
+  expect(didNotFit.violation).toBeUndefined();
+  expect(
+    auditP24Offer({
+      ...check,
+      offer: late,
+      previous: [{ day: 4, invariant: 'P24', evidence: didNotFit.evidence }],
+    }).violation,
+  ).toBeUndefined();
+});
+
+test('P24–P27 observe an offered quiz, timeout, completed follow-ups, and a fresh retake', async () => {
+  const content = await loadContent('content');
+  const {
+    profiles: [profile],
+  } = await simulateLearners(db, content, {
+    profiles: ['scenario-quizzes'],
+    days: 1,
+    timeZone: 'UTC',
+  });
+  expect(
+    profile.violations.filter((violation) =>
+      ['P24', 'P25', 'P26', 'P27'].includes(violation.invariant),
+    ),
+  ).toEqual([]);
+  expect(profile.checkedCounts.P24).toBeGreaterThan(0);
+  expect(profile.checkedCounts.P25).toBeGreaterThanOrEqual(2);
+  expect(profile.checkedCounts.P26).toBeGreaterThan(0);
+  expect(profile.checkedCounts.P27).toBeGreaterThanOrEqual(2);
+  const quizTimings = profile.quizEvidence?.filter(({ invariant }) => invariant === 'P27');
+  expect(quizTimings).toHaveLength(2);
+  expect(Date.parse(String(quizTimings?.[1].evidence.startedAt))).toBeGreaterThan(
+    Date.parse(String(quizTimings?.[0].evidence.finalizedAt)),
+  );
+}, 60_000);
 
 const p11Weights = {
   weight: (conceptId: string, ancestorId: string) =>
@@ -331,6 +409,63 @@ test('P10 ignores a case-1 retry that cannot fit after preserved in-progress wor
       new Map([['probability-basics', false]]),
     ),
   ).toEqual([]);
+});
+
+test('P10 counts a newly started prerequisite review without double counting carried-over work', async () => {
+  const content = await loadContent('content');
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const state = {
+    lessonRuns: [
+      { conceptId: 'loss-functions', status: 'needs_retry', retryAfter: now },
+      {
+        conceptId: 'rank-span',
+        status: 'needs_retry',
+        retryAfter: new Date('2026-01-12T12:00:00.000Z'),
+      },
+    ],
+    cards: [],
+    remediationFlags: [{ conceptId: 'loss-functions', targetPrereqId: 'derivatives' }],
+  } as unknown as SchedulerState;
+  const activity = {
+    id: 'first-review',
+    kind: 'review',
+    conceptId: 'derivatives',
+    exerciseIds: ['der-quotient'],
+    plannedMinutes: 8,
+    status: 'in_progress',
+  } as Parameters<typeof retryDecisionEvidence>[5][number];
+  const explanations = [
+    {
+      conceptId: 'derivatives',
+      result: 'selected:overdue' as const,
+      exerciseIds: activity.exerciseIds,
+      exerciseDimensions: [],
+      candidateMinutes: 8,
+      reviewMinutes: 8,
+      reviewCap: 9,
+      usedMinutes: 8,
+      budget: 30,
+      plannedActivityCount: 1,
+    },
+  ];
+  for (const carriedOver of [false, true]) {
+    const evidence = retryDecisionEvidence(
+      state,
+      content,
+      now,
+      30,
+      new Set(['rank-span']),
+      [activity],
+      explanations,
+      new Set(carriedOver ? [activity.id] : []),
+    ).find(({ conceptId }) => conceptId === 'rank-span');
+    expect(evidence).toMatchObject({
+      preservedInProgressMinutes: carriedOver ? 8 : 0,
+      reservedDueReviewMinutes: carriedOver ? 0 : 8,
+      remainingCapacityMinutes: 22,
+      fitsSchedulerCapacity: false,
+    });
+  }
 });
 
 test('P10 flags a fitting overdue retry displaced by a lower-priority lesson', () => {
@@ -854,6 +989,18 @@ test('P16 flags a selected review when a dropped review is two days more overdue
   expect(p16HasOverduePrecedenceViolation(4, 3, 8, 4, 0, 4)).toBe(false);
 });
 
+test('P16 and P17 count overdue days only for dimensions included in the candidate', () => {
+  const now = new Date('2026-04-28T19:00:00Z');
+  const cards = [
+    { conceptId: 'vectors', dimension: 'math', dueAt: '2026-04-20T19:00:00Z' },
+    { conceptId: 'vectors', dimension: 'conceptual', dueAt: '2026-04-27T19:00:00Z' },
+  ] as const;
+  const days = reviewOverdueDaysForAudit(cards, 'vectors', now, 'UTC', ['conceptual']);
+  expect(days).toBe(1);
+  expect(p16HasOverduePrecedenceViolation(days, 5, 4, 0, 0, 6)).toBe(false);
+  expect(p17ReviewFitsRemaining(4, 4, 0, days)).toBe(false);
+});
+
 test('P17 flags a dropped review only when it fits both remaining limits', () => {
   expect(p17ReviewFitsRemaining(8, 12, 8, 0)).toBe(true);
   expect(p17ReviewFitsRemaining(8, 12, 7, 0)).toBe(false);
@@ -890,6 +1037,100 @@ test('P19 only audits reviews newly selected by the current plan', () => {
       ],
     ),
   ).toEqual(['selected']);
+});
+
+test('P20 flags withdrawn credit that counts as complete, shows as placed out or unlocks topics', () => {
+  const clean = { countsComplete: false, shownPlacedOut: false, unlockedDependentIds: [] };
+  expect(p20HasWithdrawnCreditViolation(clean)).toBe(false);
+  expect(p20HasWithdrawnCreditViolation({ ...clean, countsComplete: true })).toBe(true);
+  expect(p20HasWithdrawnCreditViolation({ ...clean, shownPlacedOut: true })).toBe(true);
+  expect(p20HasWithdrawnCreditViolation({ ...clean, unlockedDependentIds: ['gradients'] })).toBe(
+    true,
+  );
+});
+
+test('P20 treats every open CourseTopic status as unlocked', () => {
+  const topics = [
+    { conceptId: 'a', status: 'locked' },
+    { conceptId: 'b', status: 'not_started' },
+    { conceptId: 'c', status: 'in_progress' },
+    { conceptId: 'd', status: 'quiz' },
+    { conceptId: 'e', status: 'complete' },
+    { conceptId: 'f', status: 'not_started' },
+  ];
+  expect(
+    p20OpenDependentIds({
+      topics,
+      dependentIds: ['a', 'b', 'c', 'd', 'e', 'f'],
+      exemptIds: new Set(['f']),
+    }),
+  ).toEqual(['b', 'c', 'd']);
+});
+
+test('P22 orders a lesson start and a withdrawal on the same day', () => {
+  const noon = new Date('2026-01-07T12:00:00.000Z');
+  const runs = [{ conceptId: 'a', startedAt: noon }];
+  const studied = (recorded: ReadonlyMap<string, ReadonlySet<string>>) =>
+    lessonRunConceptsAtWithdrawal({ recorded, grantId: 'g', runs, withdrawnAt: noon }).has('a');
+  expect(studied(new Map([['g', new Set(['a'])]]))).toBe(true);
+  expect(studied(new Map([['g', new Set()]]))).toBe(false);
+  expect(studied(new Map())).toBe(true);
+});
+
+test('P21 bounds the failures a conditional grant can survive', () => {
+  const grant = { state: 'conditional', directFailures: 0, downstreamFailures: 2 };
+  expect(p21HasUnboundedWithdrawalViolation(grant)).toBe(false);
+  expect(p21HasUnboundedWithdrawalViolation({ ...grant, downstreamFailures: 3 })).toBe(true);
+  expect(p21HasUnboundedWithdrawalViolation({ ...grant, directFailures: 1 })).toBe(true);
+  expect(
+    p21HasUnboundedWithdrawalViolation({ ...grant, state: 'withdrawn', directFailures: 1 }),
+  ).toBe(false);
+});
+
+test('P22 flags withdrawn grants that were confirmed or studied', () => {
+  const grant = { state: 'withdrawn', confirmedAt: null, studiedBeforeWithdrawal: false };
+  expect(p22HasProtectedWithdrawalViolation(grant)).toBe(false);
+  expect(p22HasProtectedWithdrawalViolation({ ...grant, confirmedAt: new Date(0) })).toBe(true);
+  expect(p22HasProtectedWithdrawalViolation({ ...grant, studiedBeforeWithdrawal: true })).toBe(
+    true,
+  );
+  expect(
+    p22HasProtectedWithdrawalViolation({ ...grant, state: 'confirmed', confirmedAt: new Date(0) }),
+  ).toBe(false);
+});
+
+test('P23 reports changed or removed history rows and allows new rows', () => {
+  const before = new Map([
+    ['a', '1'],
+    ['b', '2'],
+  ]);
+  expect(p23ChangedHistoryIds(before, new Map([...before, ['c', '3']]))).toEqual([]);
+  expect(p23ChangedHistoryIds(before, new Map([['a', '9']]))).toEqual(['a', 'b']);
+});
+
+test('overplaced learner loses conditional placement credit without P20-P23 violations', async () => {
+  const report = await simulateLearners(db, await loadContent(), {
+    profiles: ['overplaced'],
+    days: 30,
+    courseIds: ['maths-for-ml'],
+  });
+  const overplaced = report.profiles[0];
+  for (const invariant of ['P20', 'P21', 'P22', 'P23'] as const) {
+    expect(overplaced?.violationCounts[invariant]).toBe(0);
+    expect(overplaced?.checkedCounts[invariant]).toBeGreaterThan(0);
+  }
+}, 300_000);
+
+test('P19 audits mixed-review topics in selection order, not exercise order', () => {
+  expect(
+    selectedReviewConceptsForAudit(
+      ['information-theory', 'prefill-decode'],
+      [
+        { conceptId: 'information-theory', result: 'selected', selectionOrder: 2 },
+        { conceptId: 'prefill-decode', result: 'selected', selectionOrder: 1 },
+      ],
+    ),
+  ).toEqual(['prefill-decode', 'information-theory']);
 });
 
 test('a simulated API 5xx retains the originating request and response', () => {
@@ -997,7 +1238,19 @@ test('diligent and graph-change Mathematics for ML runs produce structured repor
     expect(profile.totals.coveredSkips).toEqual(expect.any(Number));
     expect(profile.p11CheckedEvents).toEqual(expect.any(Number));
     expect(profile.p11AmbiguousEvents).toEqual(expect.any(Number));
-    for (const invariant of ['P13', 'P14', 'P15', 'P16', 'P17', 'P18', 'P19'] as const) {
+    for (const invariant of [
+      'P13',
+      'P14',
+      'P15',
+      'P16',
+      'P17',
+      'P18',
+      'P19',
+      'P20',
+      'P21',
+      'P22',
+      'P23',
+    ] as const) {
       expect(profile.checkedCounts[invariant]).toEqual(expect.any(Number));
     }
     for (const invariant of invariants) {

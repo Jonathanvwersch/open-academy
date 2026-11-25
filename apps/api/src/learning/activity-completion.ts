@@ -1,7 +1,7 @@
+import { localDateKey } from '@academy/aesop/progress/xp';
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { attempts, sessionActivities, xpEvents } from '../db/schema.js';
-import { localDateKey } from './xp.js';
 
 interface SessionActivityList {
   activities: Array<{ id: string; idx: number; status: string }>;

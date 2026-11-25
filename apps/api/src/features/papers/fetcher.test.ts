@@ -1,6 +1,6 @@
+import type { IndexedPaper } from '@academy/aesop/course/types';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { loadContent } from '../../content/load.js';
-import type { IndexedPaper } from '../../content/types.js';
 import { HttpPaperFetcher } from './fetcher.js';
 
 const pdf = new TextEncoder().encode('%PDF-1.4 test document');

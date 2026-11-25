@@ -1,4 +1,4 @@
-import type { ContentIndex } from './content/types.js';
+import type { ContentIndex } from '@academy/aesop/course/types';
 import type { Database } from './db/client.js';
 import type { LearnerRepository } from './db/repository.js';
 import type { TutorProvider } from './features/tutor/provider.js';

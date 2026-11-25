@@ -1,11 +1,11 @@
-import { expect, test } from 'vitest';
-import { type Exercise, ExerciseSchema } from '../../src/content/schemas.js';
+import { type Exercise, ExerciseSchema } from '@academy/aesop/course/schemas';
 import {
   deriveLessonState,
   type LessonProblemRow,
   selectNextProblem,
   xpForPassedPoint,
-} from '../../src/learning/lesson-runner.js';
+} from '@academy/aesop/lessons/lesson-runner';
+import { expect, test } from 'vitest';
 
 const point = (id: string, problems: string[]) => ({
   id,

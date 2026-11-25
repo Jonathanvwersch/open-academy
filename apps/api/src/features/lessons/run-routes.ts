@@ -1,13 +1,43 @@
+import { getLessonPrerequisites } from '@academy/aesop/course/index';
+import { serializeExercise } from '@academy/aesop/course/serialize';
+import {
+  formatTemplateNumber,
+  instantiateExercise,
+  isTemplate,
+} from '@academy/aesop/course/templates';
+import type { ContentIndex, IndexedExercise, IndexedLesson } from '@academy/aesop/course/types';
+import { keyPrereqsForPoint } from '@academy/aesop/graph/prerequisites';
+import { answerDisplay, answerText } from '@academy/aesop/lessons/answer-display';
+import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
+import { gradeExercise } from '@academy/aesop/lessons/grading/index';
+import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '@academy/aesop/lessons/grading/multiple-choice';
+import {
+  QUIZ_PASS_MARK,
+  scoreLessonQuiz,
+  selectQuizItems,
+} from '@academy/aesop/lessons/lesson-quiz';
+import { isLessonRetryReady } from '@academy/aesop/lessons/lesson-retry';
+import {
+  deriveLessonState,
+  selectNextProblem,
+  xpForPassedPoint,
+} from '@academy/aesop/lessons/lesson-runner';
+import {
+  newReviewCard,
+  reviewActivityRating,
+  scheduleReview,
+  startOfNextCalendarDay,
+} from '@academy/aesop/memory/fsrs';
+import { calculateCredit } from '@academy/aesop/memory/mastery';
+import { applyImplicitRepetitions, type applyMastery } from '@academy/aesop/memory/mastery-service';
+import { conditionalPrerequisites } from '@academy/aesop/placement/grants';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
-import { and, desc, eq, inArray, isNull, like } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, inArray, isNull, like } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
-import { getLessonPrerequisites } from '../../content/index.js';
-import { serializeExercise } from '../../content/serialize.js';
-import { formatTemplateNumber, instantiateExercise, isTemplate } from '../../content/templates.js';
-import type { ContentIndex, IndexedExercise, IndexedLesson } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
+import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { LearnerRepository } from '../../db/repository.js';
 import {
   attempts,
@@ -23,27 +53,15 @@ import {
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
-import { answerDisplay, answerText } from '../../learning/answer-display.js';
-import { answerOptionsFor } from '../../learning/answer-options.js';
-import {
-  newReviewCard,
-  reviewActivityRating,
-  scheduleReview,
-  startOfNextCalendarDay,
-} from '../../learning/fsrs.js';
-import { gradeExercise } from '../../learning/grading/index.js';
-import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../../learning/grading/multiple-choice.js';
-import { QUIZ_PASS_MARK, scoreLessonQuiz, selectQuizItems } from '../../learning/lesson-quiz.js';
-import { isLessonRetryReady } from '../../learning/lesson-retry.js';
-import {
-  deriveLessonState,
-  selectNextProblem,
-  xpForPassedPoint,
-} from '../../learning/lesson-runner.js';
-import { calculateCredit } from '../../learning/mastery.js';
-import { applyImplicitRepetitions } from '../../learning/mastery-service.js';
-import { keyPrereqsForPoint } from '../../learning/prerequisites.js';
+import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
+import { openTargetedReviews, placementGrantStates } from '../../learning/placement-grants.js';
 import { resolveLessonCourse } from './course-context.js';
+import {
+  loadRunProblems,
+  loadRunQuiz,
+  loadRunSnapshot,
+  serveNextRunProblem,
+} from './run-recovery.js';
 
 type LessonContext = Context<ApiEnv>;
 
@@ -69,21 +87,7 @@ function correctAnswerDisplay(exercise: IndexedExercise): string {
   return '';
 }
 
-type MasteryApplier = (input: {
-  repo: LearnerRepository;
-  userId: string;
-  exercise: IndexedExercise;
-  attemptId: string;
-  correct: number;
-  credit: number;
-  hintsUsed: number;
-  attemptNo: number;
-  mode: 'practice' | 'assessment';
-  gradedBy: 'deterministic' | 'llm' | 'self';
-  createReviewCard?: boolean;
-  now: Date;
-  timeZone: string;
-}) => Promise<unknown>;
+type MasteryApplier = typeof applyMastery;
 
 function seededRandom(seed: string): () => number {
   let state = 0x811c9dc5;
@@ -128,18 +132,10 @@ export function registerLessonRunRoutes(
   ) => {
     const userId = context.get('userId');
     const now = deps.requestNow(context);
-    const rows = await deps.db
-      .select()
-      .from(lessonProblems)
-      .where(eq(lessonProblems.runId, run.id))
-      .orderBy(lessonProblems.servedAt, lessonProblems.position, lessonProblems.id);
-    const derived = deriveLessonState(
-      lesson,
-      rows,
-      index.exercisesById,
-      run.quizPassedAt,
-      run.attempt,
-    );
+    const loaded = await loadRunSnapshot(deps.db, run, lesson, index, now);
+    if (!loaded) return null;
+    run = loaded.current;
+    const { rows, derived, quizAttempts, quizItems } = loaded;
     const point = lesson.knowledge_points?.find((item) => item.id === derived.currentPointId);
     const buildInstance = (exercise: IndexedExercise, seed: number | null) => {
       if (!isTemplate(exercise)) return exercise;
@@ -199,19 +195,6 @@ export function registerLessonRunRoutes(
       practiceExercise && practicePending
         ? buildInstance(practiceExercise, practicePending.seed)
         : undefined;
-    const quizAttempts = await deps.db
-      .select()
-      .from(lessonQuizAttempts)
-      .where(eq(lessonQuizAttempts.runId, run.id))
-      .orderBy(lessonQuizAttempts.attemptNo);
-    const quizAttemptIds = quizAttempts.map((attempt) => attempt.id);
-    const quizItems = quizAttemptIds.length
-      ? await deps.db
-          .select()
-          .from(lessonQuizItems)
-          .where(inArray(lessonQuizItems.quizAttemptId, quizAttemptIds))
-          .orderBy(lessonQuizItems.quizAttemptId, lessonQuizItems.position, lessonQuizItems.id)
-      : [];
     const itemsFor = (attemptId: string) =>
       quizItems.filter((item) => item.quizAttemptId === attemptId);
     const currentAttempt = quizAttempts.find((attempt) => attempt.submittedAt === null);
@@ -233,7 +216,9 @@ export function registerLessonRunRoutes(
       seed: 0,
     });
     const currentItems = currentAttempt ? itemsFor(currentAttempt.id) : [];
-    const quizQuestionCount = currentItems.length || lastItems.length || previewItems.length;
+    const quizQuestionCount = currentAttempt
+      ? currentItems.length
+      : lastItems.length || previewItems.length;
     const quizStatus = run.quizPassedAt
       ? 'passed'
       : currentAttempt
@@ -386,7 +371,7 @@ export function registerLessonRunRoutes(
         practicePending && practiceInstance
           ? { ...practicePending, exercise: serializeExercise(practiceInstance, userId) }
           : undefined,
-      lastAnswered: lastRow,
+      lastAnswered: lastInstance ? lastRow : undefined,
       lastAnsweredProblem:
         lastRow && lastInstance
           ? {
@@ -493,11 +478,7 @@ export function registerLessonRunRoutes(
         }
       }
       if (!existing) throw new Error('Unable to create lesson run');
-      const problems = await tx
-        .select()
-        .from(lessonProblems)
-        .where(eq(lessonProblems.runId, existing.id))
-        .orderBy(lessonProblems.servedAt, lessonProblems.position, lessonProblems.id);
+      const { rows: problems } = await loadRunProblems(tx, existing.id, resolved.index);
       let state = deriveLessonState(
         resolved.lesson,
         problems,
@@ -607,44 +588,15 @@ export function registerLessonRunRoutes(
           .where(eq(lessonRuns.id, existing.id))
           .returning();
       }
-      const round = existing.attempt;
-      if (state.pending || !state.currentPointId) {
-        return { kind: 'ready' as const, run: existing };
-      }
-      const point = resolved.lesson.knowledge_points?.find(
-        (item) => item.id === state.currentPointId,
+      await serveNextRunProblem(
+        tx,
+        existing,
+        resolved.lesson,
+        resolved.index,
+        problems,
+        state,
+        now,
       );
-      if (!point) return { kind: 'ready' as const, run: existing };
-      const pointRows = problems
-        .filter((problem) => problem.knowledgePointId === point.id && problem.round === round)
-        .filter((problem) => !problem.practiceOnly)
-        .map(({ exerciseId, seed, position, correct, servedAt }) => ({
-          exerciseId,
-          seed,
-          position,
-          correct,
-          servedAt,
-        }));
-      const usedSeeds = new Set(
-        problems.flatMap((problem) => (problem.seed === null ? [] : [problem.seed])),
-      );
-      const selection = selectNextProblem(
-        point,
-        resolved.index.exercisesById,
-        pointRows,
-        Math.floor(Math.random() * 0x80000000),
-        usedSeeds,
-      );
-      if (!selection) return { kind: 'ready' as const, run: existing };
-      await tx.insert(lessonProblems).values({
-        runId: existing.id,
-        knowledgePointId: point.id,
-        round,
-        position: selection.position,
-        exerciseId: selection.exerciseId,
-        seed: selection.seed,
-        servedAt: now,
-      });
       return { kind: 'ready' as const, run: existing };
     });
     if (run.kind === 'retry_tomorrow') {
@@ -916,7 +868,6 @@ export function registerLessonRunRoutes(
         attemptNo: 1,
         gradedBy: graded.graded_by ?? 'deterministic',
       });
-      const repo = new LearnerRepository(tx as unknown as Database, userId);
       await tx.insert(attempts).values({
         id: attemptId,
         userId,
@@ -938,9 +889,8 @@ export function registerLessonRunRoutes(
         durationMs: body.data.durationMs,
         createdAt: now,
       });
-      await deps.applyMastery({
-        repo,
-        userId,
+      await deps.applyMastery(drizzleLearnerStore(tx), {
+        learnerId: userId,
         exercise,
         attemptId,
         correct: graded.correct,
@@ -952,6 +902,7 @@ export function registerLessonRunRoutes(
         createReviewCard: false,
         now,
         timeZone: context.get('timeZone'),
+        enableFuzz: fsrsFuzzEnabled(),
       });
       await tx
         .update(lessonProblems)
@@ -1002,6 +953,18 @@ export function registerLessonRunRoutes(
         if (!previous.halted && halted !== undefined) {
           const haltedAt = now;
           const retryAfter = startOfNextCalendarDay(now, context.get('timeZone'));
+          const grantDb = tx as unknown as Database;
+          await openTargetedReviews({
+            db: grantDb,
+            userId,
+            conceptId,
+            prerequisiteIds: conditionalPrerequisites(
+              keyPrereqsForPoint(resolved.index, conceptId, halted.pointId),
+              await placementGrantStates(grantDb, userId),
+            ),
+            attemptId,
+            now,
+          });
           if (joined.run.haltedPointIndex !== null && halted.index <= joined.run.haltedPointIndex) {
             const keyPrereqIds = keyPrereqsForPoint(resolved.index, conceptId, halted.pointId);
             const openFlags = keyPrereqIds.length
@@ -1283,8 +1246,8 @@ export function registerLessonRunRoutes(
     const userId = context.get('userId');
     const now = deps.requestNow(context);
     const result = await deps.db.transaction(async (tx) => {
-      const [joined] = await tx
-        .select({ item: lessonQuizItems, quiz: lessonQuizAttempts, run: lessonRuns })
+      const [run] = await tx
+        .select(getTableColumns(lessonRuns))
         .from(lessonQuizItems)
         .innerJoin(lessonQuizAttempts, eq(lessonQuizItems.quizAttemptId, lessonQuizAttempts.id))
         .innerJoin(lessonRuns, eq(lessonQuizAttempts.runId, lessonRuns.id))
@@ -1295,16 +1258,27 @@ export function registerLessonRunRoutes(
             eq(lessonRuns.conceptId, conceptId),
           ),
         )
-        .for('update')
+        .for('update', { of: lessonRuns })
         .limit(1);
-      if (!joined) return { kind: 'not_found' as const };
-      if (joined.item.attemptId || joined.quiz.submittedAt) {
-        return { kind: 'conflict' as const, runId: joined.run.id };
+      if (!run) return { kind: 'not_found' as const };
+      const { quizAttempts, quizItems } = await loadRunQuiz(
+        tx,
+        run.id,
+        resolved.lesson,
+        resolved.index,
+      );
+      const item = quizItems.find((row) => row.id === body.data.itemId);
+      if (!item) return { kind: 'not_found' as const };
+      if (
+        item.attemptId ||
+        quizAttempts.find((attempt) => attempt.id === item.quizAttemptId)?.submittedAt
+      ) {
+        return { kind: 'conflict' as const, runId: run.id };
       }
       const problems = await tx
         .select()
         .from(lessonProblems)
-        .where(eq(lessonProblems.runId, joined.run.id))
+        .where(eq(lessonProblems.runId, run.id))
         .orderBy(
           lessonProblems.servedAt,
           lessonProblems.knowledgePointId,
@@ -1316,19 +1290,19 @@ export function registerLessonRunRoutes(
         resolved.lesson,
         problems,
         resolved.index.exercisesById,
-        joined.run.quizPassedAt,
-        joined.run.attempt,
+        run.quizPassedAt,
+        run.attempt,
       );
       if (runState.status === 'in_progress') {
-        return { kind: 'conflict' as const, runId: joined.run.id };
+        return { kind: 'conflict' as const, runId: run.id };
       }
-      const indexed = resolved.index.exercisesById.get(joined.item.exerciseId);
-      const exercise = indexed ? resolvedIndexedExercise(indexed, joined.item.seed) : undefined;
+      const indexed = resolved.index.exercisesById.get(item.exerciseId);
+      const exercise = indexed ? resolvedIndexedExercise(indexed, item.seed) : undefined;
       if (!exercise) return { kind: 'invalid' as const };
       if (emptyAnswerMessage(exercise.type, body.data.answer)) {
         return { kind: 'invalid' as const };
       }
-      const graded = await gradeQuizAnswer(exercise, body.data.answer, joined.item.id);
+      const graded = await gradeQuizAnswer(exercise, body.data.answer, item.id);
       if (graded.status !== 'graded') return { kind: 'invalid' as const };
       await tx
         .update(lessonQuizItems)
@@ -1338,8 +1312,8 @@ export function registerLessonRunRoutes(
           durationMs: body.data.durationMs ?? null,
           answeredAt: now,
         })
-        .where(eq(lessonQuizItems.id, joined.item.id));
-      return { kind: 'answered' as const, runId: joined.run.id };
+        .where(eq(lessonQuizItems.id, item.id));
+      return { kind: 'answered' as const, runId: run.id };
     });
     if (result.kind === 'not_found') return context.json({ error: 'Quiz item not found' }, 404);
     if (result.kind === 'invalid') return context.json({ error: 'Invalid answer' }, 422);
@@ -1386,21 +1360,18 @@ export function registerLessonRunRoutes(
         .for('update')
         .limit(1);
       if (!run) return { kind: 'not_found' as const };
-      const quizAttempts = await tx
-        .select()
-        .from(lessonQuizAttempts)
-        .where(eq(lessonQuizAttempts.runId, run.id))
-        .orderBy(lessonQuizAttempts.attemptNo);
+      const { quizAttempts, quizItems } = await loadRunQuiz(
+        tx,
+        run.id,
+        resolved.lesson,
+        resolved.index,
+      );
       const latestAttempt = quizAttempts.at(-1);
       if (!latestAttempt) return { kind: 'not_found' as const };
       if (latestAttempt.submittedAt) {
         return { kind: 'already_submitted' as const, runId: run.id };
       }
-      const items = await tx
-        .select()
-        .from(lessonQuizItems)
-        .where(eq(lessonQuizItems.quizAttemptId, latestAttempt.id))
-        .orderBy(lessonQuizItems.position, lessonQuizItems.id);
+      const items = quizItems.filter((item) => item.quizAttemptId === latestAttempt.id);
       if (items.some((item) => item.answeredAt === null || item.correct === null)) {
         return { kind: 'unanswered' as const };
       }
@@ -1412,13 +1383,13 @@ export function registerLessonRunRoutes(
       for (const item of items) {
         if (item.attemptId !== null) continue;
         const indexed = resolved.index.exercisesById.get(item.exerciseId);
-        const exercise = indexed ? resolvedIndexedExercise(indexed, item.seed) : undefined;
+        if (!indexed) continue;
+        const exercise = resolvedIndexedExercise(indexed, item.seed);
         if (!exercise) return { kind: 'invalid_answer' as const };
         const graded = await gradeQuizAnswer(exercise, item.answer, item.id);
         if (graded.status !== 'graded') return { kind: 'invalid_answer' as const };
         pendingGrades.push({ item, exercise, graded });
       }
-      const repo = new LearnerRepository(tx as unknown as Database, userId);
       const finalItems = new Map(items.map((item) => [item.id, item]));
       for (const pending of pendingGrades) {
         const { graded } = pending;
@@ -1451,9 +1422,8 @@ export function registerLessonRunRoutes(
           durationMs: pending.item.durationMs,
           createdAt: now,
         });
-        await deps.applyMastery({
-          repo,
-          userId,
+        await deps.applyMastery(drizzleLearnerStore(tx), {
+          learnerId: userId,
           exercise: pending.exercise,
           attemptId,
           correct: graded.correct,
@@ -1465,6 +1435,7 @@ export function registerLessonRunRoutes(
           createReviewCard: false,
           now,
           timeZone: context.get('timeZone'),
+          enableFuzz: fsrsFuzzEnabled(),
         });
         const [updatedItem] = await tx
           .update(lessonQuizItems)
@@ -1487,6 +1458,10 @@ export function registerLessonRunRoutes(
             .update(lessonRuns)
             .set({ status: 'completed', quizPassedAt: now, completedAt: now, updatedAt: now })
             .where(eq(lessonRuns.id, run.id));
+          await tx
+            .update(reviewCards)
+            .set({ suspendedAt: null })
+            .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, run.conceptId)));
           const inserted = await tx
             .insert(xpEvents)
             .values({
@@ -1583,13 +1558,14 @@ export function registerLessonRunRoutes(
             ratings.length > 0 &&
             !ratings.includes(Rating.Again)
           ) {
-            await applyImplicitRepetitions(tx, {
-              userId,
+            await applyImplicitRepetitions(drizzleLearnerStore(tx), {
+              learnerId: userId,
               conceptId,
               rating: ratings.every((rating) => rating === Rating.Good) ? Rating.Good : Rating.Hard,
               index: resolved.index,
               now,
               timeZone: context.get('timeZone'),
+              enableFuzz: fsrsFuzzEnabled(),
             });
           }
         }

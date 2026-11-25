@@ -1,5 +1,5 @@
+import type { ContentIndex } from '@academy/aesop/course/types';
 import { and, count, eq, gte, ne } from 'drizzle-orm';
-import type { ContentIndex } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import { llmCalls, users } from '../../db/schema.js';
 import {

@@ -1,3 +1,7 @@
+import { serializedOptionOrder } from '@academy/aesop/course/serialize';
+import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { answerDisplay } from '@academy/aesop/lessons/answer-display';
 import { onScreenOptions } from '@academy/shared/shuffle';
 import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '@academy/shared/tutor';
 import { and, asc, eq } from 'drizzle-orm';
@@ -5,9 +9,6 @@ import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
-import { serializedOptionOrder } from '../../src/content/serialize.js';
-import { instantiateExercise, isTemplate } from '../../src/content/templates.js';
-import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import {
   attempts,
@@ -29,7 +30,6 @@ import type {
   TutorContext,
   TutorReply,
 } from '../../src/features/tutor/schemas.js';
-import { answerDisplay } from '../../src/learning/answer-display.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000093';

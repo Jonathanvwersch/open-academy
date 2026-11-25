@@ -1,6 +1,37 @@
+import type { ContentIndex } from '@academy/aesop/course/types';
+import {
+  filterSchedulerStateForContent,
+  sessionActivityIsInContent,
+} from '@academy/aesop/graph/content-filters';
+import { buildCourseStartState, needsCourseChoice } from '@academy/aesop/graph/course-start';
+import { topicIsComplete } from '@academy/aesop/graph/course-status';
+import {
+  activeCourseFor,
+  compareOutlinePosition,
+  createPrerequisiteChecker,
+  labActivityReady,
+  learnActivitiesWithUnmetPrerequisites,
+  masteryKey,
+} from '@academy/aesop/graph/prerequisites';
+import { answerDisplay } from '@academy/aesop/lessons/answer-display';
+import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
+import { isLessonRetryReady } from '@academy/aesop/lessons/lesson-retry';
+import { recordLessonViewed } from '@academy/aesop/memory/mastery';
+import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
+import {
+  attemptedExerciseIdsByActivity,
+  reviewTopicsForActivity,
+} from '@academy/aesop/planner/review-topics';
+import type { PlannedActivity, SessionPreferences } from '@academy/aesop/planner/scheduler';
+import {
+  currentLearnerUnit,
+  planSession,
+  replan,
+  sessionBudget,
+} from '@academy/aesop/planner/scheduler';
+import { localDateKey, sessionKindForDate, xpGoalFor } from '@academy/aesop/progress/xp';
 import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { z } from 'zod';
-import type { ContentIndex } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import { LearnerRepository } from '../../db/repository.js';
 import {
@@ -10,42 +41,17 @@ import {
   masteryEvents,
   sessionActivities,
   studySessions,
+  users,
   xpEvents,
 } from '../../db/schema.js';
-import { answerDisplay } from '../../learning/answer-display.js';
-import { answerOptionsFor } from '../../learning/answer-options.js';
-import {
-  filterSchedulerStateForContent,
-  sessionActivityIsInContent,
-} from '../../learning/content-filters.js';
-import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
-import { topicIsComplete } from '../../learning/course-status.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
-import { isLessonRetryReady } from '../../learning/lesson-retry.js';
-import { recordLessonViewed } from '../../learning/mastery.js';
 import {
-  activeCourseFor,
-  compareOutlinePosition,
-  createPrerequisiteChecker,
-  labActivityReady,
-  learnActivitiesWithUnmetPrerequisites,
-  masteryKey,
-} from '../../learning/prerequisites.js';
-import { attemptAllowsRetry } from '../../learning/retry.js';
-import {
-  attemptedExerciseIdsByActivity,
-  reviewTopicsForActivity,
-} from '../../learning/review-topics.js';
-import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
-import {
-  currentLearnerUnit,
-  planSession,
-  replan,
-  sessionBudget,
-} from '../../learning/scheduler.js';
-import { localDateKey, sessionKindForDate, xpGoalFor } from '../../learning/xp.js';
+  completeReviewActivity,
+  recordRecoveredReviewRatings,
+} from '../../learning/review-completion.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { replanSessionActivities } from '../course/service.js';
+import { quizOffer } from '../quizzes/offer.js';
 
 function withReviewTopics<T extends { kind: string; exerciseIds: string[]; status?: string }>(
   activity: T,
@@ -70,6 +76,11 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const subjectTitle = index.curriculum?.subject?.title;
   const sessionKind = sessionKindForDate(localDateKey(now, request.timeZone));
   const budget = sessionBudget(sessionKind, prefs, localDateKey(now, request.timeZone));
+  const availableQuiz = await quizOffer(repo, index, now, state.activeCourseId);
+  state.pendingQuiz =
+    availableQuiz.plannedMinutes === undefined
+      ? undefined
+      : { plannedMinutes: availableQuiz.plannedMinutes };
   const [active, enrollments, placementRuns] = await Promise.all([
     repo.activeSession(now),
     repo.courseEnrollments(),
@@ -201,6 +212,11 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
       }),
     ).size,
     budgetMinutes: budget,
+    quizOffer: {
+      xpBalance: availableQuiz.xpBalance,
+      plannedMinutes: availableQuiz.plannedMinutes ?? null,
+      active: Boolean(availableQuiz.active),
+    },
     sessionKind,
     activeSessionId,
     tutorEnabled: tutorProvider !== null,
@@ -225,6 +241,21 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
 }
 
 export async function postSessions(deps: FeatureServices, request: FeatureRequest) {
+  return deps.db.transaction(async (tx) => {
+    await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, request.userId))
+      .for('no key update');
+    const db = tx as unknown as Database;
+    return createSession(
+      { ...deps, db },
+      { ...request, repo: new LearnerRepository(db, request.userId) },
+    );
+  });
+}
+
+async function createSession(deps: FeatureServices, request: FeatureRequest) {
   const { db, content } = deps;
   const body = z
     .object({
@@ -303,6 +334,11 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
     }
     state.inProgressConceptId = body.data.focusConceptId;
   }
+  const availableQuiz = await quizOffer(repo, index, now, state.activeCourseId);
+  state.pendingQuiz =
+    availableQuiz.plannedMinutes === undefined
+      ? undefined
+      : { plannedMinutes: availableQuiz.plannedMinutes };
   const plan = planSession(state, index, now, budgetMinutes, sessionKind, undefined, undefined, {
     focusConceptId: body.data.focusConceptId,
   });
@@ -475,6 +511,7 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
   return session
     ? serviceResult({
         ...session,
+        quizFollowUp: (session.plan as { quizFollowUp?: string }).quizFollowUp,
         xp,
         activities: activities.map((activity) => ({
           ...withReviewTopics(
@@ -554,7 +591,13 @@ export async function postSessionsByIdActivitiesByAidProgress(
     const db = tx as unknown as Database;
     return updateActivityProgress(
       { ...deps, db },
-      { ...request, repo: new LearnerRepository(db, request.userId) },
+      {
+        ...request,
+        repo: new LearnerRepository(db, request.userId, undefined, {
+          load: deps.content,
+          now: request.now,
+        }),
+      },
     );
   });
 }
@@ -570,6 +613,9 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
   if (!activity) {
     return serviceResult({ error: 'Activity not found' }, 404);
   }
+  if (activity.kind === 'mixed_quiz') {
+    return serviceResult({ error: 'Use the timed quiz to complete this activity' }, 409);
+  }
   const attemptedByActivity =
     activity.kind === 'review'
       ? await request.repo.attemptedExerciseIdsByActivity([activity.id])
@@ -582,7 +628,9 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
     const missingExerciseIds = activity.exerciseIds.filter(
       (exerciseId) => !attemptedExerciseIds.has(exerciseId),
     );
-    if (activity.exerciseIds.length === 0 || missingExerciseIds.length > 0) {
+    const removedQuestions = (activity.reason as { removedQuestions?: boolean } | null)
+      ?.removedQuestions;
+    if ((activity.exerciseIds.length === 0 && !removedQuestions) || missingExerciseIds.length > 0) {
       return serviceResult(
         {
           error: 'Review activity needs an attempt for every exercise before completion.',
@@ -590,6 +638,20 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
         },
         409,
       );
+    }
+    if (removedQuestions && activity.exerciseIds.length > 0 && activity.status !== 'completed') {
+      const index = await content();
+      const context = { index, userId: request.userId, timeZone: request.timeZone, now, session };
+      activity = await recordRecoveredReviewRatings(db, request.repo, context, activity);
+      if (activity.exerciseIds.some((id) => !attemptedExerciseIds.has(id))) {
+        return serviceResult(withReviewTopics(activity, index, attemptedExerciseIds));
+      }
+      const latestSession = await request.repo.session(activity.sessionId);
+      await completeReviewActivity(db, { ...context, session: latestSession }, activity, progress);
+      const finished = (await request.repo.session(activity.sessionId))?.activities.find(
+        (item) => item.id === activity?.id,
+      );
+      return serviceResult(withReviewTopics(finished ?? activity, index, attemptedExerciseIds));
     }
   }
   if (
@@ -715,7 +777,13 @@ export async function postSessionsByIdReplan(deps: FeatureServices, request: Fea
     const db = tx as unknown as Database;
     return replanSession(
       { ...deps, db },
-      { ...request, repo: new LearnerRepository(db, request.userId) },
+      {
+        ...request,
+        repo: new LearnerRepository(db, request.userId, undefined, {
+          load: deps.content,
+          now: request.now,
+        }),
+      },
     );
   });
 }
@@ -732,6 +800,11 @@ async function replanSession(deps: FeatureServices, request: FeatureRequest) {
     .object({ remainingBudgetMinutes: z.number().int().min(0).max(600).optional() })
     .safeParse(request.body);
   if (!body.success) return serviceResult({ error: 'Invalid replan request' }, 400);
+  if ((session.plan as { quizFollowUp?: string }).quizFollowUp) {
+    return serviceResult({
+      activities: session.activities.map((activity) => withReviewTopics(activity, index)),
+    });
+  }
   const state = await request.repo.schedulerState(now, index);
   const activities = session.activities as unknown as PlannedActivity[];
   const existingMinutes = activities

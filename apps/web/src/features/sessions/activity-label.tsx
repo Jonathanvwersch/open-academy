@@ -5,6 +5,7 @@ export function sessionActivityLabel(kind: string) {
     remediate: 'Remediation',
     transfer: 'Apply it',
     review: 'Review',
+    mixed_quiz: 'Timed quiz',
     quick_check: 'Quiz',
     assessment: 'Assessment',
     lab: 'Project',

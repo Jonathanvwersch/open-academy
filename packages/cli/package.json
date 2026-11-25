@@ -10,6 +10,7 @@
     "test": "vitest run src/index.test.ts"
   },
   "dependencies": {
+    "@academy/aesop": "workspace:*",
     "@academy/api": "workspace:*",
     "tsx": "4.23.15",
     "yaml": "2.9.1"

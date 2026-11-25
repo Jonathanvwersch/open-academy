@@ -5,6 +5,7 @@ export const publicFeatureModules = {
     'features/exercises/hint-ladder.tsx',
     'features/lessons/lesson-block.tsx',
     'features/lessons/lesson-runner.tsx',
+    'features/quizzes/quiz-start.tsx',
     'features/sessions/session-activity-header.tsx',
     'features/sessions/start-session.ts',
     'features/progress/streak-card.tsx',
@@ -20,6 +21,7 @@ export const publicFeatureModules = {
   api: new Set([
     'features/course/service.ts',
     'features/papers/service.ts',
+    'features/quizzes/offer.ts',
     'features/tutor/provider.ts',
     'features/tutor/schemas.ts',
     'features/tutor/feedback-context.ts',
@@ -48,3 +50,19 @@ export const sourceEntries = {
 
 // The Vercel entry point is a deployment adapter, not a second application.
 export const deploymentImports = new Set(['apps/api/dist-vercel/server.mjs']);
+
+export const browserForbiddenPackages = new Set(['@academy/aesop']);
+
+export const sharedPackageDependencies = new Set(['zod', '@academy/contracts', '@academy/shared']);
+
+export const aesopDependencies = new Set([
+  '@academy/contracts',
+  'mathjs',
+  'ts-fsrs',
+  'yaml',
+  'zod',
+]);
+
+export const aesopBuiltins = new Set(['node:crypto', 'node:fs/promises', 'node:path']);
+
+export const cliDependencies = new Set(['@academy/api', '@academy/aesop', 'tsx', 'yaml']);

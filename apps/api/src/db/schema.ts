@@ -1,5 +1,7 @@
+import type { QuizQuestion } from '@academy/aesop/quizzes/mixed-quiz';
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   check,
@@ -35,6 +37,7 @@ export const activityKindEnum = pgEnum('activity_kind', [
   'reflect',
   'teachback',
   'diagnostic',
+  'mixed_quiz',
   'paper',
 ]);
 export const activityStatusEnum = pgEnum('activity_status', [
@@ -86,6 +89,7 @@ export const xpEventKindEnum = pgEnum('xp_event_kind', [
   'knowledge_point',
   'review',
   'quiz',
+  'mixed_quiz',
   'project',
 ]);
 
@@ -301,6 +305,56 @@ export const xpEvents = pgTable(
   ],
 );
 
+export const quizRuns = pgTable(
+  'quiz_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    activityId: uuid('activity_id').references(() => sessionActivities.id, {
+      onDelete: 'set null',
+    }),
+    retakeOf: uuid('retake_of').references((): AnyPgColumn => quizRuns.id, { onDelete: 'cascade' }),
+    seed: integer('seed').notNull(),
+    difficulty: integer('difficulty').notNull(),
+    plannedMinutes: integer('planned_minutes').notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true, mode: 'date' }).notNull(),
+    deadline: timestamp('deadline', { withTimezone: true, mode: 'date' }).notNull(),
+    finalizedAt: timestamp('finalized_at', { withTimezone: true, mode: 'date' }),
+    score: real('score'),
+    xpAwarded: integer('xp_awarded'),
+  },
+  (table) => [
+    uniqueIndex('quiz_runs_active_user_unique')
+      .on(table.userId)
+      .where(sql`${table.finalizedAt} is null`),
+    uniqueIndex('quiz_runs_retake_unique').on(table.retakeOf),
+    index('quiz_runs_user_started_idx').on(table.userId, table.startedAt),
+  ],
+);
+
+export const quizItems = pgTable(
+  'quiz_items',
+  {
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => quizRuns.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    conceptId: text('concept_id').notNull(),
+    question: jsonb('question').$type<QuizQuestion>().notNull(),
+    reserve: jsonb('reserve').$type<QuizQuestion>(),
+    answeredAt: timestamp('answered_at', { withTimezone: true, mode: 'date' }),
+    latencyMs: integer('latency_ms'),
+    correct: boolean('correct'),
+    followUp: boolean('follow_up').notNull().default(false),
+    followUpActivityId: uuid('follow_up_activity_id').references(() => sessionActivities.id, {
+      onDelete: 'set null',
+    }),
+  },
+  (table) => [primaryKey({ columns: [table.runId, table.position] })],
+);
+
 export const hintEvents = pgTable(
   'hint_events',
   {
@@ -380,6 +434,7 @@ export const reviewCards = pgTable(
     lastReviewAt: timestamp('last_review_at', { withTimezone: true, mode: 'date' }),
     reps: integer('reps').notNull().default(0),
     lapses: integer('lapses').notNull().default(0),
+    suspendedAt: timestamp('suspended_at', { withTimezone: true, mode: 'date' }),
   },
   (table) => [
     uniqueIndex('review_cards_user_concept_dimension_unique').on(
@@ -461,6 +516,47 @@ export const remediationFlags = pgTable(
     resolvedAt: timestamp('resolved_at', { withTimezone: true, mode: 'date' }),
   },
   (table) => [index('remediation_flags_user_status_idx').on(table.userId, table.status)],
+);
+
+export const placementGrants = pgTable(
+  'placement_grants',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => diagnosticRuns.id, { onDelete: 'cascade' }),
+    conceptId: text('concept_id').notNull(),
+    origin: text('origin').$type<'direct' | 'inferred'>().notNull(),
+    state: text('state').$type<'conditional' | 'confirmed' | 'withdrawn'>().notNull(),
+    reason: text('reason').notNull(),
+    evidenceAttemptIds: jsonb('evidence_attempt_ids').$type<string[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true, mode: 'date' }),
+    confirmedByAttemptId: uuid('confirmed_by_attempt_id').references(() => attempts.id, {
+      onDelete: 'set null',
+    }),
+    withdrawnAt: timestamp('withdrawn_at', { withTimezone: true, mode: 'date' }),
+    withdrawnByAttemptId: uuid('withdrawn_by_attempt_id').references(() => attempts.id, {
+      onDelete: 'set null',
+    }),
+  },
+  (table) => [
+    uniqueIndex('placement_grants_user_run_concept_unique').on(
+      table.userId,
+      table.runId,
+      table.conceptId,
+    ),
+    index('placement_grants_user_concept_idx').on(table.userId, table.conceptId),
+    check('placement_grants_origin_check', sql`${table.origin} in ('direct', 'inferred')`),
+    check(
+      'placement_grants_state_check',
+      sql`${table.state} in ('conditional', 'confirmed', 'withdrawn')`,
+    ),
+  ],
 );
 
 export const projectProgress = pgTable(

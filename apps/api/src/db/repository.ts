@@ -1,16 +1,22 @@
-import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
+import type { Dimension } from '@academy/aesop/course/schemas';
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { filterSchedulerStateForContent } from '@academy/aesop/graph/content-filters';
+import { courseHasEvidence } from '@academy/aesop/graph/course-start';
+import { retrievability, startOfNextCalendarDay } from '@academy/aesop/memory/fsrs';
+import type { MasteryRecord } from '@academy/aesop/memory/types';
+import { attemptedExerciseIdsByActivity as groupAttemptedExerciseIdsByActivity } from '@academy/aesop/planner/review-topics';
+import {
+  buildRemedialReviewActivityForConcept,
+  buildReviewActivityForConcept,
+  effectiveFocusSubjectId,
+  type SchedulerState,
+} from '@academy/aesop/planner/scheduler';
+import { localDateKey } from '@academy/aesop/progress/xp';
+import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, sql } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { z } from 'zod';
-import type { Dimension } from '../content/schemas.js';
-import type { ContentIndex } from '../content/types.js';
-import { courseHasEvidence } from '../learning/course-start.js';
-import { retrievability, startOfNextCalendarDay } from '../learning/fsrs.js';
-import { attemptedExerciseIdsByActivity as groupAttemptedExerciseIdsByActivity } from '../learning/review-topics.js';
-import { effectiveFocusSubjectId, type SchedulerState } from '../learning/scheduler.js';
-import type { MasteryRecord, MasteryState } from '../learning/types.js';
-import { initialMastery } from '../learning/types.js';
-import { localDateKey } from '../learning/xp.js';
 import type { Database } from './client.js';
+import { drizzleLearnerStore } from './learner-store.js';
 import {
   attempts,
   courseEnrollments,
@@ -39,6 +45,7 @@ export class LearnerRepository {
     readonly db: Database,
     readonly userId: string,
     private readonly requestUser?: typeof users.$inferSelect,
+    private readonly sessionContent?: { load: () => Promise<ContentIndex>; now: () => Date },
   ) {}
 
   user() {
@@ -133,74 +140,15 @@ export class LearnerRepository {
   }
 
   async masteryRecords(): Promise<MasteryRecord[]> {
-    const rows = await this.db
-      .select()
-      .from(mastery)
-      .where(eq(mastery.userId, this.userId))
-      .orderBy(asc(mastery.conceptId), asc(mastery.dimension));
-    return rows.map((row) => {
-      const evidence = row.evidence as Partial<MasteryRecord>;
-      return {
-        ...initialMastery(row.conceptId, row.dimension as Dimension),
-        state: row.state as MasteryState,
-        provisional: row.provisional,
-        inferred: row.inferred,
-        independentItemIds: evidence.independentItemIds ?? [],
-        independentDeterministicCount: evidence.independentDeterministicCount ?? 0,
-        lastIndependentCorrect: evidence.lastIndependentCorrect ?? false,
-        attempts: evidence.attempts ?? [],
-        lastAssessedAt: row.lastAssessedAt?.toISOString() ?? null,
-        lastIndependentAt: row.lastIndependentAt?.toISOString() ?? null,
-        firstIndependentAt: row.firstIndependentAt?.toISOString() ?? null,
-      };
-    });
+    return drizzleLearnerStore(this.db).listMastery(this.userId);
   }
 
   async masteryRecord(conceptId: string, dimension: Dimension): Promise<MasteryRecord | undefined> {
-    return (await this.masteryRecords()).find(
-      (record) => record.conceptId === conceptId && record.dimension === dimension,
-    );
+    return drizzleLearnerStore(this.db).getMastery(this.userId, conceptId, dimension);
   }
 
   async saveMastery(record: MasteryRecord): Promise<void> {
-    await this.db
-      .insert(mastery)
-      .values({
-        userId: this.userId,
-        conceptId: record.conceptId,
-        dimension: record.dimension,
-        state: record.state,
-        provisional: record.provisional,
-        inferred: record.inferred,
-        evidence: {
-          independentItemIds: record.independentItemIds,
-          independentDeterministicCount: record.independentDeterministicCount,
-          lastIndependentCorrect: record.lastIndependentCorrect,
-          attempts: record.attempts,
-        },
-        lastAssessedAt: record.lastAssessedAt ? new Date(record.lastAssessedAt) : null,
-        lastIndependentAt: record.lastIndependentAt ? new Date(record.lastIndependentAt) : null,
-        firstIndependentAt: record.firstIndependentAt ? new Date(record.firstIndependentAt) : null,
-      })
-      .onConflictDoUpdate({
-        target: [mastery.userId, mastery.conceptId, mastery.dimension],
-        set: {
-          state: record.state,
-          provisional: record.provisional,
-          inferred: record.inferred,
-          evidence: {
-            independentItemIds: record.independentItemIds,
-            independentDeterministicCount: record.independentDeterministicCount,
-            lastIndependentCorrect: record.lastIndependentCorrect,
-            attempts: record.attempts,
-          },
-          lastAssessedAt: record.lastAssessedAt ? new Date(record.lastAssessedAt) : null,
-          lastIndependentAt: record.lastIndependentAt ? new Date(record.lastIndependentAt) : null,
-          firstIndependentAt: record.firstIndependentAt
-            ? new Date(record.firstIndependentAt)
-            : null,
-        },
-      });
+    await drizzleLearnerStore(this.db).saveMastery(this.userId, record);
   }
 
   async schedulerState(
@@ -230,7 +178,7 @@ export class LearnerRepository {
       this.db
         .select()
         .from(reviewCards)
-        .where(eq(reviewCards.userId, this.userId))
+        .where(and(eq(reviewCards.userId, this.userId), isNull(reviewCards.suspendedAt)))
         .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id)),
       this.db
         .select()
@@ -301,6 +249,7 @@ export class LearnerRepository {
         .where(
           and(
             eq(reviewCards.userId, this.userId),
+            sql`coalesce(${reviewLogs.fsrsLog}->>'source', '') <> 'mixed_quiz'`,
             gte(reviewLogs.createdAt, new Date(now.getTime() - 36 * 60 * 60 * 1000)),
             lt(reviewLogs.createdAt, startOfNextCalendarDay(now, user?.timezone ?? 'UTC')),
           ),
@@ -521,7 +470,82 @@ export class LearnerRepository {
       .from(sessionActivities)
       .where(eq(sessionActivities.sessionId, sessionId))
       .orderBy(asc(sessionActivities.idx));
+    if (this.sessionContent && session.status === 'active') {
+      await this.recoverReviewActivities(
+        activities,
+        await this.sessionContent.load(),
+        this.sessionContent.now(),
+      );
+    }
     return { ...session, activities };
+  }
+
+  private async recoverReviewActivities(
+    activities: (typeof sessionActivities.$inferSelect)[],
+    content: ContentIndex,
+    now: Date,
+  ) {
+    let state: SchedulerState | undefined;
+    for (const activity of activities) {
+      if (
+        activity.kind !== 'review' ||
+        (activity.status !== 'planned' && activity.status !== 'in_progress')
+      )
+        continue;
+      const survivors = activity.exerciseIds.filter((id) => content.exercisesById.has(id));
+      if (survivors.length === activity.exerciseIds.length) continue;
+      const exerciseIds = survivors;
+      if (exerciseIds.length === 0) {
+        state ??= filterSchedulerStateForContent(content, await this.schedulerState(now, content));
+        const usedExerciseIds = activities
+          .filter((other) => other.id !== activity.id)
+          .flatMap((other) => other.exerciseIds);
+        const reservedTopics = new Set(
+          usedExerciseIds.map((id) => content.exercisesById.get(id)?.concept),
+        );
+        const topics = activity.conceptId
+          ? [activity.conceptId]
+          : [...new Set(state.cards.map((card) => card.conceptId))].filter(
+              (id) => !reservedTopics.has(id),
+            );
+        for (const topic of topics) {
+          const reselect = state.remediationFlags.some(
+            (flag) => flag.status !== 'resolved' && flag.targetPrereqId === topic,
+          )
+            ? buildRemedialReviewActivityForConcept
+            : buildReviewActivityForConcept;
+          const replacement = reselect(
+            { ...state, usedExerciseIds: [...usedExerciseIds, ...exerciseIds] },
+            content,
+            now,
+            topic,
+          );
+          if (replacement) exerciseIds.push(...replacement.exerciseIds);
+          if (exerciseIds.length >= activity.exerciseIds.length) break;
+        }
+      }
+      const [updated] = await this.db
+        .update(sessionActivities)
+        .set({
+          exerciseIds,
+          reason: { ...(activity.reason as object), removedQuestions: true },
+        })
+        .where(
+          and(
+            eq(sessionActivities.id, activity.id),
+            eq(sessionActivities.exerciseIds, activity.exerciseIds),
+          ),
+        )
+        .returning();
+      if (updated) Object.assign(activity, updated);
+      else {
+        const [current] = await this.db
+          .select()
+          .from(sessionActivities)
+          .where(eq(sessionActivities.id, activity.id));
+        if (current) Object.assign(activity, current);
+      }
+    }
   }
 
   async dueCards(now: Date, timezone: string) {
@@ -531,6 +555,7 @@ export class LearnerRepository {
       .where(
         and(
           eq(reviewCards.userId, this.userId),
+          isNull(reviewCards.suspendedAt),
           lt(reviewCards.dueAt, startOfNextCalendarDay(now, timezone)),
         ),
       )
