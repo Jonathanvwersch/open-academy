@@ -32,6 +32,8 @@ import {
   p18HasMissedPickup,
   p18PlanCoversTopic,
   p19HasEarlyReviewViolation,
+  p28ExpectedDue,
+  p28Speed,
   planUsageMinutes,
   renderMarkdownReport,
   requireP17ReviewMinutes,
@@ -78,7 +80,22 @@ const invariants: InvariantId[] = [
   'P25',
   'P26',
   'P27',
+  'P28',
 ];
+
+test('P28 independently computes the speed, local floor and cap', () => {
+  const start = new Date('2026-03-08T05:30:00.000Z');
+  expect(p28Speed({ successes: 0, trials: 2, answers: 2 })).toBe(1);
+  expect(p28Speed({ successes: 2.44, trials: 2.44, answers: 3 })).toBe(1.55);
+  expect(p28Speed({ successes: 0, trials: 2.44, answers: 3 })).toBe(0.5);
+  const raw = new Date('2026-03-09T05:30:00.000Z');
+  expect(p28ExpectedDue(raw, start, 'America/New_York', 0.5)).toBe(
+    Date.parse('2026-03-09T04:00:00.000Z'),
+  );
+  expect(p28ExpectedDue(new Date(+start + 55 * 86_400_000), start, 'UTC', 1.55)).toBe(
+    +start + 60 * 86_400_000,
+  );
+});
 
 test('P24 distinguishes a missed in-window opportunity from a legitimate late offer', () => {
   const check = {
@@ -1162,6 +1179,21 @@ test('two profiles produce byte-identical 15-day simulation reports from the sam
   };
   const first = await simulateLearners(db, content, options);
   const second = await simulateLearners(db, content, options);
+
+  for (const profile of first.profiles) {
+    expect(
+      profile.violationCounts.P28,
+      JSON.stringify(
+        profile.violations
+          .filter(({ invariant }) => invariant === 'P28')
+          .map(({ details }) => details),
+      ),
+    ).toBe(0);
+    expect(profile.p28.successfulReviewsChecked).toBeGreaterThan(0);
+  }
+  expect(first.profiles.some((profile) => profile.p28.topicsBelowOne > 0)).toBe(true);
+  expect(first.profiles.some((profile) => profile.p28.topicsAboveOne > 0)).toBe(true);
+  expect(first.profiles.some((profile) => profile.p28.slowTargetsGated > 0)).toBe(true);
 
   expect(JSON.stringify(stripWallClockFields(second))).toBe(
     JSON.stringify(stripWallClockFields(first)),

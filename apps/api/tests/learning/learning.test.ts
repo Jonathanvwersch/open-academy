@@ -1902,6 +1902,11 @@ test('a Good-credited lesson covers its due prerequisite, which is due again if 
   ];
 
   expect(dueTopicsCoveredBy('linear-models', state, schedulerContent, now)).toContain('vectors');
+  const slowState = { ...state, topicSpeeds: { vectors: 0.99 } };
+  expect(dueTopicsCoveredBy('linear-models', slowState, schedulerContent, now)).not.toContain(
+    'vectors',
+  );
+  expect(learnLookAheadScore('linear-models', slowState, schedulerContent, now)).toBe(0);
   const explanations = explainReviewSelection(state, schedulerContent, now, 60);
   expect(explanations).toContainEqual(
     expect.objectContaining({

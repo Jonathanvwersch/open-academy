@@ -49,6 +49,7 @@ import { createApp } from '../src/app.js';
 import type { Database } from '../src/db/client.js';
 import { LearnerRepository } from '../src/db/repository.js';
 import {
+  attempts,
   lessonQuizAttempts,
   lessonQuizItems,
   lessonRuns,
@@ -127,6 +128,7 @@ export type InvariantId =
   | 'P21'
   | 'P22'
   | 'P23'
+  | 'P28'
   | QuizInvariant;
 
 type QuizInvariant = 'P24' | 'P25' | 'P26' | 'P27';
@@ -142,6 +144,7 @@ type CheckedInvariantId =
   | 'P21'
   | 'P22'
   | 'P23'
+  | 'P28'
   | QuizInvariant;
 type CheckedInvariantCounts = Record<CheckedInvariantId, number>;
 
@@ -412,6 +415,13 @@ export interface ProfileSimulationReport {
   remediation: RemediationSimulationReport;
   p11CheckedEvents: number;
   p11AmbiguousEvents: number;
+  p28: {
+    successfulReviewsChecked: number;
+    positiveTargetsChecked: number;
+    slowTargetsGated: number;
+    topicsBelowOne: number;
+    topicsAboveOne: number;
+  };
   checkedCounts: CheckedInvariantCounts;
   totals: {
     lessonsPerDayMean: number;
@@ -526,6 +536,7 @@ interface ProfileRuntime {
   reviewActivityDimensionOrder: Map<string, Map<string, number>>;
   reviewActivityAttemptIndex: Map<string, number>;
   placement: PlacementAuditState;
+  p28Audit: P28Audit;
 }
 
 const graphRemovedConcepts = new Set([
@@ -563,6 +574,7 @@ const invariants: InvariantId[] = [
   'P25',
   'P26',
   'P27',
+  'P28',
 ];
 
 const checkedInvariantIds: CheckedInvariantId[] = [
@@ -581,6 +593,7 @@ const checkedInvariantIds: CheckedInvariantId[] = [
   'P25',
   'P26',
   'P27',
+  'P28',
 ];
 
 function object(value: unknown): Record<string, unknown> {
@@ -643,8 +656,12 @@ function dateAfter(localDate: string, days: number): string {
 }
 
 function localNoon(localDate: string, timeZone: string): Date {
+  return localTime(localDate, timeZone, 12);
+}
+
+function localTime(localDate: string, timeZone: string, hour: number): Date {
   const [year = 0, month = 1, day = 1] = localDate.split('-').map(Number);
-  const target = Date.UTC(year, month - 1, day, 12);
+  const target = Date.UTC(year, month - 1, day, hour);
   let timestamp = target;
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone,
@@ -749,7 +766,15 @@ class SimulatedApi {
   private app: ReturnType<typeof createApp>;
   private now: Date;
   /** Runs after every request, so audits can see the order of same-day events. */
-  afterCall: (() => Promise<void>) | undefined;
+  afterCall:
+    | ((
+        method: string,
+        path: string,
+        now: Date,
+        trace: readonly ImplicitRepetitionTraceEvent[],
+      ) => Promise<void>)
+    | undefined;
+  activityTrace: ((trace: readonly ImplicitRepetitionTraceEvent[]) => void) | undefined;
   private cookie: string | undefined;
   private readonly requestOrdinals = new Map<string, number>();
   readonly failedRequests: SimulatedApiFailure[] = [];
@@ -818,6 +843,8 @@ class SimulatedApi {
     });
     if (this.cookie) headers.set('cookie', this.cookie);
     if (body !== undefined) headers.set('content-type', 'application/json');
+    const trace: ImplicitRepetitionTraceEvent[] = [];
+    setImplicitRepetitionTrace((event) => trace.push(event));
     try {
       const response = await this.app.request(`http://academy.local/api${path}`, {
         method,
@@ -843,9 +870,11 @@ class SimulatedApi {
         this.failedRequests.push(failure);
         throw new SimulatedApiFailureError(failure);
       }
-      await this.afterCall?.();
+      await this.afterCall?.(method, path, now, trace);
+      this.activityTrace?.(trace);
       return { ok: response.ok, status: response.status, data };
     } finally {
+      setImplicitRepetitionTrace(undefined);
       Math.random = originalRandom;
     }
   }
@@ -1810,6 +1839,7 @@ function dueTopicsCoveredByForAudit(
             now,
             timeZone: cached.context.timezone,
             enableFuzz: false,
+            speed: state.topicSpeeds?.[dueConceptId],
           },
         );
         return update !== undefined && update.dueAt >= cached.context.nextLocalDay;
@@ -3569,7 +3599,10 @@ function p15CardIdentity(card: P15CardSnapshot): string {
   return `${card.conceptId}/${card.dimension ?? 'unknown'}`;
 }
 
-type P15TraceEvent = ImplicitRepetitionTraceEvent & { activityOrder: number | null };
+type P15TraceEvent = ImplicitRepetitionTraceEvent & {
+  activityOrder: number | null;
+  targetSpeed?: number;
+};
 
 interface P15PrerequisiteResetEvidence {
   sourceCardId: string;
@@ -3621,6 +3654,7 @@ export function auditP15Trace(
   reviewLogOrder: ReadonlyMap<string, number> = new Map(),
   prerequisiteResetContext?: P15PrerequisiteResetContext,
   withdrawnConceptIds: ReadonlySet<string> = new Set(),
+  speedByConcept: ReadonlyMap<string, number> = new Map(),
 ): {
   checked: number;
   violations: string[];
@@ -3689,7 +3723,14 @@ export function auditP15Trace(
 
     const result = implicitRepetition(
       { dueAt: event.before.dueAt, fsrs: event.before.fsrs },
-      { weight: event.weight, rating: event.rating, now, timeZone, enableFuzz: false },
+      {
+        weight: event.weight,
+        rating: event.rating,
+        now,
+        timeZone,
+        enableFuzz: false,
+        speed: event.targetSpeed ?? speedByConcept.get(target.conceptId),
+      },
     );
     const expectedAfter = result ?? event.before;
     if (
@@ -3717,7 +3758,14 @@ export function auditP15Trace(
       if (weight === undefined || weight <= 0) continue;
       const result = implicitRepetition(
         { dueAt: snapshot.dueAt, fsrs: snapshot.fsrs as Card },
-        { weight, rating: rating as Rating, now, timeZone, enableFuzz: false },
+        {
+          weight,
+          rating: rating as Rating,
+          now,
+          timeZone,
+          enableFuzz: false,
+          speed: speedByConcept.get(card.conceptId),
+        },
       );
       if (!result) continue;
       checked += 1;
@@ -3847,6 +3895,138 @@ async function activityWasSkipped(db: Database, activityId: string): Promise<boo
   return row?.status === 'skipped';
 }
 
+type P28Evidence = { successes: number; trials: number; answers: number };
+
+export function p28Speed(evidence: P28Evidence | undefined): number {
+  if (!evidence || evidence.answers <= 2) return 1;
+  const delta = (evidence.successes + 1.6) / (evidence.trials + 2) - 0.8;
+  const rounded = Math.round(100 * (1 + delta * (delta < 0 ? 5 / 3 : 5)));
+  return Math.min(200, Math.max(50, rounded)) / 100;
+}
+
+export function p28ExpectedDue(rawDue: Date, now: Date, timeZone: string, speed: number): number {
+  const midnight = localTime(dateAfter(localDate(now, timeZone), 1), timeZone, 0);
+  return Math.max(
+    midnight.getTime(),
+    Math.min(+now + 5_184_000_000, +now + speed * (+rawDue - +now)),
+  );
+}
+
+class P28Audit {
+  private readonly evidence = new Map<string, P28Evidence>();
+  private readonly attemptsSeen = new Set<string>();
+  private readonly logsSeen = new Set<string>();
+
+  speed(conceptId: string) {
+    return p28Speed(this.evidence.get(conceptId));
+  }
+
+  speeds() {
+    return new Map([...this.evidence.keys()].map((id) => [id, this.speed(id)]));
+  }
+
+  async audit(
+    db: Database,
+    runtime: ProfileRuntime,
+    userId: string,
+    now: Date,
+    timeZone: string,
+    day: number,
+    trace: readonly ImplicitRepetitionTraceEvent[],
+  ) {
+    const [newAttempts, logs] = await Promise.all([
+      db
+        .select({
+          id: attempts.id,
+          conceptId: attempts.conceptId,
+          correct: attempts.correct,
+          gradedBy: attempts.gradedBy,
+          hintsUsed: attempts.hintsUsed,
+          attemptNo: attempts.attemptNo,
+          answer: attempts.answer,
+        })
+        .from(attempts)
+        .leftJoin(lessonQuizItems, eq(lessonQuizItems.attemptId, attempts.id))
+        .where(and(eq(attempts.userId, userId), eq(attempts.createdAt, now)))
+        .orderBy(asc(lessonQuizItems.position), asc(attempts.conceptId), asc(attempts.id)),
+      db
+        .select({
+          id: reviewLogs.id,
+          rating: reviewLogs.rating,
+          speed: reviewLogs.speed,
+          rawDueAt: reviewLogs.rawDueAt,
+          fsrsLog: reviewLogs.fsrsLog,
+          cardDueAt: reviewCards.dueAt,
+          conceptId: reviewCards.conceptId,
+          dimension: reviewCards.dimension,
+        })
+        .from(reviewLogs)
+        .innerJoin(reviewCards, eq(reviewCards.id, reviewLogs.cardId))
+        .where(and(eq(reviewCards.userId, userId), eq(reviewLogs.createdAt, now)))
+        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension)),
+    ]);
+    for (const attempt of newAttempts) {
+      if (this.attemptsSeen.has(attempt.id)) continue;
+      this.attemptsSeen.add(attempt.id);
+      if (
+        attempt.gradedBy !== 'deterministic' ||
+        attempt.hintsUsed !== 0 ||
+        attempt.attemptNo !== 1 ||
+        attempt.answer == null ||
+        (typeof attempt.answer === 'string' && !attempt.answer.trim()) ||
+        (Array.isArray(attempt.answer) && attempt.answer.length === 0)
+      )
+        continue;
+      const previous = this.evidence.get(attempt.conceptId);
+      this.evidence.set(attempt.conceptId, {
+        successes: Math.fround((previous?.successes ?? 0) * 0.8 + Number(attempt.correct >= 1)),
+        trials: Math.fround((previous?.trials ?? 0) * 0.8 + 1),
+        answers: 1 + (previous?.answers ?? 0),
+      });
+    }
+    for (const log of logs) {
+      if (this.logsSeen.has(log.id)) continue;
+      this.logsSeen.add(log.id);
+      if (Number(log.rating) !== Rating.Good && Number(log.rating) !== Rating.Hard) continue;
+      runtime.report.p28.successfulReviewsChecked += 1;
+      markChecked(runtime, 'P28');
+      const speed = this.speed(log.conceptId);
+      const effective = Date.parse(text(object(log.fsrsLog).effectiveDueAt) ?? '');
+      const expected = log.rawDueAt ? p28ExpectedDue(log.rawDueAt, now, timeZone, speed) : NaN;
+      if (
+        log.speed == null ||
+        Math.abs(log.speed - speed) > 0.00001 ||
+        !Number.isFinite(effective) ||
+        !Number.isFinite(expected) ||
+        Math.abs(expected - effective) > 1000 ||
+        Math.abs(expected - +log.cardDueAt) > 1000
+      ) {
+        addViolation(runtime, day, 'P28', `${log.conceptId}/${log.dimension}`, [], {
+          conceptId: log.conceptId,
+          details: `P28(a) at ${now.toISOString()}: speed ${log.speed}, expected ${speed}; raw ${log.rawDueAt?.toISOString()}, effective ${effective}, card due ${+log.cardDueAt}, expected ${expected}`,
+        });
+      }
+    }
+    for (const event of trace) {
+      if (!event.targetConceptId || (event.rating !== Rating.Hard && event.rating !== Rating.Good))
+        continue;
+      runtime.report.p28.positiveTargetsChecked += 1;
+      markChecked(runtime, 'P28');
+      const speed = this.speed(event.targetConceptId);
+      if (speed >= 1) continue;
+      if (!event.applied && event.reason === 'target-speed-below-one') {
+        runtime.report.p28.slowTargetsGated += 1;
+      } else {
+        addViolation(runtime, day, 'P28', event.targetConceptId, [], {
+          conceptId: event.targetConceptId,
+          evidenceConceptIds: [event.sourceConceptId],
+          details: `P28(b) at ${now.toISOString()}: ${event.sourceConceptId} -> ${event.targetConceptId} has speed ${speed} (applied: ${event.applied}, reason: ${event.reason})`,
+        });
+      }
+    }
+  }
+}
+
 async function processActivityWithMetrics(
   api: SimulatedApi,
   db: Database,
@@ -3946,18 +4126,19 @@ async function processActivityWithMetrics(
     runtime.reviewActivityAttemptIndex.set(activity.id, 0);
     runtime.reviewActivityDimensionOrder.set(activity.id, new Map());
   }
-  setImplicitRepetitionTrace(
-    tracksCards
-      ? (event) =>
+  api.activityTrace = tracksCards
+    ? (trace) => {
+        for (const event of trace)
           implicitRepetitionTrace.push({
             ...event,
+            targetSpeed: runtime.p28Audit.speed(event.targetConceptId ?? ''),
             activityOrder:
               activity.kind === 'review'
                 ? Math.max(0, (runtime.reviewActivityAttemptIndex.get(activity.id) ?? 0) - 1)
                 : null,
-          })
-      : undefined,
-  );
+          });
+      }
+    : undefined;
   let result: Awaited<ReturnType<typeof processActivity>>;
   try {
     result = await processActivity(
@@ -3972,7 +4153,7 @@ async function processActivityWithMetrics(
       activity,
     );
   } finally {
-    setImplicitRepetitionTrace(undefined);
+    api.activityTrace = undefined;
   }
   if (runtime.activeBehaviors.B3PartialExplain) {
     const dayPlans = [...(runtime.planEvidenceByDay.get(day) ?? [])];
@@ -4151,6 +4332,7 @@ async function processActivityWithMetrics(
             .where(and(eq(placementGrants.userId, userId), eq(placementGrants.state, 'withdrawn')))
         ).map((grant) => grant.conceptId),
       ),
+      runtime.p28Audit.speeds(),
     );
     runtime.report.checkedCounts.P15 += p15.checked;
     runtime.violationEvidenceContext = {
@@ -5094,6 +5276,13 @@ async function simulateProfile(
     },
     p11CheckedEvents: 0,
     p11AmbiguousEvents: 0,
+    p28: {
+      successfulReviewsChecked: 0,
+      positiveTargetsChecked: 0,
+      slowTargetsGated: 0,
+      topicsBelowOne: 0,
+      topicsAboveOne: 0,
+    },
     checkedCounts: Object.fromEntries(
       checkedInvariantIds.map((id) => [id, 0]),
     ) as CheckedInvariantCounts,
@@ -5152,9 +5341,23 @@ async function simulateProfile(
     reviewActivityDimensionOrder: new Map(),
     reviewActivityAttemptIndex: new Map(),
     placement: emptyPlacementAuditState(),
+    p28Audit: new P28Audit(),
   };
-  api.afterCall = async () => {
-    if (api.userId) await recordLessonRunsAtWithdrawal(db, api.userId, runtime.placement);
+  let auditDay = 0;
+  api.afterCall = async (method, path, now, trace) => {
+    if (!api.userId) return;
+    await recordLessonRunsAtWithdrawal(db, api.userId, runtime.placement);
+    if (
+      trace.length > 0 ||
+      (method === 'POST' &&
+        (path === '/attempts' ||
+          /^\/sessions\/[^/]+\/activities\/[^/]+\/progress$/.test(path) ||
+          /^\/placement\/[^/]+\/answer$/.test(path) ||
+          /^\/lessons\/[^/]+\/(run\/answer|quiz\/submit)$/.test(path) ||
+          /^\/quizzes\/[^/]+\/finalize$/.test(path)))
+    ) {
+      await runtime.p28Audit.audit(db, runtime, api.userId, now, timeZone, auditDay, trace);
+    }
   };
   let activeContent = initialContent;
   let currentCourseId: string | undefined;
@@ -5188,6 +5391,7 @@ async function simulateProfile(
     const dayLimit =
       isScriptedScenarioProfile(profile) || profile === 'scenario-quizzes' ? 1 : options.days;
     for (let day = 1; day <= dayLimit; day += 1) {
+      auditDay = day;
       let now = localNoon(dateAfter(startDate, day - 1), timeZone);
       const currentCatalog = await fetchCourseCatalog(api, now);
       syncCourseSummaries(runtime, currentCatalog, day - 1);
@@ -5887,6 +6091,10 @@ async function simulateProfile(
       wrongPercent: runtime.answered === 0 ? 0 : (runtime.wrongAnswers / runtime.answered) * 100,
     };
     report.remediation = remediationReport(runtime, realContent);
+    for (const speed of runtime.p28Audit.speeds().values()) {
+      if (speed < 1) report.p28.topicsBelowOne += 1;
+      if (speed > 1) report.p28.topicsAboveOne += 1;
+    }
     report.violationCounts = getViolationCounts(report.violations);
     return report;
   } finally {
@@ -6023,6 +6231,10 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
       lines.push(`Graph-change content switched on day ${profile.graphChangeDay}.`);
     }
     const remediation = profile.remediation;
+    const speed = profile.p28;
+    lines.push(
+      `P28: ${speed.successfulReviewsChecked} successful reviews checked; ${speed.positiveTargetsChecked} positive FIRe targets checked; ${speed.slowTargetsGated} gated. Final learner-topic speeds: ${speed.topicsBelowOne} below 1, ${speed.topicsAboveOne} above 1.`,
+    );
     const flagList =
       remediation.flagsOpened
         .map((event) => `day ${event.day} ${event.conceptId} → ${event.prerequisiteId}`)

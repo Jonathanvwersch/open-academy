@@ -265,6 +265,7 @@ async function answerPlacement(deps: FeatureServices, request: FeatureRequest) {
     credit: result.credit,
     hintsUsed: 0,
     attemptNo: 1,
+    submitted: 'answer' in body.data,
     mode: 'diagnostic',
     gradedBy: result.graded_by ?? 'deterministic',
     now,

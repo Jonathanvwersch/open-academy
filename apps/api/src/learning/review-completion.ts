@@ -3,8 +3,12 @@ import {
   bringWeakestPrerequisiteCardDueNow,
   canBringPrerequisiteDueNow,
 } from '@academy/aesop/lessons/prerequisite-review';
-import { isDueToday, reviewActivityRating, scheduleReview } from '@academy/aesop/memory/fsrs';
-import { applyImplicitRepetitions } from '@academy/aesop/memory/mastery-service';
+import {
+  isDueToday,
+  reviewActivityRating,
+  scheduleReviewWithDetails,
+} from '@academy/aesop/memory/fsrs';
+import { applyImplicitRepetitions, getTopicSpeed } from '@academy/aesop/memory/mastery-service';
 import {
   adjustedMinutesForLearnerPace,
   buildReviewActivityForConcept,
@@ -117,12 +121,15 @@ export async function recordReviewRating(
                   .orderBy(desc(reviewLogs.createdAt))
                   .limit(1)
               : [];
-          const scheduled = scheduleReview(
+          const store = drizzleLearnerStore(db);
+          const speed = await getTopicSpeed(store, userId, card.conceptId);
+          const scheduled = scheduleReviewWithDetails(
             card.fsrs as never,
             now,
             rating,
             timeZone,
             process.env.NODE_ENV !== 'test',
+            speed,
           );
           await db
             .update(reviewCards)
@@ -138,7 +145,9 @@ export async function recordReviewRating(
             cardId: card.id,
             attemptId,
             rating: String(rating),
-            fsrsLog: scheduled.log,
+            fsrsLog: { ...scheduled.log, effectiveDueAt: scheduled.card.due },
+            speed,
+            rawDueAt: scheduled.rawDueAt,
             createdAt: now,
           });
           const conceptExerciseIds = activity.exerciseIds.filter(
@@ -161,7 +170,7 @@ export async function recordReviewRating(
           if (conceptReviewLogs.length === expectedReviewLogCount) {
             const ratings = conceptReviewLogs.map(({ rating }) => Number(rating));
             if (ratings.length > 0) {
-              await applyImplicitRepetitions(drizzleLearnerStore(db), {
+              await applyImplicitRepetitions(store, {
                 learnerId: userId,
                 conceptId: card.conceptId,
                 rating: Math.min(...ratings) as Rating,

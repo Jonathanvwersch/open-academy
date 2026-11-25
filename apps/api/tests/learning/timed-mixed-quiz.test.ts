@@ -7,6 +7,7 @@ import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
 import { LearnerRepository } from '../../src/db/repository.js';
 import {
+  attempts,
   diagnosticRuns,
   placementGrants,
   quizItems,
@@ -14,10 +15,15 @@ import {
   reviewCards,
   reviewLogs,
   sessionActivities,
+  topicSpeed,
   users,
 } from '../../src/db/schema.js';
 import { confirmedPlacementTopicIds } from '../../src/features/quizzes/confirmed-placement.js';
-import { finalizeQuiz, startQuizFollowUps } from '../../src/features/quizzes/service.js';
+import {
+  answerQuiz,
+  finalizeQuiz,
+  startQuizFollowUps,
+} from '../../src/features/quizzes/service.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const learners: string[] = [];
@@ -160,6 +166,7 @@ test.each([false, true])(
         answeredAt: startedAt,
         latencyMs: 1000,
         correct,
+        submission: { answer: 'submitted', correct: Number(correct), gradedBy: 'deterministic' },
       },
       { runId: run.id, position: 1, conceptId: 'derivatives', question: active },
     ]);
@@ -175,6 +182,12 @@ test.each([false, true])(
       now: () => now,
     };
 
+    const blank = await answerQuiz(deps, {
+      ...request,
+      body: { position: 1, answer: '' },
+      now: () => startedAt,
+    });
+    expect(blank.status).toBe(422);
     const finalized = await finalizeQuiz(deps, request);
     expect(finalized.status).toBe(200);
     expect(finalized.body).toMatchObject({ result: { score: correct ? 0.5 : 0 } });
@@ -187,6 +200,18 @@ test.each([false, true])(
       .from(reviewLogs)
       .where(inArray(reviewLogs.cardId, [suspendedCard.id, otherDimension.id, activeCard.id]));
     expect(logs).toEqual([{ cardId: activeCard.id }]);
+    expect(await finalizeQuiz(deps, request)).toEqual(finalized);
+    expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toEqual([
+      expect.objectContaining({ conceptId: 'vectors', correct: Number(correct) }),
+    ]);
+    expect(await db.select().from(topicSpeed).where(eq(topicSpeed.userId, userId))).toEqual([
+      expect.objectContaining({
+        conceptId: 'vectors',
+        answers: 1,
+        trials: 1,
+        successes: Number(correct),
+      }),
+    ]);
 
     const followUps = await startQuizFollowUps(deps, request);
     expect(followUps.status).toBe(201);

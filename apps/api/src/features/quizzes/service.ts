@@ -1,8 +1,9 @@
 import { serializeExercise } from '@academy/aesop/course/serialize';
 import type { ContentIndex } from '@academy/aesop/course/types';
 import { gradeExercise } from '@academy/aesop/lessons/grading/index';
-import { newReviewCard, scheduleReview } from '@academy/aesop/memory/fsrs';
-import { applyImplicitRepetitions } from '@academy/aesop/memory/mastery-service';
+import { newReviewCard, scheduleReviewWithDetails } from '@academy/aesop/memory/fsrs';
+import { calculateCredit } from '@academy/aesop/memory/mastery';
+import { applyImplicitRepetitions, getTopicSpeed } from '@academy/aesop/memory/mastery-service';
 import { buildReviewActivityForConcept } from '@academy/aesop/planner/scheduler';
 import { localDateKey } from '@academy/aesop/progress/xp';
 import {
@@ -18,6 +19,7 @@ import {
   quizXp,
 } from '@academy/aesop/quizzes/mixed-quiz';
 import type { LearnerStore } from '@academy/aesop/store/learner-store';
+import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
@@ -25,6 +27,7 @@ import type { Database } from '../../db/client.js';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { LearnerRepository } from '../../db/repository.js';
 import {
+  attempts,
   quizItems,
   quizRuns,
   sessionActivities,
@@ -245,6 +248,8 @@ export async function answerQuiz(deps: FeatureServices, request: FeatureRequest)
     if (!current || current.position !== body.data.position) {
       return serviceResult({ error: 'This is not the current quiz question' }, 409);
     }
+    const emptyMessage = emptyAnswerMessage(current.question.exercise.type, body.data.answer);
+    if (emptyMessage) return serviceResult({ error: emptyMessage }, 422);
     const grade = await gradeExercise(current.question.exercise, body.data.answer);
     if (grade.status !== 'graded') return serviceResult({ error: grade.feedback }, 422);
     const shownAt = items[current.position - 1]?.answeredAt ?? run.startedAt;
@@ -254,6 +259,11 @@ export async function answerQuiz(deps: FeatureServices, request: FeatureRequest)
         answeredAt: now,
         latencyMs: Math.max(0, now.getTime() - shownAt.getTime()),
         correct: grade.correct >= 1,
+        submission: {
+          answer: body.data.answer,
+          correct: grade.correct,
+          gradedBy: grade.graded_by ?? 'deterministic',
+        },
       })
       .where(and(eq(quizItems.runId, run.id), eq(quizItems.position, current.position)));
     return serviceResult(await quizPayload(repo, run, content, now));
@@ -265,18 +275,21 @@ async function applyQuizReview(
   learnerId: string,
   exercise: QuizQuestion['exercise'],
   outcome: ReturnType<typeof quizItemOutcome>,
+  attemptId: string | undefined,
   now: Date,
   timeZone: string,
 ) {
+  const speed = await getTopicSpeed(store, learnerId, exercise.concept);
   return store.recordReview(learnerId, exercise.concept, exercise.dimension, (current) => {
-    const scheduled = scheduleReview(
+    const scheduled = scheduleReviewWithDetails(
       current?.fsrs ?? newReviewCard(now),
       now,
       outcome.rating,
       timeZone,
       fsrsFuzzEnabled(),
+      speed,
     );
-    const dueAt = outcome.followUp ? now : scheduled.card.due;
+    const dueAt = outcome.rating === Rating.Again ? now : scheduled.card.due;
     return {
       card: {
         fsrs: { ...scheduled.card, due: dueAt },
@@ -287,7 +300,10 @@ async function applyQuizReview(
       },
       log: {
         rating: outcome.rating,
-        fsrsLog: { ...scheduled.log, source: 'mixed_quiz' },
+        fsrsLog: { ...scheduled.log, source: 'mixed_quiz', effectiveDueAt: dueAt },
+        attemptId,
+        speed,
+        rawDueAt: scheduled.rawDueAt,
         createdAt: now,
       },
     };
@@ -313,6 +329,34 @@ export async function finalizeQuiz(deps: FeatureServices, request: FeatureReques
       ),
     );
     const store = drizzleLearnerStore(repo.db, { activeReviewCardsOnly: true });
+    const attemptIds = new Map<number, string>();
+    for (const item of items) {
+      if (!item.answeredAt || !item.submission) continue;
+      const { exercise } = item.question;
+      const { answer, correct, gradedBy } = item.submission;
+      const [attempt] = await repo.db
+        .insert(attempts)
+        .values({
+          userId: repo.userId,
+          activityId: run.activityId,
+          exerciseId: exercise.id,
+          exerciseVersion: exercise.contentVersion,
+          conceptId: item.conceptId,
+          dimension: exercise.dimension,
+          mode: 'assessment',
+          answer,
+          correct,
+          credit: calculateCredit({ correct, gradedBy, hintsUsed: 0, attemptNo: 1 }),
+          gradedBy,
+          durationMs: item.latencyMs,
+          createdAt: now,
+        })
+        .returning({ id: attempts.id });
+      attemptIds.set(item.position, attempt.id);
+      if (gradedBy === 'deterministic') {
+        await store.addTopicSpeedAnswer(repo.userId, item.conceptId, correct >= 1, now);
+      }
+    }
     for (const [i, item] of items.entries()) {
       const outcome = outcomes[i];
       await repo.db
@@ -324,6 +368,7 @@ export async function finalizeQuiz(deps: FeatureServices, request: FeatureReques
         repo.userId,
         item.question.exercise,
         outcome,
+        attemptIds.get(item.position),
         now,
         request.timeZone,
       );

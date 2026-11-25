@@ -1,5 +1,6 @@
 import type { Card, Rating, ReviewLog } from 'ts-fsrs';
 import type { Dimension } from '../course/schemas.js';
+import type { TopicSpeedEvidence } from '../memory/speed.js';
 import type { MasteryRecord, MasteryState } from '../memory/types.js';
 
 export interface StoredReviewCard {
@@ -25,8 +26,11 @@ export interface NewReviewCard {
 
 export interface ReviewLogRecord {
   rating: Rating;
-  fsrsLog: ReviewLog & { source?: string };
+  fsrsLog: ReviewLog & { source?: string; effectiveDueAt?: Date };
+  attemptId?: string;
   createdAt: Date;
+  speed?: number;
+  rawDueAt?: Date;
 }
 
 export interface MasteryEventRecord {
@@ -56,6 +60,17 @@ export interface LearnerStore {
   /** Upsert on (learnerId, conceptId, dimension). */
   saveMastery(learnerId: string, record: MasteryRecord): Promise<void>;
   addMasteryEvent(learnerId: string, event: MasteryEventRecord): Promise<void>;
+  listTopicSpeedEvidence(
+    learnerId: string,
+    conceptIds?: readonly string[],
+  ): Promise<TopicSpeedEvidence[]>;
+  saveTopicSpeedEvidence(learnerId: string, record: TopicSpeedEvidence): Promise<void>;
+  addTopicSpeedAnswer(
+    learnerId: string,
+    conceptId: string,
+    correct: boolean,
+    now: Date,
+  ): Promise<void>;
   /** All cards, or only cards whose conceptId is in conceptIds. Sorted by conceptId, dimension, id. */
   listReviewCards(learnerId: string, conceptIds?: readonly string[]): Promise<StoredReviewCard[]>;
   getReviewCard(

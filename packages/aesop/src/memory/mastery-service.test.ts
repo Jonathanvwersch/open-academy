@@ -59,6 +59,32 @@ function insertCard(
 describe('applyImplicitRepetitions', () => {
   afterEach(() => setImplicitRepetitionTrace(undefined));
 
+  it('traces a slow ancestor without applying positive credit', async () => {
+    const store = memoryStore();
+    const card = await insertCard(store, 'base', now);
+    for (let i = 0; i < 3; i++) await store.addTopicSpeedAnswer(learnerId, 'base', false, now);
+    const trace = vi.fn();
+    setImplicitRepetitionTrace(trace);
+    await applyImplicitRepetitions(store, {
+      learnerId,
+      conceptId: 'advanced',
+      index,
+      now,
+      rating: Rating.Hard,
+      timeZone,
+      enableFuzz,
+    });
+    expect(await store.getReviewCard(learnerId, 'base', 'math')).toEqual(card);
+    expect(trace).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        targetCardId: card.id,
+        targetConceptId: 'base',
+        applied: false,
+        reason: 'target-speed-below-one',
+      }),
+    );
+  });
+
   it('moves an ancestor card later by the FIRe success weight', async () => {
     const store = memoryStore();
     const card = await insertCard(store, 'base', now);
@@ -193,6 +219,7 @@ it('writes the mastery event and creates the review card only once', async () =>
     credit: 1,
     hintsUsed: 0,
     attemptNo: 1,
+    submitted: true,
     mode: 'practice',
     gradedBy: 'deterministic',
     now,
@@ -217,4 +244,26 @@ it('writes the mastery event and creates the review card only once', async () =>
   expect(await store.listReviewCards(learnerId)).toEqual(cards);
   expect(insertReviewCard).toHaveBeenCalledTimes(1);
   expect(addMasteryEvent).toHaveBeenCalledTimes(1);
+  for (const [i, overrides] of [
+    { submitted: false },
+    { gradedBy: 'llm' },
+    { gradedBy: 'self' },
+    { hintsUsed: 1 },
+    { attemptNo: 2 },
+    { correct: 0.5, exercise: { ...exercise, dimension: 'conceptual' } },
+  ].entries()) {
+    await applyMastery(store, {
+      ...input,
+      ...(overrides as Partial<Parameters<typeof applyMastery>[1]>),
+      attemptId: `other-${i}`,
+    });
+  }
+  expect(await store.listTopicSpeedEvidence(learnerId)).toEqual([
+    expect.objectContaining({
+      conceptId: 'base',
+      answers: 3,
+      successes: expect.closeTo(1.44),
+      trials: expect.closeTo(2.44),
+    }),
+  ]);
 });

@@ -2,6 +2,10 @@ import type { Card } from 'ts-fsrs';
 import { Rating, State } from 'ts-fsrs';
 import { scheduleReview } from './fsrs.js';
 
+export function positiveCreditBlocked(rating: Rating, speed: number): boolean {
+  return (rating === Rating.Good || rating === Rating.Hard) && speed < 1;
+}
+
 export function implicitRepetition(
   card: { fsrs: Card; dueAt: Date },
   input: {
@@ -10,8 +14,10 @@ export function implicitRepetition(
     now: Date;
     timeZone: string;
     enableFuzz: boolean;
+    speed?: number;
   },
 ): { fsrs: Card; dueAt: Date } | undefined {
+  if (positiveCreditBlocked(input.rating, input.speed ?? 1)) return undefined;
   const rawLastReviewAt: unknown = card.fsrs.last_review;
   const lastReviewAt =
     rawLastReviewAt instanceof Date
@@ -35,6 +41,7 @@ export function implicitRepetition(
     input.rating,
     input.timeZone,
     input.enableFuzz,
+    input.speed,
   ).card;
   const isPassed = input.rating === Rating.Good || input.rating === Rating.Hard;
   if (isPassed ? full.due <= card.dueAt : full.due >= card.dueAt) return undefined;

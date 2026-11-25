@@ -31,6 +31,7 @@ export function describeLearnerStoreContract(name: string, makeStore: () => Prom
     it('returns empty lists and undefined getters for a new learner', async () => {
       const { store, learnerId } = await makeStore();
       expect(await store.listMastery(learnerId)).toEqual([]);
+      expect(await store.listTopicSpeedEvidence(learnerId)).toEqual([]);
       expect(await store.getMastery(learnerId, 'vectors', 'math')).toBeUndefined();
       expect(await store.listReviewCards(learnerId)).toEqual([]);
       expect(await store.getReviewCard(learnerId, 'vectors', 'math')).toBeUndefined();
@@ -101,6 +102,35 @@ export function describeLearnerStoreContract(name: string, makeStore: () => Prom
       });
       expect(await store.getReviewCard(learnerId, 'vectors', 'math')).toEqual(inserted);
       await expect(store.insertReviewCard(learnerId, card)).rejects.toThrow();
+    });
+
+    it('upserts, sorts, filters and deep copies topic speed evidence', async () => {
+      const { store, learnerId } = await makeStore();
+      const vectors = {
+        conceptId: 'vectors',
+        successes: 1.5,
+        trials: 2.5,
+        answers: 3,
+        updatedAt: new Date(date),
+        policyVersion: 'speed-v1',
+      };
+      const algebra = { ...vectors, conceptId: 'algebra', updatedAt: new Date(date) };
+      await store.saveTopicSpeedEvidence(learnerId, vectors);
+      await store.saveTopicSpeedEvidence(learnerId, algebra);
+      vectors.updatedAt.setUTCDate(1);
+      const ordered = await store.listTopicSpeedEvidence(learnerId, ['vectors', 'algebra']);
+      expect(ordered).toEqual([algebra, { ...vectors, updatedAt: date }]);
+      ordered[0].updatedAt.setUTCDate(2);
+      ordered[0].successes = 0;
+      expect(await store.listTopicSpeedEvidence(learnerId, ['algebra'])).toEqual([algebra]);
+      expect(await store.listTopicSpeedEvidence(learnerId, [])).toEqual([]);
+      const updated = { ...algebra, conceptId: 'vectors', successes: 2, answers: 4 };
+      await store.saveTopicSpeedEvidence(learnerId, updated);
+      expect(await store.listTopicSpeedEvidence(learnerId)).toEqual([algebra, updated]);
+      await store.addTopicSpeedAnswer(learnerId, 'vectors', true, date);
+      expect(await store.listTopicSpeedEvidence(learnerId, ['vectors'])).toEqual([
+        { ...updated, successes: expect.closeTo(2.6), trials: 3, answers: 5 },
+      ]);
     });
 
     it('orders all and filtered review cards by concept and dimension', async () => {
@@ -211,10 +241,12 @@ export function describeLearnerStoreContract(name: string, makeStore: () => Prom
       const { store, learnerId, addOpenFlag } = await makeStore();
       const other = '00000000-0000-4000-8000-000000000002';
       await store.saveMastery(learnerId, initialMastery('vectors', 'math'));
+      await store.addTopicSpeedAnswer(learnerId, 'vectors', true, date);
       const card = await store.insertReviewCard(learnerId, cardFor('vectors'));
       await addOpenFlag('vectors', null);
 
       expect(await store.listMastery(other)).toEqual([]);
+      expect(await store.listTopicSpeedEvidence(other)).toEqual([]);
       expect(await store.getMastery(other, 'vectors', 'math')).toBeUndefined();
       expect(await store.listReviewCards(other)).toEqual([]);
       expect(await store.getReviewCard(other, 'vectors', 'math')).toBeUndefined();
