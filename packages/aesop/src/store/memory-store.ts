@@ -1028,7 +1028,7 @@ function scopedStore(
         cards,
         topicSpeeds: await this.listTopicSpeedEvidence(learnerId),
         recentAttempts: await this.listAttempts(learnerId, { order: 'scheduler', limit: 100 }),
-        flags: [...(state?.flags.values() ?? [])].sort(
+        flags: matchingFlags(learnerId, { status: 'open' }).sort(
           (left, right) =>
             compare(left.conceptId, right.conceptId) ||
             (left.targetPrereqId === null
