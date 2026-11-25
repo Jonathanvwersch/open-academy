@@ -10,6 +10,7 @@ import {
 } from '@academy/aesop/lessons/prerequisite-review';
 import { isDueToday, reviewActivityRating, scheduleReview } from '@academy/aesop/memory/fsrs';
 import { calculateCredit } from '@academy/aesop/memory/mastery';
+import { applyImplicitRepetitions, applyMastery } from '@academy/aesop/memory/mastery-service';
 import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
 import type { MasteryRecord } from '@academy/aesop/memory/types';
 import {
@@ -24,6 +25,7 @@ import { and, asc, desc, eq, gt, inArray } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
+import { drizzleLearnerStore } from '../../db/learner-store.js';
 import {
   attempts,
   remediationFlags,
@@ -32,7 +34,7 @@ import {
   sessionActivities,
 } from '../../db/schema.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
-import { applyImplicitRepetitions, applyMastery } from '../../learning/mastery-service.js';
+import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import {
   formatGraderFeedback,
@@ -483,9 +485,8 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     durationMs: body.data.durationMs,
     createdAt: now,
   });
-  const masteryResult = await applyMastery({
-    repo,
-    userId: request.userId,
+  const masteryResult = await applyMastery(drizzleLearnerStore(repo.db), {
+    learnerId: request.userId,
     exercise,
     attemptId,
     correct: result.correct,
@@ -497,6 +498,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     followUp,
     now,
     timeZone: request.timeZone,
+    enableFuzz: fsrsFuzzEnabled(),
   });
   if (body.data.mode === 'review' && !followUp) {
     const implicitCreditAppliedConceptIds = new Set<string>();
@@ -616,13 +618,14 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
             ) {
               const ratings = conceptReviewLogs.map(({ rating }) => Number(rating));
               if (ratings.length > 0) {
-                await applyImplicitRepetitions(db, {
-                  userId: request.userId,
+                await applyImplicitRepetitions(drizzleLearnerStore(db), {
+                  learnerId: request.userId,
                   conceptId: card.conceptId,
                   rating: Math.min(...ratings) as Rating,
                   index,
                   now,
                   timeZone: request.timeZone,
+                  enableFuzz: fsrsFuzzEnabled(),
                 });
                 implicitCreditAppliedConceptIds.add(card.conceptId);
               }

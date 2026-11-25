@@ -21,6 +21,10 @@ import {
   startOfNextCalendarDay,
 } from '@academy/aesop/memory/fsrs';
 import { implicitRepetition } from '@academy/aesop/memory/implicit-repetition';
+import {
+  type ImplicitRepetitionTraceEvent,
+  setImplicitRepetitionTrace,
+} from '@academy/aesop/memory/mastery-service';
 import { initialMastery, type MasteryState } from '@academy/aesop/memory/types';
 import {
   adjustedMinutesForLearnerPace,
@@ -53,10 +57,6 @@ import {
   sessionActivities,
   users,
 } from '../src/db/schema.js';
-import {
-  type ImplicitRepetitionTraceEvent,
-  setImplicitRepetitionTrace,
-} from '../src/learning/mastery-service.js';
 import { answerFor, exerciseFor, wrongAnswerFor } from './learner-simulation-support.js';
 
 export const simulationProfiles = [

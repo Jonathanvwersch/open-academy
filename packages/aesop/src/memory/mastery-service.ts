@@ -1,19 +1,12 @@
-import type { Dimension } from '@academy/aesop/course/schemas';
-import type { ContentIndex, IndexedExercise } from '@academy/aesop/course/types';
-import { buildEncompassingIndex } from '@academy/aesop/graph/encompassing';
-import { mapReviewRating, newReviewCard, scheduleInitialReview } from '@academy/aesop/memory/fsrs';
-import { implicitRepetition } from '@academy/aesop/memory/implicit-repetition';
-import { DefaultMasteryModel } from '@academy/aesop/memory/mastery';
-import type { LearningMode } from '@academy/aesop/memory/types';
-import { masteryRank } from '@academy/aesop/memory/types';
-import { and, asc, eq, inArray } from 'drizzle-orm';
-import type { Card } from 'ts-fsrs';
-import { Rating } from 'ts-fsrs';
-import type { Database } from '../db/client.js';
-import type { LearnerRepository } from '../db/repository.js';
-import { masteryEvents, reviewCards } from '../db/schema.js';
-
-type ReviewCardDatabase = Pick<Database, 'select' | 'update'>;
+import { type Card, Rating } from 'ts-fsrs';
+import type { Dimension } from '../course/schemas.js';
+import type { ContentIndex, IndexedExercise } from '../course/types.js';
+import { buildEncompassingIndex } from '../graph/encompassing.js';
+import type { LearnerStore } from '../store/learner-store.js';
+import { mapReviewRating, newReviewCard, scheduleInitialReview } from './fsrs.js';
+import { implicitRepetition } from './implicit-repetition.js';
+import { DefaultMasteryModel } from './mastery.js';
+import { type LearningMode, masteryRank } from './types.js';
 
 export type ImplicitRepetitionTraceEvent = {
   sourceConceptId: string;
@@ -34,14 +27,15 @@ export function setImplicitRepetitionTrace(
 }
 
 export async function applyImplicitRepetitions(
-  db: ReviewCardDatabase,
+  store: LearnerStore,
   input: {
-    userId: string;
+    learnerId: string;
     conceptId: string;
     rating: Rating;
     index: ContentIndex;
     now: Date;
     timeZone: string;
+    enableFuzz: boolean;
   },
 ) {
   const encompassing = buildEncompassingIndex(input.index);
@@ -51,30 +45,16 @@ export async function applyImplicitRepetitions(
       : encompassing.ancestors(input.conceptId);
   if (targets.size === 0) return;
 
-  const cards = await db
-    .select({
-      id: reviewCards.id,
-      conceptId: reviewCards.conceptId,
-      dueAt: reviewCards.dueAt,
-      fsrs: reviewCards.fsrs,
-    })
-    .from(reviewCards)
-    .where(
-      and(
-        eq(reviewCards.userId, input.userId),
-        inArray(reviewCards.conceptId, [...targets.keys()]),
-      ),
-    )
-    .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id));
+  const cards = await store.listReviewCards(input.learnerId, [...targets.keys()]);
   for (const card of cards) {
-    const before = { fsrs: card.fsrs as Card, dueAt: card.dueAt };
+    const before = { fsrs: card.fsrs, dueAt: card.dueAt };
     const weight = targets.get(card.conceptId) ?? 0;
     const result = implicitRepetition(before, {
       weight,
       rating: input.rating,
       now: input.now,
       timeZone: input.timeZone,
-      enableFuzz: process.env.NODE_ENV !== 'test',
+      enableFuzz: input.enableFuzz,
     });
     const after = result ?? before;
     implicitRepetitionTrace?.({
@@ -97,34 +77,35 @@ export async function applyImplicitRepetitions(
       applied: result !== undefined,
     });
     if (!result) continue;
-    await db
-      .update(reviewCards)
-      .set({
-        fsrs: result.fsrs,
-        dueAt: result.dueAt,
-      })
-      .where(and(eq(reviewCards.id, card.id), eq(reviewCards.dueAt, card.dueAt)));
+    await store.updateReviewCardIfDue(input.learnerId, card.id, card.dueAt, result);
   }
 }
 
-export async function applyMastery(input: {
-  repo: LearnerRepository;
-  userId: string;
-  exercise: IndexedExercise;
-  attemptId: string;
-  correct: number;
-  credit: number;
-  hintsUsed: number;
-  attemptNo: number;
-  mode: LearningMode;
-  gradedBy: 'deterministic' | 'llm' | 'self';
-  followUp?: boolean;
-  createReviewCard?: boolean;
-  now: Date;
-  timeZone: string;
-}) {
-  const previous = await input.repo.masteryRecord(input.exercise.concept, input.exercise.dimension);
-  const open = await input.repo.openFlags();
+export async function applyMastery(
+  store: LearnerStore,
+  input: {
+    learnerId: string;
+    exercise: IndexedExercise;
+    attemptId: string;
+    correct: number;
+    credit: number;
+    hintsUsed: number;
+    attemptNo: number;
+    mode: LearningMode;
+    gradedBy: 'deterministic' | 'llm' | 'self';
+    followUp?: boolean;
+    createReviewCard?: boolean;
+    now: Date;
+    timeZone: string;
+    enableFuzz: boolean;
+  },
+) {
+  const previous = await store.getMastery(
+    input.learnerId,
+    input.exercise.concept,
+    input.exercise.dimension,
+  );
+  const open = await store.listOpenRemediationFlags(input.learnerId);
   const model = new DefaultMasteryModel();
   const result = model.applyAttempt(
     previous,
@@ -144,16 +125,15 @@ export async function applyMastery(input: {
     input.now,
     { remediationOpen: open.some((flag) => flag.conceptId === input.exercise.concept) },
   );
-  await input.repo.saveMastery(result.mastery);
+  await store.saveMastery(input.learnerId, result.mastery);
   if (result.event) {
-    await input.repo.db.insert(masteryEvents).values({
-      userId: input.userId,
+    await store.addMasteryEvent(input.learnerId, {
       conceptId: result.event.conceptId,
       dimension: result.event.dimension,
       fromState: result.event.fromState,
       toState: result.event.toState,
       rule: result.event.rule,
-      attemptId: result.event.attemptId,
+      attemptId: result.event.attemptId ?? null,
       createdAt: input.now,
     });
   }
@@ -161,9 +141,8 @@ export async function applyMastery(input: {
     input.createReviewCard !== false &&
     masteryRank(result.mastery.state) >= masteryRank('assisted')
   ) {
-    await ensureReviewCard({
-      repo: input.repo,
-      userId: input.userId,
+    await ensureReviewCard(store, {
+      learnerId: input.learnerId,
       conceptId: input.exercise.concept,
       dimension: input.exercise.dimension,
       correct: input.correct,
@@ -171,34 +150,28 @@ export async function applyMastery(input: {
       attemptNo: input.attemptNo,
       now: input.now,
       timeZone: input.timeZone,
+      enableFuzz: input.enableFuzz,
     });
   }
   return { mastery: result.mastery, event: result.event, credit: result.credit };
 }
 
-export async function ensureReviewCard(input: {
-  repo: LearnerRepository;
-  userId: string;
-  conceptId: string;
-  dimension: Dimension;
-  correct: number;
-  hintsUsed: number;
-  attemptNo: number;
-  now: Date;
-  timeZone: string;
-}) {
-  const existingCard = await input.repo.db
-    .select()
-    .from(reviewCards)
-    .where(
-      and(
-        eq(reviewCards.userId, input.userId),
-        eq(reviewCards.conceptId, input.conceptId),
-        eq(reviewCards.dimension, input.dimension),
-      ),
-    )
-    .limit(1);
-  if (existingCard[0]) return;
+export async function ensureReviewCard(
+  store: LearnerStore,
+  input: {
+    learnerId: string;
+    conceptId: string;
+    dimension: Dimension;
+    correct: number;
+    hintsUsed: number;
+    attemptNo: number;
+    now: Date;
+    timeZone: string;
+    enableFuzz: boolean;
+  },
+) {
+  const existingCard = await store.getReviewCard(input.learnerId, input.conceptId, input.dimension);
+  if (existingCard) return;
 
   const card = newReviewCard(input.now);
   const rating = mapReviewRating({
@@ -211,10 +184,9 @@ export async function ensureReviewCard(input: {
     input.now,
     rating,
     input.timeZone,
-    process.env.NODE_ENV !== 'test',
+    input.enableFuzz,
   );
-  await input.repo.db.insert(reviewCards).values({
-    userId: input.userId,
+  await store.insertReviewCard(input.learnerId, {
     conceptId: input.conceptId,
     dimension: input.dimension,
     fsrs: scheduled.card,

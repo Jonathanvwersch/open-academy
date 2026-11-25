@@ -9,6 +9,11 @@ import {
   scheduleReview,
 } from '@academy/aesop/memory/fsrs';
 import { calculateCredit } from '@academy/aesop/memory/mastery';
+import {
+  applyImplicitRepetitions,
+  type ImplicitRepetitionTraceEvent,
+  setImplicitRepetitionTrace,
+} from '@academy/aesop/memory/mastery-service';
 import { dueTopicsCoveredBy, type SchedulerState } from '@academy/aesop/planner/scheduler';
 import { and, asc, eq } from 'drizzle-orm';
 import { type Card, Rating, State } from 'ts-fsrs';
@@ -17,6 +22,7 @@ import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
+import { drizzleLearnerStore } from '../../src/db/learner-store.js';
 import { LearnerRepository } from '../../src/db/repository.js';
 import {
   attempts,
@@ -35,11 +41,7 @@ import {
   xpEvents,
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
-import {
-  applyImplicitRepetitions,
-  type ImplicitRepetitionTraceEvent,
-  setImplicitRepetitionTrace,
-} from '../../src/learning/mastery-service.js';
+import { fsrsFuzzEnabled } from '../../src/learning/fsrs-fuzz.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000001';
@@ -3309,7 +3311,7 @@ test('concurrent implicit credits do not overwrite a newer target-card update', 
             return result;
           };
         }
-        if (kind === 'write' && property === 'where') {
+        if (kind === 'write' && property === 'returning') {
           return async (...args: unknown[]) => {
             const order = ++updateCount;
             if (order === 2) await firstUpdate;
@@ -3320,7 +3322,7 @@ test('concurrent implicit credits do not overwrite a newer target-card update', 
         }
         if (
           (kind === 'read' && (property === 'from' || property === 'where')) ||
-          (kind === 'write' && property === 'set')
+          (kind === 'write' && (property === 'set' || property === 'where'))
         ) {
           return (...args: unknown[]) => wrapQuery(Reflect.apply(method, target, args), kind);
         }
@@ -3341,21 +3343,23 @@ test('concurrent implicit credits do not overwrite a newer target-card update', 
   setImplicitRepetitionTrace((event) => events.push(event));
   try {
     await Promise.all([
-      applyImplicitRepetitions(racedDb, {
-        userId,
+      applyImplicitRepetitions(drizzleLearnerStore(racedDb), {
+        learnerId: userId,
         conceptId: 'linear-models',
         rating: Rating.Good,
         index,
         now: new Date(now),
         timeZone: 'UTC',
+        enableFuzz: fsrsFuzzEnabled(),
       }),
-      applyImplicitRepetitions(racedDb, {
-        userId,
+      applyImplicitRepetitions(drizzleLearnerStore(racedDb), {
+        learnerId: userId,
         conceptId: 'supervised-learning',
         rating: Rating.Good,
         index,
         now: new Date(now),
         timeZone: 'UTC',
+        enableFuzz: fsrsFuzzEnabled(),
       }),
     ]);
   } finally {

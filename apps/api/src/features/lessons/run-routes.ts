@@ -29,12 +29,14 @@ import {
   startOfNextCalendarDay,
 } from '@academy/aesop/memory/fsrs';
 import { calculateCredit } from '@academy/aesop/memory/mastery';
+import { applyImplicitRepetitions, type applyMastery } from '@academy/aesop/memory/mastery-service';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { and, desc, eq, inArray, isNull, like } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
+import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { LearnerRepository } from '../../db/repository.js';
 import {
   attempts,
@@ -50,7 +52,7 @@ import {
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
-import { applyImplicitRepetitions } from '../../learning/mastery-service.js';
+import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
 import { resolveLessonCourse } from './course-context.js';
 
 type LessonContext = Context<ApiEnv>;
@@ -77,21 +79,7 @@ function correctAnswerDisplay(exercise: IndexedExercise): string {
   return '';
 }
 
-type MasteryApplier = (input: {
-  repo: LearnerRepository;
-  userId: string;
-  exercise: IndexedExercise;
-  attemptId: string;
-  correct: number;
-  credit: number;
-  hintsUsed: number;
-  attemptNo: number;
-  mode: 'practice' | 'assessment';
-  gradedBy: 'deterministic' | 'llm' | 'self';
-  createReviewCard?: boolean;
-  now: Date;
-  timeZone: string;
-}) => Promise<unknown>;
+type MasteryApplier = typeof applyMastery;
 
 function seededRandom(seed: string): () => number {
   let state = 0x811c9dc5;
@@ -924,7 +912,6 @@ export function registerLessonRunRoutes(
         attemptNo: 1,
         gradedBy: graded.graded_by ?? 'deterministic',
       });
-      const repo = new LearnerRepository(tx as unknown as Database, userId);
       await tx.insert(attempts).values({
         id: attemptId,
         userId,
@@ -946,9 +933,8 @@ export function registerLessonRunRoutes(
         durationMs: body.data.durationMs,
         createdAt: now,
       });
-      await deps.applyMastery({
-        repo,
-        userId,
+      await deps.applyMastery(drizzleLearnerStore(tx), {
+        learnerId: userId,
         exercise,
         attemptId,
         correct: graded.correct,
@@ -960,6 +946,7 @@ export function registerLessonRunRoutes(
         createReviewCard: false,
         now,
         timeZone: context.get('timeZone'),
+        enableFuzz: fsrsFuzzEnabled(),
       });
       await tx
         .update(lessonProblems)
@@ -1426,7 +1413,6 @@ export function registerLessonRunRoutes(
         if (graded.status !== 'graded') return { kind: 'invalid_answer' as const };
         pendingGrades.push({ item, exercise, graded });
       }
-      const repo = new LearnerRepository(tx as unknown as Database, userId);
       const finalItems = new Map(items.map((item) => [item.id, item]));
       for (const pending of pendingGrades) {
         const { graded } = pending;
@@ -1459,9 +1445,8 @@ export function registerLessonRunRoutes(
           durationMs: pending.item.durationMs,
           createdAt: now,
         });
-        await deps.applyMastery({
-          repo,
-          userId,
+        await deps.applyMastery(drizzleLearnerStore(tx), {
+          learnerId: userId,
           exercise: pending.exercise,
           attemptId,
           correct: graded.correct,
@@ -1473,6 +1458,7 @@ export function registerLessonRunRoutes(
           createReviewCard: false,
           now,
           timeZone: context.get('timeZone'),
+          enableFuzz: fsrsFuzzEnabled(),
         });
         const [updatedItem] = await tx
           .update(lessonQuizItems)
@@ -1591,13 +1577,14 @@ export function registerLessonRunRoutes(
             ratings.length > 0 &&
             !ratings.includes(Rating.Again)
           ) {
-            await applyImplicitRepetitions(tx, {
-              userId,
+            await applyImplicitRepetitions(drizzleLearnerStore(tx), {
+              learnerId: userId,
               conceptId,
               rating: ratings.every((rating) => rating === Rating.Good) ? Rating.Good : Rating.Hard,
               index: resolved.index,
               now,
               timeZone: context.get('timeZone'),
+              enableFuzz: fsrsFuzzEnabled(),
             });
           }
         }

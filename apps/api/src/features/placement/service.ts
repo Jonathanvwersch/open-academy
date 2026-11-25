@@ -1,6 +1,7 @@
 import { serializeExercise } from '@academy/aesop/course/serialize';
 import { activeCourseFor, courseFoundations, masteryKey } from '@academy/aesop/graph/prerequisites';
 import { gradeExercise } from '@academy/aesop/lessons/grading/index';
+import { applyMastery, ensureReviewCard } from '@academy/aesop/memory/mastery-service';
 import { initialMastery, masteryRank } from '@academy/aesop/memory/types';
 import {
   createPlacementState,
@@ -17,9 +18,10 @@ import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
+import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { LearnerRepository } from '../../db/repository.js';
 import { attempts, diagnosticRuns, lessonRuns, masteryEvents, users } from '../../db/schema.js';
-import { applyMastery, ensureReviewCard } from '../../learning/mastery-service.js';
+import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { buildCoursePayload } from '../course/service.js';
 
@@ -73,9 +75,8 @@ async function creditPlacedOut(
           createdAt: now,
         });
       }
-      await ensureReviewCard({
-        repo: request.repo,
-        userId: request.userId,
+      await ensureReviewCard(drizzleLearnerStore(request.repo.db), {
+        learnerId: request.userId,
         conceptId,
         dimension,
         correct: 1,
@@ -83,6 +84,7 @@ async function creditPlacedOut(
         attemptNo: 1,
         now,
         timeZone: request.timeZone,
+        enableFuzz: fsrsFuzzEnabled(),
       });
     }
   }
@@ -238,9 +240,8 @@ async function answerPlacement(deps: FeatureServices, request: FeatureRequest) {
       createdAt: now,
     })
     .returning();
-  await applyMastery({
-    repo: request.repo,
-    userId: request.userId,
+  await applyMastery(drizzleLearnerStore(request.repo.db), {
+    learnerId: request.userId,
     exercise,
     attemptId: attempt.id,
     correct: result.correct,
@@ -251,6 +252,7 @@ async function answerPlacement(deps: FeatureServices, request: FeatureRequest) {
     gradedBy: result.graded_by ?? 'deterministic',
     now,
     timeZone: request.timeZone,
+    enableFuzz: fsrsFuzzEnabled(),
   });
   const nextState = recordPlacementAnswer(
     state,
