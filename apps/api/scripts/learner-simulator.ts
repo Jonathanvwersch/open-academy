@@ -5097,7 +5097,7 @@ async function simulateProfile(
     const dayLimit =
       isScriptedScenarioProfile(profile) || profile === 'scenario-quizzes' ? 1 : options.days;
     for (let day = 1; day <= dayLimit; day += 1) {
-      const now = localNoon(dateAfter(startDate, day - 1), timeZone);
+      let now = localNoon(dateAfter(startDate, day - 1), timeZone);
       const currentCatalog = await fetchCourseCatalog(api, now);
       syncCourseSummaries(runtime, currentCatalog, day - 1);
       const next = nextCourseInHomeOrder(
@@ -5359,6 +5359,7 @@ async function simulateProfile(
             sessionId,
             activity,
           );
+          if (activity.kind === 'mixed_quiz') now = api.nextQuizTime(now);
           daily.lessons += result.lessons;
           daily.reviews += result.reviews;
           daily.reviewAttempts += result.reviewAttempts;
@@ -5470,6 +5471,7 @@ async function simulateProfile(
               sessionId,
               activity,
             );
+            if (activity.kind === 'mixed_quiz') now = api.nextQuizTime(now);
             daily.lessons += result.lessons;
             daily.reviews += result.reviews;
             daily.reviewAttempts += result.reviewAttempts;
@@ -5572,6 +5574,7 @@ async function simulateProfile(
                 focusedSessionId,
                 activity,
               );
+              if (activity.kind === 'mixed_quiz') now = api.nextQuizTime(now);
               daily.lessons += result.lessons;
               daily.reviews += result.reviews;
               daily.reviewAttempts += result.reviewAttempts;
@@ -5671,6 +5674,7 @@ async function simulateProfile(
               focusedSessionId,
               activity,
             );
+            if (activity.kind === 'mixed_quiz') now = api.nextQuizTime(now);
             daily.lessons += result.lessons;
             daily.reviews += result.reviews;
             daily.reviewAttempts += result.reviewAttempts;
