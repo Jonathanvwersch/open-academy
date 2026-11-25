@@ -33,6 +33,7 @@ export default defineConfig({
       NOW_OVERRIDE: '2026-01-01T12:00:00.000Z',
       ACADEMY_E2E: '1',
       ACADEMY_PASSWORD: e2ePassword,
+      VITE_E2E: '1',
       PORT: apiPort,
       VITE_PORT: webPort,
     },
