@@ -99,17 +99,25 @@ export function grantAnswerDecision(
   return answer.correct ? 'confirm' : 'withdraw';
 }
 
+/** Any confirmed grant for a topic wins. Otherwise the latest grant decides. */
 export function effectiveGrantStates(
   grants: readonly PlacementGrantSnapshot[],
 ): Map<string, PlacementGrantState> {
   const latest = new Map<string, PlacementGrantSnapshot>();
+  const confirmed = new Set<string>();
   for (const grant of grants) {
+    if (grant.state === 'confirmed') confirmed.add(grant.conceptId);
     const current = latest.get(grant.conceptId);
     if (!current || timeOf(grant.createdAt) >= timeOf(current.createdAt)) {
       latest.set(grant.conceptId, grant);
     }
   }
-  return new Map([...latest].map(([conceptId, grant]) => [conceptId, grant.state]));
+  return new Map(
+    [...latest].map(([conceptId, grant]) => [
+      conceptId,
+      confirmed.has(conceptId) ? 'confirmed' : grant.state,
+    ]),
+  );
 }
 
 export function currentPlacementCredit(grants: readonly PlacementGrantSnapshot[]): Set<string> {

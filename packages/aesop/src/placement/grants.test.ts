@@ -187,17 +187,36 @@ describe('grant state views', () => {
     { conceptId: 'a', state: 'withdrawn' as const, createdAt: '2026-02-01T00:00:00Z' },
     { conceptId: 'b', state: 'withdrawn' as const, createdAt: '2026-01-01T00:00:00Z' },
     { conceptId: 'b', state: 'conditional' as const, createdAt: '2026-03-01T00:00:00Z' },
+    { conceptId: 'c', state: 'conditional' as const, createdAt: '2026-01-01T00:00:00Z' },
+    { conceptId: 'c', state: 'withdrawn' as const, createdAt: '2026-02-01T00:00:00Z' },
   ];
 
-  test('uses the latest grant per topic as current credit', () => {
+  test('lets any confirmed grant win, and otherwise uses the latest grant', () => {
     expect(effectiveGrantStates(grants)).toEqual(
       new Map([
-        ['a', 'withdrawn'],
+        ['a', 'confirmed'],
         ['b', 'conditional'],
+        ['c', 'withdrawn'],
       ]),
     );
-    expect(currentPlacementCredit(grants)).toEqual(new Set(['b']));
-    expect(withdrawnPlacementCredit(grants)).toEqual(new Set(['a']));
+    expect(currentPlacementCredit(grants)).toEqual(new Set(['a', 'b']));
+    expect(withdrawnPlacementCredit(grants)).toEqual(new Set(['c']));
+  });
+
+  test('never withdraws a topic with an older confirmed grant and a newer conditional one', () => {
+    const states = effectiveGrantStates([
+      { conceptId: 'a', state: 'confirmed', createdAt: '2026-01-01T00:00:00Z' },
+      { conceptId: 'a', state: 'conditional', createdAt: '2026-02-01T00:00:00Z' },
+    ]);
+    expect(states.get('a')).toBe('confirmed');
+    expect(
+      planWithdrawal({
+        failedConceptId: 'a',
+        grantStates: states,
+        studiedConceptIds: new Set(),
+        content: graph(),
+      }),
+    ).toEqual([]);
   });
 
   test('picks only conditional key prerequisites for a targeted review', () => {

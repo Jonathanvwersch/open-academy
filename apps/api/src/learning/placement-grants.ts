@@ -16,7 +16,7 @@ import {
   planWithdrawal,
 } from '@academy/aesop/placement/grants';
 import type { PlacementState } from '@academy/aesop/placement/placement';
-import { and, eq, inArray, ne, or } from 'drizzle-orm';
+import { and, eq, inArray, or } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { drizzleLearnerStore } from '../db/learner-store.js';
 import {
@@ -265,7 +265,7 @@ async function withdrawGrants(input: {
       and(
         eq(placementGrants.userId, input.userId),
         inArray(placementGrants.conceptId, conceptIds),
-        ne(placementGrants.state, 'withdrawn'),
+        eq(placementGrants.state, 'conditional'),
       ),
     );
   const mastery = await drizzleLearnerStore(input.db).listMastery(input.userId);
