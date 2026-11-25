@@ -1920,6 +1920,12 @@ test('passing and retaking a quiz awards quiz XP only once and enables review', 
   expect(review.status).toBe(200);
   const reviewBody = await review.json();
   expect(reviewBody.items).toHaveLength(firstItems.length);
+  const uppercaseReview = await app.request(
+    `/api/lessons/${conceptId}/quiz/${result.run.quiz.last.attemptId.toUpperCase()}/review`,
+    { headers },
+  );
+  expect(uppercaseReview.status).toBe(200);
+  expect(await uppercaseReview.json()).toEqual(reviewBody);
   expect(reviewBody.items[0]).toMatchObject({
     exercise: { prompt: expect.any(String) },
     yourAnswer: expect.any(String),

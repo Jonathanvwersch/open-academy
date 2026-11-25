@@ -539,7 +539,7 @@ export function registerLessonRunRoutes(
     const resolved = await lessonFor(conceptId);
     if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
     const userId = context.get('userId');
-    const attemptId = context.req.param('attemptId');
+    const attemptId = context.req.param('attemptId').toLowerCase();
     const rows = await readPassedQuiz(store, userId, conceptId, attemptId);
     if (!rows) {
       return context.json({ error: 'Quiz review is available after passing' }, 403);
