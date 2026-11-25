@@ -325,8 +325,17 @@ export function LessonRunner({
       state?.points.findIndex((point) => point.id === pendingPracticePointId) ?? -1;
     if (pointIndex < 0) return;
     const pendingPracticeStep = String(pointIndex + 1);
-    if (step !== pendingPracticeStep) onStepChange(pendingPracticeStep, true);
-  }, [onStepChange, pendingPracticePointId, pendingPracticeProblemId, state?.points, step]);
+    if (step === undefined && !pendingPracticeIsWarmup) {
+      onStepChange(pendingPracticeStep, true);
+    }
+  }, [
+    onStepChange,
+    pendingPracticeIsWarmup,
+    pendingPracticePointId,
+    pendingPracticeProblemId,
+    state?.points,
+    step,
+  ]);
 
   useEffect(() => {
     tutorSidebar.setContext({
