@@ -108,14 +108,20 @@ export function deriveLearningDebt(input: {
     }
   }
 
-  for (const flag of input.remediationFlags) {
-    const record = recordsByConcept.get(flag.conceptId)?.[0];
-    if (record) {
+  const remediationTargets = new Map<string, string>();
+  for (const { conceptId, targetPrereqId } of input.remediationFlags) {
+    const target = targetPrereqId ?? conceptId;
+    const current = remediationTargets.get(conceptId);
+    if (current === undefined || target < current) remediationTargets.set(conceptId, target);
+  }
+  for (const [conceptId, [record]] of recordsByConcept) {
+    const target = remediationTargets.get(conceptId);
+    if (target !== undefined) {
       add({
-        conceptId: flag.conceptId,
+        conceptId,
         dimension: record.dimension,
         reason: 'open_remediation',
-        remediationAction: `Remediate ${flag.targetPrereqId ?? flag.conceptId} before continuing.`,
+        remediationAction: `Remediate ${target} before continuing.`,
       });
     }
   }

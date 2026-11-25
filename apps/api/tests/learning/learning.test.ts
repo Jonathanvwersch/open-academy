@@ -973,6 +973,29 @@ test('learning debt derives implementation gaps, demotions, hints, and open flag
   );
 });
 
+test('learning debt picks the first remediation target by topic regardless of flag order', () => {
+  const remediationFlags = [
+    { conceptId: 'gradients', targetPrereqId: 'partial-derivatives' },
+    { conceptId: 'gradients', targetPrereqId: 'derivatives' },
+  ];
+  for (const flags of [remediationFlags, [...remediationFlags].reverse()]) {
+    const debt = deriveLearningDebt({
+      mastery: [initialMastery('gradients', 'math')],
+      events: [],
+      attempts: [],
+      remediationFlags: flags,
+    });
+    expect(debt).toEqual([
+      {
+        conceptId: 'gradients',
+        dimension: 'math',
+        reason: 'open_remediation',
+        remediationAction: 'Remediate derivatives before continuing.',
+      },
+    ]);
+  }
+});
+
 test('No-knowledge user gets foundational concepts', () => {
   const plan = planSession(emptyState(), content, now, 60);
   expect(
