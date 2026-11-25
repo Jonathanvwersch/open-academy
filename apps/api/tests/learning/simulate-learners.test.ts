@@ -1,6 +1,8 @@
 import { newReviewCard, scheduleReview } from '@academy/aesop/memory/fsrs';
 import { implicitRepetition } from '@academy/aesop/memory/implicit-repetition';
+import { ensureReviewCard } from '@academy/aesop/memory/mastery-service';
 import type { SchedulerState } from '@academy/aesop/planner/scheduler';
+import { eq } from 'drizzle-orm';
 import { type Card, Rating, State } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';
 import {
@@ -32,6 +34,9 @@ import {
   p18HasMissedPickup,
   p18PlanCoversTopic,
   p19HasEarlyReviewViolation,
+  p28ExpectedDue,
+  p28ExpectedInitialDue,
+  p28Speed,
   planUsageMinutes,
   renderMarkdownReport,
   requireP17ReviewMinutes,
@@ -48,6 +53,8 @@ import {
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
+import { drizzleLearnerStore } from '../../src/db/learner-store.js';
+import { reviewLogs, users } from '../../src/db/schema.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const invariants: InvariantId[] = [
@@ -78,7 +85,57 @@ const invariants: InvariantId[] = [
   'P25',
   'P26',
   'P27',
+  'P28',
 ];
+
+test('P28 independently computes the speed, local floor and cap', () => {
+  const start = new Date('2026-03-08T05:30:00.000Z');
+  expect(p28Speed({ successes: 0, trials: 2, answers: 2 })).toBe(1);
+  expect(p28Speed({ successes: 2.44, trials: 2.44, answers: 3 })).toBe(1.55);
+  expect(p28Speed({ successes: 0, trials: 2.44, answers: 3 })).toBe(0.5);
+  const raw = new Date('2026-03-09T05:30:00.000Z');
+  expect(p28ExpectedDue(raw, start, 'America/New_York', 0.5)).toBe(
+    Date.parse('2026-03-09T04:00:00.000Z'),
+  );
+  expect(p28ExpectedDue(new Date(+start + 55 * 86_400_000), start, 'UTC', 1.55)).toBe(
+    +start + 60 * 86_400_000,
+  );
+});
+
+test('P28 checks the scaled first schedule of a card with no review log', async () => {
+  const now = new Date('2026-01-01T12:00:00.000Z');
+  const [learner] = await db.insert(users).values({ displayName: 'P28 initial card' }).returning();
+  const store = drizzleLearnerStore(db);
+  const conceptId = 'vectors';
+  try {
+    for (let i = 0; i < 3; i += 1)
+      await store.addTopicSpeedAnswer(learner.id, conceptId, true, now);
+    await ensureReviewCard(store, {
+      learnerId: learner.id,
+      conceptId,
+      dimension: 'math',
+      correct: 1,
+      hintsUsed: 0,
+      attemptNo: 1,
+      now,
+      timeZone: 'UTC',
+      enableFuzz: false,
+    });
+    const card = await store.getReviewCard(learner.id, conceptId, 'math');
+    if (!card) throw new Error('Expected the initial review card');
+    expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id))).toHaveLength(
+      0,
+    );
+    const speed = p28Speed({ successes: 2.44, trials: 2.44, answers: 3 });
+    const expected = p28ExpectedInitialDue(card.fsrs, now, 'UTC', speed);
+    expect(expected).toBeGreaterThan(
+      +scheduleReview(newReviewCard(now), now, Rating.Good, 'UTC', false).card.due,
+    );
+    expect(+card.dueAt).toBe(expected);
+  } finally {
+    await db.delete(users).where(eq(users.id, learner.id));
+  }
+});
 
 test('P24 distinguishes a missed in-window opportunity from a legitimate late offer', () => {
   const check = {
@@ -114,7 +171,7 @@ test('P24 distinguishes a missed in-window opportunity from a legitimate late of
   ).toBeUndefined();
 });
 
-test('P24–P27 observe an offered quiz, timeout, completed follow-ups, and a fresh retake', async () => {
+test('P24–P28 observe a quiz, a slow correct answer, timeout, follow-ups, and a fresh retake', async () => {
   const content = await loadContent('content');
   const {
     profiles: [profile],
@@ -125,13 +182,18 @@ test('P24–P27 observe an offered quiz, timeout, completed follow-ups, and a fr
   });
   expect(
     profile.violations.filter((violation) =>
-      ['P24', 'P25', 'P26', 'P27'].includes(violation.invariant),
+      ['P24', 'P25', 'P26', 'P27', 'P28'].includes(violation.invariant),
     ),
   ).toEqual([]);
   expect(profile.checkedCounts.P24).toBeGreaterThan(0);
   expect(profile.checkedCounts.P25).toBeGreaterThanOrEqual(2);
   expect(profile.checkedCounts.P26).toBeGreaterThan(0);
   expect(profile.checkedCounts.P27).toBeGreaterThanOrEqual(2);
+  expect(
+    profile.quizEvidence?.find(({ invariant }) => invariant === 'P26')?.evidence,
+  ).toMatchObject({
+    slowCorrect: [expect.any(String)],
+  });
   const quizTimings = profile.quizEvidence?.filter(({ invariant }) => invariant === 'P27');
   expect(quizTimings).toHaveLength(2);
   expect(Date.parse(String(quizTimings?.[1].evidence.startedAt))).toBeGreaterThan(
@@ -981,6 +1043,49 @@ test('P15 exempts a prerequisite reset selected by the engine helper after a tra
   expect(audit.prerequisiteResetEvidence[0]?.selectedCardId).toBe('parent-card');
 });
 
+test('P15 accepts one reset among equally weak prerequisite dimensions', () => {
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const conceptual = p15Card('conceptual', 'parent', '2026-04-14T12:00:00.000Z');
+  const math = { ...conceptual, id: 'math' };
+  const trace = [conceptual, math].map((card) =>
+    p15TraceEvent('child', Rating.Good, card, 0.5, now, 0),
+  );
+  const after = [
+    { ...conceptual, ...trace[0].after },
+    { ...math, dueAt: now, fsrs: { ...trace[1].after.fsrs, due: now } },
+  ];
+  const logs = [
+    { cardId: 'child-log', conceptId: 'child', rating: String(Rating.Good) },
+    {
+      cardId: 'prerequisite-log',
+      conceptId: 'prerequisite',
+      rating: String(Rating.Again),
+      previousLog: { rating: String(Rating.Again), createdAt: new Date('2026-01-07') },
+    },
+  ];
+  const audit = auditP15Trace(
+    [conceptual, math],
+    after,
+    logs,
+    trace,
+    p15Weights,
+    now,
+    'UTC',
+    'review',
+    new Map([
+      ['child-log', 0],
+      ['prerequisite-log', 1],
+    ]),
+    {
+      hardPrerequisiteIdsByConcept: new Map([['prerequisite', ['parent']]]),
+      completedReviewConceptIds: new Set<string>(),
+      coveredDimensionKeys: new Set<string>(),
+    },
+  );
+  expect(audit.violations).toEqual([]);
+  expect(audit.prerequisiteResetEvidence[0]?.selectedCardId).toBe('math');
+});
+
 test('P16 flags a selected review when a dropped review is two days more overdue', () => {
   expect(p16HasOverduePrecedenceViolation(5, 3, 8, 4, 0, 4)).toBe(true);
   expect(p16HasOverduePrecedenceViolation(5, 3, 8, 3, 0, 4)).toBe(false);
@@ -1119,6 +1224,8 @@ test('overplaced learner loses conditional placement credit without P20-P23 viol
     expect(overplaced?.violationCounts[invariant]).toBe(0);
     expect(overplaced?.checkedCounts[invariant]).toBeGreaterThan(0);
   }
+  expect(overplaced?.violationCounts.P28).toBe(0);
+  expect(overplaced?.p28.initialSchedulesChecked).toBeGreaterThan(0);
 }, 300_000);
 
 test('P19 audits mixed-review topics in selection order, not exercise order', () => {
@@ -1162,6 +1269,21 @@ test('two profiles produce byte-identical 15-day simulation reports from the sam
   };
   const first = await simulateLearners(db, content, options);
   const second = await simulateLearners(db, content, options);
+
+  for (const profile of first.profiles) {
+    expect(
+      profile.violationCounts.P28,
+      JSON.stringify(
+        profile.violations
+          .filter(({ invariant }) => invariant === 'P28')
+          .map(({ details }) => details),
+      ),
+    ).toBe(0);
+    expect(profile.p28.successfulReviewsChecked).toBeGreaterThan(0);
+  }
+  expect(first.profiles.some((profile) => profile.p28.topicsBelowOne > 0)).toBe(true);
+  expect(first.profiles.some((profile) => profile.p28.topicsAboveOne > 0)).toBe(true);
+  expect(first.profiles.some((profile) => profile.p28.slowTargetsGated > 0)).toBe(true);
 
   expect(JSON.stringify(stripWallClockFields(second))).toBe(
     JSON.stringify(stripWallClockFields(first)),

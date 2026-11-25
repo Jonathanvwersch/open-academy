@@ -25,14 +25,18 @@ import {
 import {
   newReviewCard,
   reviewActivityRating,
-  scheduleReview,
+  scheduleReviewWithDetails,
   startOfNextCalendarDay,
 } from '@academy/aesop/memory/fsrs';
 import { calculateCredit } from '@academy/aesop/memory/mastery';
-import { applyImplicitRepetitions, type applyMastery } from '@academy/aesop/memory/mastery-service';
+import {
+  applyImplicitRepetitions,
+  type applyMastery,
+  getTopicSpeed,
+} from '@academy/aesop/memory/mastery-service';
 import { conditionalPrerequisites } from '@academy/aesop/placement/grants';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
-import { and, desc, eq, getTableColumns, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, inArray, isNull, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
@@ -49,6 +53,7 @@ import {
   reviewCards,
   reviewLogs,
   sessionActivities,
+  tutorMessages,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
@@ -856,6 +861,17 @@ export function registerLessonRunRoutes(
       }
       const graded = await gradeExercise(exercise, body.data.answer);
       if (graded.status !== 'graded') return { kind: 'invalid' as const, graded };
+      const [tutorReply] = await tx
+        .select({ id: tutorMessages.id })
+        .from(tutorMessages)
+        .where(
+          and(
+            eq(tutorMessages.userId, userId),
+            eq(tutorMessages.lessonProblemId, joined.problem.id),
+            sql`${tutorMessages.role} = 'assistant'`,
+          ),
+        )
+        .limit(1);
       const attemptId = crypto.randomUUID();
       const credit = calculateCredit({
         correct: graded.correct,
@@ -892,6 +908,8 @@ export function registerLessonRunRoutes(
         credit,
         hintsUsed: 0,
         attemptNo: 1,
+        submitted: true,
+        tutorHelped: !!tutorReply,
         mode: 'practice',
         gradedBy: graded.graded_by ?? 'deterministic',
         createReviewCard: false,
@@ -1421,6 +1439,7 @@ export function registerLessonRunRoutes(
           credit,
           hintsUsed: 0,
           attemptNo: 1,
+          submitted: true,
           mode: 'assessment',
           gradedBy,
           createReviewCard: false,
@@ -1471,6 +1490,8 @@ export function registerLessonRunRoutes(
             itemsByDimension.set(exercise.dimension, dimensionItems);
           }
           const dimensionRatings = new Map<string, Rating>();
+          const store = drizzleLearnerStore(tx);
+          const speed = await getTopicSpeed(store, userId, conceptId);
           for (const [dimension, dimensionItems] of itemsByDimension) {
             const [existingCard] = await tx
               .select()
@@ -1496,12 +1517,13 @@ export function registerLessonRunRoutes(
               }),
             );
             dimensionRatings.set(dimension, rating);
-            const scheduled = scheduleReview(
+            const scheduled = scheduleReviewWithDetails(
               existingCard ? (existingCard.fsrs as never) : newReviewCard(now),
               now,
               rating,
               context.get('timeZone'),
               process.env.NODE_ENV !== 'test',
+              speed,
             );
             let cardId = existingCard?.id;
             const cardValues = {
@@ -1533,7 +1555,9 @@ export function registerLessonRunRoutes(
                 cardId,
                 attemptId: dimensionItems.find((item) => item.attemptId)?.attemptId ?? null,
                 rating: String(rating),
-                fsrsLog: scheduled.log,
+                fsrsLog: { ...scheduled.log, effectiveDueAt: scheduled.card.due },
+                speed,
+                rawDueAt: scheduled.rawDueAt,
                 createdAt: now,
               });
             }
@@ -1544,7 +1568,7 @@ export function registerLessonRunRoutes(
             ratings.length > 0 &&
             !ratings.includes(Rating.Again)
           ) {
-            await applyImplicitRepetitions(drizzleLearnerStore(tx), {
+            await applyImplicitRepetitions(store, {
               learnerId: userId,
               conceptId,
               rating: ratings.every((rating) => rating === Rating.Good) ? Rating.Good : Rating.Hard,

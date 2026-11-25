@@ -3,6 +3,7 @@ import type { ContentIndex } from '@academy/aesop/course/types';
 import { filterSchedulerStateForContent } from '@academy/aesop/graph/content-filters';
 import { courseHasEvidence } from '@academy/aesop/graph/course-start';
 import { retrievability, startOfNextCalendarDay } from '@academy/aesop/memory/fsrs';
+import { topicSpeed } from '@academy/aesop/memory/speed';
 import type { MasteryRecord } from '@academy/aesop/memory/types';
 import { attemptedExerciseIdsByActivity as groupAttemptedExerciseIdsByActivity } from '@academy/aesop/planner/review-topics';
 import {
@@ -191,6 +192,7 @@ export class LearnerRepository {
       todayReviewLogs,
       completedReviewLogsToday,
       recallAttemptRows,
+      speedEvidence,
     ] = await Promise.all([
       loaded.mastery ?? this.masteryRecords(),
       this.db
@@ -323,6 +325,7 @@ export class LearnerRepository {
               createdAt: Date;
             }>,
           ),
+      drizzleLearnerStore(this.db).listTopicSpeedEvidence(this.userId),
     ]);
     const recentLearnMinutesByConcept: Record<string, number> = {};
     for (const activity of recentLearnActivities) {
@@ -355,6 +358,9 @@ export class LearnerRepository {
     );
     return {
       timezone: user?.timezone ?? 'UTC',
+      topicSpeeds: Object.fromEntries(
+        speedEvidence.map((record) => [record.conceptId, topicSpeed(record)]),
+      ),
       activeCourseId: user?.activeCourseId ?? null,
       studyCourseIds,
       focusSubjectId: focusSubjectId ?? undefined,

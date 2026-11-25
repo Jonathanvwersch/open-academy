@@ -346,6 +346,11 @@ export const quizItems = pgTable(
     reserve: jsonb('reserve').$type<QuizQuestion>(),
     answeredAt: timestamp('answered_at', { withTimezone: true, mode: 'date' }),
     latencyMs: integer('latency_ms'),
+    submission: jsonb('submission').$type<{
+      answer: unknown;
+      correct: number;
+      gradedBy: 'deterministic' | 'llm' | 'self';
+    }>(),
     correct: boolean('correct'),
     followUp: boolean('follow_up').notNull().default(false),
     followUpActivityId: uuid('follow_up_activity_id').references(() => sessionActivities.id, {
@@ -446,6 +451,22 @@ export const reviewCards = pgTable(
   ],
 );
 
+export const topicSpeed = pgTable(
+  'topic_speed',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    conceptId: text('concept_id').notNull(),
+    successes: real('successes').notNull(),
+    trials: real('trials').notNull(),
+    answers: integer('answers').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull(),
+    policyVersion: text('policy_version').notNull().default('speed-v1'),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.conceptId] })],
+);
+
 export const reviewLogs = pgTable('review_logs', {
   id: uuid('id').primaryKey().defaultRandom(),
   cardId: uuid('card_id')
@@ -454,6 +475,8 @@ export const reviewLogs = pgTable('review_logs', {
   attemptId: uuid('attempt_id').references(() => attempts.id, { onDelete: 'set null' }),
   rating: text('rating').notNull(),
   fsrsLog: jsonb('fsrs_log').notNull(),
+  speed: real('speed'),
+  rawDueAt: timestamp('raw_due_at', { withTimezone: true, mode: 'date' }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 });
 
@@ -624,6 +647,9 @@ export const tutorMessages = pgTable(
   },
   (table) => [
     uniqueIndex('tutor_messages_thread_client_unique').on(table.threadId, table.clientId),
+    index('tutor_messages_problem_assistant_idx')
+      .on(table.userId, table.lessonProblemId)
+      .where(sql`${table.role} = 'assistant' and ${table.lessonProblemId} is not null`),
   ],
 );
 
