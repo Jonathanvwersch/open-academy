@@ -1644,6 +1644,26 @@ test('two consecutive Again review activities pull the weakest hard-prerequisite
   ).toBe(true);
 });
 
+test('double Again skips a suspended prerequisite card and pulls the next weakest one due', async () => {
+  await resetLearner();
+  const { weakest, stronger, future } = await createPrerequisiteReviewCards(
+    new Date('2026-02-01T12:00:00.000Z'),
+  );
+  const suspendedAt = new Date('2026-01-31T12:00:00.000Z');
+  await db.update(reviewCards).set({ suspendedAt }).where(eq(reviewCards.id, weakest.id));
+  const firstActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+  const secondActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+
+  await submitReviewActivityAgain(firstActivity.id);
+  await submitReviewActivityAgain(secondActivity.id);
+
+  const [suspended] = await db.select().from(reviewCards).where(eq(reviewCards.id, weakest.id));
+  const [pulled] = await db.select().from(reviewCards).where(eq(reviewCards.id, stronger.id));
+  expect(suspended?.dueAt).toEqual(weakest.dueAt);
+  expect(pulled?.dueAt.toISOString()).toBe(now);
+  expect(pulled?.dueAt).not.toEqual(future);
+});
+
 test('double Again inserts before a skipped session activity', async () => {
   await resetLearner();
   await createPrerequisiteReviewCards(new Date('2026-02-01T12:00:00.000Z'));

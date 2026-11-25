@@ -657,6 +657,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
                     and(
                       eq(reviewCards.userId, request.userId),
                       inArray(reviewCards.conceptId, hardPrerequisiteIds),
+                      isNull(reviewCards.suspendedAt),
                     ),
                   );
                 const coveredDimensionKeys = new Set(
