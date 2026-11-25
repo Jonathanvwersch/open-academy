@@ -3842,7 +3842,28 @@ export function auditP15Trace(
           fsrs: latestTrace?.after.fsrs ?? (card.fsrs as Card),
         };
       });
-      const weakest = bringWeakestPrerequisiteCardDueNow(eligibleStates, now, false);
+      const ranked = eligibleStates.map((card) => ({
+        card,
+        retrievability: fsrsRetrievability(card.fsrs, now, false),
+      }));
+      const minimum = Math.min(...ranked.map(({ retrievability }) => retrievability));
+      const observedResets = ranked
+        .filter(({ retrievability }) => retrievability === minimum)
+        .flatMap(({ card }) => {
+          const actual = afterById.get(card.id);
+          const reset = bringWeakestPrerequisiteCardDueNow([card], now, false);
+          return reset &&
+            actual?.fsrs &&
+            actual.lastReviewAt?.getTime() === card.lastReviewAt?.getTime() &&
+            p15TraceState({ dueAt: actual.dueAt, fsrs: actual.fsrs as Card }) ===
+              p15TraceState(reset)
+            ? [reset]
+            : [];
+        });
+      const weakest =
+        observedResets.length === 1
+          ? observedResets[0]
+          : bringWeakestPrerequisiteCardDueNow(eligibleStates, now, false);
       prerequisiteResetEvidence.push({
         sourceCardId: log.cardId,
         sourceConceptId: log.conceptId,
@@ -3851,19 +3872,13 @@ export function auditP15Trace(
         eligibleCardIds: eligible.map(({ id }) => id),
         selectedCardId: weakest?.id ?? null,
       });
-      if (!weakest) continue;
+      if (!weakest || observedResets.length !== 1) continue;
 
       const latestTrace = [...trace].reverse().find((event) => event.targetCardId === weakest.id);
-      const actual = afterById.get(weakest.id);
-      const before = beforeById.get(weakest.id);
       if (
         latestTrace &&
         latestTrace.activityOrder !== null &&
-        sourceOrder >= latestTrace.activityOrder &&
-        actual?.dueAt.getTime() === now.getTime() &&
-        actual.fsrs &&
-        new Date(String((actual.fsrs as Card).due)).getTime() === now.getTime() &&
-        before?.lastReviewAt?.getTime() === actual.lastReviewAt?.getTime()
+        sourceOrder >= latestTrace.activityOrder
       ) {
         resetTouchedAfterTrace.add(weakest.id);
       }
