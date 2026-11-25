@@ -63,7 +63,7 @@ Each topic has a mastery state for each of its dimensions (conceptual, math, imp
 
 `not_assessed` → `introduced` → `assisted` → `independent` → `retained`
 
-- The first answer of any kind moves `not_assessed` to `introduced`.
+- The first answer of any kind moves `not_assessed` to at least `introduced`. A strong first answer can go further, by the rules below.
 - An answer is _independent_ when the learner used no hints, got it right first time, and the engine graded it (not an AI grader).
 - 2 independent correct answers on different questions give `independent`.
 - If the second independent answer comes 3 or more days after the first, the state becomes `retained`.
