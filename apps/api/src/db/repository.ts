@@ -527,9 +527,7 @@ export class LearnerRepository {
         .update(sessionActivities)
         .set({
           exerciseIds,
-          ...(exerciseIds.length === 0
-            ? { reason: { ...(activity.reason as object), removedQuestions: true } }
-            : {}),
+          reason: { ...(activity.reason as object), removedQuestions: true },
         })
         .where(
           and(

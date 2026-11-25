@@ -209,6 +209,88 @@ test('an entirely deleted quiz is restarted without recording a failed attempt',
   expect((await restarted.json()).run.quiz.current.items.length).toBeGreaterThan(0);
 });
 
+test('continuing a recovered review finalizes the surviving answers exactly once', async () => {
+  const now = new Date(headers['X-Now']);
+  const dueAt = new Date(now.getTime() - 86_400_000);
+  const survivor = 'sl-classify-vs-regress';
+  const deleted = 'sl-review-ingredients';
+  const [card] = await db
+    .insert(reviewCards)
+    .values({
+      userId,
+      conceptId,
+      dimension: 'conceptual',
+      dueAt,
+      fsrs: newReviewCard(dueAt),
+    })
+    .returning();
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      status: 'active',
+      startedAt: now,
+      plannedMinutes: 15,
+    })
+    .returning();
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'review',
+      conceptId,
+      plannedMinutes: 5,
+      exerciseIds: [survivor, deleted],
+      status: 'in_progress',
+      startedAt: now,
+    })
+    .returning();
+  const answer = await app.request('/api/attempts', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      activityId: activity.id,
+      exerciseId: survivor,
+      mode: 'review',
+      answer: correctAnswer(survivor, null),
+    }),
+  });
+  expect(answer.status).toBe(200);
+  const { attemptId, activityCompleted } = await answer.json();
+  expect(activityCompleted).toBe(false);
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id))).toHaveLength(0);
+  removeExercises([deleted]);
+
+  for (let retry = 0; retry < 2; retry += 1) {
+    const complete = await app.request(
+      `/api/sessions/${session.id}/activities/${activity.id}/progress`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ complete: true, completedExerciseIds: [survivor] }),
+      },
+    );
+    expect(complete.status).toBe(200);
+    expect(await complete.json()).toMatchObject({ status: 'completed', exerciseIds: [survivor] });
+  }
+  const [rated] = await db.select().from(reviewCards).where(eq(reviewCards.id, card.id));
+  expect(rated.reps).toBe(1);
+  expect(rated.dueAt.getTime()).toBeGreaterThan(now.getTime());
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id))).toEqual([
+    expect.objectContaining({ attemptId }),
+  ]);
+  expect(
+    await db
+      .select()
+      .from(xpEvents)
+      .where(eq(xpEvents.sourceKey, `activity:${activity.id}`)),
+  ).toEqual([expect.objectContaining({ amount: 5 })]);
+  expect(await db.select().from(attempts).where(eq(attempts.activityId, activity.id))).toHaveLength(
+    1,
+  );
+});
+
 test.each([
   [true, false],
   [false, false],

@@ -44,6 +44,10 @@ import {
   xpEvents,
 } from '../../db/schema.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
+import {
+  completeReviewActivity,
+  recordRecoveredReviewRatings,
+} from '../../learning/review-completion.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { replanSessionActivities } from '../course/service.js';
 
@@ -598,6 +602,20 @@ async function updateActivityProgress(deps: FeatureServices, request: FeatureReq
         },
         409,
       );
+    }
+    if (removedQuestions && activity.exerciseIds.length > 0 && activity.status !== 'completed') {
+      const index = await content();
+      const context = { index, userId: request.userId, timeZone: request.timeZone, now, session };
+      activity = await recordRecoveredReviewRatings(db, request.repo, context, activity);
+      if (activity.exerciseIds.some((id) => !attemptedExerciseIds.has(id))) {
+        return serviceResult(withReviewTopics(activity, index, attemptedExerciseIds));
+      }
+      const latestSession = await request.repo.session(activity.sessionId);
+      await completeReviewActivity(db, { ...context, session: latestSession }, activity, progress);
+      const finished = (await request.repo.session(activity.sessionId))?.activities.find(
+        (item) => item.id === activity?.id,
+      );
+      return serviceResult(withReviewTopics(finished ?? activity, index, attemptedExerciseIds));
     }
   }
   if (
