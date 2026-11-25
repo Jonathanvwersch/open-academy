@@ -13,6 +13,7 @@ import { serializeExercise } from '@academy/aesop/course/serialize';
 import type { ContentIndex, ContentSourceData } from '@academy/aesop/course/types';
 import { validateContent } from '@academy/aesop/course/validate';
 import { keyPrereqsForPoint } from '@academy/aesop/graph/prerequisites';
+import { gradeText } from '@academy/aesop/lessons/grading/text';
 import { expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
 
@@ -284,6 +285,17 @@ test('source citations reject duplicate IDs, unknown references, and grounded le
   );
 });
 
+test('linear regression bias recall accepts vector notation for n ones', async () => {
+  const content = await loadContent('content');
+  const exercise = required(content.exercisesById.get('lrp-recall-batch-formula'), 'bias recall');
+  if (exercise.type !== 'text') throw new Error('Bias recall must be text type');
+
+  for (const answer of ['vector of ones', '(1, ..., 1)', '[1,1,…,1]']) {
+    expect(gradeText(exercise, answer)).toMatchObject({ status: 'graded', correct: 1 });
+  }
+  expect(gradeText(exercise, '(1, ..., 0)')).toMatchObject({ status: 'graded', correct: 0 });
+});
+
 test('real authored papers load and every course unit has reading', async () => {
   const content = await loadContent('content');
 
@@ -379,6 +391,22 @@ test.each([
   expect(validateContent(data).some((issue) => issue.message.includes('paper URL must be'))).toBe(
     true,
   );
+});
+
+test('Maths for ML has no NumPy instruction in lesson steps', async () => {
+  const content = await loadContent('content');
+  const course = required(
+    content.courses.find((candidate) => candidate.id === 'maths-for-ml'),
+    'maths course',
+  );
+  for (const conceptId of course.units.flatMap((candidate) => candidate.concepts)) {
+    const lesson = content.lessonsByConcept.get(conceptId);
+    expect(
+      lesson?.knowledge_points
+        ?.flatMap(({ title, explain, worked }) => [title, explain, worked])
+        .join('\n') ?? '',
+    ).not.toMatch(/numpy|\bnp\./i);
+  }
 });
 
 test('authored Gaussian project loads with unit prerequisites and reflection exercises', async () => {

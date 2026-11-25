@@ -59,7 +59,7 @@ concepts:
       encompassings:
         [
           { id: prefill-decode, weight: 0 },
-          { id: matrices, weight: 0.1 },
+          { id: matrices, weight: 0.25 },
           { id: inference-metrics, weight: 0 },
         ],
       objectives:
@@ -109,10 +109,10 @@ concepts:
       encompassings:
         [
           { id: prefill-decode, weight: 0.05 },
-          { id: multi-head-attention, weight: 0.04 },
+          { id: multi-head-attention, weight: 0.21 },
           { id: gpu-inference-basics, weight: 0.05 },
           { id: attention, weight: 0.06 },
-          { id: causal-masking, weight: 0.03 },
+          { id: causal-masking, weight: 0.13 },
         ],
       objectives:
         [
@@ -236,7 +236,7 @@ concepts:
           { id: mixture-of-experts, weight: 0.01 },
           { id: arithmetic-intensity, weight: 0.06 },
           { id: gpu-inference-basics, weight: 0.09 },
-          { id: matrices, weight: 0.01 },
+          { id: matrices, weight: 0.02 },
         ],
       objectives:
         [
@@ -264,7 +264,7 @@ concepts:
           { id: computational-graphs, weight: 0.07 },
           { id: arithmetic-intensity, weight: 0.09 },
           { id: classification-softmax, weight: 0.01 },
-          { id: matrices, weight: 0 },
+          { id: matrices, weight: 0.02 },
         ],
       objectives:
         [

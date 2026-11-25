@@ -25,12 +25,6 @@ terms:
       introduced_by: [matrices],
     }
   - {
-      id: numpy-matmul,
-      label: "NumPy @ / broadcasting",
-      match: ['\s@\s', "broadcast"],
-      introduced_by: [matrices],
-    }
-  - {
       id: ones-vector,
       label: "ones vector 𝟏",
       match: ['\\mathbf\s*\{?1(?!\s*\}?\s*\[)'],
@@ -357,12 +351,6 @@ terms:
       introduced_by: [matrices],
     }
   - {
-      id: numpy-array-sum,
-      label: "a.sum() / np.sum",
-      match: ['\.sum\(\s*\)', '\bnp\.sum\s*\('],
-      introduced_by: [matrices],
-    }
-  - {
       id: ln-exp-inverse,
       label: "Natural log and exponential inverses",
       match: ['\be\^\{\s*\\ln[^{}]+\}\s*=', '\\ln\s*e\^(?:\{[^{}]+\}|\w)\s*='],
@@ -399,12 +387,6 @@ terms:
       label: "Per-class recall",
       match: ['\b(?:multiclass|per[- ]class) recall\b', '\bclass[''’]s recall\b'],
       introduced_by: [evaluation-metrics],
-    }
-  - {
-      id: column-mean-axis-zero,
-      label: "Column averages with .mean(axis=0)",
-      match: ['\.mean\s*\(\s*axis\s*=\s*0\s*\)', '\.sum\(axis=0\)` adds down each column'],
-      introduced_by: [backpropagation],
     }
   - {
       id: flat-activation-no-update,
@@ -544,11 +526,7 @@ terms:
   - {
       id: reshape-versus-transpose,
       label: "Reshaping and transposing array axes",
-      match:
-        [
-          '\breshape\b[^\n!?]{0,90}\btranspose\b|\btranspose\b[^\n!?]{0,90}\breshape\b',
-          '\.reshape\([^)\n]*\)\.transpose\(',
-        ],
+      match: ['\breshape\b[^\n!?]{0,90}\btranspose\b|\btranspose\b[^\n!?]{0,90}\breshape\b'],
       introduced_by: [images-as-tensors, multi-head-attention],
     }
   - {
@@ -571,7 +549,6 @@ terms:
         [
           '\bsubtract(?:s|ed|ing)? (?:the )?row max(?:imum)?\b',
           '\bsoftmax\b[^\n!?]{0,100}\bsubtract(?:s|ed|ing)? (?:the )?(?:max(?:imum)?|largest score)\b',
-          '\bnp\.exp\(\s*\w+\s*-\s*\w+\.max\(\s*axis\s*=',
         ],
       introduced_by: [transformer-block],
     }
@@ -591,12 +568,6 @@ terms:
           '\$?T\$?\s+inputs give \$?T\$?\s+scored guesses with a following token\b',
         ],
       introduced_by: [causal-masking],
-    }
-  - {
-      id: numpy-where,
-      label: "Elementwise selection with NumPy where",
-      match: ['\bnp\.where\s*\('],
-      introduced_by: [backpropagation, causal-masking],
     }
   - {
       id: uniform-token-sampling,
