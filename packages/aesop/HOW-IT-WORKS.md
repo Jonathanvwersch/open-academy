@@ -56,7 +56,7 @@ The learner does the steps in order. Each step has a worked example, then questi
 - Then the learner takes the lesson quiz. A 1-step lesson gives 6 questions. A 2-step lesson gives 3 for each step. A 3- or 4-step lesson gives 2 for each step. **[Ours]**
 - The pass mark is 80%. **[Ours]** If the learner fails, they practise each step that had a wrong answer, then take a new quiz.
 - When the learner passes the quiz for the first time, the topic is complete and gets its first review card.
-- If a saved question was removed from the course, keep the learner's past grades. Replace a pending step question through normal selection. In an open quiz, replace an unanswered question with an unused question from the topic if one exists. Otherwise drop that item. A saved quiz answer still counts. **[Ours]**
+- If a saved question was removed from the course, keep the learner's past grades. Replace a pending step question through normal selection. In an open quiz, replace an unanswered question with an unused question from the topic if one exists. Otherwise drop that item. A saved quiz answer still counts. If no questions remain, discard the open quiz without recording a grade. The learner can start a new quiz using the current questions. **[Ours]**
 - For a saved review activity, keep the questions that still exist. If none remain, use the normal question selection for its due review. If there are no eligible questions, let the learner continue without rescheduling the card. **[Ours]**
 
 ## 5. Mastery (`memory/mastery.ts`)
