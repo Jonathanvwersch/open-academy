@@ -63,10 +63,11 @@ Each topic has a mastery state for each of its dimensions (conceptual, math, imp
 
 `not_assessed` → `introduced` → `assisted` → `independent` → `retained`
 
+- The first answer of any kind moves `not_assessed` to `introduced`.
 - An answer is _independent_ when the learner used no hints, got it right first time, and the engine graded it (not an AI grader).
 - 2 independent correct answers on different questions give `independent`.
 - If the second independent answer comes 3 or more days after the first, the state becomes `retained`.
-- An independent wrong answer moves `retained` down to `independent`, and `independent` down to `assisted`. Lower states do not change. A provisional `independent` state goes back to `introduced`.
+- An independent wrong answer moves `retained` down to `independent`, and `independent` down to `assisted`. `introduced` and `assisted` do not go down. A provisional `independent` state goes back to `introduced`.
 - Hints reduce the credit for an answer. AI-graded and self-graded answers give at most half credit. **[Ours]**
 
 ## 6. Spaced reviews (`memory/fsrs.ts`)
