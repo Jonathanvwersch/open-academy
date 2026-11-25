@@ -1,12 +1,13 @@
 import type { QuizPayload } from '@academy/contracts/quizzes';
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
-import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
+import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { Markdown } from '../../components/markdown.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader } from '../../components/ui/card.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
 import { postQuiz, quizQueryOptions } from './queries.js';
+import { QuizResult } from './quiz-result.js';
 
 const route = getRouteApi('/quizzes/$id');
 
@@ -109,54 +110,16 @@ export function QuizPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {quiz.result ? (
-            <>
-              <p>
-                {Math.round(quiz.result.score * 100)}% correct
-                {quiz.retake ? '' : ` · ${quiz.result.xpAwarded} XP`}
-              </p>
-              {quiz.result.topics.length > 0 && (
-                <div className="space-y-2">
-                  <h2 className="font-medium">Follow-up reviews</h2>
-                  <ul className="list-disc space-y-1 pl-5">
-                    {quiz.result.topics.map((topic) => (
-                      <li key={topic.conceptId}>
-                        {topic.title}: {topic.missed ? 'Missed' : 'Over target time'}
-                        {topic.reviewed ? ' · Reviewed' : ''}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {quiz.result.topics.some((topic) => !topic.reviewed) && (
-                  <Button disabled={followUps.isPending} onClick={() => followUps.mutate()}>
-                    Start follow-up reviews
-                  </Button>
-                )}
-                {(quiz.result.retake.eligible || quiz.result.retake.id) && (
-                  <Button disabled={retake.isPending} onClick={() => retake.mutate()}>
-                    {quiz.result.retake.id ? 'View retake' : 'Start retake'}
-                  </Button>
-                )}
-                <Button variant="outline" asChild>
-                  {session ? (
-                    <Link to="/session/$id" params={{ id: session }}>
-                      Continue session
-                    </Link>
-                  ) : (
-                    <Link to="/">Back to Home</Link>
-                  )}
-                </Button>
-              </div>
-              {!quiz.retake &&
-                !quiz.result.retake.eligible &&
-                !quiz.result.retake.id &&
-                quiz.result.topics.some((topic) => topic.missed) && (
-                  <p className="text-sm text-muted-foreground">
-                    Complete the follow-up reviews to unlock the retake.
-                  </p>
-                )}
-            </>
+            <QuizResult
+              result={quiz.result}
+              totalItems={quiz.totalItems}
+              retake={quiz.retake}
+              session={session}
+              onReview={() => followUps.mutate()}
+              reviewPending={followUps.isPending}
+              onRetake={() => retake.mutate()}
+              retakePending={retake.isPending}
+            />
           ) : quiz.question && !expired ? (
             <>
               <p className="text-sm text-muted-foreground">
