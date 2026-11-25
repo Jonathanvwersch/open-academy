@@ -29,6 +29,7 @@ import {
   scenarioCourseFilterSkipReason,
   selectedReviewConceptsForAudit,
   simulateLearners,
+  validateSimulationCourseIds,
 } from '../../scripts/learner-simulator.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
@@ -511,6 +512,16 @@ test('scripted scenarios are skipped and reported when their fixture course is f
     scenarioCourseFilterSkipReason('scenario-p14-fallback', ['fixture-course'], 'fixture-course'),
   ).toBeUndefined();
   expect(scenarioCourseFilterSkipReason('average', ['course-a'], 'fixture-course')).toBeUndefined();
+});
+
+test('course filters accept scenario fixture courses and reject unknown IDs', () => {
+  const contentCourseIds = new Set(['maths-for-ml']);
+  expect(() =>
+    validateSimulationCourseIds(['fixture-course'], contentCourseIds, ['fixture-course']),
+  ).not.toThrow();
+  expect(() => validateSimulationCourseIds(['typo'], contentCourseIds, ['fixture-course'])).toThrow(
+    'Unknown course ID in --courses: typo',
+  );
 });
 
 test('P14 checks selected and covered cards while excluding cap- and budget-rejected cards', () => {

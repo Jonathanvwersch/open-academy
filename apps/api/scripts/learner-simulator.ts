@@ -1340,6 +1340,19 @@ export function scenarioCourseFilterSkipReason(
   return `fixture course ${fixtureCourseId} is not included in --courses`;
 }
 
+export function validateSimulationCourseIds(
+  courseIds: readonly string[] | undefined,
+  contentCourseIds: ReadonlySet<string>,
+  scenarioCourseIds: readonly string[] = [],
+): void {
+  const validCourseIds = new Set([...contentCourseIds, ...scenarioCourseIds]);
+  for (const courseId of courseIds ?? []) {
+    if (!validCourseIds.has(courseId)) {
+      throw new Error(`Unknown course ID in --courses: ${courseId}`);
+    }
+  }
+}
+
 function p14ExplanationForCard(
   card: { conceptId: string; dimension: string },
   explanations: readonly ReviewSelectionExplanation[],
@@ -5216,6 +5229,11 @@ export async function simulateLearners(
   content: ContentIndex,
   options: LearnerSimulationOptions,
 ): Promise<LearnerSimulationReport> {
+  validateSimulationCourseIds(
+    options.courseIds,
+    new Set(content.coursesById.keys()),
+    options.scenarioContent?.courses.map(({ id }) => id),
+  );
   const startedAt = performance.now();
   const profiles: ProfileSimulationReport[] = [];
   const skippedProfiles: LearnerSimulationReport['skippedProfiles'] = [];
