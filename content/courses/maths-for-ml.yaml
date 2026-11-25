@@ -4,7 +4,6 @@ description: The linear algebra, calculus and probability that machine learning 
 subject: mathematics
 units:
   - title: Linear algebra
-    project: pca-numpy
     intro: "Vectors, dot products and matrices: how models store and combine numbers. Then determinants, inverses and solving equations, rank, projections and least squares, and finally eigenvalues and the SVD."
     papers:
       - pca-tutorial
@@ -18,7 +17,6 @@ units:
       - orthogonality-projections
       - eigen-svd
   - title: Calculus
-    project: gradient-check
     intro: "Derivatives, partial derivatives, the chain rule and gradients: the tools that tell a model which way to change."
     papers:
       - matrix-calculus
@@ -29,7 +27,6 @@ units:
       - gradients
   - title: Probability and statistics
     intro: "Probability, the Gaussian, statistics, maximum likelihood and information theory: the language of uncertainty that losses are built on."
-    project: gaussian-mle
     papers:
       - shannon-1948
     concepts:

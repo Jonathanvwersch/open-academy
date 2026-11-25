@@ -6,7 +6,7 @@ objective: "Implement a 2-layer MLP with a hand-written backward pass in NumPy, 
 background: |
   This project gives you a small classification dataset made of two interleaved moons. A single straight line cannot separate the two curved bands well. You will build a network with one ReLU hidden layer and one sigmoid output, train it with binary cross-entropy, and check its hand-written gradients against central differences.
 
-  Examples are rows of `X`; each row of `W1` and `W2` stores one neuron's weights. The starter includes a seeded data generator and an 80/20 train-validation split. Work locally in NumPy; the Academy server records your results but never runs your code.
+  Examples are rows of `X`; each row of `W1` and `W2` stores one neuron's weights. The starter includes a seeded data generator and an 80/20 train-validation split. Work locally in NumPy.
 
   **Setup**
   ```bash
@@ -15,7 +15,7 @@ background: |
   # edit labs/nn-from-scratch/work/nn.py
   python3 labs/verify.py nn-from-scratch
   ```
-  Upload `labs/nn-from-scratch/work/results.json` on this page when you are done.
+  Review the verifier output in `labs/nn-from-scratch/work/results.json` when you are done.
 prereqs: [mlp-forward-pass, backpropagation]
 tasks:
   - id: t-init

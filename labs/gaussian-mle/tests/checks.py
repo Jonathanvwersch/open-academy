@@ -6,7 +6,7 @@ import numpy as np
 import yaml
 
 
-PROJECT_FILE = Path(__file__).resolve().parents[3] / "content" / "projects" / "gaussian-mle.yaml"
+PROJECT_FILE = Path(__file__).resolve().parents[1] / "project.yaml"
 TRUE_MU = 100.0
 TRUE_SIGMA = 2.0
 SIGMA_GRID = np.round(np.arange(0.5, 6.0001, 0.01), 2)

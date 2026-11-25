@@ -5,7 +5,6 @@ subject: ai
 units:
   - title: ML fundamentals
     intro: "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales. The maths topics are the tools this model needs, taught in the order it needs them."
-    project: linreg-numpy
     papers:
       - domingos-useful-things
       - ruder-gradient-descent-overview
@@ -25,7 +24,6 @@ units:
       - train-test-split
   - title: Probability and classification
     intro: "Probability as the language of uncertainty, and using it to classify: the Gaussian, maximum likelihood, logistic regression, cross-entropy and softmax, and how to measure a classifier."
-    project: classifier-numpy
     papers:
       - shannon-1948
       - generative-vs-discriminative

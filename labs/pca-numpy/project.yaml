@@ -22,7 +22,7 @@ background: |
   python3 labs/verify.py pca-numpy
   python3 labs/pca-numpy/preview.py
   ```
-  Upload `labs/pca-numpy/work/results.json` here when you are done.
+  Review `labs/pca-numpy/work/results.json` when you are done.
 prereqs: [vectors, dot-product, matrices, eigen-svd]
 tasks:
   - id: t-centre

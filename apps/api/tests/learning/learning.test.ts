@@ -3510,28 +3510,30 @@ test('scheduler omits labs when no available project has verifier tests', () => 
   ).toBe(true);
 });
 
-test('PCA project waits for all hard ancestors of its direct prerequisites', () => {
-  const directPrerequisites = ['vectors', 'dot-product', 'matrices', 'eigen-svd'];
+test('Character decoder project waits for all hard ancestors of its direct prerequisites', () => {
+  const directPrerequisites = required(
+    courseContent.projectsById.get('char-transformer'),
+    'character transformer project',
+  ).prereqs;
   const hardAncestors = [
-    'determinants',
-    'inverses-linear-systems',
-    'rank-span',
-    'orthogonality-projections',
-  ];
+    ...new Set(
+      directPrerequisites.flatMap((id) => [...hardPrerequisiteAncestors(courseContent, id)]),
+    ),
+  ].filter((id) => !directPrerequisites.includes(id));
   const completedRuns = (conceptIds: string[]) =>
     conceptIds.map((conceptId) => ({ conceptId, status: 'completed' as const }));
   const state = {
     ...emptyState(),
-    activeCourseId: 'maths-for-ml',
-    studyCourseIds: ['maths-for-ml'],
-    currentProjectId: 'pca-numpy',
+    activeCourseId: 'transformers-llms',
+    studyCourseIds: ['transformers-llms'],
+    currentProjectId: 'char-transformer',
     lessonRuns: completedRuns(directPrerequisites),
   };
 
   const beforeAncestors = planSession(state, courseContent, now, 300);
   expect(
     beforeAncestors.activities.some(
-      (activity) => activity.kind === 'lab' && activity.projectId === 'pca-numpy',
+      (activity) => activity.kind === 'lab' && activity.projectId === 'char-transformer',
     ),
   ).toBe(false);
 
@@ -3543,7 +3545,7 @@ test('PCA project waits for all hard ancestors of its direct prerequisites', () 
   );
   expect(
     afterAncestors.activities.some(
-      (activity) => activity.kind === 'lab' && activity.projectId === 'pca-numpy',
+      (activity) => activity.kind === 'lab' && activity.projectId === 'char-transformer',
     ),
   ).toBe(true);
 });

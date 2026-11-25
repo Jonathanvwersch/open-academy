@@ -1,7 +1,7 @@
 # RL policy in simulation
 
 We will train two policies to cross a small grid. All computation uses NumPy on a CPU.
-After installing NumPy, the lab works offline.
+After installing NumPy, this standalone lab works offline.
 
 ## Setup
 
@@ -15,7 +15,7 @@ python3 labs/verify.py rl-sim
 ```
 
 Setup copies missing starter files and preserves existing work.
-Upload `labs/rl-sim/work/results.json` on the project page.
+Review the verifier output in `labs/rl-sim/work/results.json`.
 The verifier trains fresh policies and uses fixed evaluation seeds.
 
 ## Environment and notation

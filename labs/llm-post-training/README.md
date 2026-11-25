@@ -163,8 +163,7 @@ adapted answer matches, a loss when only the base matches, and a tie otherwise.
 The report includes wins, ties, losses, and the tie-adjusted win rate.
 
 The verifier retrains a fresh seed-7 base each time. It checks your code using
-public test inputs and saves `work/results.json`. Upload that file on the project
-page. It must pass all ten checks, keep base exact match below 0.25, reach
+public test inputs and saves `work/results.json`. For this standalone lab, check the file locally. It must pass all ten checks, keep base exact match below 0.25, reach
 adapted exact match above 0.9 with improvement above 0.75, get response loss
 below 0.1, and rank more than 0.9 of held-out preference pairs correctly.
 
@@ -185,4 +184,4 @@ The reference passes every check and metric. The untouched starter fails with
 TODO messages. The buggy implementation divides masked loss by all target
 positions. Its masking-loss check explains the correct denominator; its one-step
 SFT check also fails. The other eight checks pass. Both failing runs return a
-nonzero exit code and still write uploadable JSON using the declared test IDs.
+nonzero exit code and still write results JSON using the declared test IDs.

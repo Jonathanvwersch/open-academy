@@ -23,7 +23,6 @@ concepts:
           },
           { text: "Mask the loss so only response tokens are trained", dimension: implementation },
         ],
-      projects: [llm-post-training],
       status: authored,
     }
   - {
@@ -178,7 +177,6 @@ concepts:
             dimension: conceptual,
           },
         ],
-      projects: [llm-post-training],
       status: authored,
     }
   - {
@@ -234,6 +232,5 @@ concepts:
             dimension: transfer,
           },
         ],
-      projects: [llm-post-training],
       status: authored,
     }

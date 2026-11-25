@@ -16,7 +16,6 @@ python3 labs/pca-numpy/preview.py
 
 Setup refuses to overwrite existing work. The verifier writes
 `labs/pca-numpy/work/results.json`, including when checks fail.
-Upload that file at `/projects/pca-numpy`.
 
 ## Function contracts
 

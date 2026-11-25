@@ -151,7 +151,6 @@ concepts:
           { id: policies-returns, weight: 0.07 },
         ],
       objectives: [{ text: "Explain what PPO's clipping prevents", dimension: conceptual }],
-      projects: [rl-sim],
       status: authored,
     }
   - {

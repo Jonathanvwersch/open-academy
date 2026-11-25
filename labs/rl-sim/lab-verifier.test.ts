@@ -6,7 +6,7 @@ import { expect, test } from 'vitest';
 import { parse } from 'yaml';
 
 const root = resolve('labs/rl-sim');
-const project = parse(readFileSync('content/projects/rl-sim.yaml', 'utf8')) as {
+const project = parse(readFileSync('labs/rl-sim/project.yaml', 'utf8')) as {
   tests: Array<{ id: string }>;
   metrics: Array<{ id: string; threshold: number; direction: 'above' | 'below' }>;
 };

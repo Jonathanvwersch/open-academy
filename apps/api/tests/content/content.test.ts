@@ -1,6 +1,8 @@
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { deserialize, serialize } from 'node:v8';
 import { expect, test } from 'vitest';
+import { parse } from 'yaml';
 import { buildContentIndex, subjectForCourse } from '../../src/content/index.js';
 import { loadContent } from '../../src/content/load.js';
 import {
@@ -10,6 +12,7 @@ import {
   LessonSchema,
   normalizeLesson,
   PaperSchema,
+  ProjectSchema,
 } from '../../src/content/schemas.js';
 import { serializeExercise } from '../../src/content/serialize.js';
 import type { ContentIndex, ContentSourceData } from '../../src/content/types.js';
@@ -381,18 +384,30 @@ test.each([
   );
 });
 
-test('authored Gaussian project loads with unit prerequisites and reflection exercises', async () => {
+test('Maths for ML has no NumPy steps or projects, and the standalone Gaussian lab keeps its maths prerequisites', async () => {
   const content = await loadContent('content');
-  const project = required(content.projectsById.get('gaussian-mle'), 'Gaussian project');
+  const project = ProjectSchema.parse(
+    parse(await readFile('labs/gaussian-mle/project.yaml', 'utf8')),
+  );
   const course = required(
     content.courses.find((candidate) => candidate.id === 'maths-for-ml'),
     'maths course',
   );
   const unit = required(
-    course.units.find((candidate) => candidate.project === 'gaussian-mle'),
+    course.units.find((candidate) => candidate.concepts.includes('gaussian-distribution')),
     'probability unit',
   );
 
+  expect(course.units.every((candidate) => !candidate.project)).toBe(true);
+  expect(content.projectsById.has('gaussian-mle')).toBe(false);
+  for (const conceptId of course.units.flatMap((candidate) => candidate.concepts)) {
+    const lesson = content.lessonsByConcept.get(conceptId);
+    expect(
+      lesson?.knowledge_points
+        ?.flatMap(({ title, explain, worked }) => [title, explain, worked])
+        .join('\n') ?? '',
+    ).not.toMatch(/numpy|\bnp\./i);
+  }
   expect(project.status).toBe('authored');
   expect(project.prereqs).toEqual(unit.concepts);
   expect(project.tests).toHaveLength(11);
@@ -405,11 +420,22 @@ test('authored Gaussian project loads with unit prerequisites and reflection exe
     const exercise = required(content.exercisesById.get(id), id);
     expect(exercise.lesson_only).toBeFalsy();
   }
-});
+}, 15_000);
 
-test('authored neural-network project loads with its reflection exercises', async () => {
+test('standalone NumPy labs are absent from courses and the neural-network lab keeps its reflection exercises', async () => {
   const content = await loadContent('content');
-  const project = required(content.projectsById.get('nn-from-scratch'), 'neural-network project');
+  for (const id of ['nn-from-scratch', 'llm-post-training', 'rl-sim']) {
+    expect(content.projectsById.has(id)).toBe(false);
+    expect(content.courses.some((course) => course.units.some((unit) => unit.project === id))).toBe(
+      false,
+    );
+    expect(ProjectSchema.parse(parse(await readFile(`labs/${id}/project.yaml`, 'utf8'))).id).toBe(
+      id,
+    );
+  }
+  const project = ProjectSchema.parse(
+    parse(await readFile('labs/nn-from-scratch/project.yaml', 'utf8')),
+  );
 
   expect(project.status).toBe('authored');
   expect(project.prereqs).toEqual(['mlp-forward-pass', 'backpropagation']);

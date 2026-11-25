@@ -17,7 +17,7 @@ background: |
   # edit labs/gradient-check/work/gradient_check.py
   python3 labs/verify.py gradient-check
   ```
-  Upload `labs/gradient-check/work/results.json` here. Install NumPy once before working offline. Setup preserves an existing work file.
+  Review `labs/gradient-check/work/results.json`. Install NumPy once before working offline. Setup preserves an existing work file.
 prereqs: [derivatives, partial-derivatives, chain-rule, gradients]
 tasks:
   - id: t-derivative

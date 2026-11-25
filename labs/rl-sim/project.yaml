@@ -19,7 +19,7 @@ background: |
   # edit labs/rl-sim/work/policy.py
   python3 labs/verify.py rl-sim
   ```
-  Setup preserves existing work. Upload `labs/rl-sim/work/results.json` below. The lab README gives the shapes and equations for each function.
+  Setup preserves existing work. Review the verifier output in `labs/rl-sim/work/results.json`. The lab README gives the shapes and equations for each function.
 prereqs: [policy-gradients, ppo, simulation-for-rl]
 tasks:
   - id: t-probabilities
