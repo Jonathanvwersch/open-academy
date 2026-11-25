@@ -340,7 +340,10 @@ export function describeLearnerStoreContract(
         expect.objectContaining({ resolvedAt: later, openedByAttemptId: null }),
       ]);
       expect(await store.listOpenRemediationFlags(learnerId)).toHaveLength(3);
-      const facts = await store.readSchedulerFacts(learnerId, { now: later, recallExerciseIds: [] });
+      const facts = await store.readSchedulerFacts(learnerId, {
+        now: later,
+        recallExerciseIds: [],
+      });
       expect(facts.flags).toHaveLength(3);
       expect(facts.flags.every((flag) => flag.status === 'open')).toBe(true);
       await expect(
