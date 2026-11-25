@@ -16,7 +16,7 @@ import {
   planWithdrawal,
 } from '@academy/aesop/placement/grants';
 import type { PlacementState } from '@academy/aesop/placement/placement';
-import { and, eq, inArray, or } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { drizzleLearnerStore } from '../db/learner-store.js';
 import {
@@ -130,7 +130,7 @@ export async function applyPlacementGrantOutcome(input: {
       const capped = capWithdrawnMastery(record);
       if (capped) await drizzleLearnerStore(input.db).saveMastery(input.userId, capped);
     }
-    await deletePlacementOnlyCards(input.db, input.userId, [exercise.concept]);
+    await suspendPlacementCards(input.db, input.userId, [exercise.concept], input.now);
   }
   if (![...states.values()].includes('conditional')) return none;
   const decision = grantAnswerDecision(states.get(exercise.concept), {
@@ -316,7 +316,7 @@ async function withdrawGrantsInTransaction(input: {
       });
     }
   }
-  await deletePlacementOnlyCards(input.db, input.userId, conceptIds);
+  await suspendPlacementCards(input.db, input.userId, conceptIds, input.now);
   await reopenPlanAfterWithdrawal(input, conceptIds);
   await input.db
     .update(remediationFlags)
@@ -331,11 +331,23 @@ async function withdrawGrantsInTransaction(input: {
   return conceptIds;
 }
 
-/** Removes placement-only cards; withdrawal only reaches topics the learner never studied. */
-async function deletePlacementOnlyCards(db: Database, userId: string, conceptIds: string[]) {
+/** Suspends review cards, keeping their review logs, until the topic's lesson is completed. */
+async function suspendPlacementCards(
+  db: Database,
+  userId: string,
+  conceptIds: string[],
+  now: Date,
+) {
   await db
-    .delete(reviewCards)
-    .where(and(eq(reviewCards.userId, userId), inArray(reviewCards.conceptId, conceptIds)));
+    .update(reviewCards)
+    .set({ suspendedAt: now })
+    .where(
+      and(
+        eq(reviewCards.userId, userId),
+        inArray(reviewCards.conceptId, conceptIds),
+        isNull(reviewCards.suspendedAt),
+      ),
+    );
 }
 
 /** Reopens courses that hold a withdrawn topic and skips planned work it no longer unlocks. */

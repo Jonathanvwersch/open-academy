@@ -140,6 +140,10 @@ async function answer(conceptId: string, correct: number) {
   return { input, result: await applyPlacementGrantOutcome(input) };
 }
 
+function activeCards<T extends { suspendedAt: Date | null }>(cards: T[]): T[] {
+  return cards.filter((card) => card.suspendedAt === null);
+}
+
 async function snapshot() {
   return {
     grants: await db
@@ -153,7 +157,7 @@ async function snapshot() {
       .where(eq(mastery.userId, userId))
       .orderBy(mastery.conceptId),
     cards: await db
-      .select({ conceptId: reviewCards.conceptId })
+      .select({ conceptId: reviewCards.conceptId, suspendedAt: reviewCards.suspendedAt })
       .from(reviewCards)
       .where(eq(reviewCards.userId, userId))
       .orderBy(reviewCards.conceptId),
@@ -220,7 +224,9 @@ test('a direct wrong answer withdraws a conditional grant, cascades, and keeps h
   expect(after.mastery.find((row) => row.conceptId === 'linear-algebra')?.state).toBe(
     'independent',
   );
-  expect([...new Set(after.cards.map((card) => card.conceptId))]).toEqual(['linear-algebra']);
+  expect([...new Set(activeCards(after.cards).map((card) => card.conceptId))]).toEqual([
+    'linear-algebra',
+  ]);
   expect(after.attempts).toHaveLength(2);
   expect(after.xp).toHaveLength(1);
 
@@ -329,19 +335,16 @@ test('later answers on a withdrawn topic do not restore credit before its lesson
   await seedGrant('vectors', 'conditional');
   await seedGrant('linear-algebra', 'conditional');
   await answer('vectors', 0);
-  await db.insert(reviewCards).values({
-    userId,
-    conceptId: 'vectors',
-    dimension: content.conceptsById.get('vectors')?.dimensions[0] ?? 'math',
-    fsrs: {},
-    dueAt: now,
-  });
+  await db
+    .update(reviewCards)
+    .set({ suspendedAt: null })
+    .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, 'vectors')));
   for (const record of await repo.masteryRecords()) {
     if (record.conceptId === 'vectors') await repo.saveMastery({ ...record, state: 'assisted' });
   }
   await answer('vectors', 1);
   const after = await snapshot();
-  expect(after.cards.some((card) => card.conceptId === 'vectors')).toBe(false);
+  expect(activeCards(after.cards).some((card) => card.conceptId === 'vectors')).toBe(false);
   expect(
     after.mastery
       .filter((record) => record.conceptId === 'vectors')
@@ -350,7 +353,7 @@ test('later answers on a withdrawn topic do not restore credit before its lesson
   expect(after.grants.find((grant) => grant.conceptId === 'vectors')?.state).toBe('withdrawn');
 });
 
-test('withdrawal removes the placement card and skips planned work the topic no longer unlocks', async () => {
+test('withdrawal suspends cards, keeps review logs, and skips planned work the topic no longer unlocks', async () => {
   await seedGrant('vectors', 'conditional');
   const [reviewed] = await db
     .select({ id: reviewCards.id })
@@ -378,10 +381,17 @@ test('withdrawal removes the placement card and skips planned work the topic no 
 
   expect((await answer('vectors', 0)).result.withdrawn).toEqual(['vectors']);
   const cards = await db
-    .select({ id: reviewCards.id })
+    .select({ id: reviewCards.id, suspendedAt: reviewCards.suspendedAt })
     .from(reviewCards)
     .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, 'vectors')));
-  expect(cards).toEqual([]);
+  expect(cards.map((card) => card.id)).toContain(reviewed.id);
+  expect(cards.every((card) => card.suspendedAt?.getTime() === now.getTime())).toBe(true);
+  expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, reviewed.id))).toHaveLength(
+    1,
+  );
+  expect((await repo.dueCards(now, 'UTC')).some((card) => card.conceptId === 'vectors')).toBe(
+    false,
+  );
   const [skipped] = await db
     .select({ status: sessionActivities.status })
     .from(sessionActivities)

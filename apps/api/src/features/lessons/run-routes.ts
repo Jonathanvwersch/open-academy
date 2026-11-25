@@ -1495,6 +1495,10 @@ export function registerLessonRunRoutes(
             .update(lessonRuns)
             .set({ status: 'completed', quizPassedAt: now, completedAt: now, updatedAt: now })
             .where(eq(lessonRuns.id, run.id));
+          await tx
+            .update(reviewCards)
+            .set({ suspendedAt: null })
+            .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, run.conceptId)));
           const inserted = await tx
             .insert(xpEvents)
             .values({

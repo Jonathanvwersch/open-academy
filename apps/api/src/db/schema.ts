@@ -380,6 +380,7 @@ export const reviewCards = pgTable(
     lastReviewAt: timestamp('last_review_at', { withTimezone: true, mode: 'date' }),
     reps: integer('reps').notNull().default(0),
     lapses: integer('lapses').notNull().default(0),
+    suspendedAt: timestamp('suspended_at', { withTimezone: true, mode: 'date' }),
   },
   (table) => [
     uniqueIndex('review_cards_user_concept_dimension_unique').on(
