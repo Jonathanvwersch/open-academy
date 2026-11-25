@@ -202,7 +202,15 @@ test('Explain it step recaps follow the URL and set step tutor context', async (
         question: string;
         threadId?: string;
         clientMessageId: string;
+        lessonStage?: string;
       };
+      if (body.lessonStage === 'explain') {
+        const response = await route.fetch();
+        const payload = (await response.json()) as { thread: { id: string } };
+        threadId = payload.thread.id;
+        await route.fulfill({ response, json: payload });
+        return;
+      }
       threadId = body.threadId ?? threadId;
       messageCount += 1;
       const userMessage = {
@@ -242,6 +250,7 @@ test('Explain it step recaps follow the URL and set step tutor context', async (
   await expect(page.getByLabel('Your answer')).toBeVisible();
   await page.getByRole('button', { name: 'Step 1 of 2, passed' }).click();
   await expect(page).toHaveURL(/step=1/);
+  await expect(page).toHaveURL(/activity=/);
   const recap = page.getByTestId('explain-step-recap');
   await expect(recap).toBeVisible();
   await expect(page.getByTestId('lesson-step-content')).toContainText(
@@ -268,11 +277,14 @@ test('Explain it step recaps follow the URL and set step tutor context', async (
   );
   await textarea.press('Enter');
   const tutorRequest = await requestPromise;
-  await responsePromise;
-  expect(tutorRequest.postDataJSON()).toMatchObject({
+  const tutorResponse = await responsePromise;
+  expect(tutorResponse.status()).toBe(200);
+  const tutorBody = tutorRequest.postDataJSON() as Record<string, unknown>;
+  expect(tutorBody).toMatchObject({
     lessonStage: 'step',
     knowledgePointId: 'vectors-fixture-1',
   });
+  expect(tutorBody).not.toHaveProperty('lessonProblemId');
 
   await page.reload();
   await expect(page).toHaveURL(/step=1/);
@@ -387,11 +399,15 @@ test('lesson step tabs are restored from URL and invalid steps fall back', async
   );
   await textarea.press('Enter');
   const explainRequest = await explainRequestPromise;
-  await explainResponsePromise;
-  expect(explainRequest.postDataJSON()).toMatchObject({
+  const explainResponse = await explainResponsePromise;
+  expect(explainResponse.status()).toBe(200);
+  const explainBody = explainRequest.postDataJSON() as Record<string, unknown>;
+  expect(explainBody).toMatchObject({
     lessonStage: 'explain',
     exerciseId: 'vectors-fixture-final',
   });
+  expect(explainBody).not.toHaveProperty('lessonProblemId');
+  expect(explainBody).not.toHaveProperty('knowledgePointId');
 
   await page.getByRole('button', { name: 'Step 1 of 2, passed' }).click();
   await expect(page).toHaveURL(/step=1/);
@@ -482,4 +498,109 @@ test('a lesson can open directly on its Explain-it stage', async ({ page }) => {
     'Explain it, current',
   );
   await expect(page).toHaveURL(/step=explain/);
+});
+
+test('an active quiz replaces saved step and Explain-it links with the quiz', async ({ page }) => {
+  const sessionId = await createLessonSession({ stepsPassed: true, explainDone: true });
+  await page.goto(`/session/${sessionId}`);
+  await page.getByRole('button', { name: 'Start quiz', exact: true }).click();
+  await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+
+  await page.goto(`/session/${sessionId}?step=1`);
+  await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+  await expect(page).toHaveURL(/step=quiz/);
+
+  await page.goto(`/session/${sessionId}?step=explain`);
+  await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+  await expect(page).toHaveURL(/step=quiz/);
+});
+
+test('Explain it links fall forward to the quiz after the self-check is answered', async ({
+  page,
+}) => {
+  const sessionId = await createLessonSession({ stepsPassed: true, explainDone: true });
+  await page.goto(`/session/${sessionId}?step=explain`);
+
+  await expect(page).toHaveURL(/step=quiz/);
+  await expect(page.getByTestId('lesson-quiz-intro')).toBeVisible();
+});
+
+test('failed quiz Retry keeps the warm-up point in the URL', async ({ page }) => {
+  const sessionId = await createLessonSession({ stepsPassed: true, explainDone: true });
+  let lastPayload: Record<string, unknown> | null = null;
+  let warmupProblem: Record<string, unknown> | null = null;
+  await page.route('**/api/sessions/*', async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().method() === 'GET' && url.pathname === `/api/sessions/${sessionId}`) {
+      const response = await route.fetch();
+      const payload = (await response.json()) as Record<string, unknown>;
+      await route.fulfill({ response, json: { ...payload, tutorEnabled: true } });
+      return;
+    }
+    await route.continue();
+  });
+  await page.route('**/api/tutor/status', (route) =>
+    route.fulfill({ json: { tutorEnabled: true } }),
+  );
+  await page.route('**/api/lessons/vectors/run*', async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().method() === 'POST' && url.pathname.endsWith('/run/practice')) {
+      const run = lastPayload?.run as Record<string, unknown>;
+      const problem = run.lastAnsweredProblem as Record<string, unknown>;
+      warmupProblem = {
+        ...problem,
+        id: 'warmup-problem',
+        practiceOnly: true,
+        result: undefined,
+      };
+      const payload = { ...lastPayload, run: { ...run, pendingPracticeProblem: warmupProblem } };
+      lastPayload = payload;
+      await route.fulfill({ status: 200, json: payload });
+      return;
+    }
+    const response = await route.fetch();
+    const payload = (await response.json()) as Record<string, unknown>;
+    const run = payload.run as Record<string, unknown>;
+    const quiz = run.quiz as Record<string, unknown>;
+    run.status = 'quiz';
+    quiz.last = {
+      attemptId: 'failed-attempt',
+      passed: false,
+      correctCount: 0,
+      total: 1,
+      perStep: [{ pointId: 'vectors-fixture-1', title: 'Vector basics', correct: 0, total: 1 }],
+    };
+    quiz.reviewRequired = [{ pointId: 'vectors-fixture-1', answered: 0, needed: 1 }];
+    if (warmupProblem) run.pendingPracticeProblem = warmupProblem;
+    lastPayload = payload;
+    await route.fulfill({ response, json: payload });
+  });
+
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByTestId('lesson-quiz-results')).toBeVisible();
+  await page.getByRole('button', { name: 'Open tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  await tutor.getByRole('button', { name: 'New chat' }).click();
+  const tutorInput = tutor.getByLabel('Ask the tutor');
+  await tutorInput.fill('What did I miss?');
+  const quizTutorRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/api/tutor/threads'),
+  );
+  const tutorResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' && response.url().includes('/api/tutor/threads'),
+  );
+  await tutorInput.press('Enter');
+  const quizTutorBody = (await quizTutorRequest).postDataJSON() as Record<string, unknown>;
+  expect((await tutorResponsePromise).status()).toBe(200);
+  expect(quizTutorBody).toMatchObject({ lessonStage: 'quiz' });
+  expect(quizTutorBody).not.toHaveProperty('lessonProblemId');
+  expect(quizTutorBody).not.toHaveProperty('knowledgePointId');
+  expect(quizTutorBody).not.toHaveProperty('exerciseId');
+
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(page).toHaveURL(/step=1/);
+  await expect(page.getByTestId('lesson-quiz-warmup')).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId('lesson-quiz-warmup')).toBeVisible();
 });
