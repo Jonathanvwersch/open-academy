@@ -70,6 +70,23 @@ test('uses the specified per-step quotas for one through four steps', () => {
   }
 });
 
+test('quiz recovery can use a new instance of a template already in the quiz', () => {
+  const template = exercise('template', 1, true);
+  const fixed = exercise('fixed', 1);
+  const items = select(
+    { knowledge_points: [point('step', [fixed.id, template.id])] },
+    new Map([[fixed.id, fixed], [template.id, template]]),
+    {
+      excludeFixedExerciseIds: new Set([fixed.id, template.id]),
+      usedSeeds: new Set([332584831]),
+    },
+  );
+  expect(items).toHaveLength(6);
+  expect(items.every((item) => item.exerciseId === template.id && item.seed !== null)).toBe(true);
+  expect(new Set(items.map((item) => item.seed)).size).toBe(6);
+  expect(items.map((item) => item.seed)).not.toContain(332584831);
+});
+
 test('spreads two-question steps across lowest and highest difficulty', () => {
   const { lesson, exercises } = makeSteps(3);
   const items = select(lesson, exercises);

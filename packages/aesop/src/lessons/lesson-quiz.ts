@@ -39,7 +39,7 @@ export function selectQuizItems(input: {
   previousAttemptItems: readonly QuizItemHistory[];
   usedSeeds: ReadonlySet<number>;
   seed: number;
-  excludeExerciseIds?: ReadonlySet<string>;
+  excludeFixedExerciseIds?: ReadonlySet<string>;
 }): SelectedQuizItem[] {
   const points = input.lesson.knowledge_points ?? [];
   const quota = quizQuestionsPerStep(points.length);
@@ -79,7 +79,6 @@ export function selectQuizItems(input: {
       const exercise = input.exercises.get(exerciseId);
       if (
         !exercise ||
-        input.excludeExerciseIds?.has(exerciseId) ||
         exercise.role === 'recall' ||
         exercise.type === 'explain' ||
         exercise.lesson_only
@@ -87,6 +86,7 @@ export function selectQuizItems(input: {
         return [];
       }
       if (!isTemplate(exercise)) {
+        if (input.excludeFixedExerciseIds?.has(exerciseId)) return [];
         const wasInPreviousAttempt = previousAttempt.has(`${exerciseId}:fixed`);
         const served = runServed.has(exerciseId);
         return [
