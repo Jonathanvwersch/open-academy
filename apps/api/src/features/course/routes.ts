@@ -51,7 +51,7 @@ import {
   weekXp,
   xpGoalFor,
 } from '@academy/aesop/progress/xp';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
@@ -64,6 +64,7 @@ import {
   paperProgress,
   placementGrants,
   projectProgress,
+  quizRuns,
   remediationFlags,
   sessionActivities,
   studySessions,
@@ -583,6 +584,31 @@ export function registerLearnCourseRoutes(
           (left.activity.completedAt?.getTime() ?? 0) -
           (right.activity.completedAt?.getTime() ?? 0),
       );
+    const mixedQuizActivityIds = todayDone
+      .filter(({ activity }) => activity.kind === 'mixed_quiz')
+      .map(({ activity }) => activity.id);
+    const mixedQuizRuns =
+      mixedQuizActivityIds.length > 0
+        ? await deps.db
+            .select({ id: quizRuns.id, activityId: quizRuns.activityId })
+            .from(quizRuns)
+            .where(
+              and(inArray(quizRuns.activityId, mixedQuizActivityIds), isNull(quizRuns.retakeOf)),
+            )
+        : [];
+    const mixedQuizXpByActivity = new Map<string, number>();
+    for (const run of mixedQuizRuns) {
+      if (!run.activityId) continue;
+      const runXp = events
+        .filter(
+          (event) => event.localDate === todayLocal && event.sourceKey === `mixed-quiz:${run.id}`,
+        )
+        .reduce((total, event) => total + event.amount, 0);
+      mixedQuizXpByActivity.set(
+        run.activityId,
+        (mixedQuizXpByActivity.get(run.activityId) ?? 0) + runXp,
+      );
+    }
     const doneToday = todayDone.map(({ activity }) => {
       const run =
         activity.kind === 'learn' && activity.conceptId
@@ -607,6 +633,8 @@ export function registerLearnCourseRoutes(
               )
               .reduce((total, event) => total + event.amount, 0)
           : 0;
+      const mixedQuizXp =
+        activity.kind === 'mixed_quiz' ? (mixedQuizXpByActivity.get(activity.id) ?? 0) : 0;
       return {
         activityId: activity.id,
         label: activityLabel(activity.kind),
@@ -614,7 +642,7 @@ export function registerLearnCourseRoutes(
           (activity.conceptId && index.conceptsById.get(activity.conceptId)?.title) ??
           (activity.projectId && index.projectsById.get(activity.projectId)?.title) ??
           titleForKind(activity.kind),
-        xp: activityXp + lessonXp,
+        xp: activityXp + lessonXp + mixedQuizXp,
         completedAt: activity.completedAt?.toISOString(),
       };
     });

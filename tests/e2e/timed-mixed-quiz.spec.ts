@@ -113,15 +113,18 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
   expect(late.status()).toBe(409);
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Quiz results' })).toBeVisible();
-  await expect(page.getByText('13% correct', { exact: false })).toBeVisible();
-  await expect(
-    page.getByText('Complete the follow-up reviews to unlock the retake.'),
-  ).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Start retake' })).toHaveCount(0);
+  await expect(page.getByText('1 of 8 correct')).toBeVisible();
+  await expect(page.getByText('Then you can retake the quiz once, if you want.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Retake quiz' })).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('timed-quiz-results-mobile.png') });
+  const previousViewport = page.viewportSize();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({ path: testInfo.outputPath('timed-quiz-results-desktop.png') });
+  if (previousViewport) await page.setViewportSize(previousViewport);
   const locked = await page.request.post(`/api/quizzes/${quizId}/retake`, { headers: headers() });
   expect(locked.status()).toBe(409);
 
-  await page.getByRole('button', { name: 'Start follow-up reviews' }).click();
+  await page.getByRole('button', { name: 'Review now' }).click();
   await expect(page).toHaveURL(/\/session\//);
   const reviewSession = new URL(page.url()).pathname.split('/').at(-1);
   const reviewPlan = (await (
@@ -174,9 +177,9 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
     'href',
     `/session/${sessionId}`,
   );
-  await expect(page.getByRole('button', { name: 'Start retake' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Retake quiz' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('timed-quiz-retake-mobile.png') });
-  await page.getByRole('button', { name: 'Start retake' }).click();
+  await page.getByRole('button', { name: 'Retake quiz' }).click();
   await expect(page.getByRole('heading', { name: 'Quiz retake' })).toBeVisible();
   const retakeId = new URL(page.url()).pathname.split('/').at(-1) ?? '';
   const retake = await db
