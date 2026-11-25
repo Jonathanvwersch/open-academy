@@ -437,6 +437,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@academy/aesop':
+        specifier: workspace:*
+        version: link:../aesop
       '@academy/api':
         specifier: workspace:*
         version: link:../../apps/api
