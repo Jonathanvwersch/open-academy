@@ -1,6 +1,8 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
+import { applyPlacementGrantOutcome } from '@academy/aesop/placement/grant-commands';
 import { and, asc, eq } from 'drizzle-orm';
 import type { Database } from '../src/db/client.js';
+import { drizzleLearnerStore } from '../src/db/learner-store.js';
 import {
   attempts,
   lessonRuns,
@@ -11,7 +13,6 @@ import {
   reviewCards,
   xpEvents,
 } from '../src/db/schema.js';
-import { applyPlacementGrantOutcome } from '../src/learning/placement-grants.js';
 
 export type PlacementInvariantId = 'P20' | 'P21' | 'P22' | 'P23';
 
@@ -453,7 +454,7 @@ export async function auditPlacementGrants(input: {
     input.markChecked('P23');
     const before = await learnerSnapshot(db, userId);
     await applyPlacementGrantOutcome({
-      db,
+      store: drizzleLearnerStore(db),
       userId,
       content,
       exerciseId: attempt.exerciseId,

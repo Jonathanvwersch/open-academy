@@ -40,9 +40,7 @@ import {
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
-import { placementGrantStates } from '../../learning/placement-grants.js';
 import { resolveLessonCourse } from './course-context.js';
-import { unsuspendReviewCards, writeInitialReview } from './run-review-store.js';
 
 type LessonContext = Context<ApiEnv>;
 
@@ -357,8 +355,6 @@ export function registerLessonRunRoutes(
       {
         applyMastery: deps.applyMastery,
         grade: gradeLessonAnswer,
-        placementGrantStates: (tx, learnerId) =>
-          placementGrantStates(tx.connection as Database, learnerId),
         async hasTutorReply(tx, learnerId, problemId) {
           const [reply] = await tx.connection
             .select({ id: tutorMessages.id })
@@ -505,8 +501,6 @@ export function registerLessonRunRoutes(
       {
         grade: gradeLessonAnswer,
         applyMastery: deps.applyMastery,
-        unsuspendReviewCards,
-        writeInitialReview,
       },
     );
     if (result.kind === 'not_found') return context.json({ error: 'Lesson quiz not found' }, 404);

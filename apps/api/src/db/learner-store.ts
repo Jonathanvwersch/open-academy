@@ -3,8 +3,13 @@ import { startOfNextCalendarDay } from '@academy/aesop/memory/fsrs';
 import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY } from '@academy/aesop/memory/speed';
 import { initialMastery, type MasteryRecord, type MasteryState } from '@academy/aesop/memory/types';
 import type { AttemptQuery, Settings } from '@academy/aesop/store/core-store';
-import type { StoredReviewCard } from '@academy/aesop/store/learner-store';
-import type { FlagQuery, LessonKey, LessonStore } from '@academy/aesop/store/lesson-store';
+import type { ReviewLogRecord, StoredReviewCard } from '@academy/aesop/store/learner-store';
+import type { FlagQuery, LessonKey } from '@academy/aesop/store/lesson-store';
+import type {
+  DiagnosticRun,
+  PlacementGrant,
+  PlacementReviewStore,
+} from '@academy/aesop/store/placement-review-store';
 import type { ActivityQuery, SessionQuery } from '@academy/aesop/store/session-store';
 import {
   and,
@@ -28,6 +33,7 @@ import type { Database } from './client.js';
 import {
   attempts,
   courseEnrollments,
+  diagnosticRuns,
   hintEvents,
   lessonProblems,
   lessonQuizAttempts,
@@ -36,6 +42,7 @@ import {
   mastery,
   masteryEvents,
   paperProgress,
+  placementGrants,
   projectProgress,
   remediationFlags,
   reviewCards,
@@ -55,6 +62,8 @@ const { userId: _enrollmentOwner, ...enrollmentFields } = getTableColumns(course
 const { userId: _sessionOwner, ...sessionFields } = getTableColumns(studySessions);
 const { userId: _flagOwner, ...flagFields } = getTableColumns(remediationFlags);
 const { userId: _lessonOwner, ...lessonRunFields } = getTableColumns(lessonRuns);
+const { userId: _diagnosticOwner, ...diagnosticFields } = getTableColumns(diagnosticRuns);
+const { userId: _grantOwner, ...placementGrantFields } = getTableColumns(placementGrants);
 
 function attemptOrder(order: AttemptQuery['order']) {
   switch (order) {
@@ -89,7 +98,13 @@ function mapReviewCard(row: typeof reviewCards.$inferSelect): StoredReviewCard {
     lastReviewAt: row.lastReviewAt,
     reps: row.reps,
     lapses: row.lapses,
+    suspendedAt: row.suspendedAt,
   };
+}
+
+function mapDiagnosticRun(row: Omit<typeof diagnosticRuns.$inferSelect, 'userId'>): DiagnosticRun {
+  const courseId = (row.state as { courseId?: unknown } | null)?.courseId;
+  return { ...row, courseId: typeof courseId === 'string' ? courseId : null };
 }
 
 export async function readPassedLessonQuizItems(
@@ -126,7 +141,7 @@ export function drizzleLearnerStore(
     activeReviewCardsOnly?: boolean;
     schedulerTimezone?: string;
   } = {},
-): LessonStore & { connection: Database | Transaction } {
+): PlacementReviewStore & { connection: Database | Transaction } {
   function lessonWhere(learnerId: string, key: LessonKey) {
     return and(
       eq(lessonRuns.userId, learnerId),
@@ -495,8 +510,8 @@ export function drizzleLearnerStore(
         .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id));
       return rows.map(mapReviewCard);
     },
-    async getReviewCard(learnerId, conceptId, dimension) {
-      const [row] = await db
+    async getReviewCard(learnerId, conceptId, dimension, options) {
+      const query = db
         .select()
         .from(reviewCards)
         .where(
@@ -507,6 +522,7 @@ export function drizzleLearnerStore(
           ),
         )
         .limit(1);
+      const [row] = await (options?.forUpdate ? query.for('update') : query);
       return row && mapReviewCard(row);
     },
     async insertReviewCard(learnerId, card) {
@@ -564,6 +580,138 @@ export function drizzleLearnerStore(
         )
         .returning({ id: reviewCards.id });
       return rows.length > 0;
+    },
+    async listDiagnosticRuns(learnerId, { id, courseId, status, forUpdate }) {
+      const query = db
+        .select(diagnosticFields)
+        .from(diagnosticRuns)
+        .where(
+          and(
+            eq(diagnosticRuns.userId, learnerId),
+            id === undefined ? undefined : eq(diagnosticRuns.id, id),
+            courseId === undefined
+              ? undefined
+              : sql`${diagnosticRuns.state} -> 'courseId' = to_jsonb(${courseId}::text)`,
+            status === undefined ? undefined : eq(diagnosticRuns.status, status),
+          ),
+        )
+        .orderBy(desc(diagnosticRuns.startedAt));
+      return (await (forUpdate ? query.for('update') : query)).map(mapDiagnosticRun);
+    },
+    async insertDiagnosticRun(learnerId, { courseId: _courseId, ...run }) {
+      const [row] = await db
+        .insert(diagnosticRuns)
+        .values({ ...run, userId: learnerId })
+        .returning(diagnosticFields);
+      return mapDiagnosticRun(row);
+    },
+    async patchDiagnosticRun(learnerId, runId, patch) {
+      if (Object.values(patch).every((value) => value === undefined)) return;
+      await db
+        .update(diagnosticRuns)
+        .set(patch)
+        .where(and(eq(diagnosticRuns.userId, learnerId), eq(diagnosticRuns.id, runId)));
+    },
+    async listPlacementGrants(learnerId, query = {}) {
+      const rows = await db
+        .select(placementGrantFields)
+        .from(placementGrants)
+        .where(
+          and(
+            eq(placementGrants.userId, learnerId),
+            query.conceptIds === undefined
+              ? undefined
+              : inArray(placementGrants.conceptId, query.conceptIds),
+            query.state === undefined ? undefined : eq(placementGrants.state, query.state),
+            query.excludeReasons?.length
+              ? notInArray(placementGrants.reason, [...query.excludeReasons])
+              : undefined,
+          ),
+        );
+      return rows as PlacementGrant[];
+    },
+    async insertPlacementGrantsOnce(learnerId, grants) {
+      if (grants.length === 0) return;
+      await db
+        .insert(placementGrants)
+        .values(grants.map((grant) => ({ ...grant, userId: learnerId })))
+        .onConflictDoNothing();
+    },
+    async patchPlacementGrants(learnerId, { ids, conceptId, ifState }, patch) {
+      if (Object.values(patch).every((value) => value === undefined)) return;
+      await db
+        .update(placementGrants)
+        .set(patch)
+        .where(
+          and(
+            eq(placementGrants.userId, learnerId),
+            ids === undefined ? undefined : inArray(placementGrants.id, ids),
+            conceptId === undefined ? undefined : eq(placementGrants.conceptId, conceptId),
+            ifState === undefined ? undefined : eq(placementGrants.state, ifState),
+          ),
+        );
+    },
+    async setReviewCardSuspension(learnerId, conceptIds, suspendedAt) {
+      if (conceptIds.length === 0) return;
+      await db
+        .update(reviewCards)
+        .set({ suspendedAt })
+        .where(
+          and(
+            eq(reviewCards.userId, learnerId),
+            inArray(reviewCards.conceptId, conceptIds),
+            suspendedAt === null ? undefined : isNull(reviewCards.suspendedAt),
+          ),
+        );
+    },
+    async listReviewLogs(learnerId, { cardIds, activityId, since, limit }) {
+      const rows = db
+        .select({ ...getTableColumns(reviewLogs), conceptId: reviewCards.conceptId })
+        .from(reviewLogs)
+        .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+        .where(
+          and(
+            eq(reviewCards.userId, learnerId),
+            cardIds === undefined ? undefined : inArray(reviewLogs.cardId, cardIds),
+            activityId === undefined ? undefined : eq(attempts.activityId, activityId),
+            since === undefined ? undefined : gte(reviewLogs.createdAt, since),
+          ),
+        )
+        .orderBy(desc(reviewLogs.createdAt))
+        .$dynamic();
+      if (activityId !== undefined) rows.innerJoin(attempts, eq(reviewLogs.attemptId, attempts.id));
+      if (limit !== undefined) rows.limit(limit);
+      return (await rows).map(({ fsrsLog: json, rawDueAt, speed, rating, ...row }) => {
+        const fsrsLog = json as ReviewLogRecord['fsrsLog'];
+        return {
+          ...row,
+          fsrsLog: {
+            ...fsrsLog,
+            ...(fsrsLog.due && { due: new Date(fsrsLog.due) }),
+            ...(fsrsLog.review && { review: new Date(fsrsLog.review) }),
+            ...(fsrsLog.effectiveDueAt && { effectiveDueAt: new Date(fsrsLog.effectiveDueAt) }),
+          },
+          rawDueAt: rawDueAt ?? undefined,
+          speed: speed ?? undefined,
+          rating: Number(rating) as ReviewLogRecord['rating'],
+        };
+      });
+    },
+    async patchReviewCard(learnerId, cardId, patch) {
+      if (Object.values(patch).every((value) => value === undefined)) return;
+      await db
+        .update(reviewCards)
+        .set(patch)
+        .where(and(eq(reviewCards.userId, learnerId), eq(reviewCards.id, cardId)));
+    },
+    async appendReviewLog(learnerId, cardId, log) {
+      const owned = db
+        .select({ id: reviewCards.id })
+        .from(reviewCards)
+        .where(and(eq(reviewCards.userId, learnerId), eq(reviewCards.id, cardId)));
+      await db
+        .insert(reviewLogs)
+        .values({ ...log, cardId: sql`(${owned})`, rating: String(log.rating) });
     },
     async listSessions(learnerId, query) {
       return db

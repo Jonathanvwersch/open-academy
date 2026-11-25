@@ -67,7 +67,7 @@ export type FlagQuery = {
   status?: RemediationFlag['status'];
   excludeOpenedByActivityId?: Id;
 };
-export type ReviewLogEntry = ReviewLogRecord & {
+export type ReviewLogEntry = Omit<ReviewLogRecord, 'attemptId'> & {
   id: Id;
   cardId: Id;
   conceptId: Id;

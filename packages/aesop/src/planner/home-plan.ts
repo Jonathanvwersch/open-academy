@@ -6,7 +6,9 @@ import {
 import { buildCourseStartState, needsCourseChoice } from '../graph/course-start.js';
 import { topicIsComplete } from '../graph/course-status.js';
 import { activeCourseFor } from '../graph/prerequisites.js';
+import { activePlacementRuns } from '../placement/diagnostic-commands.js';
 import { localDateKey, sessionKindForDate } from '../progress/xp.js';
+import type { PlacementReviewStore } from '../store/placement-review-store.js';
 import type { Activity, Session } from '../store/session-store.js';
 import { reviewTopicsForActivity } from './review-topics.js';
 import {
@@ -23,7 +25,6 @@ interface HomeReads {
   user(): Promise<{ prefs: unknown } | undefined>;
   activeSession(now: Date): Promise<Session | undefined>;
   courseEnrollments(): Promise<readonly { courseId: string }[]>;
-  activePlacementRuns(): Promise<readonly { id: string; state: unknown }[]>;
   session(sessionId: string): Promise<(Session & { activities: Activity[] }) | undefined>;
   attemptedExerciseIdsByActivity(ids: readonly string[]): Promise<Map<string, Set<string>>>;
   completeCourses(ids: readonly string[], now: Date): Promise<void>;
@@ -50,6 +51,8 @@ export function withReviewTopics<
 }
 
 export async function loadHomePlan(
+  store: PlacementReviewStore,
+  learnerId: string,
   repo: HomeReads,
   index: ContentIndex,
   now: Date,
@@ -70,10 +73,10 @@ export async function loadHomePlan(
   const [active, enrollments, placementRuns] = await Promise.all([
     repo.activeSession(now),
     repo.courseEnrollments(),
-    repo.activePlacementRuns(),
+    activePlacementRuns(store, learnerId),
   ]);
   const placementCourseId = placementRuns
-    .map((run) => (run.state as { courseId?: unknown }).courseId)
+    .map((run) => run.courseId)
     .find((id): id is string => typeof id === 'string' && index.coursesById.has(id));
   const currentCourseId = placementCourseId ?? state.studyCourseIds[0] ?? state.activeCourseId;
   const activeSession = active ? await repo.session(active.id) : undefined;

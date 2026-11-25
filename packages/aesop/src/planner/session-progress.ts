@@ -2,8 +2,14 @@ import type { ContentIndex } from '../course/types.js';
 import { filterSchedulerStateForContent } from '../graph/content-filters.js';
 import { learnActivitiesWithUnmetPrerequisites, masteryKey } from '../graph/prerequisites.js';
 import { recordLessonViewed } from '../memory/mastery.js';
+import {
+  completeReviewActivity,
+  type LinkTimedQuizFollowUp,
+  recordRecoveredReviewRatings,
+} from '../memory/review-completion.js';
 import type { Id } from '../store/core-store.js';
-import type { Activity, Session, SessionStore } from '../store/session-store.js';
+import type { PlacementReviewStore } from '../store/placement-review-store.js';
+import type { Activity, Session } from '../store/session-store.js';
 import { advanceActivity } from './activity-advance.js';
 import { withReviewTopics } from './home-plan.js';
 import type { SchedulerState } from './scheduler.js';
@@ -16,19 +22,7 @@ interface ProgressReads {
   session(id: Id): Promise<LoadedSession | undefined>;
   schedulerState(now: Date, content: ContentIndex): Promise<SchedulerState>;
   attemptedExerciseIdsByActivity(ids: readonly Id[]): Promise<Map<Id, Set<Id>>>;
-  recordRecoveredReviewRatings(
-    index: ContentIndex,
-    now: Date,
-    session: LoadedSession | undefined,
-    activity: Activity,
-  ): Promise<Activity>;
-  completeReviewActivity(
-    index: ContentIndex,
-    now: Date,
-    session: LoadedSession | undefined,
-    activity: Activity,
-    progress: unknown,
-  ): Promise<void>;
+  linkTimedQuizFollowUp: LinkTimedQuizFollowUp;
   replanBlocked(
     index: ContentIndex,
     now: Date,
@@ -40,12 +34,14 @@ interface ProgressReads {
 }
 
 export async function updateSessionProgress(
-  store: SessionStore,
+  store: PlacementReviewStore,
   learnerId: Id,
   sessionId: Id,
   activityId: Id,
   input: Record<string, unknown>,
   clock: () => Date,
+  timeZone: string,
+  enableFsrsFuzz: boolean,
   reads: ProgressReads,
 ) {
   let session = await reads.session(sessionId);
@@ -84,7 +80,13 @@ export async function updateSessionProgress(
     }
     if (removedQuestions && activity.exerciseIds.length > 0 && activity.status !== 'completed') {
       const index = await reads.content();
-      activity = await reads.recordRecoveredReviewRatings(index, now, session, activity);
+      const context = { index, now, session, userId: learnerId, timeZone };
+      activity = await recordRecoveredReviewRatings(
+        store,
+        { enableFsrsFuzz, schedulerState: reads.schedulerState },
+        context,
+        activity,
+      );
       if (activity.exerciseIds.some((id) => !attemptedExerciseIds.has(id))) {
         return {
           kind: 'ok' as const,
@@ -92,7 +94,13 @@ export async function updateSessionProgress(
         };
       }
       const latestSession = await reads.session(activity.sessionId);
-      await reads.completeReviewActivity(index, now, latestSession, activity, progress);
+      await completeReviewActivity(
+        store,
+        { ...context, session: latestSession },
+        activity,
+        progress,
+        reads.linkTimedQuizFollowUp,
+      );
       const finished = (await reads.session(activity.sessionId))?.activities.find(
         (item) => item.id === activity?.id,
       );

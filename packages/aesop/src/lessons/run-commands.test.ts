@@ -93,7 +93,6 @@ test('three misses halt the lesson and retry starts a fresh round on the next lo
           graded_by: 'deterministic',
         }) as const,
       hasTutorReply: async () => false,
-      placementGrantStates: async () => new Map(),
     };
     expect((await answerLessonProblem(store, runtime, input, host)).kind).toBe('answered');
     expect((await answerLessonProblem(store, runtime, input, host)).kind).toBe('conflict');

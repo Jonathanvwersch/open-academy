@@ -20,10 +20,8 @@ import type { Database } from '../../db/client.js';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { LearnerRepository } from '../../db/repository.js';
 import { attempts, lessonRuns, mastery, xpEvents } from '../../db/schema.js';
-import {
-  completeReviewActivity,
-  recordRecoveredReviewRatings,
-} from '../../learning/review-completion.js';
+import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
+import { linkTimedQuizFollowUp } from '../../learning/timed-review-follow-up.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { replanSessionActivities } from '../course/service.js';
 import { quizOffer } from '../quizzes/offer.js';
@@ -33,12 +31,13 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const { repo } = request;
   return serviceResult(
     await loadHomePlan(
+      drizzleLearnerStore(deps.db),
+      request.userId,
       {
         schedulerState: (now, content) => repo.schedulerState(now, content),
         user: () => repo.user(),
         activeSession: (now) => repo.activeSession(now),
         courseEnrollments: () => repo.courseEnrollments(),
-        activePlacementRuns: () => repo.activePlacementRuns(),
         session: (id) => repo.session(id),
         attemptedExerciseIdsByActivity: (ids) => repo.attemptedExerciseIdsByActivity(ids),
         completeCourses: (ids, now) => repo.completeCourses(ids, now),
@@ -313,6 +312,8 @@ async function updateActivityProgress(
     params.aid,
     body.data,
     now,
+    timeZone,
+    fsrsFuzzEnabled(),
     {
       content,
       session: (id) => {
@@ -322,20 +323,8 @@ async function updateActivityProgress(
       },
       schedulerState: (date, index) => repo.schedulerState(date, index),
       attemptedExerciseIdsByActivity: (ids) => repo.attemptedExerciseIdsByActivity(ids),
-      recordRecoveredReviewRatings: (index, date, session, activity) =>
-        recordRecoveredReviewRatings(
-          db,
-          repo,
-          { index, userId, timeZone, now: date, session },
-          activity,
-        ),
-      completeReviewActivity: (index, date, session, activity, progress) =>
-        completeReviewActivity(
-          db,
-          { index, userId, timeZone, now: date, session },
-          activity,
-          progress,
-        ),
+      linkTimedQuizFollowUp: (id, activityId, concepts) =>
+        linkTimedQuizFollowUp(db, id, activityId, concepts),
       replanBlocked: (index, date, session, state, blocked, activate) =>
         replanSessionActivities({
           db,
