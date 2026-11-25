@@ -256,9 +256,11 @@ The engine reads and writes mastery and review state through `LearnerStore`. `Co
 
 `SessionStore` adds sessions, activities and the facts the planner needs. The store limits the reads to recent attempts, recent completions and recent review logs. It reads the last answer for each recall question. The engine builds the planner state and selects the active session for the learner's local day.
 
+`LessonStore` adds lesson runs, problems, quiz attempts, quiz items and flags for required reviews. The engine runs lessons and repairs saved questions that no longer exist. The host gives the engine the grade, the clock, random numbers and new IDs.
+
 A transaction gives the engine a store for that transaction. All its reads and writes use that store. If a transaction throws, its changes roll back. A nested transaction can roll back while the outer transaction continues.
 
-The API store uses PostgreSQL. It locks the learner row when a flow asks for a learner lock. It locks the session row for progress and explicit replans. The `memoryStore()` function keeps state in memory and runs transactions one at a time. A memory transaction store closes when its callback ends. A learner can earn XP only once for a given source key.
+The API store uses PostgreSQL. It locks the learner row when a flow asks for a learner lock. It locks the session row for progress and explicit replans. It locks the lesson run when a command changes a run or repairs a saved question. A problem answer also locks the problem row. The `memoryStore()` function keeps state in memory and runs transactions one at a time. A memory transaction store closes when its callback ends. A learner can earn XP only once for a given source key.
 
 ## 13. How we check the engine
 

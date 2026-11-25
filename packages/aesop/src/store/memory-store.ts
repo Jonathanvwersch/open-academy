@@ -10,15 +10,22 @@ import type {
   StoredReviewCard,
 } from './learner-store.js';
 import type {
+  FlagQuery,
+  LessonProblem,
+  LessonQuizAttempt,
+  LessonQuizItem,
+  LessonRun,
+  LessonStore,
+} from './lesson-store.js';
+import type {
   Activity,
   ActivityQuery,
   RemediationFlag,
   SchedulerFacts,
   Session,
-  SessionStore,
 } from './session-store.js';
 
-export type MemoryLearnerStore = SessionStore & {
+export type MemoryLearnerStore = LessonStore & {
   addRemediationFlag(
     learnerId: string,
     flag: { conceptId: string; targetPrereqId: string | null; createdAt?: Date },
@@ -38,6 +45,10 @@ type LearnerState = {
   enrollments: Map<string, Enrollment>;
   sessions: Map<string, Session>;
   activities: Map<string, Activity>;
+  lessonRuns: Map<string, LessonRun>;
+  lessonProblems: Map<string, LessonProblem>;
+  lessonQuizAttempts: Map<string, LessonQuizAttempt>;
+  lessonQuizItems: Map<string, LessonQuizItem>;
 };
 
 type Hint = { exerciseId: string; activityId: string | null; createdAt: Date; level: number };
@@ -68,6 +79,10 @@ type IdCounters = {
   xpCount: number;
   sessionCount: number;
   activityCount: number;
+  lessonRunCount: number;
+  lessonProblemCount: number;
+  lessonQuizCount: number;
+  lessonQuizItemCount: number;
 };
 
 const modeOrder: Attempt['mode'][] = ['practice', 'assessment', 'diagnostic', 'review'];
@@ -76,6 +91,8 @@ function compareAttempts(order: AttemptQuery['order'], left: Attempt, right: Att
   const time = left.createdAt.getTime() - right.createdAt.getTime();
   const ordinal = left.attemptNo - right.attemptNo;
   switch (order) {
+    case 'unordered':
+      return 0;
     case 'scheduler':
       return (
         -time ||
@@ -120,7 +137,17 @@ export function memoryStore(seed: MemorySeed = {}): MemoryLearnerStore {
       revisions: new Map(),
       schedulerProjections: structuredClone(new Map(seed.schedulerProjections)),
     },
-    { cardCount: 0, flagCount: 0, xpCount: 0, sessionCount: 0, activityCount: 0 },
+    {
+      cardCount: 0,
+      flagCount: 0,
+      xpCount: 0,
+      sessionCount: 0,
+      activityCount: 0,
+      lessonRunCount: 0,
+      lessonProblemCount: 0,
+      lessonQuizCount: 0,
+      lessonQuizItemCount: 0,
+    },
   );
 }
 
@@ -148,6 +175,10 @@ function scopedStore(
         enrollments: new Map(),
         sessions: new Map(),
         activities: new Map(),
+        lessonRuns: new Map(),
+        lessonProblems: new Map(),
+        lessonQuizAttempts: new Map(),
+        lessonQuizItems: new Map(),
       };
       data.learners.set(learnerId, state);
     }
@@ -162,6 +193,69 @@ function scopedStore(
         (!query.statuses || query.statuses.includes(row.status)) &&
         (query.conceptId === undefined || row.conceptId === query.conceptId),
     );
+  }
+
+  function matchingFlags(learnerId: string, query: FlagQuery) {
+    const state = data.learners.get(learnerId);
+    const excluded =
+      query.excludeOpenedByActivityId === undefined
+        ? undefined
+        : new Set(
+            [...data.learners.values()].flatMap(({ attempts }) =>
+              attempts
+                .filter(({ activityId }) => activityId === query.excludeOpenedByActivityId)
+                .map(({ id }) => id),
+            ),
+          );
+    return [...(state?.flags.values() ?? [])].filter(
+      (flag) =>
+        (query.conceptId === undefined || query.conceptId === flag.conceptId) &&
+        (query.status === undefined || query.status === flag.status) &&
+        (query.targetPrereqIds === undefined ||
+          (flag.targetPrereqId !== null && query.targetPrereqIds.includes(flag.targetPrereqId))) &&
+        (flag.openedByAttemptId === null || !excluded?.has(flag.openedByAttemptId)),
+    );
+  }
+
+  function assertAttemptExists(id: string | null | undefined) {
+    if (id == null) return;
+    if ([...data.learners.values()].some(({ attempts }) => attempts.some((row) => row.id === id)))
+      return;
+    throw new Error('Attempt not found');
+  }
+
+  function assertUniqueProblem(state: LearnerState, row: LessonProblem) {
+    if (
+      [...state.lessonProblems.values()].some(
+        (other) =>
+          other.id !== row.id &&
+          other.runId === row.runId &&
+          other.knowledgePointId === row.knowledgePointId &&
+          other.round === row.round &&
+          other.position === row.position,
+      )
+    )
+      throw new Error('Lesson problem position already exists');
+  }
+
+  function assertUniqueQuiz(state: LearnerState, row: LessonQuizAttempt) {
+    if (row.score !== null && !(row.score >= 0 && row.score <= 1)) {
+      throw new Error('Lesson quiz score is out of range');
+    }
+    if (
+      [...state.lessonQuizAttempts.values()].some(
+        (other) =>
+          other.id !== row.id && other.runId === row.runId && other.attemptNo === row.attemptNo,
+      )
+    )
+      throw new Error('Lesson quiz attempt already exists');
+  }
+
+  function applyPatch<T extends object>(row: T, patch: Partial<NoInfer<T>>): T {
+    return structuredClone({
+      ...row,
+      ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)),
+    });
   }
 
   return {
@@ -594,10 +688,272 @@ function scopedStore(
         markWrite(owner);
       }
     },
+    async listLessonRuns(learnerId) {
+      assertOpen();
+      return structuredClone([...(data.learners.get(learnerId)?.lessonRuns.values() ?? [])]);
+    },
+    async getLessonRun(learnerId, key) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      if (!state) return;
+      const run =
+        'runId' in key
+          ? state.lessonRuns.get(key.runId)
+          : [...state.lessonRuns.values()].find(({ conceptId }) => conceptId === key.conceptId);
+      if (run && 'conceptId' in key && key.quizItemId !== undefined) {
+        const item = state.lessonQuizItems.get(key.quizItemId);
+        if (!item || state.lessonQuizAttempts.get(item.quizAttemptId)?.runId !== run.id) return;
+      }
+      return structuredClone(run);
+    },
+    async lockLessonProblem(learnerId, conceptId, problemId) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      const problem = state?.lessonProblems.get(problemId);
+      const run = problem && state?.lessonRuns.get(problem.runId);
+      if (!run || !problem || run.conceptId !== conceptId) return;
+      return structuredClone({ run, problem });
+    },
+    async insertLessonRunIfAbsent(learnerId, input) {
+      assertOpen();
+      const state = stateFor(learnerId);
+      if ([...state.lessonRuns.values()].some(({ conceptId }) => input.conceptId === conceptId))
+        return;
+      const row = structuredClone({ ...input, id: `lesson-run-${++ids.lessonRunCount}` });
+      state.lessonRuns.set(row.id, row);
+      markWrite(learnerId);
+      return structuredClone(row);
+    },
+    async patchLessonRun(learnerId, runId, patch) {
+      assertOpen();
+      const state = stateFor(learnerId);
+      const row = state.lessonRuns.get(runId);
+      if (!row) throw new Error('Lesson run not found');
+      const next = applyPatch(row, patch);
+      state.lessonRuns.set(runId, next);
+      markWrite(learnerId);
+      return structuredClone(next);
+    },
+    async listLessonProblems(learnerId, runId) {
+      assertOpen();
+      return structuredClone(
+        [...(data.learners.get(learnerId)?.lessonProblems.values() ?? [])]
+          .filter((row) => row.runId === runId)
+          .sort(
+            (left, right) =>
+              left.servedAt.getTime() - right.servedAt.getTime() ||
+              left.position - right.position ||
+              compare(left.id, right.id),
+          ),
+      );
+    },
+    async insertLessonProblem(learnerId, runId, problem) {
+      assertOpen();
+      const state = stateFor(learnerId);
+      if (!state.lessonRuns.has(runId)) throw new Error('Lesson run not found');
+      assertAttemptExists(problem.attemptId);
+      const row = structuredClone({
+        ...problem,
+        runId,
+        id: `lesson-problem-${++ids.lessonProblemCount}`,
+      });
+      assertUniqueProblem(state, row);
+      state.lessonProblems.set(row.id, row);
+      markWrite(learnerId);
+      return structuredClone(row);
+    },
+    async patchLessonProblem(learnerId, runId, problemId, patch) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      const row = state?.lessonProblems.get(problemId);
+      if (!state || !row || row.runId !== runId) return;
+      const next = applyPatch(row, patch);
+      assertAttemptExists(next.attemptId);
+      assertUniqueProblem(state, next);
+      state.lessonProblems.set(problemId, next);
+      markWrite(learnerId);
+    },
+    async deleteLessonProblems(learnerId, runId, problemIds) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      for (const id of problemIds) {
+        if (state?.lessonProblems.get(id)?.runId !== runId) continue;
+        state.lessonProblems.delete(id);
+        markWrite(learnerId);
+      }
+    },
+    async readLessonQuiz(learnerId, runId) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      const quizAttempts = [...(state?.lessonQuizAttempts.values() ?? [])]
+        .filter((row) => row.runId === runId)
+        .sort((left, right) => left.attemptNo - right.attemptNo);
+      const items = [...(state?.lessonQuizItems.values() ?? [])];
+      const quizItems = quizAttempts.flatMap(({ id }) =>
+        items
+          .filter((row) => row.quizAttemptId === id)
+          .sort((left, right) => left.position - right.position || compare(left.id, right.id)),
+      );
+      return structuredClone({ quizAttempts, quizItems });
+    },
+    async insertLessonQuiz(learnerId, runId, attempt, items) {
+      assertOpen();
+      const state = stateFor(learnerId);
+      if (!state.lessonRuns.has(runId)) throw new Error('Lesson run not found');
+      const row = structuredClone({
+        ...attempt,
+        runId,
+        id: `lesson-quiz-${++ids.lessonQuizCount}`,
+      });
+      assertUniqueQuiz(state, row);
+      state.lessonQuizAttempts.set(row.id, row);
+      markWrite(learnerId);
+      if (new Set(items.map(({ position }) => position)).size !== items.length) {
+        throw new Error('Lesson quiz item position already exists');
+      }
+      const inserted = items.map((item) => {
+        assertAttemptExists(item.attemptId);
+        const id = `lesson-quiz-item-${++ids.lessonQuizItemCount}`;
+        if ([...data.learners.values()].some(({ lessonQuizItems }) => lessonQuizItems.has(id))) {
+          throw new Error('Lesson quiz item ID already exists');
+        }
+        return structuredClone({ ...item, quizAttemptId: row.id, id });
+      });
+      for (const item of inserted) state.lessonQuizItems.set(item.id, item);
+      return structuredClone(row);
+    },
+    async patchLessonQuizAttempt(learnerId, runId, attemptId, patch) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      const row = state?.lessonQuizAttempts.get(attemptId);
+      if (!state || !row || row.runId !== runId) return;
+      const next = applyPatch(row, patch);
+      assertUniqueQuiz(state, next);
+      state.lessonQuizAttempts.set(attemptId, next);
+      markWrite(learnerId);
+    },
+    async patchLessonQuizItem(learnerId, runId, itemId, { replacementId, ...patch }, expected) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      const row = state?.lessonQuizItems.get(itemId);
+      if (!state || !row || state.lessonQuizAttempts.get(row.quizAttemptId)?.runId !== runId)
+        return;
+      if (expected?.unanswered && row.answeredAt !== null) return;
+      if (
+        replacementId &&
+        replacementId !== itemId &&
+        [...data.learners.values()].some(({ lessonQuizItems }) =>
+          lessonQuizItems.has(replacementId),
+        )
+      ) {
+        throw new Error('Lesson quiz item ID already exists');
+      }
+      const next = applyPatch(row, { ...patch, id: replacementId ?? itemId });
+      assertAttemptExists(next.attemptId);
+      if (
+        [...state.lessonQuizItems.values()].some(
+          (other) =>
+            other.id !== itemId &&
+            other.quizAttemptId === next.quizAttemptId &&
+            other.position === next.position,
+        )
+      )
+        throw new Error('Lesson quiz item position already exists');
+      state.lessonQuizItems.delete(itemId);
+      state.lessonQuizItems.set(next.id, next);
+      markWrite(learnerId);
+      return structuredClone(next);
+    },
+    async deleteLessonQuizRows(learnerId, runId, { itemIds, attemptIds }) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      if (!state) return;
+      for (const [id, item] of state.lessonQuizItems) {
+        if (state.lessonQuizAttempts.get(item.quizAttemptId)?.runId !== runId) continue;
+        if (itemIds?.includes(id) || attemptIds?.includes(item.quizAttemptId)) {
+          state.lessonQuizItems.delete(id);
+          markWrite(learnerId);
+        }
+      }
+      for (const id of attemptIds ?? []) {
+        if (state.lessonQuizAttempts.get(id)?.runId !== runId) continue;
+        state.lessonQuizAttempts.delete(id);
+        markWrite(learnerId);
+      }
+    },
+    async listRemediationFlags(learnerId, query) {
+      assertOpen();
+      return structuredClone(matchingFlags(learnerId, query));
+    },
+    async insertRemediationFlags(learnerId, flags) {
+      assertOpen();
+      if (!flags.length) return;
+      const state = stateFor(learnerId);
+      const rows = flags.map((flag) => {
+        assertAttemptExists(flag.openedByAttemptId);
+        return structuredClone({ ...flag, id: `flag-${++ids.flagCount}` });
+      });
+      for (const row of rows) state.flags.set(row.id, row);
+      markWrite(learnerId);
+    },
+    async resolveRemediationFlags(learnerId, query, now) {
+      assertOpen();
+      if (query.status === 'resolved') return;
+      for (const flag of matchingFlags(learnerId, { ...query, status: 'open' })) {
+        flag.status = 'resolved';
+        flag.resolvedAt = new Date(now);
+        markWrite(learnerId);
+      }
+    },
+    async clearTopicProgress(learnerId, conceptId) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      if (!state) return;
+      state.events = state.events.filter((event) => event.conceptId !== conceptId);
+      for (const [id, mastery] of state.mastery) {
+        if (mastery.conceptId === conceptId) state.mastery.delete(id);
+      }
+      const cardIds = new Set<string>();
+      for (const [id, card] of state.cards) {
+        if (card.conceptId !== conceptId) continue;
+        cardIds.add(card.id);
+        state.cards.delete(id);
+      }
+      state.reviewLogs = state.reviewLogs.filter(({ cardId }) => !cardIds.has(cardId));
+      for (const [id, run] of state.lessonRuns) {
+        if (run.conceptId !== conceptId) continue;
+        for (const [problemId, problem] of state.lessonProblems) {
+          if (problem.runId === id) state.lessonProblems.delete(problemId);
+        }
+        const attemptIds = [...state.lessonQuizAttempts.values()]
+          .filter(({ runId }) => runId === id)
+          .map(({ id }) => id);
+        await this.deleteLessonQuizRows(learnerId, id, { attemptIds });
+        state.lessonRuns.delete(id);
+      }
+      for (const [id, flag] of state.flags) {
+        if (flag.conceptId === conceptId || flag.targetPrereqId === conceptId)
+          state.flags.delete(id);
+      }
+      markWrite(learnerId);
+    },
     async readSchedulerFacts(learnerId, query) {
       assertOpen();
       const state = data.learners.get(learnerId);
       const projection = data.schedulerProjections.get(learnerId);
+      const storedLessonRuns = [...(state?.lessonRuns.values() ?? [])];
+      const storedConceptIds = new Set(storedLessonRuns.map(({ conceptId }) => conceptId));
+      const lessonRuns = [
+        ...(projection?.lessonRuns ?? []).filter(
+          ({ conceptId }) => !storedConceptIds.has(conceptId),
+        ),
+        ...storedLessonRuns.map(({ conceptId, status, startedAt, retryAfter }) => ({
+          conceptId,
+          status,
+          startedAt,
+          retryAfter,
+        })),
+      ];
       const cards = await this.listReviewCards(learnerId);
       const cardConcepts = new Map(cards.map(({ id, conceptId }) => [id, conceptId]));
       const activityIds = new Map(state?.attempts.map(({ id, activityId }) => [id, activityId]));
@@ -655,7 +1011,7 @@ function scopedStore(
         mastery: query.skip?.includes('mastery') ? undefined : await this.listMastery(learnerId),
         lessonRuns: query.skip?.includes('lessonRuns')
           ? undefined
-          : [...(projection?.lessonRuns ?? [])].sort(
+          : lessonRuns.sort(
               (left, right) =>
                 compare(left.conceptId, right.conceptId) ||
                 (right.startedAt ? new Date(right.startedAt).getTime() : 0) -
@@ -695,7 +1051,7 @@ function scopedStore(
     },
     async listOpenRemediationFlags(learnerId) {
       assertOpen();
-      return [...(data.learners.get(learnerId)?.flags.values() ?? [])].map(
+      return matchingFlags(learnerId, { status: 'open' }).map(
         ({ id, conceptId, targetPrereqId }) => ({ id, conceptId, targetPrereqId }),
       );
     },

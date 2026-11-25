@@ -37,6 +37,7 @@ export type AttemptQuery = {
     | 'recent'
     | 'scheduler'
     | 'activity_attempt_no'
+    | 'unordered'
     | 'review_chronological'
     | 'final_evidence';
   limit?: number;

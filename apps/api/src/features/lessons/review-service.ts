@@ -1,10 +1,9 @@
 import { getLessonPrerequisites } from '@academy/aesop/course/index';
 import { serializeExercise, serializeLesson } from '@academy/aesop/course/serialize';
 import { isTemplate } from '@academy/aesop/course/templates';
-import { deriveLessonState } from '@academy/aesop/lessons/lesson-runner';
+import { readLessonReviewStatus } from '@academy/aesop/lessons/run-state';
 import { masteryRank } from '@academy/aesop/memory/types';
-import { eq } from 'drizzle-orm';
-import { lessonProblems, lessonRuns } from '../../db/schema.js';
+import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { courseTopicState } from '../course/service.js';
 import { resolveLessonCourse } from './course-context.js';
@@ -70,9 +69,8 @@ export async function getLessonsByConceptIdReview(deps: FeatureServices, request
         : [];
     }),
   );
-  const runRowsPromise = Promise.resolve(
-    deps.db.select().from(lessonRuns).where(eq(lessonRuns.userId, request.userId)),
-  );
+  const store = drizzleLearnerStore(deps.db);
+  const runRowsPromise = store.listLessonRuns(request.userId);
   const [runRows, masteryRecords, course] = await Promise.all([
     runRowsPromise,
     runRowsPromise.then((rows) =>
@@ -80,12 +78,8 @@ export async function getLessonsByConceptIdReview(deps: FeatureServices, request
     ),
     resolveLessonCourse(deps.db, request.repo, index, request.userId, conceptId),
   ]);
-  const run = lesson.knowledge_points?.length
-    ? runRows.find((row) => row.conceptId === conceptId)
-    : undefined;
-  const rows = run
-    ? await deps.db.select().from(lessonProblems).where(eq(lessonProblems.runId, run.id))
-    : [];
+  const run = runRows.find((row) => row.conceptId === conceptId);
+  const runStatus = await readLessonReviewStatus(store, request.userId, run, lesson, index);
   const topicState = courseTopicState(index, masteryRecords, runRows, new Set())(concept);
   return serviceResult({
     course,
@@ -98,9 +92,7 @@ export async function getLessonsByConceptIdReview(deps: FeatureServices, request
     }),
     checkAnswers,
     checks,
-    runStatus: run
-      ? deriveLessonState(lesson, rows, index.exercisesById, run.quizPassedAt, run.attempt).status
-      : null,
+    runStatus,
     conceptTitle: index.conceptsById.get(conceptId)?.title ?? conceptId,
   });
 }

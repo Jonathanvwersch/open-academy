@@ -6,68 +6,52 @@ import {
   isTemplate,
 } from '@academy/aesop/course/templates';
 import type { ContentIndex, IndexedExercise, IndexedLesson } from '@academy/aesop/course/types';
-import { keyPrereqsForPoint } from '@academy/aesop/graph/prerequisites';
 import { answerDisplay, answerText } from '@academy/aesop/lessons/answer-display';
 import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
 import { gradeExercise } from '@academy/aesop/lessons/grading/index';
 import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '@academy/aesop/lessons/grading/multiple-choice';
 import {
-  QUIZ_PASS_MARK,
-  scoreLessonQuiz,
-  selectQuizItems,
-} from '@academy/aesop/lessons/lesson-quiz';
-import { isLessonRetryReady } from '@academy/aesop/lessons/lesson-retry';
-import {
-  deriveLessonState,
-  selectNextProblem,
-  xpForPassedPoint,
-} from '@academy/aesop/lessons/lesson-runner';
-import {
-  newReviewCard,
-  reviewActivityRating,
-  scheduleReviewWithDetails,
-  startOfNextCalendarDay,
-} from '@academy/aesop/memory/fsrs';
-import { calculateCredit } from '@academy/aesop/memory/mastery';
-import {
-  applyImplicitRepetitions,
-  type applyMastery,
-  getTopicSpeed,
-} from '@academy/aesop/memory/mastery-service';
-import { conditionalPrerequisites } from '@academy/aesop/placement/grants';
+  answerLessonProblem,
+  answerLessonQuiz,
+  type LessonGrader,
+  practiceLessonPoint,
+  resolveLessonExercise,
+  startLessonQuiz,
+  startLessonRun,
+  submitLessonQuiz,
+} from '@academy/aesop/lessons/run-commands';
+import type { LessonRuntime } from '@academy/aesop/lessons/run-recovery';
+import { readLessonState, readPassedQuiz } from '@academy/aesop/lessons/run-state';
+import type { applyMastery } from '@academy/aesop/memory/mastery-service';
+import type { LessonRun } from '@academy/aesop/store/lesson-store';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
-import { and, desc, eq, getTableColumns, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
-import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
-import { LearnerRepository } from '../../db/repository.js';
+import type { LearnerRepository } from '../../db/repository.js';
 import {
-  attempts,
   lessonProblems,
   lessonQuizAttempts,
   lessonQuizItems,
   lessonRuns,
-  remediationFlags,
-  reviewCards,
-  reviewLogs,
-  sessionActivities,
   tutorMessages,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
-import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
-import { openTargetedReviews, placementGrantStates } from '../../learning/placement-grants.js';
+import { placementGrantStates } from '../../learning/placement-grants.js';
 import { resolveLessonCourse } from './course-context.js';
-import {
-  loadRunProblems,
-  loadRunQuiz,
-  loadRunSnapshot,
-  serveNextRunProblem,
-} from './run-recovery.js';
+import { unsuspendReviewCards, writeInitialReview } from './run-review-store.js';
 
 type LessonContext = Context<ApiEnv>;
+
+const gradeLessonAnswer: LessonGrader = (exercise, answer, { random, requireAnswer }) => {
+  const feedback = requireAnswer ? emptyAnswerMessage(exercise.type, answer) : null;
+  return feedback
+    ? Promise.resolve({ status: 'invalid', feedback, graded_by: 'deterministic' })
+    : gradeExercise(exercise, answer, { random });
+};
 
 function correctAnswerDisplay(exercise: IndexedExercise): string {
   if (exercise.type === 'mc') {
@@ -93,24 +77,6 @@ function correctAnswerDisplay(exercise: IndexedExercise): string {
 
 type MasteryApplier = typeof applyMastery;
 
-function seededRandom(seed: string): () => number {
-  let state = 0x811c9dc5;
-  for (const character of seed) {
-    state = Math.imul(state ^ character.charCodeAt(0), 0x01000193);
-  }
-  return () => {
-    state = (state + 0x6d2b79f5) | 0;
-    let value = state;
-    value = Math.imul(value ^ (value >>> 15), value | 1);
-    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-    return ((value ^ (value >>> 14)) >>> 0) / 0x1_0000_0000;
-  };
-}
-
-function gradeQuizAnswer(exercise: IndexedExercise, answer: unknown, itemId: string) {
-  return gradeExercise(exercise, answer, { random: seededRandom(itemId) });
-}
-
 export function registerLessonRunRoutes(
   api: Hono<ApiEnv>,
   deps: {
@@ -121,6 +87,18 @@ export function registerLessonRunRoutes(
     applyMastery: MasteryApplier;
   },
 ) {
+  const store = drizzleLearnerStore(deps.db);
+  const runtime = (context: LessonContext): LessonRuntime => ({
+    now: () => deps.requestNow(context),
+    random: () => Math.random(),
+    newId: () => crypto.randomUUID(),
+    enableFsrsFuzz: fsrsFuzzEnabled(),
+  });
+  const command = (
+    context: LessonContext,
+    conceptId: string,
+    resolved: { index: ContentIndex; lesson: IndexedLesson },
+  ) => ({ userId: context.get('userId'), timeZone: context.get('timeZone'), conceptId, resolved });
   const lessonFor = async (conceptId: string) => {
     const index = await deps.content();
     const lesson = index.lessonsByConcept.get(conceptId);
@@ -132,25 +110,16 @@ export function registerLessonRunRoutes(
     context: LessonContext,
     lesson: IndexedLesson,
     index: ContentIndex,
-    run: typeof lessonRuns.$inferSelect,
+    run: LessonRun,
   ) => {
     const userId = context.get('userId');
-    const now = deps.requestNow(context);
-    const loaded = await loadRunSnapshot(deps.db, run, lesson, index, now);
-    if (!loaded) return null;
-    run = loaded.current;
-    const { rows, derived, quizAttempts, quizItems } = loaded;
+    const snapshot = await readLessonState(store, userId, run, lesson, index, runtime(context));
+    if (!snapshot) return null;
+    ({ run } = snapshot);
+    const { derived, lastAttempt, practicePending, needsProgressSync, retry, currentQuiz } =
+      snapshot;
     const point = lesson.knowledge_points?.find((item) => item.id === derived.currentPointId);
-    const buildInstance = (exercise: IndexedExercise, seed: number | null) => {
-      if (!isTemplate(exercise)) return exercise;
-      if (seed === null) return undefined;
-      const concrete = instantiateExercise(exercise, seed).exercise;
-      return {
-        ...concrete,
-        concept: exercise.concept,
-        contentVersion: exercise.contentVersion,
-      } as IndexedExercise;
-    };
+    const buildInstance = resolveLessonExercise;
     const pendingRow = derived.pending;
     const pendingExercise = pendingRow ? index.exercisesById.get(pendingRow.exerciseId) : undefined;
     const pendingInstance =
@@ -159,9 +128,6 @@ export function registerLessonRunRoutes(
     const lastExercise = lastRow ? index.exercisesById.get(lastRow.exerciseId) : undefined;
     const lastInstance =
       lastExercise && lastRow ? buildInstance(lastExercise, lastRow.seed) : undefined;
-    const [lastAttempt] = lastRow?.attemptId
-      ? await deps.db.select().from(attempts).where(eq(attempts.id, lastRow.attemptId)).limit(1)
-      : [];
     const attemptFeedback = (lastAttempt?.feedback as { message?: string } | null)?.message;
     const lastAnswerOptions =
       lastAttempt && lastInstance
@@ -172,25 +138,6 @@ export function registerLessonRunRoutes(
         ? ''
         : (attemptFeedback ??
           (lastRow?.correct === 1 ? 'Correct.' : MULTIPLE_CHOICE_FALLBACK_FEEDBACK));
-    const earnedEvents = await drizzleLearnerStore(deps.db).listXpEvents(userId, {
-      sourcePrefix: `kp:${run.id}:`,
-    });
-    const earnedByPoint = new Map(earnedEvents.map((event) => [event.sourceKey, event.amount]));
-    const needsProgressSync = derived.points.some(
-      (point) =>
-        point.status === 'passed' &&
-        !earnedByPoint.has(`kp:${run.id}:${point.id}`) &&
-        rows.some(
-          (row) =>
-            !row.practiceOnly &&
-            row.assisted &&
-            row.knowledgePointId === point.id &&
-            row.round === point.round &&
-            row.answeredAt !== null &&
-            row.position <= (point.passedOn?.position ?? 0),
-        ),
-    );
-    const practicePending = rows.find((row) => row.practiceOnly && row.answeredAt === null);
     const practiceExercise = practicePending
       ? index.exercisesById.get(practicePending.exerciseId)
       : undefined;
@@ -198,163 +145,35 @@ export function registerLessonRunRoutes(
       practiceExercise && practicePending
         ? buildInstance(practiceExercise, practicePending.seed)
         : undefined;
-    const itemsFor = (attemptId: string) =>
-      quizItems.filter((item) => item.quizAttemptId === attemptId);
-    const currentAttempt = quizAttempts.find((attempt) => attempt.submittedAt === null);
-    const latestQuizAttempt = [...quizAttempts]
-      .reverse()
-      .find((attempt) => attempt.submittedAt !== null);
-    const firstPassedAttempt = quizAttempts.find((attempt) => attempt.passed === true);
-    const lastItems = latestQuizAttempt ? itemsFor(latestQuizAttempt.id) : [];
-    const previousAttemptItems = latestQuizAttempt ? itemsFor(latestQuizAttempt.id) : [];
-    const previewItems = selectQuizItems({
-      lesson,
-      exercises: index.exercisesById,
-      servedProblems: rows.map((row) => ({ exerciseId: row.exerciseId, seed: row.seed })),
-      previousAttemptItems,
-      usedSeeds: new Set([
-        ...rows.flatMap((row) => (row.seed === null ? [] : [row.seed])),
-        ...quizItems.flatMap((item) => (item.seed === null ? [] : [item.seed])),
-      ]),
-      seed: 0,
-    });
-    const currentItems = currentAttempt ? itemsFor(currentAttempt.id) : [];
-    const quizQuestionCount = currentAttempt
-      ? currentItems.length
-      : lastItems.length || previewItems.length;
-    const quizStatus = run.quizPassedAt
-      ? 'passed'
-      : currentAttempt
-        ? 'in_progress'
-        : latestQuizAttempt
-          ? latestQuizAttempt.passed
-            ? 'passed'
-            : 'failed'
-          : 'not_started';
-    const quizLast =
-      latestQuizAttempt?.submittedAt &&
-      latestQuizAttempt.score !== null &&
-      latestQuizAttempt.passed !== null
-        ? {
-            attemptId: latestQuizAttempt.id,
-            attemptNo: latestQuizAttempt.attemptNo,
-            score: latestQuizAttempt.score,
-            correctCount: lastItems.filter((item) => item.correct === 1).length,
-            total: lastItems.length,
-            passed: latestQuizAttempt.passed,
-            perStep: (lesson.knowledge_points ?? []).map((knowledgePoint) => {
-              const stepItems = lastItems.filter(
-                (item) => item.knowledgePointId === knowledgePoint.id,
-              );
+    const quiz = currentQuiz
+      ? {
+          ...snapshot.quiz,
+          current: {
+            attemptId: currentQuiz.attemptId,
+            items: currentQuiz.items.map((item) => {
+              const indexed = index.exercisesById.get(item.exerciseId);
+              const instance = indexed ? buildInstance(indexed, item.seed) : undefined;
               return {
-                pointId: knowledgePoint.id,
-                title: knowledgePoint.title,
-                correct: stepItems.filter((item) => item.correct === 1).length,
-                total: stepItems.length,
+                id: item.id,
+                position: item.position,
+                exercise: instance ? serializeExercise(instance, userId) : null,
+                answered: item.answeredAt !== null,
+                ...(item.answeredAt !== null ? { answer: item.answer } : {}),
+                locked: item.attemptId !== null,
               };
             }),
-          }
-        : undefined;
-    const latestQuizSubmittedAt = latestQuizAttempt?.submittedAt;
-    const reviewRequired =
-      !run.quizPassedAt && latestQuizAttempt?.passed === false && latestQuizSubmittedAt
-        ? (lesson.knowledge_points ?? []).flatMap((knowledgePoint) => {
-            const missed = lastItems.some(
-              (item) =>
-                item.knowledgePointId === knowledgePoint.id &&
-                item.correct !== null &&
-                item.correct < 1,
-            );
-            if (!missed) return [];
-            const answered = Math.min(
-              3,
-              rows.filter(
-                (row) =>
-                  row.practiceOnly &&
-                  row.knowledgePointId === knowledgePoint.id &&
-                  row.answeredAt !== null &&
-                  row.answeredAt > latestQuizSubmittedAt,
-              ).length,
-            );
-            return [
-              { pointId: knowledgePoint.id, title: knowledgePoint.title, answered, needed: 3 },
-            ];
-          })
-        : [];
-    const quizXpAwarded =
-      latestQuizAttempt?.passed && firstPassedAttempt?.id === latestQuizAttempt.id
-        ? lastItems.length
-        : 0;
-    const quiz = {
-      status: quizStatus,
-      passMark: QUIZ_PASS_MARK,
-      questionCount: quizQuestionCount,
-      ...(currentAttempt
-        ? {
-            current: {
-              attemptId: currentAttempt.id,
-              items: currentItems.map((item) => {
-                const indexed = index.exercisesById.get(item.exerciseId);
-                const instance = indexed ? buildInstance(indexed, item.seed) : undefined;
-                return {
-                  id: item.id,
-                  position: item.position,
-                  exercise: instance ? serializeExercise(instance, userId) : null,
-                  answered: item.answeredAt !== null,
-                  ...(item.answeredAt !== null ? { answer: item.answer } : {}),
-                  locked: item.attemptId !== null,
-                };
-              }),
-            },
-          }
-        : {}),
-      ...(quizLast ? { last: quizLast } : {}),
-      reviewRequired,
-      bestPassed: Boolean(run.quizPassedAt || quizAttempts.some((attempt) => attempt.passed)),
-      xpAwarded: quizXpAwarded,
-    };
-    const retryFlags =
-      run.status === 'needs_retry'
-        ? await deps.db
-            .select({ targetPrereqId: remediationFlags.targetPrereqId })
-            .from(remediationFlags)
-            .where(
-              and(
-                eq(remediationFlags.userId, userId),
-                eq(remediationFlags.conceptId, run.conceptId),
-                eq(remediationFlags.status, 'open'),
-              ),
-            )
-        : [];
-    const reviewFirstIds = [
-      ...new Set(retryFlags.map((flag) => flag.targetPrereqId ?? run.conceptId)),
-    ];
+          },
+        }
+      : snapshot.quiz;
     return {
       id: run.id,
       ...(needsProgressSync ? { needsProgressSync: true } : {}),
       status: run.status === 'needs_retry' ? 'needs_retry' : derived.status,
-      ...(run.status === 'needs_retry'
-        ? {
-            retry: {
-              after: run.retryAfter?.toISOString() ?? null,
-              ready: isLessonRetryReady(run.retryAfter, retryFlags.length > 0, now),
-              reviewFirst: reviewFirstIds.map((id) => ({
-                id,
-                title: index.conceptsById.get(id)?.title ?? id,
-              })),
-            },
-          }
-        : {}),
+      ...(retry ? { retry: { ...retry, after: retry.after?.toISOString() ?? null } } : {}),
       ...(derived.halted ? { halted: derived.halted } : {}),
       where_this_fits: lesson.where_this_fits,
       prerequisites: getLessonPrerequisites(index, lesson.concept),
-      points: derived.points.map((point) => ({
-        ...point,
-        xpEarned:
-          point.status === 'passed'
-            ? (earnedByPoint.get(`kp:${run.id}:${point.id}`) ?? xpForPassedPoint(point.answered))
-            : 0,
-      })),
+      points: snapshot.points,
       currentPointId: derived.currentPointId,
       currentPoint: point
         ? {
@@ -392,7 +211,7 @@ export function registerLessonRunRoutes(
               },
             }
           : undefined,
-      xpEarned: earnedEvents.reduce((sum, event) => sum + event.amount, 0),
+      xpEarned: snapshot.xpEarned,
       quiz,
     };
   };
@@ -403,11 +222,7 @@ export function registerLessonRunRoutes(
     conceptId: string,
   ) => {
     if (!activityId) return { activity: undefined, session: undefined };
-    const [activityRow] = await deps.db
-      .select()
-      .from(sessionActivities)
-      .where(eq(sessionActivities.id, activityId))
-      .limit(1);
+    const [activityRow] = await store.listActivities(context.get('userId'), { ids: [activityId] });
     const session = activityRow
       ? await deps.withRepo(context).session(activityRow.sessionId)
       : undefined;
@@ -422,12 +237,7 @@ export function registerLessonRunRoutes(
     const conceptId = context.req.param('conceptId');
     const resolved = await lessonFor(conceptId);
     if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
-    const [run] = await deps.db
-      .select()
-      .from(lessonRuns)
-      .where(and(eq(lessonRuns.userId, context.get('userId')), eq(lessonRuns.conceptId, conceptId)))
-      .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
-      .limit(1);
+    const run = await store.getLessonRun(context.get('userId'), { conceptId });
     return context.json({
       course: await resolveLessonCourse(
         deps.db,
@@ -454,150 +264,9 @@ export function registerLessonRunRoutes(
     if (!body.success) return context.json({ error: 'Invalid lesson run request' }, 400);
     const activity = await verifyActivity(context, body.data.activityId, conceptId);
     if (!activity) return context.json({ error: 'Learn activity not found' }, 403);
-    const now = deps.requestNow(context);
-    const userId = context.get('userId');
-    const run = await deps.db.transaction(async (tx) => {
-      let [existing] = await tx
-        .select()
-        .from(lessonRuns)
-        .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, conceptId)))
-        .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
-        .for('update')
-        .limit(1);
-      if (!existing) {
-        [existing] = await tx
-          .insert(lessonRuns)
-          .values({ userId, conceptId, status: 'in_progress', startedAt: now, updatedAt: now })
-          .onConflictDoNothing()
-          .returning();
-        if (!existing) {
-          [existing] = await tx
-            .select()
-            .from(lessonRuns)
-            .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, conceptId)))
-            .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
-            .for('update')
-            .limit(1);
-        }
-      }
-      if (!existing) throw new Error('Unable to create lesson run');
-      const { rows: problems } = await loadRunProblems(tx, existing.id, resolved.index);
-      let state = deriveLessonState(
-        resolved.lesson,
-        problems,
-        resolved.index.exercisesById,
-        existing.quizPassedAt,
-        existing.attempt,
-      );
-      if (existing.status === 'needs_retry') {
-        if (!isLessonRetryReady(existing.retryAfter, false, now)) {
-          return { kind: 'retry_tomorrow' as const };
-        }
-        const openFlags = await tx
-          .select({ targetPrereqId: remediationFlags.targetPrereqId })
-          .from(remediationFlags)
-          .where(
-            and(
-              eq(remediationFlags.userId, userId),
-              eq(remediationFlags.conceptId, conceptId),
-              eq(remediationFlags.status, 'open'),
-            ),
-          );
-        const reviewFirstIds = [
-          ...new Set(openFlags.map((flag) => flag.targetPrereqId ?? conceptId)),
-        ];
-        if (!isLessonRetryReady(existing.retryAfter, openFlags.length > 0, now)) {
-          return {
-            kind: 'review_first' as const,
-            titles: reviewFirstIds.map((id) => resolved.index.conceptsById.get(id)?.title ?? id),
-          };
-        }
-        [existing] = await tx
-          .update(lessonRuns)
-          .set({
-            attempt: existing.attempt + 1,
-            status: 'in_progress',
-            retryAfter: null,
-            updatedAt: now,
-            completedAt: null,
-          })
-          .where(eq(lessonRuns.id, existing.id))
-          .returning();
-        state = deriveLessonState(
-          resolved.lesson,
-          problems,
-          resolved.index.exercisesById,
-          existing.quizPassedAt,
-          existing.attempt,
-        );
-      } else if (state.halted) {
-        [existing] = await tx
-          .update(lessonRuns)
-          .set({
-            attempt: existing.attempt + 1,
-            status: 'in_progress',
-            haltedAt: null,
-            retryAfter: null,
-            updatedAt: now,
-            completedAt: null,
-          })
-          .where(eq(lessonRuns.id, existing.id))
-          .returning();
-        state = deriveLessonState(
-          resolved.lesson,
-          problems,
-          resolved.index.exercisesById,
-          existing.quizPassedAt,
-          existing.attempt,
-        );
-      }
-      // Repair completion earned under the old tutor-exclusion rule only on an explicit write.
-      // Unique source keys retain historical awards and make repeated recovery safe.
-      const passedPoints = state.points.filter((point) => point.status === 'passed');
-      if (body.data.reconcileProgress && passedPoints.length) {
-        const store = drizzleLearnerStore(tx);
-        for (const point of passedPoints) {
-          await store.insertXpEventOnce(userId, {
-            kind: 'knowledge_point',
-            sourceKey: `kp:${existing.id}:${point.id}`,
-            conceptId,
-            amount: xpForPassedPoint(point.answered),
-            earnedAt: now,
-            localDate: localDate(now, context.get('timeZone')),
-          });
-        }
-      }
-      if (state.status !== 'in_progress') {
-        if (existing.status !== state.status) {
-          [existing] = await tx
-            .update(lessonRuns)
-            .set({
-              status: state.status,
-              updatedAt: now,
-              completedAt: state.status === 'completed' ? (existing.completedAt ?? now) : null,
-            })
-            .where(eq(lessonRuns.id, existing.id))
-            .returning();
-        }
-        return { kind: 'ready' as const, run: existing };
-      }
-      if (existing.status !== 'in_progress') {
-        [existing] = await tx
-          .update(lessonRuns)
-          .set({ status: 'in_progress', updatedAt: now, completedAt: null })
-          .where(eq(lessonRuns.id, existing.id))
-          .returning();
-      }
-      await serveNextRunProblem(
-        tx,
-        existing,
-        resolved.lesson,
-        resolved.index,
-        problems,
-        state,
-        now,
-      );
-      return { kind: 'ready' as const, run: existing };
+    const run = await startLessonRun(store, runtime(context), {
+      ...command(context, conceptId, resolved),
+      reconcileProgress: body.data.reconcileProgress,
     });
     if (run.kind === 'retry_tomorrow') {
       return context.json({ error: 'This lesson comes back tomorrow.' }, 409);
@@ -632,118 +301,9 @@ export function registerLessonRunRoutes(
     if (!body.success) return context.json({ error: 'Invalid practice request' }, 400);
     const activity = await verifyActivity(context, body.data.activityId, conceptId);
     if (!activity) return context.json({ error: 'Learn activity not found' }, 403);
-    const userId = context.get('userId');
-    const now = deps.requestNow(context);
-    const result = await deps.db.transaction(async (tx) => {
-      const [run] = await tx
-        .select()
-        .from(lessonRuns)
-        .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, conceptId)))
-        .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
-        .for('update')
-        .limit(1);
-      if (!run) return { kind: 'not_found' as const };
-      const problems = await tx
-        .select()
-        .from(lessonProblems)
-        .where(eq(lessonProblems.runId, run.id))
-        .orderBy(
-          lessonProblems.servedAt,
-          lessonProblems.knowledgePointId,
-          lessonProblems.round,
-          lessonProblems.position,
-          lessonProblems.id,
-        );
-      const state = deriveLessonState(
-        resolved.lesson,
-        problems,
-        resolved.index.exercisesById,
-        run.quizPassedAt,
-        run.attempt,
-      );
-      const pointState = state.points.find((item) => item.id === body.data.pointId);
-      if (pointState?.status !== 'passed') return { kind: 'not_passed' as const, run };
-      let availableProblems = problems;
-      let warmupComplete = false;
-      if (body.data.warmup) {
-        const [latestQuizAttempt] = await tx
-          .select()
-          .from(lessonQuizAttempts)
-          .where(eq(lessonQuizAttempts.runId, run.id))
-          .orderBy(desc(lessonQuizAttempts.attemptNo))
-          .limit(1);
-        const latestSubmittedAt = latestQuizAttempt?.submittedAt;
-        if (!run.quizPassedAt && latestQuizAttempt?.passed === false && latestSubmittedAt) {
-          const quizItems = await tx
-            .select({
-              knowledgePointId: lessonQuizItems.knowledgePointId,
-              correct: lessonQuizItems.correct,
-            })
-            .from(lessonQuizItems)
-            .where(eq(lessonQuizItems.quizAttemptId, latestQuizAttempt.id))
-            .orderBy(lessonQuizItems.position, lessonQuizItems.id);
-          const pointWasMissed = quizItems.some(
-            (item) =>
-              item.knowledgePointId === body.data.pointId &&
-              item.correct !== null &&
-              item.correct < 1,
-          );
-          const answeredSinceFailure = problems.filter(
-            (problem) =>
-              problem.practiceOnly &&
-              problem.knowledgePointId === body.data.pointId &&
-              problem.answeredAt !== null &&
-              problem.answeredAt > latestSubmittedAt,
-          ).length;
-          warmupComplete = !pointWasMissed || answeredSinceFailure >= 3;
-        } else {
-          warmupComplete = true;
-        }
-      }
-      const pending = availableProblems.find(
-        (item) => item.practiceOnly && item.answeredAt === null,
-      );
-      if (pending?.knowledgePointId === body.data.pointId && !warmupComplete) {
-        return { kind: 'ready' as const, run };
-      }
-      if (pending) {
-        await tx.delete(lessonProblems).where(eq(lessonProblems.id, pending.id));
-        availableProblems = availableProblems.filter((item) => item.id !== pending.id);
-      }
-      if (warmupComplete) return { kind: 'review_complete' as const, run };
-      const point = resolved.lesson.knowledge_points?.find((item) => item.id === body.data.pointId);
-      if (!point) return { kind: 'not_found' as const };
-      const pointRows = availableProblems
-        .filter((problem) => problem.knowledgePointId === point.id)
-        .map(({ exerciseId, seed, position, correct, servedAt }) => ({
-          exerciseId,
-          seed,
-          position,
-          correct,
-          servedAt,
-        }));
-      const usedSeeds = new Set(
-        availableProblems.flatMap((problem) => (problem.seed === null ? [] : [problem.seed])),
-      );
-      const selection = selectNextProblem(
-        point,
-        resolved.index.exercisesById,
-        pointRows,
-        Math.floor(Math.random() * 0x7fffffff),
-        usedSeeds,
-      );
-      if (!selection) return { kind: 'no_problem' as const, run };
-      await tx.insert(lessonProblems).values({
-        runId: run.id,
-        knowledgePointId: point.id,
-        round: pointState.round,
-        position: selection.position,
-        exerciseId: selection.exerciseId,
-        seed: selection.seed,
-        practiceOnly: true,
-        servedAt: now,
-      });
-      return { kind: 'ready' as const, run };
+    const result = await practiceLessonPoint(store, runtime(context), {
+      ...command(context, conceptId, resolved),
+      ...body.data,
     });
     if (result.kind === 'not_found') return context.json({ error: 'Lesson step not found' }, 404);
     if (result.kind === 'not_passed') {
@@ -755,11 +315,7 @@ export function registerLessonRunRoutes(
     if (result.kind === 'no_problem') {
       return context.json({ error: 'No practice question is available' }, 409);
     }
-    const [run] = await deps.db
-      .select()
-      .from(lessonRuns)
-      .where(eq(lessonRuns.id, result.run.id))
-      .limit(1);
+    const run = await store.getLessonRun(context.get('userId'), { runId: result.run.id });
     return context.json({
       course: await resolveLessonCourse(
         deps.db,
@@ -789,264 +345,41 @@ export function registerLessonRunRoutes(
     const activity = await verifyActivity(context, body.data.activityId, conceptId);
     if (!activity) return context.json({ error: 'Learn activity not found' }, 403);
     const userId = context.get('userId');
-    const now = deps.requestNow(context);
-    const result = await deps.db.transaction(async (tx) => {
-      const [joined] = await tx
-        .select({ problem: lessonProblems, run: lessonRuns })
-        .from(lessonProblems)
-        .innerJoin(lessonRuns, eq(lessonProblems.runId, lessonRuns.id))
-        .where(
-          and(
-            eq(lessonProblems.id, body.data.problemId),
-            eq(lessonRuns.userId, userId),
-            eq(lessonRuns.conceptId, conceptId),
-          ),
-        )
-        .for('update')
-        .limit(1);
-      if (!joined) return { kind: 'not_found' as const };
-      if (joined.problem.answeredAt) return { kind: 'conflict' as const, runId: joined.run.id };
-      const allProblems = await tx
-        .select()
-        .from(lessonProblems)
-        .where(eq(lessonProblems.runId, joined.run.id))
-        .orderBy(
-          lessonProblems.servedAt,
-          lessonProblems.knowledgePointId,
-          lessonProblems.round,
-          lessonProblems.position,
-          lessonProblems.id,
-        );
-      const stateBeforeAnswer = deriveLessonState(
-        resolved.lesson,
-        allProblems,
-        resolved.index.exercisesById,
-        joined.run.quizPassedAt,
-        joined.run.attempt,
-      );
-      const pendingPractice = allProblems.find(
-        (problem) => problem.practiceOnly && problem.answeredAt === null,
-      );
-      const expectedPending = joined.problem.practiceOnly
-        ? pendingPractice?.id === joined.problem.id &&
-          stateBeforeAnswer.points.find((point) => point.id === joined.problem.knowledgePointId)
-            ?.status === 'passed'
-        : stateBeforeAnswer.pending?.id === joined.problem.id &&
-          stateBeforeAnswer.status === 'in_progress' &&
-          !stateBeforeAnswer.halted;
-      if (!expectedPending) {
-        return { kind: 'conflict' as const, runId: joined.run.id };
-      }
-      const indexed = resolved.index.exercisesById.get(joined.problem.exerciseId);
-      if (!indexed) return { kind: 'not_found' as const };
-      if (
-        joined.run.status === 'needs_retry' ||
-        (joined.run.status === 'completed' && !joined.problem.practiceOnly)
-      ) {
-        return { kind: 'conflict' as const, runId: joined.run.id };
-      }
-      const exercise =
-        isTemplate(indexed) && joined.problem.seed !== null
-          ? ({
-              ...instantiateExercise(indexed, joined.problem.seed).exercise,
-              concept: indexed.concept,
-              contentVersion: indexed.contentVersion,
-            } as IndexedExercise)
-          : indexed;
-      if (isTemplate(indexed) && joined.problem.seed === null) {
-        return { kind: 'invalid' as const };
-      }
-      if (emptyAnswerMessage(exercise.type, body.data.answer)) {
-        return { kind: 'invalid' as const };
-      }
-      const graded = await gradeExercise(exercise, body.data.answer);
-      if (graded.status !== 'graded') return { kind: 'invalid' as const, graded };
-      const [tutorReply] = await tx
-        .select({ id: tutorMessages.id })
-        .from(tutorMessages)
-        .where(
-          and(
-            eq(tutorMessages.userId, userId),
-            eq(tutorMessages.lessonProblemId, joined.problem.id),
-            sql`${tutorMessages.role} = 'assistant'`,
-          ),
-        )
-        .limit(1);
-      const attemptId = crypto.randomUUID();
-      const credit = calculateCredit({
-        correct: graded.correct,
-        hintsUsed: 0,
-        attemptNo: 1,
-        gradedBy: graded.graded_by ?? 'deterministic',
-      });
-      await tx.insert(attempts).values({
-        id: attemptId,
-        userId,
+    const options = runtime(context);
+    const result = await answerLessonProblem(
+      store,
+      options,
+      {
+        ...command(context, conceptId, resolved),
+        ...body.data,
         sessionId: activity.activity ? activity.session?.id : undefined,
-        activityId: body.data.activityId,
-        exerciseId: exercise.id,
-        exerciseVersion: exercise.contentVersion,
-        conceptId: exercise.concept,
-        dimension: exercise.dimension,
-        mode: 'practice',
-        answer: body.data.answer,
-        correct: graded.correct,
-        credit,
-        hintsUsed: 0,
-        attemptNo: 1,
-        gradedBy: graded.graded_by ?? 'deterministic',
-        feedback: { message: graded.feedback },
-        mistakeCategory: graded.mistake_category,
-        durationMs: body.data.durationMs,
-        createdAt: now,
-      });
-      await deps.applyMastery(drizzleLearnerStore(tx), {
-        learnerId: userId,
-        exercise,
-        attemptId,
-        correct: graded.correct,
-        credit,
-        hintsUsed: 0,
-        attemptNo: 1,
-        submitted: true,
-        tutorHelped: !!tutorReply,
-        mode: 'practice',
-        gradedBy: graded.graded_by ?? 'deterministic',
-        createReviewCard: false,
-        now,
-        timeZone: context.get('timeZone'),
-        enableFuzz: fsrsFuzzEnabled(),
-      });
-      await tx
-        .update(lessonProblems)
-        .set({ answeredAt: now, correct: graded.correct, attemptId })
-        .where(eq(lessonProblems.id, joined.problem.id));
-      const problems = await tx
-        .select()
-        .from(lessonProblems)
-        .where(eq(lessonProblems.runId, joined.run.id))
-        .orderBy(lessonProblems.servedAt, lessonProblems.position, lessonProblems.id);
-      const previous = deriveLessonState(
-        resolved.lesson,
-        problems.filter((item) => item.id !== joined.problem.id),
-        resolved.index.exercisesById,
-        joined.run.quizPassedAt,
-        joined.run.attempt,
-      );
-      const state = deriveLessonState(
-        resolved.lesson,
-        problems,
-        resolved.index.exercisesById,
-        joined.run.quizPassedAt,
-        joined.run.attempt,
-      );
-      const point = state.points.find((item) => item.id === joined.problem.knowledgePointId);
-      let xpAwarded = 0;
-      if (
-        !joined.problem.practiceOnly &&
-        point?.status === 'passed' &&
-        previous.points.find((item) => item.id === point.id)?.status !== 'passed'
-      ) {
-        xpAwarded = xpForPassedPoint(point.answered);
-        await drizzleLearnerStore(tx).insertXpEventOnce(userId, {
-          kind: 'knowledge_point',
-          sourceKey: `kp:${joined.run.id}:${point.id}`,
-          conceptId,
-          amount: xpAwarded,
-          earnedAt: now,
-          localDate: localDate(now, context.get('timeZone')),
-        });
-      }
-      if (!joined.problem.practiceOnly) {
-        const halted = state.halted;
-        if (!previous.halted && halted !== undefined) {
-          const haltedAt = now;
-          const retryAfter = startOfNextCalendarDay(now, context.get('timeZone'));
-          const grantDb = tx as unknown as Database;
-          await openTargetedReviews({
-            db: grantDb,
-            userId,
-            conceptId,
-            prerequisiteIds: conditionalPrerequisites(
-              keyPrereqsForPoint(resolved.index, conceptId, halted.pointId),
-              await placementGrantStates(grantDb, userId),
-            ),
-            attemptId,
-            now,
-          });
-          if (joined.run.haltedPointIndex !== null && halted.index <= joined.run.haltedPointIndex) {
-            const keyPrereqIds = keyPrereqsForPoint(resolved.index, conceptId, halted.pointId);
-            const openFlags = keyPrereqIds.length
-              ? await tx
-                  .select({ targetPrereqId: remediationFlags.targetPrereqId })
-                  .from(remediationFlags)
-                  .where(
-                    and(
-                      eq(remediationFlags.userId, userId),
-                      eq(remediationFlags.conceptId, conceptId),
-                      eq(remediationFlags.status, 'open'),
-                      inArray(remediationFlags.targetPrereqId, keyPrereqIds),
-                    ),
-                  )
-              : [];
-            const alreadyOpen = new Set(
-              openFlags.flatMap((flag) => (flag.targetPrereqId ? [flag.targetPrereqId] : [])),
-            );
-            const flagsToInsert = keyPrereqIds
-              .filter((targetPrereqId) => !alreadyOpen.has(targetPrereqId))
-              .map((targetPrereqId) => ({
-                userId,
-                conceptId,
-                targetPrereqId,
-                openedByAttemptId: attemptId,
-                status: 'open' as const,
-                createdAt: now,
-              }));
-            if (flagsToInsert.length > 0) {
-              await tx.insert(remediationFlags).values(flagsToInsert);
-            }
-          }
-          await tx
-            .update(lessonRuns)
-            .set({
-              status: 'needs_retry',
-              haltedAt,
-              retryAfter,
-              haltedPointIndex: halted.index,
-              haltCount: joined.run.haltCount + 1,
-              updatedAt: now,
-              completedAt: null,
-            })
-            .where(eq(lessonRuns.id, joined.run.id));
-        } else {
-          await tx
-            .update(lessonRuns)
-            .set({
-              status: state.status,
-              updatedAt: now,
-              completedAt: state.status === 'completed' ? now : null,
-            })
-            .where(eq(lessonRuns.id, joined.run.id));
-        }
-      }
-      return {
-        kind: 'answered' as const,
-        runId: joined.run.id,
-        correct: graded.correct,
-        feedback: graded.feedback,
-        solution: exercise.solution,
-        xpAwarded,
-      };
-    });
+      },
+      {
+        applyMastery: deps.applyMastery,
+        grade: gradeLessonAnswer,
+        placementGrantStates: (tx, learnerId) =>
+          placementGrantStates(tx.connection as Database, learnerId),
+        async hasTutorReply(tx, learnerId, problemId) {
+          const [reply] = await tx.connection
+            .select({ id: tutorMessages.id })
+            .from(tutorMessages)
+            .where(
+              and(
+                eq(tutorMessages.userId, learnerId),
+                eq(tutorMessages.lessonProblemId, problemId),
+                sql`${tutorMessages.role} = 'assistant'`,
+              ),
+            )
+            .limit(1);
+          return !!reply;
+        },
+      },
+    );
     if (result.kind === 'not_found')
       return context.json({ error: 'Lesson problem not found' }, 404);
     if (result.kind === 'invalid') return context.json({ error: 'Invalid answer' }, 422);
     if (result.kind === 'conflict') {
-      const [run] = await deps.db
-        .select()
-        .from(lessonRuns)
-        .where(eq(lessonRuns.id, result.runId))
-        .limit(1);
+      const run = await store.getLessonRun(userId, { runId: result.runId });
       return context.json(
         {
           error: 'Lesson problem has already been answered.',
@@ -1056,11 +389,7 @@ export function registerLessonRunRoutes(
         409,
       );
     }
-    const [run] = await deps.db
-      .select()
-      .from(lessonRuns)
-      .where(eq(lessonRuns.id, result.runId))
-      .limit(1);
+    const run = await store.getLessonRun(userId, { runId: result.runId });
     const state =
       run && resolved ? await runState(context, resolved.lesson, resolved.index, run) : null;
     return context.json({
@@ -1083,132 +412,11 @@ export function registerLessonRunRoutes(
     const activity = await verifyActivity(context, body.data.activityId, conceptId);
     if (!activity) return context.json({ error: 'Learn activity not found' }, 403);
     const userId = context.get('userId');
-    const now = deps.requestNow(context);
-    const result = await deps.db.transaction(async (tx) => {
-      const [run] = await tx
-        .select()
-        .from(lessonRuns)
-        .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, conceptId)))
-        .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
-        .for('update')
-        .limit(1);
-      if (!run) return { kind: 'not_found' as const };
-      const problems = await tx
-        .select()
-        .from(lessonProblems)
-        .where(eq(lessonProblems.runId, run.id))
-        .orderBy(
-          lessonProblems.servedAt,
-          lessonProblems.knowledgePointId,
-          lessonProblems.round,
-          lessonProblems.position,
-          lessonProblems.id,
-        );
-      const state = deriveLessonState(
-        resolved.lesson,
-        problems,
-        resolved.index.exercisesById,
-        run.quizPassedAt,
-        run.attempt,
-      );
-      if (state.status === 'in_progress') return { kind: 'steps_incomplete' as const, run };
-      const previousAttempts = await tx
-        .select()
-        .from(lessonQuizAttempts)
-        .where(eq(lessonQuizAttempts.runId, run.id))
-        .orderBy(lessonQuizAttempts.attemptNo);
-      const lastSubmittedAttempt = [...previousAttempts]
-        .reverse()
-        .find((attempt) => attempt.submittedAt !== null);
-      const lastSubmittedAt = lastSubmittedAttempt?.submittedAt;
-      if (!run.quizPassedAt && lastSubmittedAttempt?.passed === false && lastSubmittedAt) {
-        const failedItems = await tx
-          .select()
-          .from(lessonQuizItems)
-          .where(eq(lessonQuizItems.quizAttemptId, lastSubmittedAttempt.id))
-          .orderBy(lessonQuizItems.position, lessonQuizItems.id);
-        const missedPointIds = new Set(
-          failedItems
-            .filter((item) => item.correct !== null && item.correct < 1)
-            .map((item) => item.knowledgePointId),
-        );
-        const reviewIncomplete = [...missedPointIds].some(
-          (pointId) =>
-            problems.filter(
-              (problem) =>
-                problem.practiceOnly &&
-                problem.knowledgePointId === pointId &&
-                problem.answeredAt !== null &&
-                problem.answeredAt > lastSubmittedAt,
-            ).length < 3,
-        );
-        if (reviewIncomplete) return { kind: 'review_required' as const, run };
-      }
-      if (run.status !== state.status) {
-        await tx
-          .update(lessonRuns)
-          .set({
-            status: state.status,
-            completedAt: state.status === 'completed' ? (run.completedAt ?? now) : null,
-            updatedAt: now,
-          })
-          .where(eq(lessonRuns.id, run.id));
-      }
-      const [openAttempt] = await tx
-        .select()
-        .from(lessonQuizAttempts)
-        .where(and(eq(lessonQuizAttempts.runId, run.id), isNull(lessonQuizAttempts.submittedAt)))
-        .orderBy(lessonQuizAttempts.attemptNo)
-        .limit(1);
-      if (openAttempt) return { kind: 'ready' as const, runId: run.id };
-      const previousAttempt = previousAttempts.at(-1);
-      const allQuizItems = previousAttempts.length
-        ? await tx
-            .select()
-            .from(lessonQuizItems)
-            .where(
-              inArray(
-                lessonQuizItems.quizAttemptId,
-                previousAttempts.map((attempt) => attempt.id),
-              ),
-            )
-            .orderBy(lessonQuizItems.quizAttemptId, lessonQuizItems.position, lessonQuizItems.id)
-        : [];
-      const previousAttemptItems = previousAttempt
-        ? allQuizItems.filter((item) => item.quizAttemptId === previousAttempt.id)
-        : [];
-      const selection = selectQuizItems({
-        lesson: resolved.lesson,
-        exercises: resolved.index.exercisesById,
-        servedProblems: problems.map((problem) => ({
-          exerciseId: problem.exerciseId,
-          seed: problem.seed,
-        })),
-        previousAttemptItems,
-        usedSeeds: new Set([
-          ...problems.flatMap((problem) => (problem.seed === null ? [] : [problem.seed])),
-          ...allQuizItems.flatMap((item) => (item.seed === null ? [] : [item.seed])),
-        ]),
-        seed: Math.floor(Math.random() * 0x7fffffff),
-      });
-      if (selection.length === 0) return { kind: 'no_questions' as const, run };
-      const attemptNo = Math.max(0, ...previousAttempts.map((attempt) => attempt.attemptNo)) + 1;
-      const [quizAttempt] = await tx
-        .insert(lessonQuizAttempts)
-        .values({ runId: run.id, attemptNo, startedAt: now })
-        .returning();
-      if (!quizAttempt) throw new Error('Unable to create lesson quiz attempt');
-      await tx.insert(lessonQuizItems).values(
-        selection.map((item) => ({
-          quizAttemptId: quizAttempt.id,
-          position: item.position,
-          knowledgePointId: item.pointId,
-          exerciseId: item.exerciseId,
-          seed: item.seed,
-        })),
-      );
-      return { kind: 'ready' as const, runId: run.id };
-    });
+    const result = await startLessonQuiz(
+      store,
+      runtime(context),
+      command(context, conceptId, resolved),
+    );
     if (result.kind === 'not_found') return context.json({ error: 'Lesson run not found' }, 404);
     if (result.kind === 'steps_incomplete') {
       return context.json({ error: 'Finish every lesson step before starting the quiz' }, 409);
@@ -1219,11 +427,7 @@ export function registerLessonRunRoutes(
     if (result.kind === 'no_questions') {
       return context.json({ error: 'No lesson quiz questions are available' }, 409);
     }
-    const [run] = await deps.db
-      .select()
-      .from(lessonRuns)
-      .where(eq(lessonRuns.id, result.runId))
-      .limit(1);
+    const run = await store.getLessonRun(userId, { runId: result.runId });
     return context.json({
       course: await resolveLessonCourse(
         deps.db,
@@ -1253,87 +457,18 @@ export function registerLessonRunRoutes(
     const activity = await verifyActivity(context, body.data.activityId, conceptId);
     if (!activity) return context.json({ error: 'Learn activity not found' }, 403);
     const userId = context.get('userId');
-    const now = deps.requestNow(context);
-    const result = await deps.db.transaction(async (tx) => {
-      const [run] = await tx
-        .select(getTableColumns(lessonRuns))
-        .from(lessonQuizItems)
-        .innerJoin(lessonQuizAttempts, eq(lessonQuizItems.quizAttemptId, lessonQuizAttempts.id))
-        .innerJoin(lessonRuns, eq(lessonQuizAttempts.runId, lessonRuns.id))
-        .where(
-          and(
-            eq(lessonQuizItems.id, body.data.itemId),
-            eq(lessonRuns.userId, userId),
-            eq(lessonRuns.conceptId, conceptId),
-          ),
-        )
-        .for('update', { of: lessonRuns })
-        .limit(1);
-      if (!run) return { kind: 'not_found' as const };
-      const { quizAttempts, quizItems } = await loadRunQuiz(
-        tx,
-        run.id,
-        resolved.lesson,
-        resolved.index,
-      );
-      const item = quizItems.find((row) => row.id === body.data.itemId);
-      if (!item) return { kind: 'not_found' as const };
-      if (
-        item.attemptId ||
-        quizAttempts.find((attempt) => attempt.id === item.quizAttemptId)?.submittedAt
-      ) {
-        return { kind: 'conflict' as const, runId: run.id };
-      }
-      const problems = await tx
-        .select()
-        .from(lessonProblems)
-        .where(eq(lessonProblems.runId, run.id))
-        .orderBy(
-          lessonProblems.servedAt,
-          lessonProblems.knowledgePointId,
-          lessonProblems.round,
-          lessonProblems.position,
-          lessonProblems.id,
-        );
-      const runState = deriveLessonState(
-        resolved.lesson,
-        problems,
-        resolved.index.exercisesById,
-        run.quizPassedAt,
-        run.attempt,
-      );
-      if (runState.status === 'in_progress') {
-        return { kind: 'conflict' as const, runId: run.id };
-      }
-      const indexed = resolved.index.exercisesById.get(item.exerciseId);
-      const exercise = indexed ? resolvedIndexedExercise(indexed, item.seed) : undefined;
-      if (!exercise) return { kind: 'invalid' as const };
-      if (emptyAnswerMessage(exercise.type, body.data.answer)) {
-        return { kind: 'invalid' as const };
-      }
-      const graded = await gradeQuizAnswer(exercise, body.data.answer, item.id);
-      if (graded.status !== 'graded') return { kind: 'invalid' as const };
-      await tx
-        .update(lessonQuizItems)
-        .set({
-          answer: body.data.answer,
-          correct: graded.correct,
-          durationMs: body.data.durationMs ?? null,
-          answeredAt: now,
-        })
-        .where(eq(lessonQuizItems.id, item.id));
-      return { kind: 'answered' as const, runId: run.id };
-    });
+    const result = await answerLessonQuiz(
+      store,
+      runtime(context),
+      { ...command(context, conceptId, resolved), ...body.data },
+      gradeLessonAnswer,
+    );
     if (result.kind === 'not_found') return context.json({ error: 'Quiz item not found' }, 404);
     if (result.kind === 'invalid') return context.json({ error: 'Invalid answer' }, 422);
     if (result.kind === 'conflict') {
       return context.json({ error: 'Quiz item has already been answered.' }, 409);
     }
-    const [run] = await deps.db
-      .select()
-      .from(lessonRuns)
-      .where(eq(lessonRuns.id, result.runId))
-      .limit(1);
+    const run = await store.getLessonRun(userId, { runId: result.runId });
     return context.json({
       saved: true,
       course: await resolveLessonCourse(
@@ -1359,265 +494,21 @@ export function registerLessonRunRoutes(
     const activity = await verifyActivity(context, body.data.activityId, conceptId);
     if (!activity) return context.json({ error: 'Learn activity not found' }, 403);
     const userId = context.get('userId');
-    const now = deps.requestNow(context);
-    const result = await deps.db.transaction(async (tx) => {
-      const [run] = await tx
-        .select()
-        .from(lessonRuns)
-        .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, conceptId)))
-        .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
-        .for('update')
-        .limit(1);
-      if (!run) return { kind: 'not_found' as const };
-      const { quizAttempts, quizItems } = await loadRunQuiz(
-        tx,
-        run.id,
-        resolved.lesson,
-        resolved.index,
-      );
-      const latestAttempt = quizAttempts.at(-1);
-      if (!latestAttempt) return { kind: 'not_found' as const };
-      if (latestAttempt.submittedAt) {
-        return { kind: 'already_submitted' as const, runId: run.id };
-      }
-      const items = quizItems.filter((item) => item.quizAttemptId === latestAttempt.id);
-      if (items.some((item) => item.answeredAt === null || item.correct === null)) {
-        return { kind: 'unanswered' as const };
-      }
-      const pendingGrades: Array<{
-        item: (typeof items)[number];
-        exercise: IndexedExercise;
-        graded: Extract<Awaited<ReturnType<typeof gradeExercise>>, { status: 'graded' }>;
-      }> = [];
-      for (const item of items) {
-        if (item.attemptId !== null) continue;
-        const indexed = resolved.index.exercisesById.get(item.exerciseId);
-        if (!indexed) continue;
-        const exercise = resolvedIndexedExercise(indexed, item.seed);
-        if (!exercise) return { kind: 'invalid_answer' as const };
-        const graded = await gradeQuizAnswer(exercise, item.answer, item.id);
-        if (graded.status !== 'graded') return { kind: 'invalid_answer' as const };
-        pendingGrades.push({ item, exercise, graded });
-      }
-      const finalItems = new Map(items.map((item) => [item.id, item]));
-      for (const pending of pendingGrades) {
-        const { graded } = pending;
-        const attemptId = crypto.randomUUID();
-        const gradedBy = graded.graded_by ?? 'deterministic';
-        const credit = calculateCredit({
-          correct: graded.correct,
-          hintsUsed: 0,
-          attemptNo: 1,
-          gradedBy,
-        });
-        await tx.insert(attempts).values({
-          id: attemptId,
-          userId,
-          sessionId: activity.activity ? activity.session?.id : undefined,
-          activityId: body.data.activityId,
-          exerciseId: pending.exercise.id,
-          exerciseVersion: pending.exercise.contentVersion,
-          conceptId: pending.exercise.concept,
-          dimension: pending.exercise.dimension,
-          mode: 'assessment',
-          answer: pending.item.answer,
-          correct: graded.correct,
-          credit,
-          hintsUsed: 0,
-          attemptNo: 1,
-          gradedBy,
-          feedback: { message: graded.feedback },
-          mistakeCategory: graded.mistake_category,
-          durationMs: pending.item.durationMs,
-          createdAt: now,
-        });
-        await deps.applyMastery(drizzleLearnerStore(tx), {
-          learnerId: userId,
-          exercise: pending.exercise,
-          attemptId,
-          correct: graded.correct,
-          credit,
-          hintsUsed: 0,
-          attemptNo: 1,
-          submitted: true,
-          mode: 'assessment',
-          gradedBy,
-          createReviewCard: false,
-          now,
-          timeZone: context.get('timeZone'),
-          enableFuzz: fsrsFuzzEnabled(),
-        });
-        const [updatedItem] = await tx
-          .update(lessonQuizItems)
-          .set({ correct: graded.correct, attemptId })
-          .where(eq(lessonQuizItems.id, pending.item.id))
-          .returning();
-        if (!updatedItem) throw new Error('Unable to finalize lesson quiz item');
-        finalItems.set(updatedItem.id, updatedItem);
-      }
-      const submittedItems = items.map((item) => finalItems.get(item.id) ?? item);
-      const result = scoreLessonQuiz(submittedItems.map((item) => item.correct ?? 0));
-      await tx
-        .update(lessonQuizAttempts)
-        .set({ submittedAt: now, score: result.score, passed: result.passed })
-        .where(eq(lessonQuizAttempts.id, latestAttempt.id));
-      let xpAwarded = 0;
-      if (result.passed) {
-        if (!run.quizPassedAt) {
-          await tx
-            .update(lessonRuns)
-            .set({ status: 'completed', quizPassedAt: now, completedAt: now, updatedAt: now })
-            .where(eq(lessonRuns.id, run.id));
-          await tx
-            .update(reviewCards)
-            .set({ suspendedAt: null })
-            .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, run.conceptId)));
-          const inserted = await drizzleLearnerStore(tx).insertXpEventOnce(userId, {
-            kind: 'quiz',
-            sourceKey: `quiz:${run.id}`,
-            conceptId,
-            amount: items.length,
-            earnedAt: now,
-            localDate: localDate(now, context.get('timeZone')),
-          });
-          if (inserted) xpAwarded = items.length;
-          const itemsByDimension = new Map<string, (typeof items)[number][]>();
-          for (const item of submittedItems) {
-            const exercise = resolved.index.exercisesById.get(item.exerciseId);
-            if (!exercise) continue;
-            const dimensionItems = itemsByDimension.get(exercise.dimension) ?? [];
-            dimensionItems.push(item);
-            itemsByDimension.set(exercise.dimension, dimensionItems);
-          }
-          const dimensionRatings = new Map<string, Rating>();
-          const store = drizzleLearnerStore(tx);
-          const speed = await getTopicSpeed(store, userId, conceptId);
-          for (const [dimension, dimensionItems] of itemsByDimension) {
-            const [existingCard] = await tx
-              .select()
-              .from(reviewCards)
-              .where(
-                and(
-                  eq(reviewCards.userId, userId),
-                  eq(reviewCards.conceptId, conceptId),
-                  eq(reviewCards.dimension, dimension),
-                ),
-              )
-              .for('update')
-              .limit(1);
-            const rating = reviewActivityRating(
-              dimensionItems.map((item) => {
-                const exercise = resolved.index.exercisesById.get(item.exerciseId);
-                return {
-                  correct: item.correct ?? 0,
-                  hintsUsed: 0,
-                  durationMs: item.durationMs,
-                  targetSeconds: exercise?.target_seconds,
-                };
-              }),
-            );
-            dimensionRatings.set(dimension, rating);
-            const scheduled = scheduleReviewWithDetails(
-              existingCard ? (existingCard.fsrs as never) : newReviewCard(now),
-              now,
-              rating,
-              context.get('timeZone'),
-              process.env.NODE_ENV !== 'test',
-              speed,
-            );
-            let cardId = existingCard?.id;
-            const cardValues = {
-              fsrs: scheduled.card,
-              dueAt: scheduled.card.due,
-              lastReviewAt: now,
-              reps: scheduled.card.reps,
-              lapses: scheduled.card.lapses,
-            };
-            if (existingCard) {
-              await tx
-                .update(reviewCards)
-                .set(cardValues)
-                .where(eq(reviewCards.id, existingCard.id));
-            } else {
-              const [createdCard] = await tx
-                .insert(reviewCards)
-                .values({
-                  userId,
-                  conceptId,
-                  dimension,
-                  ...cardValues,
-                })
-                .returning({ id: reviewCards.id });
-              cardId = createdCard?.id;
-            }
-            if (cardId) {
-              await tx.insert(reviewLogs).values({
-                cardId,
-                attemptId: dimensionItems.find((item) => item.attemptId)?.attemptId ?? null,
-                rating: String(rating),
-                fsrsLog: { ...scheduled.log, effectiveDueAt: scheduled.card.due },
-                speed,
-                rawDueAt: scheduled.rawDueAt,
-                createdAt: now,
-              });
-            }
-          }
-          const ratings = [...dimensionRatings.values()];
-          if (
-            dimensionRatings.size === itemsByDimension.size &&
-            ratings.length > 0 &&
-            !ratings.includes(Rating.Again)
-          ) {
-            await applyImplicitRepetitions(store, {
-              learnerId: userId,
-              conceptId,
-              rating: ratings.every((rating) => rating === Rating.Good) ? Rating.Good : Rating.Hard,
-              index: resolved.index,
-              now,
-              timeZone: context.get('timeZone'),
-              enableFuzz: fsrsFuzzEnabled(),
-            });
-          }
-        }
-      } else if (!run.quizPassedAt) {
-        await tx
-          .update(lessonRuns)
-          .set({ status: 'quiz', completedAt: null, updatedAt: now })
-          .where(eq(lessonRuns.id, run.id));
-      }
-
-      const attemptIds = submittedItems.flatMap((item) => (item.attemptId ? [item.attemptId] : []));
-      const quizAnswerAttempts = attemptIds.length
-        ? await tx.select().from(attempts).where(inArray(attempts.id, attemptIds))
-        : [];
-      const attachedActivityId =
-        body.data.activityId ?? quizAnswerAttempts.find((answer) => answer.activityId)?.activityId;
-      if (attachedActivityId) {
-        const [activityRow] = await drizzleLearnerStore(tx).listActivities(userId, {
-          ids: [attachedActivityId],
-        });
-        const repo = new LearnerRepository(tx as unknown as Database, userId);
-        const session = activityRow ? await repo.session(activityRow.sessionId) : undefined;
-        const sessionActivity = session?.activities.find((item) => item.id === attachedActivityId);
-        if (
-          sessionActivity?.kind === 'learn' &&
-          sessionActivity.conceptId === conceptId &&
-          session
-        ) {
-          await updateActivityAndAdvance(tx as unknown as Database, {
-            userId,
-            activityId: sessionActivity.id,
-            completed: true,
-            now,
-            session,
-            exerciseIds: sessionActivity.exerciseIds,
-            progress: sessionActivity.progress,
-            knowledgePointActivity: true,
-          });
-        }
-      }
-      return { kind: 'submitted' as const, runId: run.id, xpAwarded };
-    });
+    const result = await submitLessonQuiz(
+      store,
+      runtime(context),
+      {
+        ...command(context, conceptId, resolved),
+        ...body.data,
+        sessionId: activity.activity ? activity.session?.id : undefined,
+      },
+      {
+        grade: gradeLessonAnswer,
+        applyMastery: deps.applyMastery,
+        unsuspendReviewCards,
+        writeInitialReview,
+      },
+    );
     if (result.kind === 'not_found') return context.json({ error: 'Lesson quiz not found' }, 404);
     if (result.kind === 'unanswered') {
       return context.json({ error: 'Answer every quiz question before submitting' }, 409);
@@ -1625,11 +516,7 @@ export function registerLessonRunRoutes(
     if (result.kind === 'invalid_answer') {
       return context.json({ error: 'A saved quiz answer could not be graded' }, 422);
     }
-    const [run] = await deps.db
-      .select()
-      .from(lessonRuns)
-      .where(eq(lessonRuns.id, result.runId))
-      .limit(1);
+    const run = await store.getLessonRun(userId, { runId: result.runId });
     const state = run ? await runState(context, resolved.lesson, resolved.index, run) : null;
     return context.json({
       run: state,
@@ -1651,29 +538,15 @@ export function registerLessonRunRoutes(
     const conceptId = context.req.param('conceptId');
     const resolved = await lessonFor(conceptId);
     if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
-    const [attempt] = await deps.db
-      .select({ quiz: lessonQuizAttempts, run: lessonRuns })
-      .from(lessonQuizAttempts)
-      .innerJoin(lessonRuns, eq(lessonQuizAttempts.runId, lessonRuns.id))
-      .where(
-        and(
-          eq(lessonQuizAttempts.id, context.req.param('attemptId')),
-          eq(lessonRuns.userId, context.get('userId')),
-          eq(lessonRuns.conceptId, conceptId),
-        ),
-      )
-      .limit(1);
-    if (!attempt?.quiz.submittedAt || attempt.quiz.passed !== true) {
+    const userId = context.get('userId');
+    const attemptId = context.req.param('attemptId');
+    const rows = await readPassedQuiz(store, userId, conceptId, attemptId);
+    if (!rows) {
       return context.json({ error: 'Quiz review is available after passing' }, 403);
     }
-    const rows = await deps.db
-      .select()
-      .from(lessonQuizItems)
-      .where(eq(lessonQuizItems.quizAttemptId, attempt.quiz.id))
-      .orderBy(lessonQuizItems.position, lessonQuizItems.id);
     const items = rows.flatMap((item) => {
       const indexed = resolved.index.exercisesById.get(item.exerciseId);
-      const exercise = indexed ? resolvedIndexedExercise(indexed, item.seed) : undefined;
+      const exercise = indexed ? resolveLessonExercise(indexed, item.seed) : undefined;
       if (!exercise) return [];
       return [
         {
@@ -1693,7 +566,7 @@ export function registerLessonRunRoutes(
         },
       ];
     });
-    return context.json({ attemptId: attempt.quiz.id, items });
+    return context.json({ attemptId, items });
   });
 
   if (process.env.ACADEMY_E2E === '1') {
@@ -1756,34 +629,10 @@ export function registerLessonRunRoutes(
   }
 }
 
-function resolvedIndexedExercise(
-  exercise: IndexedExercise,
-  seed: number | null,
-): IndexedExercise | undefined {
-  if (!isTemplate(exercise)) return exercise;
-  if (seed === null) return undefined;
-  return {
-    ...instantiateExercise(exercise, seed).exercise,
-    concept: exercise.concept,
-    contentVersion: exercise.contentVersion,
-  } as IndexedExercise;
-}
-
 function resolvedExercise(index: ContentIndex, exerciseId: string, seed: number | null) {
   const exercise = index.exercisesById.get(exerciseId);
   if (!exercise) return undefined;
   return isTemplate(exercise) && seed !== null
     ? instantiateExercise(exercise, seed).exercise
     : exercise;
-}
-
-function localDate(date: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date);
-  const fields = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${fields.year}-${fields.month}-${fields.day}`;
 }

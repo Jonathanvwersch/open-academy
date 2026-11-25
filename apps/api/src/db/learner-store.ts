@@ -4,7 +4,8 @@ import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY } from '@academy/aesop/memory/spe
 import { initialMastery, type MasteryRecord, type MasteryState } from '@academy/aesop/memory/types';
 import type { AttemptQuery, Settings } from '@academy/aesop/store/core-store';
 import type { StoredReviewCard } from '@academy/aesop/store/learner-store';
-import type { ActivityQuery, SessionQuery, SessionStore } from '@academy/aesop/store/session-store';
+import type { FlagQuery, LessonKey, LessonStore } from '@academy/aesop/store/lesson-store';
+import type { ActivityQuery, SessionQuery } from '@academy/aesop/store/session-store';
 import {
   and,
   asc,
@@ -17,6 +18,8 @@ import {
   like,
   lt,
   lte,
+  notInArray,
+  or,
   sql,
 } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
@@ -25,6 +28,9 @@ import {
   attempts,
   courseEnrollments,
   hintEvents,
+  lessonProblems,
+  lessonQuizAttempts,
+  lessonQuizItems,
   lessonRuns,
   mastery,
   masteryEvents,
@@ -47,9 +53,12 @@ const { userId: _xpOwner, ...xpFields } = getTableColumns(xpEvents);
 const { userId: _enrollmentOwner, ...enrollmentFields } = getTableColumns(courseEnrollments);
 const { userId: _sessionOwner, ...sessionFields } = getTableColumns(studySessions);
 const { userId: _flagOwner, ...flagFields } = getTableColumns(remediationFlags);
+const { userId: _lessonOwner, ...lessonRunFields } = getTableColumns(lessonRuns);
 
 function attemptOrder(order: AttemptQuery['order']) {
   switch (order) {
+    case 'unordered':
+      return [];
     case 'scheduler':
       return [
         desc(attempts.createdAt),
@@ -91,7 +100,51 @@ export function drizzleLearnerStore(
     activeReviewCardsOnly?: boolean;
     schedulerTimezone?: string;
   } = {},
-): SessionStore {
+): LessonStore & { connection: Database | Transaction } {
+  function lessonWhere(learnerId: string, key: LessonKey) {
+    return and(
+      eq(lessonRuns.userId, learnerId),
+      'runId' in key ? eq(lessonRuns.id, key.runId) : eq(lessonRuns.conceptId, key.conceptId),
+    );
+  }
+
+  function ownedLesson(learnerId: string, runId: string) {
+    return db
+      .select({ id: lessonRuns.id })
+      .from(lessonRuns)
+      .where(lessonWhere(learnerId, { runId }));
+  }
+
+  function ownedQuizAttempts(learnerId: string, runId: string) {
+    return db
+      .select({ id: lessonQuizAttempts.id })
+      .from(lessonQuizAttempts)
+      .where(inArray(lessonQuizAttempts.runId, ownedLesson(learnerId, runId)));
+  }
+
+  function flagWhere(learnerId: string, query: FlagQuery) {
+    return and(
+      eq(remediationFlags.userId, learnerId),
+      query.conceptId === undefined ? undefined : eq(remediationFlags.conceptId, query.conceptId),
+      query.targetPrereqIds === undefined
+        ? undefined
+        : inArray(remediationFlags.targetPrereqId, query.targetPrereqIds),
+      query.status === undefined ? undefined : eq(remediationFlags.status, query.status),
+      query.excludeOpenedByActivityId === undefined
+        ? undefined
+        : or(
+            isNull(remediationFlags.openedByAttemptId),
+            notInArray(
+              remediationFlags.openedByAttemptId,
+              db
+                .select({ id: attempts.id })
+                .from(attempts)
+                .where(eq(attempts.activityId, query.excludeOpenedByActivityId)),
+            ),
+          ),
+    );
+  }
+
   function sessionWhere(learnerId: string, query: SessionQuery) {
     return and(
       eq(studySessions.userId, learnerId),
@@ -138,6 +191,7 @@ export function drizzleLearnerStore(
   }
 
   return {
+    connection: db,
     async transaction(fn) {
       return db.transaction((tx) =>
         fn(drizzleLearnerStore(tx, { activeReviewCardsOnly, schedulerTimezone }) as typeof this),
@@ -550,6 +604,210 @@ export function drizzleLearnerStore(
     },
     async deleteActivities(learnerId, query) {
       await db.delete(sessionActivities).where(activityWhere(learnerId, query));
+    },
+    async listLessonRuns(learnerId) {
+      return db.select(lessonRunFields).from(lessonRuns).where(eq(lessonRuns.userId, learnerId));
+    },
+    async getLessonRun(learnerId, key, options) {
+      if ('conceptId' in key && key.quizItemId !== undefined) {
+        const joined = db
+          .select(lessonRunFields)
+          .from(lessonQuizItems)
+          .innerJoin(lessonQuizAttempts, eq(lessonQuizItems.quizAttemptId, lessonQuizAttempts.id))
+          .innerJoin(lessonRuns, eq(lessonQuizAttempts.runId, lessonRuns.id))
+          .where(and(lessonWhere(learnerId, key), eq(lessonQuizItems.id, key.quizItemId)))
+          .limit(1);
+        const [row] = await (options?.forUpdate
+          ? joined.for('update', { of: lessonRuns })
+          : joined);
+        return row;
+      }
+      const select = db
+        .select(lessonRunFields)
+        .from(lessonRuns)
+        .where(lessonWhere(learnerId, key))
+        .limit(1);
+      const [row] = await (options?.forUpdate ? select.for('update') : select);
+      return row;
+    },
+    async lockLessonProblem(learnerId, conceptId, problemId) {
+      const [row] = await db
+        .select({ run: lessonRunFields, problem: lessonProblems })
+        .from(lessonProblems)
+        .innerJoin(lessonRuns, eq(lessonProblems.runId, lessonRuns.id))
+        .where(and(lessonWhere(learnerId, { conceptId }), eq(lessonProblems.id, problemId)))
+        .for('update')
+        .limit(1);
+      return row;
+    },
+    async insertLessonRunIfAbsent(learnerId, run) {
+      const [row] = await db
+        .insert(lessonRuns)
+        .values({ ...run, userId: learnerId })
+        .onConflictDoNothing({ target: [lessonRuns.userId, lessonRuns.conceptId] })
+        .returning(lessonRunFields);
+      return row;
+    },
+    async patchLessonRun(learnerId, runId, patch) {
+      const [row] = Object.values(patch).some((value) => value !== undefined)
+        ? await db
+            .update(lessonRuns)
+            .set(patch)
+            .where(lessonWhere(learnerId, { runId }))
+            .returning(lessonRunFields)
+        : [await this.getLessonRun(learnerId, { runId })];
+      if (!row) throw new Error('Lesson run not found');
+      return row;
+    },
+    async listLessonProblems(learnerId, runId) {
+      return db
+        .select(getTableColumns(lessonProblems))
+        .from(lessonProblems)
+        .innerJoin(lessonRuns, eq(lessonProblems.runId, lessonRuns.id))
+        .where(lessonWhere(learnerId, { runId }))
+        .orderBy(lessonProblems.servedAt, lessonProblems.position, lessonProblems.id);
+    },
+    async insertLessonProblem(learnerId, runId, problem) {
+      const owned = ownedLesson(learnerId, runId);
+      const [row] = await db
+        .insert(lessonProblems)
+        .values({ ...problem, runId: sql`(${owned})` })
+        .returning();
+      if (!row) throw new Error('Unable to insert lesson problem');
+      return row;
+    },
+    async patchLessonProblem(learnerId, runId, problemId, patch) {
+      if (Object.values(patch).every((value) => value === undefined)) return;
+      await db
+        .update(lessonProblems)
+        .set(patch)
+        .where(
+          and(
+            inArray(lessonProblems.runId, ownedLesson(learnerId, runId)),
+            eq(lessonProblems.id, problemId),
+          ),
+        );
+    },
+    async deleteLessonProblems(learnerId, runId, ids) {
+      if (ids.length === 0) return;
+      await db
+        .delete(lessonProblems)
+        .where(
+          and(
+            inArray(lessonProblems.runId, ownedLesson(learnerId, runId)),
+            inArray(lessonProblems.id, ids),
+          ),
+        );
+    },
+    async readLessonQuiz(learnerId, runId) {
+      const rows = await db
+        .select({ attempt: lessonQuizAttempts, item: lessonQuizItems })
+        .from(lessonQuizAttempts)
+        .leftJoin(lessonQuizItems, eq(lessonQuizItems.quizAttemptId, lessonQuizAttempts.id))
+        .where(inArray(lessonQuizAttempts.runId, ownedLesson(learnerId, runId)))
+        .orderBy(lessonQuizAttempts.attemptNo, lessonQuizItems.position, lessonQuizItems.id);
+      return {
+        quizAttempts: [...new Map(rows.map(({ attempt }) => [attempt.id, attempt])).values()],
+        quizItems: rows.flatMap(({ item }) => (item ? [item] : [])),
+      };
+    },
+    async insertLessonQuiz(learnerId, runId, attempt, items) {
+      const owned = ownedLesson(learnerId, runId);
+      const [row] = await db
+        .insert(lessonQuizAttempts)
+        .values({ ...attempt, runId: sql`(${owned})` })
+        .returning();
+      if (!row) throw new Error('Unable to insert lesson quiz');
+      if (items.length) {
+        await db
+          .insert(lessonQuizItems)
+          .values(items.map((item) => ({ ...item, quizAttemptId: row.id })));
+      }
+      return row;
+    },
+    async patchLessonQuizAttempt(learnerId, runId, attemptId, patch) {
+      if (Object.values(patch).every((value) => value === undefined)) return;
+      await db
+        .update(lessonQuizAttempts)
+        .set(patch)
+        .where(
+          and(
+            inArray(lessonQuizAttempts.runId, ownedLesson(learnerId, runId)),
+            eq(lessonQuizAttempts.id, attemptId),
+          ),
+        );
+    },
+    async patchLessonQuizItem(learnerId, runId, itemId, { replacementId, ...patch }, expected) {
+      const where = and(
+        inArray(lessonQuizItems.quizAttemptId, ownedQuizAttempts(learnerId, runId)),
+        eq(lessonQuizItems.id, itemId),
+        expected?.unanswered ? isNull(lessonQuizItems.answeredAt) : undefined,
+      );
+      const changes = { ...patch, id: replacementId };
+      const [row] = Object.values(changes).some((value) => value !== undefined)
+        ? await db.update(lessonQuizItems).set(changes).where(where).returning()
+        : await db.select().from(lessonQuizItems).where(where);
+      return row;
+    },
+    async deleteLessonQuizRows(learnerId, runId, { itemIds, attemptIds }) {
+      if (itemIds?.length) {
+        await db
+          .delete(lessonQuizItems)
+          .where(
+            and(
+              inArray(lessonQuizItems.quizAttemptId, ownedQuizAttempts(learnerId, runId)),
+              inArray(lessonQuizItems.id, itemIds),
+            ),
+          );
+      }
+      if (attemptIds?.length) {
+        await db
+          .delete(lessonQuizAttempts)
+          .where(
+            and(
+              inArray(lessonQuizAttempts.runId, ownedLesson(learnerId, runId)),
+              inArray(lessonQuizAttempts.id, attemptIds),
+            ),
+          );
+      }
+    },
+    async listRemediationFlags(learnerId, query) {
+      return db.select(flagFields).from(remediationFlags).where(flagWhere(learnerId, query));
+    },
+    async insertRemediationFlags(learnerId, flags) {
+      if (flags.length)
+        await db
+          .insert(remediationFlags)
+          .values(flags.map((flag) => ({ ...flag, userId: learnerId })));
+    },
+    async resolveRemediationFlags(learnerId, query, now) {
+      await db
+        .update(remediationFlags)
+        .set({ status: 'resolved', resolvedAt: now })
+        .where(and(flagWhere(learnerId, query), eq(remediationFlags.status, 'open')));
+    },
+    async clearTopicProgress(learnerId, conceptId) {
+      await db
+        .delete(masteryEvents)
+        .where(and(eq(masteryEvents.userId, learnerId), eq(masteryEvents.conceptId, conceptId)));
+      await db
+        .delete(mastery)
+        .where(and(eq(mastery.userId, learnerId), eq(mastery.conceptId, conceptId)));
+      await db
+        .delete(reviewCards)
+        .where(and(eq(reviewCards.userId, learnerId), eq(reviewCards.conceptId, conceptId)));
+      await db.delete(lessonRuns).where(lessonWhere(learnerId, { conceptId }));
+      await db
+        .delete(remediationFlags)
+        .where(
+          and(
+            eq(remediationFlags.userId, learnerId),
+            or(
+              eq(remediationFlags.conceptId, conceptId),
+              eq(remediationFlags.targetPrereqId, conceptId),
+            ),
+          ),
+        );
     },
     async readSchedulerFacts(learnerId, query) {
       const { now, recallExerciseIds } = query;

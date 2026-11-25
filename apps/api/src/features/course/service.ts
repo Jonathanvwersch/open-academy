@@ -1,7 +1,11 @@
 import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
 import { subjectForCourse } from '@academy/aesop/course/index';
+import {
+  replanSessionActivities as replanCourseSession,
+  restartTopic as restartTopicProgress,
+  updateLearningFocus as updateCourseFocus,
+} from '@academy/aesop/course/progress-commands';
 import type { ContentIndex, IndexedConcept, IndexedCourse } from '@academy/aesop/course/types';
-import { filterSchedulerStateForContent } from '@academy/aesop/graph/content-filters';
 import { lowestMasteryState, masteryLabel, topicStatus } from '@academy/aesop/graph/course-status';
 import { courseTopicPosition } from '@academy/aesop/graph/lesson-course-context';
 import {
@@ -10,7 +14,6 @@ import {
   courseFoundationIds,
   courseFoundations,
   createPrerequisiteChecker,
-  labActivityReady,
   masteryKey,
   projectReady,
 } from '@academy/aesop/graph/prerequisites';
@@ -19,168 +22,26 @@ import {
   type PlacementGrantSnapshot,
   withdrawnPlacementCredit,
 } from '@academy/aesop/placement/grants';
-import {
-  currentLearnerUnit,
-  effectiveFocusSubjectId,
-  type PlannedActivity,
-  replan,
-  type SchedulerState,
-} from '@academy/aesop/planner/scheduler';
+import { currentLearnerUnit, type SchedulerState } from '@academy/aesop/planner/scheduler';
+import type { LessonRun } from '@academy/aesop/store/lesson-store';
 import type { CourseQueueStatus } from '@academy/contracts/course';
-import { and, eq, inArray, or } from 'drizzle-orm';
 import type { Database } from '../../db/client.js';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 import type { LearnerRepository } from '../../db/repository.js';
-import {
-  lessonRuns,
-  mastery,
-  masteryEvents,
-  remediationFlags,
-  reviewCards,
-  sessionActivities,
-  studySessions,
-} from '../../db/schema.js';
-import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
 
 type MasteryRecords = Awaited<ReturnType<LearnerRepository['masteryRecords']>>;
-type RunRecords = Array<typeof lessonRuns.$inferSelect>;
+type RunRecords = LessonRun[];
 type PaperStatuses = Map<string, 'not_started' | 'reading' | 'completed'>;
 type ProjectStatuses = Map<string, 'not_started' | 'in_progress' | 'completed'>;
 type EnrollmentStatus = 'not_started' | 'active' | 'paused' | 'completed';
 
-export async function restartTopic(input: {
+export function restartTopic(input: {
   db: Database;
   userId: string;
   conceptId: string;
   content: ContentIndex;
 }) {
-  await input.db.transaction(async (tx) => {
-    await tx
-      .delete(masteryEvents)
-      .where(
-        and(eq(masteryEvents.userId, input.userId), eq(masteryEvents.conceptId, input.conceptId)),
-      );
-    await tx
-      .delete(mastery)
-      .where(and(eq(mastery.userId, input.userId), eq(mastery.conceptId, input.conceptId)));
-    await tx
-      .delete(reviewCards)
-      .where(and(eq(reviewCards.userId, input.userId), eq(reviewCards.conceptId, input.conceptId)));
-    await tx
-      .delete(lessonRuns)
-      .where(and(eq(lessonRuns.userId, input.userId), eq(lessonRuns.conceptId, input.conceptId)));
-    await tx
-      .delete(remediationFlags)
-      .where(
-        and(
-          eq(remediationFlags.userId, input.userId),
-          or(
-            eq(remediationFlags.conceptId, input.conceptId),
-            eq(remediationFlags.targetPrereqId, input.conceptId),
-          ),
-        ),
-      );
-
-    const affectedCourseIds = input.content.courses
-      .filter((course) => course.units.some((unit) => unit.concepts.includes(input.conceptId)))
-      .map((course) => course.id);
-    if (affectedCourseIds.length > 0) {
-      await drizzleLearnerStore(tx).writeEnrollments(input.userId, {
-        kind: 'set_status',
-        courseIds: affectedCourseIds,
-        status: 'active',
-        completedAt: null,
-        ifStatus: 'completed',
-      });
-    }
-
-    const sessions = await tx
-      .select({ id: studySessions.id })
-      .from(studySessions)
-      .where(eq(studySessions.userId, input.userId));
-    if (!sessions.length) return;
-    const sessionIds = sessions.map((session) => session.id);
-    await tx
-      .update(sessionActivities)
-      .set({ status: 'skipped' })
-      .where(
-        and(
-          eq(sessionActivities.conceptId, input.conceptId),
-          inArray(sessionActivities.sessionId, sessionIds),
-          or(eq(sessionActivities.status, 'planned'), eq(sessionActivities.status, 'in_progress')),
-        ),
-      );
-
-    const dependentActivities = await tx
-      .select({
-        id: sessionActivities.id,
-        conceptId: sessionActivities.conceptId,
-        kind: sessionActivities.kind,
-        projectId: sessionActivities.projectId,
-        exerciseIds: sessionActivities.exerciseIds,
-      })
-      .from(sessionActivities)
-      .where(
-        and(
-          inArray(sessionActivities.sessionId, sessionIds),
-          or(eq(sessionActivities.status, 'planned'), eq(sessionActivities.status, 'in_progress')),
-        ),
-      );
-    const [masteryRows, runRows] = await Promise.all([
-      tx
-        .select({
-          conceptId: mastery.conceptId,
-          dimension: mastery.dimension,
-          state: mastery.state,
-          inferred: mastery.inferred,
-        })
-        .from(mastery)
-        .where(eq(mastery.userId, input.userId)),
-      tx
-        .select({ conceptId: lessonRuns.conceptId, status: lessonRuns.status })
-        .from(lessonRuns)
-        .where(eq(lessonRuns.userId, input.userId)),
-    ]);
-    const masteryByKey = new Map(
-      masteryRows.map((record) => [
-        masteryKey(record.conceptId, record.dimension),
-        { state: record.state, inferred: record.inferred },
-      ]),
-    );
-    const prerequisiteChecker = createPrerequisiteChecker(masteryByKey, runRows, input.content);
-    const activitiesToSkip = dependentActivities
-      .filter((activity) => {
-        if (activity.kind === 'review') {
-          return activity.exerciseIds.some(
-            (exerciseId) =>
-              input.content.exercisesById.get(exerciseId)?.concept === input.conceptId,
-          );
-        }
-        if (activity.kind === 'lab') {
-          return !labActivityReady(activity, masteryByKey, runRows, input.content);
-        }
-        if ((activity.kind !== 'learn' && activity.kind !== 'practice') || !activity.conceptId) {
-          return false;
-        }
-        if (!input.content.conceptsById.has(activity.conceptId)) return false;
-        return !prerequisiteChecker.chainReady(activity.conceptId);
-      })
-      .map((activity) => activity.id);
-    if (activitiesToSkip.length) {
-      await tx
-        .update(sessionActivities)
-        .set({ status: 'skipped' })
-        .where(
-          and(
-            inArray(sessionActivities.id, activitiesToSkip),
-            or(
-              eq(sessionActivities.status, 'planned'),
-              eq(sessionActivities.status, 'in_progress'),
-            ),
-          ),
-        );
-    }
-  });
+  return restartTopicProgress(drizzleLearnerStore(input.db), input);
 }
 
 export async function replanSessionActivities(input: {
@@ -194,100 +55,14 @@ export async function replanSessionActivities(input: {
   activatePlannedActivityId?: string;
   schedulerState?: SchedulerState;
 }) {
-  const state = filterSchedulerStateForContent(
-    input.content,
-    input.schedulerState ?? (await input.repo.schedulerState(input.now, input.content)),
-  );
-  const skipIds = new Set(input.skipActivityIds ?? []);
-  const planningActivities = input.session.activities.map((activity) => ({
-    ...activity,
-    status: skipIds.has(activity.id)
-      ? 'skipped'
-      : activity.id === input.activatePlannedActivityId
-        ? 'in_progress'
-        : activity.status,
-  })) as unknown as PlannedActivity[];
-  const existingMinutes = planningActivities
-    .filter((activity) => activity.status === 'completed' || activity.status === 'in_progress')
-    .reduce((total, activity) => total + activity.plannedMinutes, 0);
-  const remaining = Math.max(0, input.session.plannedMinutes - existingMinutes);
-  const plan = replan(
-    state,
-    input.content,
-    input.now,
-    remaining,
-    planningActivities,
-    input.session.kind,
-  );
-  const preserved = input.session.activities
-    .filter(
-      (activity) =>
-        activity.status !== 'planned' ||
-        skipIds.has(activity.id) ||
-        activity.id === input.activatePlannedActivityId,
-    )
-    .map((activity) => (skipIds.has(activity.id) ? { ...activity, status: 'skipped' } : activity));
-  const planned = await Promise.all(
-    plan.activities
-      .filter((activity) => activity.status !== 'in_progress')
-      .map(async (activity) => ({
-        activity,
-        progress: await initialLearnProgress(
-          input.db,
-          input.userId,
-          activity,
-          activity.conceptId ? input.content.lessonsByConcept.get(activity.conceptId) : undefined,
-        ),
-      })),
-  );
-  const nextIndex = Math.max(-1, ...preserved.map((activity) => activity.idx)) + 1;
-  await drizzleLearnerStore(input.db).transaction(async (store) => {
-    if (skipIds.size > 0) {
-      await store.patchActivities(
-        input.userId,
-        {
-          sessionIds: [input.session.id],
-          ids: [...skipIds],
-          statuses: ['planned', 'in_progress'],
-        },
-        { status: 'skipped' },
-      );
-    }
-    if (input.activatePlannedActivityId) {
-      await store.patchActivities(
-        input.userId,
-        {
-          ids: [input.activatePlannedActivityId],
-          statuses: ['planned'],
-        },
-        { status: 'in_progress', startedAt: input.now },
-      );
-    }
-    await store.deleteActivities(input.userId, {
-      sessionIds: [input.session.id],
-      statuses: ['planned'],
-    });
-    for (const [idx, { activity, progress }] of planned.entries()) {
-      await store.insertActivities(input.userId, input.session.id, [
-        {
-          idx: nextIndex + idx,
-          kind: activity.kind,
-          conceptId: activity.conceptId ?? null,
-          projectId: activity.projectId ?? null,
-          exerciseIds: activity.exerciseIds,
-          plannedMinutes: activity.plannedMinutes,
-          status: 'planned',
-          reason: activity.reason,
-          progress: progress || {},
-          startedAt: null,
-          completedAt: null,
-        },
-      ]);
-    }
+  return replanCourseSession(drizzleLearnerStore(input.db), {
+    ...input,
+    schedulerState:
+      input.schedulerState ?? (await input.repo.schedulerState(input.now, input.content)),
   });
 }
 
-export async function updateLearningFocus(input: {
+export function updateLearningFocus(input: {
   db: Database;
   repo: LearnerRepository;
   userId: string;
@@ -295,33 +70,11 @@ export async function updateLearningFocus(input: {
   subjectId: string | null;
   now: Date;
 }) {
-  const settings = await input.repo.settings();
-  const prefs = { ...settings?.prefs };
-  if (input.subjectId === null) delete prefs.focusSubjectId;
-  else prefs.focusSubjectId = input.subjectId;
-  await drizzleLearnerStore(input.db).patchSettings(input.userId, { prefs });
-
-  const active = await input.repo.activeSession(input.now);
-  const session = active ? await input.repo.session(active.id) : undefined;
-  if (!session) return;
-  const schedulerState = await input.repo.schedulerState(input.now, input.content);
-  const focusSubjectId = effectiveFocusSubjectId(
-    { focusSubjectId: input.subjectId },
-    schedulerState.studyCourseIds,
-    input.content,
-  );
-  const state = filterSchedulerStateForContent(input.content, {
-    ...schedulerState,
-    focusSubjectId: focusSubjectId ?? undefined,
-  });
-  await replanSessionActivities({
-    db: input.db,
-    repo: input.repo,
-    userId: input.userId,
-    content: input.content,
-    now: input.now,
-    session,
-    schedulerState: state,
+  return updateCourseFocus(drizzleLearnerStore(input.db), input, {
+    settings: () => input.repo.settings(),
+    activeSession: (now) => input.repo.activeSession(now),
+    session: (id) => input.repo.session(id),
+    schedulerState: (now, content) => input.repo.schedulerState(now, content),
   });
 }
 

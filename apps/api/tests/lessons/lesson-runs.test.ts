@@ -107,6 +107,23 @@ test('loading a run replaces a deleted pending question without credit', async (
   expect(await db.select().from(mastery).where(eq(mastery.userId, userId))).toHaveLength(0);
 });
 
+test('a stale answer racing question recovery cannot record an attempt', async () => {
+  const { run } = await (await startRun()).json();
+  const stale = run.pendingProblem;
+  const answer = correctAnswer(stale.exerciseId, stale.seed);
+  removeExercises([stale.exerciseId]);
+
+  const [recovery, rejected] = await Promise.all([getRun(), answerProblem(stale.id, answer)]);
+  expect(recovery.status).toBe(200);
+  expect(rejected.status).toBe(404);
+  const { run: recovered } = await recovery.json();
+  expect(recovered.pendingProblem.exerciseId).not.toBe(stale.exerciseId);
+  expect(await db.select().from(lessonProblems).where(eq(lessonProblems.runId, run.id))).toEqual([
+    expect.objectContaining({ id: recovered.pendingProblem.id, answeredAt: null }),
+  ]);
+  expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(0);
+});
+
 test('a deleted last answer keeps step progress and opens the next question', async () => {
   const { run } = await (await startRun()).json();
   const pending = run.pendingProblem;
@@ -1297,6 +1314,23 @@ test('double-submit returns 409 and records just one attempt', async () => {
   expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(1);
 });
 
+test('parallel starts share one problem and parallel answers save it once', async () => {
+  const starts = await Promise.all([startRun(), startRun()]);
+  expect(starts.map(({ status }) => status)).toEqual([200, 200]);
+  const [{ run }, { run: resumed }] = await Promise.all(starts.map((response) => response.json()));
+  expect(resumed.id).toBe(run.id);
+  expect(resumed.pending.id).toBe(run.pending.id);
+  expect(
+    await db.select().from(lessonProblems).where(eq(lessonProblems.runId, run.id)),
+  ).toHaveLength(1);
+
+  const { id, exerciseId, seed } = run.pending;
+  const answer = correctAnswer(exerciseId, seed);
+  const answers = await Promise.all([answerProblem(id, answer), answerProblem(id, answer)]);
+  expect(answers.map(({ status }) => status).sort()).toEqual([200, 409]);
+  expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(1);
+});
+
 async function pendingTemplate() {
   let run = (await (await startRun()).json()).run;
   for (let count = 0; count < 20; count += 1) {
@@ -1674,6 +1708,27 @@ test('quiz start is idempotent and unsubmitted answers disclose no correctness',
     { headers },
   );
   expect(failedReview.status).toBe(403);
+});
+
+test('parallel quiz starts and submits share one attempt and award its XP once', async () => {
+  await finishLessonSteps();
+  const starts = await Promise.all([startQuiz(), startQuiz()]);
+  expect(starts.map(({ status }) => status)).toEqual([200, 200]);
+  const [{ run }, { run: resumed }] = await Promise.all(starts.map((response) => response.json()));
+  expect(resumed.quiz.current.attemptId).toBe(run.quiz.current.attemptId);
+  expect(await db.select().from(lessonQuizAttempts)).toHaveLength(1);
+  const items = await answerQuizAttempt(run.quiz);
+
+  const submissions = await Promise.all([submitQuiz(), submitQuiz()]);
+  expect(submissions.map(({ status }) => status)).toEqual([200, 200]);
+  const results = await Promise.all(submissions.map((response) => response.json()));
+  expect(results.map(({ xpAwarded }) => xpAwarded).sort()).toEqual([0, items.length]);
+  expect(
+    await db
+      .select()
+      .from(attempts)
+      .where(and(eq(attempts.userId, userId), eq(attempts.mode, 'assessment'))),
+  ).toHaveLength(items.length);
 });
 
 test('quiz answers can be revised before submit and submission grades the latest answer', async () => {

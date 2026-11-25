@@ -4,6 +4,7 @@ import type { IndexedExercise } from '@academy/aesop/course/types';
 import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
 import { gradeExercise } from '@academy/aesop/lessons/grading/index';
 import { rubricFeedbackWithScoredFlags } from '@academy/aesop/lessons/grading/rubric-score';
+import { isExplainItBeforeQuiz } from '@academy/aesop/lessons/initial-learn-progress';
 import { calculateCredit } from '@academy/aesop/memory/mastery';
 import { applyMastery } from '@academy/aesop/memory/mastery-service';
 import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
@@ -531,7 +532,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       const mastery = masteryResult.mastery as MasteryRecord;
       const lesson = index.lessonsByConcept.get(activity.conceptId);
       const finalExercise = lesson?.final === exercise.id;
-      lessonFinalNeedsQuiz = Boolean(finalExercise && lesson?.knowledge_points?.length);
+      lessonFinalNeedsQuiz = isExplainItBeforeQuiz(lesson, exercise.id);
       learningGoalMet =
         finalExercise || (mastery.independentItemIds.length >= 2 && mastery.lastIndependentCorrect);
       if (!learningGoalMet) {
