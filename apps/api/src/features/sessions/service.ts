@@ -1,49 +1,24 @@
-import type { ContentIndex } from '@academy/aesop/course/types';
-import {
-  filterSchedulerStateForContent,
-  sessionActivityIsInContent,
-} from '@academy/aesop/graph/content-filters';
-import { buildCourseStartState, needsCourseChoice } from '@academy/aesop/graph/course-start';
-import { topicIsComplete } from '@academy/aesop/graph/course-status';
-import {
-  activeCourseFor,
-  compareOutlinePosition,
-  createPrerequisiteChecker,
-  labActivityReady,
-  learnActivitiesWithUnmetPrerequisites,
-  masteryKey,
-} from '@academy/aesop/graph/prerequisites';
+import { sessionActivityIsInContent } from '@academy/aesop/graph/content-filters';
+import { labActivityReady, masteryKey } from '@academy/aesop/graph/prerequisites';
 import { answerDisplay } from '@academy/aesop/lessons/answer-display';
 import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
-import { isLessonRetryReady } from '@academy/aesop/lessons/lesson-retry';
-import { recordLessonViewed } from '@academy/aesop/memory/mastery';
 import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
+import { loadHomePlan, withReviewTopics } from '@academy/aesop/planner/home-plan';
+import { attemptedExerciseIdsByActivity } from '@academy/aesop/planner/review-topics';
+import type { SessionPreferences } from '@academy/aesop/planner/scheduler';
 import {
-  attemptedExerciseIdsByActivity,
-  reviewTopicsForActivity,
-} from '@academy/aesop/planner/review-topics';
-import type { PlannedActivity, SessionPreferences } from '@academy/aesop/planner/scheduler';
-import {
-  currentLearnerUnit,
-  planSession,
-  replan,
-  sessionBudget,
-} from '@academy/aesop/planner/scheduler';
-import { localDateKey, sessionKindForDate, xpGoalFor } from '@academy/aesop/progress/xp';
+  createSession,
+  endSession,
+  replacePlannedActivities,
+} from '@academy/aesop/planner/session-commands';
+import { type OwnedSession, updateSessionProgress } from '@academy/aesop/planner/session-progress';
+import { localDateKey, xpGoalFor } from '@academy/aesop/progress/xp';
 import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { LearnerRepository } from '../../db/repository.js';
-import {
-  attempts,
-  lessonRuns,
-  mastery,
-  masteryEvents,
-  sessionActivities,
-  studySessions,
-  xpEvents,
-} from '../../db/schema.js';
+import { attempts, lessonRuns, mastery, xpEvents } from '../../db/schema.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
 import {
   completeReviewActivity,
@@ -53,205 +28,42 @@ import { type FeatureRequest, type FeatureServices, serviceResult } from '../../
 import { replanSessionActivities } from '../course/service.js';
 import { quizOffer } from '../quizzes/offer.js';
 
-function withReviewTopics<T extends { kind: string; exerciseIds: string[]; status?: string }>(
-  activity: T,
-  index: ContentIndex,
-  attemptedExerciseIds?: ReadonlySet<string>,
-) {
-  if (activity.kind !== 'review') return activity;
-  return {
-    ...activity,
-    reviewTopics: reviewTopicsForActivity(activity, index, attemptedExerciseIds),
-    allReviewTopics: reviewTopicsForActivity(activity, index),
-  };
-}
-
 export async function getToday(deps: FeatureServices, request: FeatureRequest) {
-  const { content, tutorProvider } = deps;
-  const [index, repo] = [await content(), request.repo];
-  const now = request.now();
-  const state = filterSchedulerStateForContent(index, await repo.schedulerState(now, index));
-  const user = await repo.user();
-  const prefs = (user?.prefs ?? {}) as SessionPreferences & { goal?: string };
-  const subjectTitle = index.curriculum?.subject?.title;
-  const sessionKind = sessionKindForDate(localDateKey(now, request.timeZone));
-  const budget = sessionBudget(sessionKind, prefs, localDateKey(now, request.timeZone));
-  const availableQuiz = await quizOffer(repo, index, now, state.activeCourseId);
-  state.pendingQuiz =
-    availableQuiz.plannedMinutes === undefined
-      ? undefined
-      : { plannedMinutes: availableQuiz.plannedMinutes };
-  const [active, enrollments, placementRuns] = await Promise.all([
-    repo.activeSession(now),
-    repo.courseEnrollments(),
-    repo.activePlacementRuns(),
-  ]);
-  const placementCourseId = placementRuns
-    .map((run) => (run.state as { courseId?: unknown }).courseId)
-    .find((id): id is string => typeof id === 'string' && index.coursesById.has(id));
-  const currentCourseId = placementCourseId ?? state.studyCourseIds[0] ?? state.activeCourseId;
-  const activeSession = active ? await repo.session(active.id) : undefined;
-  const hasCurrentActivity =
-    !activeSession ||
-    activeSession.activities.length === 0 ||
-    activeSession.activities.some(
-      (activity) =>
-        (activity.status === 'planned' || activity.status === 'in_progress') &&
-        sessionActivityIsInContent(index, activity),
-    );
-  const activeSessionId = hasCurrentActivity ? (active?.id ?? null) : null;
-  const activeActivities =
-    activeSessionId && activeSession
-      ? activeSession.activities.filter(
-          (activity) =>
-            (activity.status === 'planned' || activity.status === 'in_progress') &&
-            sessionActivityIsInContent(index, activity),
-        )
-      : [];
-  const inProgressReviewActivityIds = activeActivities
-    .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
-    .map((activity) => activity.id);
-  const attemptedByActivity = await repo.attemptedExerciseIdsByActivity(
-    inProgressReviewActivityIds,
-  );
-  const plan =
-    activeSessionId && activeSession
-      ? {
-          activities: activeActivities.map(
-            (activity): PlannedActivity => ({
-              kind: activity.kind,
-              conceptId: activity.conceptId,
-              projectId: activity.projectId ?? undefined,
-              exerciseIds: activity.exerciseIds,
-              plannedMinutes: activity.plannedMinutes,
-              reason: activity.reason as PlannedActivity['reason'],
-              status: activity.status as PlannedActivity['status'],
-            }),
-          ),
-          reasons: activeActivities.map((activity) => activity.reason as PlannedActivity['reason']),
-        }
-      : planSession(state, index, now, budget, sessionKind);
-  const startState = buildCourseStartState({
-    content: index,
-    activeCourseId: currentCourseId,
-    mastery: state.mastery,
-    lessonRuns: state.lessonRuns ?? [],
-    enrollments,
-    placementRuns,
-  });
-  const course = activeCourseFor(index, currentCourseId);
-  const unit = currentLearnerUnit({ ...state, activeCourseId: currentCourseId }, index);
-  const unitFocus = course?.units[unit - 1];
-  const runsByConcept = new Map((state.lessonRuns ?? []).map((run) => [run.conceptId, run.status]));
-  const masteryByConcept = new Map<string, typeof state.mastery>();
-  for (const record of state.mastery) {
-    const records = masteryByConcept.get(record.conceptId) ?? [];
-    records.push(record);
-    masteryByConcept.set(record.conceptId, records);
-  }
-  const studyCourses = state.studyCourseIds.flatMap((courseId) => {
-    const studyCourse = index.coursesById.get(courseId);
-    if (!studyCourse) return [];
-    const topics = studyCourse.units.flatMap((studyUnit) => studyUnit.concepts);
-    const topicsDone = topics.filter((conceptId) => {
-      const concept = index.conceptsById.get(conceptId);
-      if (!concept) return false;
-      const states = concept.dimensions.map(
-        (dimension) =>
-          masteryByConcept.get(conceptId)?.find((record) => record.dimension === dimension)
-            ?.state ?? 'not_assessed',
-      );
-      return topicIsComplete(runsByConcept.get(conceptId), states);
-    }).length;
-    const courseUnit = currentLearnerUnit({ ...state, activeCourseId: courseId }, index);
-    return [
+  const index = await deps.content();
+  const { repo } = request;
+  return serviceResult(
+    await loadHomePlan(
       {
-        id: courseId,
-        title: studyCourse.title,
-        topicsDone,
-        topicsTotal: topics.length,
-        unitTitle: studyCourse.units[courseUnit - 1]?.title ?? `Unit ${courseUnit}`,
+        schedulerState: (now, content) => repo.schedulerState(now, content),
+        user: () => repo.user(),
+        activeSession: (now) => repo.activeSession(now),
+        courseEnrollments: () => repo.courseEnrollments(),
+        activePlacementRuns: () => repo.activePlacementRuns(),
+        session: (id) => repo.session(id),
+        attemptedExerciseIdsByActivity: (ids) => repo.attemptedExerciseIdsByActivity(ids),
+        completeCourses: (ids, now) => repo.completeCourses(ids, now),
+        quizOffer: (content, now, courseId) => quizOffer(repo, content, now, courseId),
       },
-    ];
-  });
-  const completedCourseIds = studyCourses
-    .filter(
-      (studyCourse) =>
-        studyCourse.topicsTotal > 0 && studyCourse.topicsDone === studyCourse.topicsTotal,
-    )
-    .map((studyCourse) => studyCourse.id);
-  await request.repo.completeCourses(completedCourseIds, now);
-  return serviceResult({
-    needsCourseChoice: needsCourseChoice({
-      activeCourseId: state.activeCourseId,
-      studyCourseIds: state.studyCourseIds,
-      mastery: state.mastery,
-      lessonRuns: state.lessonRuns ?? [],
-      activePlacementRuns: placementRuns,
-    }),
-    courseStart: startState.courseStart,
-    studyCourses,
-    objective:
-      unitFocus?.title ??
-      prefs.goal ??
-      (subjectTitle ? `Make steady progress in ${subjectTitle}.` : 'Make steady progress.'),
-    courseTitle: course?.title ?? '',
-    unitTitle: unitFocus?.title ?? `Unit ${unit}`,
-    unit,
-    dueReviews: new Set(
-      plan.activities.flatMap((activity, activityIndex) => {
-        const activeActivity =
-          activeSessionId && activeSession ? activeActivities[activityIndex] : undefined;
-        return activity.kind === 'review'
-          ? reviewTopicsForActivity(
-              activity,
-              index,
-              activeActivity ? attemptedByActivity.get(activeActivity.id) : undefined,
-            ).map((topic) => topic.conceptId)
-          : [];
-      }),
-    ).size,
-    budgetMinutes: budget,
-    quizOffer: {
-      xpBalance: availableQuiz.xpBalance,
-      plannedMinutes: availableQuiz.plannedMinutes ?? null,
-      active: Boolean(availableQuiz.active),
-    },
-    sessionKind,
-    activeSessionId,
-    tutorEnabled: tutorProvider !== null,
-    plan: {
-      ...plan,
-      activities: plan.activities.map((activity, activityIndex) => {
-        const activeActivity =
-          activeSessionId && activeSession ? activeActivities[activityIndex] : undefined;
-        return withReviewTopics(
-          {
-            ...activity,
-            conceptTitle: activity.conceptId
-              ? index.conceptsById.get(activity.conceptId)?.title
-              : undefined,
-          },
-          index,
-          activeActivity ? attemptedByActivity.get(activeActivity.id) : undefined,
-        );
-      }),
-    },
-  });
+      index,
+      request.now(),
+      request.timeZone,
+      deps.tutorProvider !== null,
+    ),
+  );
 }
 
 export async function postSessions(deps: FeatureServices, request: FeatureRequest) {
   return deps.db.transaction(async (tx) => {
     await drizzleLearnerStore(tx).lockLearner(request.userId, 'no_key_update');
     const db = tx as unknown as Database;
-    return createSession(
+    return createSessionRequest(
       { ...deps, db },
       { ...request, repo: new LearnerRepository(db, request.userId) },
     );
   });
 }
 
-async function createSession(deps: FeatureServices, request: FeatureRequest) {
+async function createSessionRequest(deps: FeatureServices, request: FeatureRequest) {
   const { db, content } = deps;
   const body = z
     .object({
@@ -265,136 +77,24 @@ async function createSession(deps: FeatureServices, request: FeatureRequest) {
   }
   const [index, repo] = [await content(), request.repo];
   const now = request.now();
-  const sessionKind = body.data.kind ?? sessionKindForDate(localDateKey(now, request.timeZone));
-  const state = filterSchedulerStateForContent(index, await repo.schedulerState(now, index));
-  const user = await repo.user();
-  const prefs = (user?.prefs ?? {}) as SessionPreferences;
-  const budgetMinutes =
-    body.data.budgetMinutes ??
-    sessionBudget(sessionKind, prefs, localDateKey(now, request.timeZone));
-  if (body.data.focusConceptId) {
-    const focusConcept = index.conceptsById.get(body.data.focusConceptId);
-    if (!focusConcept) {
-      return serviceResult({ error: 'Concept not found' }, 404);
-    }
-    if (focusConcept.status === 'stub') {
-      return serviceResult({ error: 'Concept is not yet authored' }, 409);
-    }
-    const retryRun = state.lessonRuns?.find(
-      (run) => run.conceptId === focusConcept.id && run.status === 'needs_retry',
-    );
-    if (retryRun) {
-      const retryAfter = retryRun.retryAfter ? new Date(retryRun.retryAfter) : undefined;
-      if (!isLessonRetryReady(retryAfter, false, now)) {
-        return serviceResult({ error: 'This lesson comes back tomorrow.' }, 409);
-      }
-      const reviewFirstIds = [
-        ...new Set(
-          state.remediationFlags
-            .filter(
-              (flag) =>
-                flag.conceptId === focusConcept.id &&
-                (flag.status === undefined || flag.status === 'open'),
-            )
-            .map((flag) => flag.targetPrereqId ?? focusConcept.id),
-        ),
-      ];
-      if (!isLessonRetryReady(retryAfter, reviewFirstIds.length > 0, now)) {
-        const titles = reviewFirstIds.map((id) => index.conceptsById.get(id)?.title ?? id);
-        return serviceResult({ error: `Review ${titles.join(' and ')} first.` }, 409);
-      }
-    }
-    const masteryByKey = new Map(
-      state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
-    );
-    const prerequisiteChecker = createPrerequisiteChecker(
-      masteryByKey,
-      state.lessonRuns ?? [],
-      index,
-    );
-    const missingPrerequisiteId = prerequisiteChecker
-      .missingFrontier(focusConcept.id)
-      .sort((left, right) => compareOutlinePosition(left, right, index, state.activeCourseId))[0];
-    if (!prerequisiteChecker.chainReady(focusConcept.id)) {
-      const firstMissingId =
-        missingPrerequisiteId ??
-        focusConcept.prereqs
-          .filter((prerequisite) => prerequisite.strength === 'hard')
-          .map((prerequisite) => prerequisite.id)
-          .sort((left, right) =>
-            compareOutlinePosition(left, right, index, state.activeCourseId),
-          )[0] ??
-        focusConcept.id;
-      const prerequisiteTitle = index.conceptsById.get(firstMissingId)?.title ?? firstMissingId;
-      return serviceResult({ error: `Finish ${prerequisiteTitle} first` }, 409);
-    }
-    state.inProgressConceptId = body.data.focusConceptId;
-  }
-  const availableQuiz = await quizOffer(repo, index, now, state.activeCourseId);
-  state.pendingQuiz =
-    availableQuiz.plannedMinutes === undefined
-      ? undefined
-      : { plannedMinutes: availableQuiz.plannedMinutes };
-  const plan = planSession(state, index, now, budgetMinutes, sessionKind, undefined, undefined, {
-    focusConceptId: body.data.focusConceptId,
-  });
-  if (
-    body.data.focusConceptId &&
-    !plan.activities.some(
-      (activity) =>
-        (activity.kind === 'learn' || activity.kind === 'practice') &&
-        activity.conceptId === body.data.focusConceptId,
-    )
-  ) {
-    return serviceResult({ error: 'No eligible exercise exists for this concept.' }, 409);
-  }
-  await db
-    .update(studySessions)
-    .set({ status: 'abandoned', endedAt: now })
-    .where(and(eq(studySessions.userId, request.userId), eq(studySessions.status, 'active')));
-  const [session] = await db
-    .insert(studySessions)
-    .values({
-      userId: request.userId,
-      kind: sessionKind,
-      plannedMinutes: budgetMinutes,
-      startedAt: now,
-      status: 'active',
-      plan: { activities: plan.activities, reasons: plan.reasons, schedulerVersion: '1' },
-    })
-    .returning();
-  const createdActivities = await Promise.all(
-    plan.activities.map(async (activity, idx) => {
-      const progress = await initialLearnProgress(
-        db,
-        request.userId,
-        activity,
-        activity.conceptId ? index.lessonsByConcept.get(activity.conceptId) : undefined,
-      );
-      return db
-        .insert(sessionActivities)
-        .values({
-          sessionId: session.id,
-          idx,
-          kind: activity.kind,
-          conceptId: activity.conceptId,
-          projectId: activity.projectId,
-          exerciseIds: activity.exerciseIds,
-          plannedMinutes: activity.plannedMinutes,
-          status: idx === 0 ? 'in_progress' : 'planned',
-          reason: activity.reason,
-          ...(progress ? { progress } : {}),
-        })
-        .returning();
-    }),
-  );
-  return serviceResult(
+  const outcome = await createSession(
+    drizzleLearnerStore(db),
+    request.userId,
+    index,
+    now,
+    request.timeZone,
+    body.data,
     {
-      ...session,
-      activities: createdActivities.flat().map((activity) => withReviewTopics(activity, index)),
+      schedulerState: (date, course) => repo.schedulerState(date, course),
+      preferences: async () => ((await repo.user())?.prefs ?? {}) as SessionPreferences,
+      quizOffer: (course, date, courseId) => quizOffer(repo, course, date, courseId),
+      initialProgress: (activity, lesson) =>
+        initialLearnProgress(db, request.userId, activity, lesson),
     },
-    201,
   );
+  return outcome.kind === 'created'
+    ? serviceResult(outcome.session, 201)
+    : serviceResult({ error: outcome.error }, outcome.kind === 'not_found' ? 404 : 409);
 }
 
 export async function getSessionsActive(deps: FeatureServices, request: FeatureRequest) {
@@ -576,11 +276,9 @@ export async function postSessionsByIdActivitiesByAidProgress(
   if (!z.string().uuid().safeParse(request.params.id).success)
     return serviceResult({ error: 'Session not found' }, 404);
   return deps.db.transaction(async (tx) => {
-    await tx
-      .select({ id: studySessions.id })
-      .from(studySessions)
-      .where(and(eq(studySessions.id, request.params.id), eq(studySessions.userId, request.userId)))
-      .for('update');
+    const store = drizzleLearnerStore(tx);
+    const session = await store.lockSession(request.userId, request.params.id);
+    const locked = session && { ...session, userId: request.userId };
     const db = tx as unknown as Database;
     return updateActivityProgress(
       { ...deps, db },
@@ -591,182 +289,80 @@ export async function postSessionsByIdActivitiesByAidProgress(
           now: request.now,
         }),
       },
+      locked,
     );
   });
 }
 
-async function updateActivityProgress(deps: FeatureServices, request: FeatureRequest) {
+async function updateActivityProgress(
+  deps: FeatureServices,
+  request: FeatureRequest,
+  locked: OwnedSession | undefined,
+) {
   const { db, content } = deps;
   const body = z.record(z.string(), z.unknown()).safeParse(request.body);
   if (!body.success) {
     return serviceResult({ error: 'Invalid progress' }, 400);
   }
-  let session = await request.repo.session(request.params.id);
-  let activity = session?.activities.find((item) => item.id === request.params.aid);
-  if (!activity) {
-    return serviceResult({ error: 'Activity not found' }, 404);
-  }
-  if (activity.kind === 'mixed_quiz') {
-    return serviceResult({ error: 'Use the timed quiz to complete this activity' }, 409);
-  }
-  const attemptedByActivity =
-    activity.kind === 'review'
-      ? await request.repo.attemptedExerciseIdsByActivity([activity.id])
-      : new Map<string, Set<string>>();
-  const completed = body.data.complete === true;
-  const { complete: _complete, ...progress } = body.data;
-  const now = request.now();
-  if (completed && activity.kind === 'review') {
-    const attemptedExerciseIds = attemptedByActivity.get(activity.id) ?? new Set<string>();
-    const missingExerciseIds = activity.exerciseIds.filter(
-      (exerciseId) => !attemptedExerciseIds.has(exerciseId),
-    );
-    const removedQuestions = (activity.reason as { removedQuestions?: boolean } | null)
-      ?.removedQuestions;
-    if ((activity.exerciseIds.length === 0 && !removedQuestions) || missingExerciseIds.length > 0) {
-      return serviceResult(
-        {
-          error: 'Review activity needs an attempt for every exercise before completion.',
-          missingExerciseIds,
-        },
-        409,
-      );
-    }
-    if (removedQuestions && activity.exerciseIds.length > 0 && activity.status !== 'completed') {
-      const index = await content();
-      const context = { index, userId: request.userId, timeZone: request.timeZone, now, session };
-      activity = await recordRecoveredReviewRatings(db, request.repo, context, activity);
-      if (activity.exerciseIds.some((id) => !attemptedExerciseIds.has(id))) {
-        return serviceResult(withReviewTopics(activity, index, attemptedExerciseIds));
-      }
-      const latestSession = await request.repo.session(activity.sessionId);
-      await completeReviewActivity(db, { ...context, session: latestSession }, activity, progress);
-      const finished = (await request.repo.session(activity.sessionId))?.activities.find(
-        (item) => item.id === activity?.id,
-      );
-      return serviceResult(withReviewTopics(finished ?? activity, index, attemptedExerciseIds));
-    }
-  }
-  if (
-    session?.status === 'active' &&
-    activity.kind === 'learn' &&
-    (activity.status === 'planned' ||
-      (activity.status === 'in_progress' && body.data.lessonViewed === true))
-  ) {
-    const index = await content();
-    const state = filterSchedulerStateForContent(
-      index,
-      await request.repo.schedulerState(now, index),
-    );
-    const masteryByKey = new Map(
-      state.mastery.map((record) => [
-        masteryKey(record.conceptId, record.dimension),
-        { state: record.state, inferred: record.inferred },
-      ]),
-    );
-    const blockedActivities = learnActivitiesWithUnmetPrerequisites(
-      session.activities,
-      masteryByKey,
-      state.lessonRuns ?? [],
-      index,
-    );
-    if (blockedActivities.length > 0) {
-      const blockedTarget = blockedActivities.includes(activity.id);
-      await replanSessionActivities({
-        db,
-        repo: request.repo,
-        userId: request.userId,
-        content: index,
-        now,
-        session,
-        skipActivityIds: blockedActivities,
-        ...(blockedTarget || activity.status !== 'planned'
-          ? {}
-          : { activatePlannedActivityId: activity.id }),
-        schedulerState: state,
-      });
-      if (blockedTarget) {
-        return serviceResult({ error: 'Lesson prerequisites are no longer complete.' }, 409);
-      }
-      session = await request.repo.session(request.params.id);
-      activity = session?.activities.find((item) => item.id === request.params.aid);
-      if (!activity) return serviceResult({ error: 'Activity not found' }, 404);
-    }
-  }
-  const lessonIndex =
-    body.data.lessonRunnerContinued === true &&
-    !completed &&
-    activity.kind === 'learn' &&
-    activity.conceptId
-      ? await content()
-      : null;
-  const lesson = activity.conceptId
-    ? lessonIndex?.lessonsByConcept.get(activity.conceptId)
-    : undefined;
-  const exerciseIds =
-    lesson?.knowledge_points?.length && lesson.final ? [lesson.final] : activity.exerciseIds;
-  const [updated] = await db
-    .update(sessionActivities)
-    .set({
-      progress,
-      status: completed ? 'completed' : 'in_progress',
-      startedAt: activity.startedAt ?? now,
-      completedAt: completed ? now : null,
-      ...(exerciseIds !== activity.exerciseIds ? { exerciseIds } : {}),
-    })
-    .where(eq(sessionActivities.id, activity.id))
-    .returning();
-  if (activity.kind === 'learn' && activity.conceptId && body.data.lessonViewed === true) {
-    const index = await content();
-    const concept = index.conceptsById.get(activity.conceptId);
-    for (const dimension of concept?.dimensions ?? []) {
-      const viewed = recordLessonViewed(
-        await request.repo.masteryRecord(activity.conceptId, dimension),
-        activity.conceptId,
-        dimension,
-        request.now(),
-      );
-      await request.repo.saveMastery(viewed.mastery);
-      if (viewed.event) {
-        await db.insert(masteryEvents).values({
-          userId: request.userId,
-          conceptId: viewed.event.conceptId,
-          dimension: viewed.event.dimension,
-          fromState: viewed.event.fromState,
-          toState: viewed.event.toState,
-          rule: viewed.event.rule,
-          createdAt: request.now(),
-        });
-      }
-    }
-  }
-  if (completed && session) {
-    const nextActivity = session.activities
-      .filter((item) => item.status === 'planned')
-      .sort((left, right) => left.idx - right.idx)[0];
-    if (nextActivity) {
-      await db
-        .update(sessionActivities)
-        .set({ status: 'in_progress', startedAt: now })
-        .where(eq(sessionActivities.id, nextActivity.id));
-    }
-  }
-  if (updated?.kind === 'review') {
-    const index = await content();
-    return serviceResult(withReviewTopics(updated, index, attemptedByActivity.get(updated.id)));
-  }
-  return serviceResult(updated);
+  const { repo, params, userId, timeZone, now } = request;
+  let loaded = locked;
+  const result = await updateSessionProgress(
+    drizzleLearnerStore(db),
+    userId,
+    params.id,
+    params.aid,
+    body.data,
+    now,
+    {
+      content,
+      session: (id) => {
+        const session = id === params.id ? loaded : undefined;
+        loaded = undefined;
+        return repo.session(id, session);
+      },
+      schedulerState: (date, index) => repo.schedulerState(date, index),
+      attemptedExerciseIdsByActivity: (ids) => repo.attemptedExerciseIdsByActivity(ids),
+      recordRecoveredReviewRatings: (index, date, session, activity) =>
+        recordRecoveredReviewRatings(
+          db,
+          repo,
+          { index, userId, timeZone, now: date, session },
+          activity,
+        ),
+      completeReviewActivity: (index, date, session, activity, progress) =>
+        completeReviewActivity(
+          db,
+          { index, userId, timeZone, now: date, session },
+          activity,
+          progress,
+        ),
+      replanBlocked: (index, date, session, state, blocked, activate) =>
+        replanSessionActivities({
+          db,
+          repo,
+          userId,
+          content: index,
+          now: date,
+          session,
+          skipActivityIds: blocked,
+          activatePlannedActivityId: activate,
+          schedulerState: state,
+        }),
+    },
+  );
+  return serviceResult(
+    result.body,
+    result.kind === 'not_found' ? 404 : result.kind === 'conflict' ? 409 : 200,
+  );
 }
 
 export async function postSessionsByIdReplan(deps: FeatureServices, request: FeatureRequest) {
   if (!z.string().uuid().safeParse(request.params.id).success)
     return serviceResult({ error: 'Session not found' }, 404);
   return deps.db.transaction(async (tx) => {
-    await tx
-      .select({ id: studySessions.id })
-      .from(studySessions)
-      .where(and(eq(studySessions.id, request.params.id), eq(studySessions.userId, request.userId)))
-      .for('update');
+    const store = drizzleLearnerStore(tx);
+    const session = await store.lockSession(request.userId, request.params.id);
+    const locked = session && { ...session, userId: request.userId };
     const db = tx as unknown as Database;
     return replanSession(
       { ...deps, db },
@@ -777,13 +373,18 @@ export async function postSessionsByIdReplan(deps: FeatureServices, request: Fea
           now: request.now,
         }),
       },
+      locked,
     );
   });
 }
 
-async function replanSession(deps: FeatureServices, request: FeatureRequest) {
+async function replanSession(
+  deps: FeatureServices,
+  request: FeatureRequest,
+  locked: OwnedSession | undefined,
+) {
   const { db, content } = deps;
-  const session = await request.repo.session(request.params.id);
+  const session = await request.repo.session(request.params.id, locked);
   if (!session) {
     return serviceResult({ error: 'Session not found' }, 404);
   }
@@ -793,64 +394,22 @@ async function replanSession(deps: FeatureServices, request: FeatureRequest) {
     .object({ remainingBudgetMinutes: z.number().int().min(0).max(600).optional() })
     .safeParse(request.body);
   if (!body.success) return serviceResult({ error: 'Invalid replan request' }, 400);
-  if ((session.plan as { quizFollowUp?: string }).quizFollowUp) {
-    return serviceResult({
-      activities: session.activities.map((activity) => withReviewTopics(activity, index)),
-    });
-  }
-  const state = await request.repo.schedulerState(now, index);
-  const activities = session.activities as unknown as PlannedActivity[];
-  const existingMinutes = activities
-    .filter((activity) => activity.status === 'completed' || activity.status === 'in_progress')
-    .reduce((total, activity) => total + activity.plannedMinutes, 0);
-  const remaining =
-    body.data.remainingBudgetMinutes ?? Math.max(0, session.plannedMinutes - existingMinutes);
-  const plan = replan(state, index, now, remaining, activities, session.kind);
-  const planned = session.activities.filter((activity) => activity.status === 'planned');
-  await Promise.all(
-    planned.map((activity) =>
-      db.delete(sessionActivities).where(eq(sessionActivities.id, activity.id)),
+  return serviceResult(
+    await replacePlannedActivities(
+      drizzleLearnerStore(db),
+      request.userId,
+      session,
+      index,
+      now,
+      body.data.remainingBudgetMinutes,
+      {
+        schedulerState: (date, course) => request.repo.schedulerState(date, course),
+        attemptedExerciseIdsByActivity: (ids) => request.repo.attemptedExerciseIdsByActivity(ids),
+        initialProgress: (activity, lesson) =>
+          initialLearnProgress(db, request.userId, activity, lesson),
+      },
     ),
   );
-  const preserved = session.activities.filter((activity) => activity.status !== 'planned');
-  const nextIndex = Math.max(-1, ...preserved.map((activity) => activity.idx)) + 1;
-  const created = await Promise.all(
-    plan.activities
-      .filter((activity) => activity.status !== 'in_progress')
-      .map(async (activity, idx) => {
-        const progress = await initialLearnProgress(
-          db,
-          request.userId,
-          activity,
-          activity.conceptId ? index.lessonsByConcept.get(activity.conceptId) : undefined,
-        );
-        return db
-          .insert(sessionActivities)
-          .values({
-            sessionId: session.id,
-            idx: nextIndex + idx,
-            kind: activity.kind,
-            conceptId: activity.conceptId,
-            projectId: activity.projectId,
-            exerciseIds: activity.exerciseIds,
-            plannedMinutes: activity.plannedMinutes,
-            status: 'planned',
-            reason: activity.reason,
-            ...(progress ? { progress } : {}),
-          })
-          .returning();
-      }),
-  );
-  const inProgressReviewIds = preserved
-    .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
-    .map((activity) => activity.id);
-  const attemptedByActivity =
-    await request.repo.attemptedExerciseIdsByActivity(inProgressReviewIds);
-  return serviceResult({
-    activities: [...preserved, ...created.flat()].map((activity) =>
-      withReviewTopics(activity, index, attemptedByActivity.get(activity.id)),
-    ),
-  });
 }
 
 export async function postSessionsByIdEnd(deps: FeatureServices, request: FeatureRequest) {
@@ -858,18 +417,11 @@ export async function postSessionsByIdEnd(deps: FeatureServices, request: Featur
   const previous = await request.repo.session(request.params.id);
   if (!previous) return serviceResult({ error: 'Session not found' }, 404);
   if (previous.status === 'completed') return serviceResult(previous);
-  const endedAt = request.now();
-  const elapsedSeconds = previous.startedAt
-    ? Math.max(0, Math.floor((endedAt.getTime() - previous.startedAt.getTime()) / 1000))
-    : 0;
-  const [session] = await db
-    .update(studySessions)
-    .set({
-      endedAt,
-      status: 'completed',
-      activeSeconds: previous.activeSeconds + elapsedSeconds,
-    })
-    .where(and(eq(studySessions.id, request.params.id), eq(studySessions.userId, request.userId)))
-    .returning();
+  const session = await endSession(
+    drizzleLearnerStore(db),
+    request.userId,
+    previous,
+    request.now(),
+  );
   return session ? serviceResult(session) : serviceResult({ error: 'Session not found' }, 404);
 }

@@ -193,6 +193,7 @@ test('advancing an abandoned session activity does not reactivate its parent ses
         { id: nextActivity.id, idx: 1, status: 'planned' },
       ],
     },
+    userId,
   });
 
   const [parent] = await db

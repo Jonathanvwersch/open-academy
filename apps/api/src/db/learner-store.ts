@@ -1,8 +1,10 @@
 import type { Dimension } from '@academy/aesop/course/schemas';
+import { startOfNextCalendarDay } from '@academy/aesop/memory/fsrs';
 import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY } from '@academy/aesop/memory/speed';
 import { initialMastery, type MasteryRecord, type MasteryState } from '@academy/aesop/memory/types';
-import type { AttemptQuery, CoreStore, Settings } from '@academy/aesop/store/core-store';
+import type { AttemptQuery, Settings } from '@academy/aesop/store/core-store';
 import type { StoredReviewCard } from '@academy/aesop/store/learner-store';
+import type { ActivityQuery, SessionQuery, SessionStore } from '@academy/aesop/store/session-store';
 import {
   and,
   asc,
@@ -13,6 +15,7 @@ import {
   inArray,
   isNull,
   like,
+  lt,
   lte,
   sql,
 } from 'drizzle-orm';
@@ -22,11 +25,16 @@ import {
   attempts,
   courseEnrollments,
   hintEvents,
+  lessonRuns,
   mastery,
   masteryEvents,
+  paperProgress,
+  projectProgress,
   remediationFlags,
   reviewCards,
   reviewLogs,
+  sessionActivities,
+  studySessions,
   topicSpeed,
   users,
   xpEvents,
@@ -37,6 +45,8 @@ type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 const { userId: _attemptOwner, ...attemptFields } = getTableColumns(attempts);
 const { userId: _xpOwner, ...xpFields } = getTableColumns(xpEvents);
 const { userId: _enrollmentOwner, ...enrollmentFields } = getTableColumns(courseEnrollments);
+const { userId: _sessionOwner, ...sessionFields } = getTableColumns(studySessions);
+const { userId: _flagOwner, ...flagFields } = getTableColumns(remediationFlags);
 
 function attemptOrder(order: AttemptQuery['order']) {
   switch (order) {
@@ -74,8 +84,35 @@ function mapReviewCard(row: typeof reviewCards.$inferSelect): StoredReviewCard {
 
 export function drizzleLearnerStore(
   db: Database | Transaction,
-  { activeReviewCardsOnly = false } = {},
-): CoreStore {
+  {
+    activeReviewCardsOnly = false,
+    schedulerTimezone,
+  }: {
+    activeReviewCardsOnly?: boolean;
+    schedulerTimezone?: string;
+  } = {},
+): SessionStore {
+  function sessionWhere(learnerId: string, query: SessionQuery) {
+    return and(
+      eq(studySessions.userId, learnerId),
+      query.ids === undefined ? undefined : inArray(studySessions.id, query.ids),
+      query.status === undefined ? undefined : eq(studySessions.status, query.status),
+    );
+  }
+
+  function activityWhere(learnerId: string, query: ActivityQuery) {
+    const owned = db
+      .select({ id: studySessions.id })
+      .from(studySessions)
+      .where(sessionWhere(learnerId, { ids: query.sessionIds }));
+    return and(
+      inArray(sessionActivities.sessionId, owned),
+      query.ids === undefined ? undefined : inArray(sessionActivities.id, query.ids),
+      query.statuses === undefined ? undefined : inArray(sessionActivities.status, query.statuses),
+      query.conceptId === undefined ? undefined : eq(sessionActivities.conceptId, query.conceptId),
+    );
+  }
+
   async function listMastery(learnerId: string): Promise<MasteryRecord[]> {
     const rows = await db
       .select()
@@ -103,7 +140,7 @@ export function drizzleLearnerStore(
   return {
     async transaction(fn) {
       return db.transaction((tx) =>
-        fn(drizzleLearnerStore(tx, { activeReviewCardsOnly }) as typeof this),
+        fn(drizzleLearnerStore(tx, { activeReviewCardsOnly, schedulerTimezone }) as typeof this),
       );
     },
     async lockLearner(learnerId, strength) {
@@ -447,6 +484,227 @@ export function drizzleLearnerStore(
         )
         .returning({ id: reviewCards.id });
       return rows.length > 0;
+    },
+    async listSessions(learnerId, query) {
+      return db
+        .select(sessionFields)
+        .from(studySessions)
+        .where(sessionWhere(learnerId, query))
+        .orderBy(desc(studySessions.startedAt));
+    },
+    async lockSession(learnerId, sessionId) {
+      const [row] = await db
+        .select(sessionFields)
+        .from(studySessions)
+        .where(sessionWhere(learnerId, { ids: [sessionId] }))
+        .for('update');
+      return row;
+    },
+    async insertSession(learnerId, session) {
+      const [row] = await db
+        .insert(studySessions)
+        .values({ ...session, userId: learnerId })
+        .returning(sessionFields);
+      if (!row) throw new Error('Unable to insert session');
+      return row;
+    },
+    async patchSessions(learnerId, query, patch) {
+      if (Object.values(patch).every((value) => value === undefined)) return;
+      await db.update(studySessions).set(patch).where(sessionWhere(learnerId, query));
+    },
+    async listActivities(learnerId, query) {
+      return db
+        .select()
+        .from(sessionActivities)
+        .where(activityWhere(learnerId, query))
+        .orderBy(asc(sessionActivities.sessionId), asc(sessionActivities.idx));
+    },
+    async insertActivities(learnerId, sessionId, rows) {
+      if (rows.length === 0) return [];
+      const owned = db
+        .select({ id: studySessions.id })
+        .from(studySessions)
+        .where(sessionWhere(learnerId, { ids: [sessionId] }));
+      return db
+        .insert(sessionActivities)
+        .values(rows.map((row) => ({ ...row, sessionId: sql`(${owned})` })))
+        .returning();
+    },
+    async patchActivities(learnerId, query, patch, expected) {
+      if (Object.values(patch).every((value) => value === undefined)) return [];
+      return db
+        .update(sessionActivities)
+        .set(patch)
+        .where(
+          and(
+            activityWhere(learnerId, query),
+            expected?.statuses === undefined
+              ? undefined
+              : inArray(sessionActivities.status, expected.statuses),
+            expected?.exerciseIds === undefined
+              ? undefined
+              : eq(sessionActivities.exerciseIds, [...expected.exerciseIds]),
+          ),
+        )
+        .returning();
+    },
+    async deleteActivities(learnerId, query) {
+      await db.delete(sessionActivities).where(activityWhere(learnerId, query));
+    },
+    async readSchedulerFacts(learnerId, query) {
+      const { now, recallExerciseIds } = query;
+      const timezone = schedulerTimezone ?? (await this.getSettings(learnerId))?.timeZone ?? 'UTC';
+      const endOfDay = startOfNextCalendarDay(now, timezone);
+      const [
+        masteryRows,
+        cards,
+        recentAttempts,
+        flags,
+        projects,
+        lessonRunRows,
+        paperRows,
+        recentLearnActivities,
+        todayReviewLogs,
+        completedReviewLogsToday,
+        recallAttemptRows,
+        speedEvidence,
+      ] = await Promise.all([
+        query.skip?.includes('mastery') ? undefined : listMastery(learnerId),
+        db
+          .select()
+          .from(reviewCards)
+          .where(and(eq(reviewCards.userId, learnerId), isNull(reviewCards.suspendedAt)))
+          .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id)),
+        this.listAttempts(learnerId, { order: 'scheduler', limit: 100 }),
+        db
+          .select(flagFields)
+          .from(remediationFlags)
+          .where(and(eq(remediationFlags.userId, learnerId), eq(remediationFlags.status, 'open')))
+          .orderBy(
+            asc(remediationFlags.conceptId),
+            asc(remediationFlags.targetPrereqId),
+            asc(remediationFlags.id),
+          ),
+        query.skip?.includes('projectProgress')
+          ? undefined
+          : db
+              .select({ projectId: projectProgress.projectId, status: projectProgress.status })
+              .from(projectProgress)
+              .where(eq(projectProgress.userId, learnerId))
+              .orderBy(asc(projectProgress.projectId)),
+        query.skip?.includes('lessonRuns')
+          ? undefined
+          : db
+              .select({
+                conceptId: lessonRuns.conceptId,
+                status: lessonRuns.status,
+                startedAt: lessonRuns.startedAt,
+                retryAfter: lessonRuns.retryAfter,
+              })
+              .from(lessonRuns)
+              .where(eq(lessonRuns.userId, learnerId))
+              .orderBy(asc(lessonRuns.conceptId), desc(lessonRuns.startedAt), desc(lessonRuns.id)),
+        db
+          .select({ paperId: paperProgress.paperId, completedAt: paperProgress.completedAt })
+          .from(paperProgress)
+          .where(eq(paperProgress.userId, learnerId))
+          .orderBy(asc(paperProgress.paperId)),
+        db
+          .select({
+            conceptId: sessionActivities.conceptId,
+            plannedMinutes: sql<number>`coalesce(sum(${sessionActivities.plannedMinutes}), 0)::int`,
+          })
+          .from(sessionActivities)
+          .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
+          .where(
+            and(
+              eq(studySessions.userId, learnerId),
+              eq(sessionActivities.kind, 'learn'),
+              eq(sessionActivities.status, 'completed'),
+              gte(sessionActivities.completedAt, new Date(now.getTime() - 7 * 86_400_000)),
+              lte(sessionActivities.completedAt, now),
+            ),
+          )
+          .groupBy(sessionActivities.conceptId),
+        db
+          .select({ conceptId: reviewCards.conceptId, createdAt: reviewLogs.createdAt })
+          .from(reviewLogs)
+          .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+          .where(
+            and(
+              eq(reviewCards.userId, learnerId),
+              sql`coalesce(${reviewLogs.fsrsLog}->>'source', '') <> 'mixed_quiz'`,
+              gte(reviewLogs.createdAt, new Date(now.getTime() - 36 * 60 * 60 * 1000)),
+              lt(reviewLogs.createdAt, endOfDay),
+            ),
+          ),
+        db
+          .select({
+            activityId: attempts.activityId,
+            conceptId: reviewCards.conceptId,
+            rating: reviewLogs.rating,
+            createdAt: reviewLogs.createdAt,
+          })
+          .from(reviewLogs)
+          .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
+          .innerJoin(attempts, eq(reviewLogs.attemptId, attempts.id))
+          .innerJoin(sessionActivities, eq(attempts.activityId, sessionActivities.id))
+          .where(
+            and(
+              eq(reviewCards.userId, learnerId),
+              eq(sessionActivities.kind, 'review'),
+              eq(sessionActivities.status, 'completed'),
+              gte(reviewLogs.createdAt, new Date(now.getTime() - 36 * 60 * 60 * 1000)),
+              lt(reviewLogs.createdAt, endOfDay),
+            ),
+          ),
+        recallExerciseIds.length > 0
+          ? db
+              .selectDistinctOn([attempts.exerciseId], {
+                exerciseId: attempts.exerciseId,
+                correct: attempts.correct,
+                createdAt: attempts.createdAt,
+              })
+              .from(attempts)
+              .where(
+                and(
+                  eq(attempts.userId, learnerId),
+                  sql`${attempts.exerciseId} = any(array[${sql.join(
+                    recallExerciseIds.map((exerciseId) => sql`${exerciseId}`),
+                    sql`, `,
+                  )}]::text[])`,
+                ),
+              )
+              .orderBy(
+                asc(attempts.exerciseId),
+                desc(attempts.createdAt),
+                desc(attempts.attemptNo),
+                desc(attempts.correct),
+                desc(attempts.id),
+              )
+          : Promise.resolve(
+              [] as Array<{
+                exerciseId: string;
+                correct: number;
+                createdAt: Date;
+              }>,
+            ),
+        this.listTopicSpeedEvidence(learnerId),
+      ]);
+      return {
+        mastery: masteryRows,
+        lessonRuns: lessonRunRows,
+        projectProgress: projects,
+        cards: cards.map(mapReviewCard),
+        topicSpeeds: speedEvidence,
+        recentAttempts,
+        flags,
+        paperProgress: paperRows,
+        learnMinutes: recentLearnActivities,
+        reviewLogFacts: todayReviewLogs,
+        completedReviewLogFacts: completedReviewLogsToday,
+        recallAttempts: recallAttemptRows,
+      };
     },
     async listOpenRemediationFlags(learnerId) {
       return db

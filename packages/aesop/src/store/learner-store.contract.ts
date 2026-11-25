@@ -4,11 +4,13 @@ import type { Dimension } from '../course/schemas.js';
 import { newReviewCard, scheduleReview } from '../memory/fsrs.js';
 import { countHintsSincePreviousAttempt } from '../memory/hints.js';
 import { initialMastery, type MasteryRecord } from '../memory/types.js';
+import { activeSessionForDate } from '../planner/session-state.js';
 import type { Attempt, CoreStore, Enrollment, NewRow, XpEvent } from './core-store.js';
 import type { NewReviewCard } from './learner-store.js';
+import type { Activity, Session, SessionStore } from './session-store.js';
 
 type StoreFixture = {
-  store: CoreStore;
+  store: SessionStore;
   learnerId: string;
   otherLearnerId: string;
   activityId: string;
@@ -60,8 +62,265 @@ function cardFor(conceptId: string, dimension: Dimension = 'math'): NewReviewCar
   };
 }
 
+function sessionRow(startedAt: Date): NewRow<Session> {
+  return {
+    startedAt,
+    kind: 'custom',
+    plannedMinutes: 20,
+    endedAt: null,
+    status: 'active',
+    plan: { labels: ['original'] },
+    activeSeconds: 0,
+  };
+}
+
+function activityRow(
+  idx: number,
+  overrides: Partial<NewRow<Omit<Activity, 'sessionId'>>> = {},
+): NewRow<Omit<Activity, 'sessionId'>> {
+  return {
+    idx,
+    kind: 'learn',
+    conceptId: 'vectors',
+    projectId: null,
+    exerciseIds: ['vectors-q1', 'vectors-q2'],
+    plannedMinutes: 5,
+    status: 'planned',
+    progress: { items: [1] },
+    reason: {},
+    startedAt: null,
+    completedAt: null,
+    ...overrides,
+  };
+}
+
 export function describeLearnerStoreContract(name: string, makeStore: () => Promise<StoreFixture>) {
   describe(name, () => {
+    it('lists and locks owned sessions, returns copies and only replaces active sessions', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      const row = sessionRow(new Date(date));
+      const first = await store.insertSession(learnerId, row);
+      const second = await store.insertSession(learnerId, sessionRow(later));
+      const foreign = await store.insertSession(otherLearnerId, sessionRow(later));
+      expect(
+        await activeSessionForDate(
+          store,
+          learnerId,
+          new Date('2026-01-18T01:00Z'),
+          'America/Los_Angeles',
+        ),
+      ).toEqual(first);
+      (row.plan as { labels: string[] }).labels[0] = 'changed';
+      row.startedAt?.setTime(0);
+      const ordered = await store.listSessions(learnerId, { status: 'active' });
+      expect(ordered.map(({ id }) => id)).toEqual([second.id, first.id]);
+      expect(await store.listSessions(learnerId, { ids: [] })).toEqual([]);
+      const locked = await store.transaction(async (tx) => {
+        expect(await tx.lockSession(learnerId, foreign.id)).toBeUndefined();
+        return tx.lockSession(learnerId, first.id);
+      });
+      expect(locked).toEqual(first);
+      if (locked) (locked.plan as { labels: string[] }).labels[0] = 'changed again';
+      await store.patchSessions(
+        learnerId,
+        { ids: [first.id], status: 'active' },
+        { status: 'completed' },
+      );
+      await store.patchSessions(
+        learnerId,
+        { status: 'active' },
+        { status: 'abandoned', endedAt: later },
+      );
+      expect(await store.listSessions(learnerId, { ids: [first.id, foreign.id] })).toEqual([
+        { ...first, status: 'completed' },
+      ]);
+      expect(await store.listSessions(learnerId, { status: 'abandoned' })).toEqual([
+        { ...second, status: 'abandoned', endedAt: later },
+      ]);
+      expect(await store.listSessions(otherLearnerId, { ids: [foreign.id] })).toEqual([foreign]);
+    });
+
+    it('orders owned activities and compares exercise arrays and status atomically', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      const session = await store.insertSession(learnerId, sessionRow(date));
+      const foreign = await store.insertSession(otherLearnerId, sessionRow(later));
+      await expect(
+        store.insertActivities(learnerId, foreign.id, [activityRow(0)]),
+      ).rejects.toThrow();
+      const input = activityRow(2, { status: 'completed', completedAt: new Date(date) });
+      const [second, first] = await store.insertActivities(learnerId, session.id, [
+        input,
+        activityRow(1),
+      ]);
+      expect(await store.insertActivities(learnerId, session.id, [])).toEqual([]);
+      await expect(
+        store.insertActivities(learnerId, session.id, [activityRow(3), activityRow(1)]),
+      ).rejects.toThrow();
+      const query = { sessionIds: [session.id], conceptId: 'vectors' };
+      expect(await store.listActivities(learnerId, query)).toEqual([first, second]);
+      expect(await store.listActivities(otherLearnerId, query)).toEqual([]);
+      (input.progress as { items: number[] }).items[0] = 2;
+      input.completedAt?.setTime(0);
+      first.exerciseIds.reverse();
+      expect(
+        await store.patchActivities(
+          learnerId,
+          { ids: [first.id] },
+          { status: 'skipped' },
+          {
+            exerciseIds: first.exerciseIds,
+          },
+        ),
+      ).toEqual([]);
+      const expected = {
+        statuses: ['planned'] as const,
+        exerciseIds: ['vectors-q1', 'vectors-q2'],
+      };
+      const concurrent = await Promise.all([
+        store.patchActivities(learnerId, query, { status: 'in_progress' }, expected),
+        store.patchActivities(learnerId, query, { status: 'skipped' }, expected),
+      ]);
+      expect(concurrent.flat()).toHaveLength(1);
+      expect(concurrent.flat()[0]?.id).toBe(first.id);
+      expect(await store.patchActivities(otherLearnerId, query, { status: 'planned' })).toEqual([]);
+      await store.deleteActivities(otherLearnerId, query);
+      await store.deleteActivities(learnerId, { ...query, statuses: ['planned'] });
+      expect(await store.listActivities(learnerId, query)).toHaveLength(2);
+      await store.deleteActivities(learnerId, { ...query, ids: [first.id] });
+      expect(await store.listActivities(learnerId, query)).toEqual([second]);
+    });
+
+    it('rolls session and activity inserts, updates and deletes back together', async () => {
+      const { store, learnerId } = await makeStore();
+      const session = await store.insertSession(learnerId, sessionRow(date));
+      const [activity] = await store.insertActivities(learnerId, session.id, [activityRow(0)]);
+      await expect(
+        store.transaction(async (tx) => {
+          await tx.lockSession(learnerId, session.id);
+          await tx.patchSessions(learnerId, { ids: [session.id] }, { status: 'completed' });
+          await tx.patchActivities(learnerId, { ids: [activity.id] }, { status: 'skipped' });
+          await tx.deleteActivities(learnerId, { ids: [activity.id] });
+          const replacement = await tx.insertSession(learnerId, sessionRow(later));
+          await tx.insertActivities(learnerId, replacement.id, [activityRow(0)]);
+          throw new Error('rollback session');
+        }),
+      ).rejects.toThrow('rollback session');
+      expect(await store.listSessions(learnerId, { status: 'active' })).toEqual([session]);
+      expect(await store.listActivities(learnerId, { conceptId: 'vectors' })).toEqual([activity]);
+    });
+
+    it('bounds planner facts, retains historical recall and respects skips and learner isolation', async () => {
+      const { store, learnerId, otherLearnerId, addOpenFlag } = await makeStore();
+      const session = await store.insertSession(learnerId, sessionRow(date));
+      const boundary = new Date(date.getTime() - 7 * 86_400_000);
+      await store.insertActivities(learnerId, session.id, [
+        activityRow(0, { status: 'completed', completedAt: boundary }),
+        activityRow(1, { status: 'completed', completedAt: new Date(boundary.getTime() - 1) }),
+        activityRow(2, { status: 'completed', completedAt: new Date(date.getTime() + 1) }),
+      ]);
+      const [review] = await store.insertActivities(learnerId, session.id, [
+        activityRow(3, { kind: 'review', status: 'completed', completedAt: date }),
+      ]);
+      const reviewAttempt = await store.insertAttempt(
+        learnerId,
+        attempt(1, { activityId: review.id }),
+      );
+      for (const [n, createdAt, source] of [
+        [1, date, undefined],
+        [2, new Date(date.getTime() - 36 * 3_600_000), undefined],
+        [3, new Date(date.getTime() - 36 * 3_600_000 - 1), undefined],
+        [4, new Date('2026-01-18T00:00:00Z'), undefined],
+        [5, date, 'mixed_quiz'],
+      ] as const) {
+        await store.recordReview(learnerId, `review-${n}`, 'math', () => {
+          const { conceptId: _conceptId, dimension: _dimension, ...card } = cardFor(`review-${n}`);
+          return {
+            card,
+            log: {
+              rating: Rating.Good,
+              attemptId: reviewAttempt.id,
+              createdAt,
+              fsrsLog: {
+                ...scheduleReview(card.fsrs, createdAt, Rating.Good, 'UTC', false).log,
+                source,
+              },
+            },
+          };
+        });
+      }
+      await store.insertAttempt(
+        learnerId,
+        attempt(2, { exerciseId: 'old-recall', createdAt: boundary, correct: 1 }),
+      );
+      await store.insertAttempt(
+        learnerId,
+        attempt(3, { exerciseId: 'old-recall', createdAt: boundary, correct: 0 }),
+      );
+      await store.insertAttempt(
+        otherLearnerId,
+        attempt(4, { exerciseId: 'old-recall', createdAt: date }),
+      );
+      await Promise.all(
+        Array.from({ length: 101 }, (_, idx) =>
+          store.insertAttempt(learnerId, attempt(10 + idx, { exerciseId: 'recent' })),
+        ),
+      );
+      await store.addTopicSpeedAnswer(learnerId, 'vectors', true, date);
+      await addOpenFlag('vectors', 'addition');
+      const query = { now: date, recallExerciseIds: ['old-recall'] };
+      const facts = await store.readSchedulerFacts(learnerId, query);
+      expect(facts.learnMinutes).toEqual([{ conceptId: 'vectors', plannedMinutes: 5 }]);
+      expect(facts.recentAttempts).toHaveLength(100);
+      expect(facts.recentAttempts[0]?.attemptNo).toBe(110);
+      expect(facts.recallAttempts).toEqual([
+        { exerciseId: 'old-recall', createdAt: boundary, correct: 0 },
+      ]);
+      expect(facts.reviewLogFacts.map(({ conceptId }) => conceptId).sort()).toEqual([
+        'review-1',
+        'review-2',
+      ]);
+      expect(facts.completedReviewLogFacts.map(({ conceptId }) => conceptId).sort()).toEqual([
+        'review-1',
+        'review-2',
+        'review-5',
+      ]);
+      expect(facts.cards.map(({ conceptId }) => conceptId)).toEqual([
+        'review-1',
+        'review-2',
+        'review-3',
+        'review-4',
+        'review-5',
+      ]);
+      expect(facts.flags.map(({ conceptId }) => conceptId)).toEqual(['vectors']);
+      expect(facts.topicSpeeds).toEqual(await store.listTopicSpeedEvidence(learnerId));
+      facts.recallAttempts[0]?.createdAt.setTime(0);
+      facts.recentAttempts[0]?.createdAt.setTime(0);
+      facts.reviewLogFacts[0]?.createdAt.setTime(0);
+      expect(
+        await store.readSchedulerFacts(learnerId, {
+          ...query,
+          skip: ['mastery', 'lessonRuns', 'projectProgress'],
+        }),
+      ).toMatchObject({
+        mastery: undefined,
+        lessonRuns: undefined,
+        projectProgress: undefined,
+        recallAttempts: [{ exerciseId: 'old-recall', createdAt: boundary, correct: 0 }],
+        recentAttempts: expect.arrayContaining([
+          expect.objectContaining({ attemptNo: 110, createdAt: date }),
+        ]),
+      });
+      expect(await store.readSchedulerFacts(otherLearnerId, query)).toMatchObject({
+        cards: [],
+        flags: [],
+        topicSpeeds: [],
+        learnMinutes: [],
+        reviewLogFacts: [],
+        completedReviewLogFacts: [],
+        recallAttempts: [{ exerciseId: 'old-recall', createdAt: date, correct: 1 }],
+      });
+    });
+
     it('round-trips attempts and applies all scoped filters and limits', async () => {
       const { store, learnerId, otherLearnerId, activityId } = await makeStore();
       const original = attempt(1, { activityId });

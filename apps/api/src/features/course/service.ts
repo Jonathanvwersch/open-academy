@@ -241,55 +241,48 @@ export async function replanSessionActivities(input: {
       })),
   );
   const nextIndex = Math.max(-1, ...preserved.map((activity) => activity.idx)) + 1;
-  await input.db.transaction(async (tx) => {
+  await drizzleLearnerStore(input.db).transaction(async (store) => {
     if (skipIds.size > 0) {
-      await tx
-        .update(sessionActivities)
-        .set({ status: 'skipped' })
-        .where(
-          and(
-            eq(sessionActivities.sessionId, input.session.id),
-            inArray(sessionActivities.id, [...skipIds]),
-            or(
-              eq(sessionActivities.status, 'planned'),
-              eq(sessionActivities.status, 'in_progress'),
-            ),
-          ),
-        );
+      await store.patchActivities(
+        input.userId,
+        {
+          sessionIds: [input.session.id],
+          ids: [...skipIds],
+          statuses: ['planned', 'in_progress'],
+        },
+        { status: 'skipped' },
+      );
     }
     if (input.activatePlannedActivityId) {
-      await tx
-        .update(sessionActivities)
-        .set({ status: 'in_progress', startedAt: input.now })
-        .where(
-          and(
-            eq(sessionActivities.id, input.activatePlannedActivityId),
-            eq(sessionActivities.status, 'planned'),
-          ),
-        );
-    }
-    await tx
-      .delete(sessionActivities)
-      .where(
-        and(
-          eq(sessionActivities.sessionId, input.session.id),
-          eq(sessionActivities.status, 'planned'),
-        ),
+      await store.patchActivities(
+        input.userId,
+        {
+          ids: [input.activatePlannedActivityId],
+          statuses: ['planned'],
+        },
+        { status: 'in_progress', startedAt: input.now },
       );
-    for (const [idx, entry] of planned.entries()) {
-      const { activity, progress } = entry;
-      await tx.insert(sessionActivities).values({
-        sessionId: input.session.id,
-        idx: nextIndex + idx,
-        kind: activity.kind,
-        conceptId: activity.conceptId,
-        projectId: activity.projectId,
-        exerciseIds: activity.exerciseIds,
-        plannedMinutes: activity.plannedMinutes,
-        status: 'planned',
-        reason: activity.reason,
-        ...(progress ? { progress } : {}),
-      });
+    }
+    await store.deleteActivities(input.userId, {
+      sessionIds: [input.session.id],
+      statuses: ['planned'],
+    });
+    for (const [idx, { activity, progress }] of planned.entries()) {
+      await store.insertActivities(input.userId, input.session.id, [
+        {
+          idx: nextIndex + idx,
+          kind: activity.kind,
+          conceptId: activity.conceptId ?? null,
+          projectId: activity.projectId ?? null,
+          exerciseIds: activity.exerciseIds,
+          plannedMinutes: activity.plannedMinutes,
+          status: 'planned',
+          reason: activity.reason,
+          progress: progress || {},
+          startedAt: null,
+          completedAt: null,
+        },
+      ]);
     }
   });
 }

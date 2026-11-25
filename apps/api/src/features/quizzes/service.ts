@@ -391,13 +391,13 @@ export async function finalizeQuiz(deps: FeatureServices, request: FeatureReques
       });
     }
     if (run.activityId) {
-      const [activity] = await repo.db
-        .select()
-        .from(sessionActivities)
-        .where(eq(sessionActivities.id, run.activityId));
+      const [activity] = await drizzleLearnerStore(repo.db).listActivities(repo.userId, {
+        ids: [run.activityId],
+      });
       if (activity) {
         const session = await repo.session(activity.sessionId);
         await updateActivityAndAdvance(repo.db, {
+          userId: repo.userId,
           activityId: activity.id,
           completed: true,
           now,
