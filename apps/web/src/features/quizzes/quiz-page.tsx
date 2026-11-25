@@ -73,6 +73,7 @@ export function QuizPage() {
       apply(next);
       void client.invalidateQueries({ queryKey: ['session'] });
       void client.invalidateQueries({ queryKey: ['today'] });
+      void client.invalidateQueries({ queryKey: ['learn'] });
     },
   });
   const { mutate: finish, status: finishStatus } = finalize;
