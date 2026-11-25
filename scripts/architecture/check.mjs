@@ -260,10 +260,13 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           own === 'packages/aesop'
             ? aesopDependencies.has(dependency)
             : sharedPackageDependencies.has(dependency);
+        const learnerStoreContractRunner =
+          file === 'packages/aesop/src/store/learner-store.contract.ts' && request === 'vitest';
         if (
           !isTest &&
           own.startsWith('packages/') &&
           !packageDependencyAllowed &&
+          !learnerStoreContractRunner &&
           !nodeCliDependency
         )
           report(file, `${dependency} does not belong in a browser-safe shared package`);

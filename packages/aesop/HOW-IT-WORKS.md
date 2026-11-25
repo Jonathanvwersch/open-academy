@@ -143,6 +143,8 @@ The engine does not use a database, HTTP or an AI model. The host app does these
 - It runs the AI tutor (Fable).
 - It runs the web pages.
 
+The engine reads and writes learner state through `LearnerStore`. The `memoryStore()` function makes a store that keeps that state in memory.
+
 ## 12. How we check the engine
 
 The simulator runs 7 simulated learners for 120 days each, through the real app. The learners follow fixed rules and use a fixed random seed. A fake grader marks written answers. No AI is used.

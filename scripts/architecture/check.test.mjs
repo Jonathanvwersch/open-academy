@@ -36,6 +36,7 @@ function fixture(files, run) {
         yaml: '2.9.1',
         zod: '4.6.7',
       },
+      devDependencies: { vitest: '5.1.0' },
     }),
     'packages/aesop/src/planner/scheduler.ts': 'export const schedule = 1;',
     'packages/contracts/package.json': JSON.stringify({
@@ -114,6 +115,25 @@ test('forbids browser imports of Aesop', () => {
         errors.some((error) => error.includes('apps/web cannot import @academy/aesop')),
         errors.join('\n'),
       ),
+  );
+});
+
+test('allows Vitest in the shared learner-store contract without relaxing store boundaries', () => {
+  const contract = 'packages/aesop/src/store/learner-store.contract.ts';
+  fixture({ [contract]: "export {describe} from 'vitest';" }, (errors) =>
+    assert.deepEqual(errors, []),
+  );
+  fixture(
+    {
+      [contract]: "export {sql} from 'drizzle-orm';",
+      'packages/aesop/src/store/memory-store.ts': "export {describe} from 'vitest';",
+    },
+    (errors) => {
+      assert.ok(
+        errors.some((error) => error.startsWith(`${contract}: drizzle-orm does not belong`)),
+      );
+      assert.ok(errors.some((error) => error.includes('memory-store.ts: vitest does not belong')));
+    },
   );
 });
 

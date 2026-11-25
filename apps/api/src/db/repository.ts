@@ -2,8 +2,7 @@ import type { Dimension } from '@academy/aesop/course/schemas';
 import type { ContentIndex } from '@academy/aesop/course/types';
 import { courseHasEvidence } from '@academy/aesop/graph/course-start';
 import { retrievability, startOfNextCalendarDay } from '@academy/aesop/memory/fsrs';
-import type { MasteryRecord, MasteryState } from '@academy/aesop/memory/types';
-import { initialMastery } from '@academy/aesop/memory/types';
+import type { MasteryRecord } from '@academy/aesop/memory/types';
 import { attemptedExerciseIdsByActivity as groupAttemptedExerciseIdsByActivity } from '@academy/aesop/planner/review-topics';
 import { effectiveFocusSubjectId, type SchedulerState } from '@academy/aesop/planner/scheduler';
 import { localDateKey } from '@academy/aesop/progress/xp';
@@ -11,6 +10,7 @@ import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { z } from 'zod';
 import type { Database } from './client.js';
+import { drizzleLearnerStore } from './learner-store.js';
 import {
   attempts,
   courseEnrollments,
@@ -133,74 +133,15 @@ export class LearnerRepository {
   }
 
   async masteryRecords(): Promise<MasteryRecord[]> {
-    const rows = await this.db
-      .select()
-      .from(mastery)
-      .where(eq(mastery.userId, this.userId))
-      .orderBy(asc(mastery.conceptId), asc(mastery.dimension));
-    return rows.map((row) => {
-      const evidence = row.evidence as Partial<MasteryRecord>;
-      return {
-        ...initialMastery(row.conceptId, row.dimension as Dimension),
-        state: row.state as MasteryState,
-        provisional: row.provisional,
-        inferred: row.inferred,
-        independentItemIds: evidence.independentItemIds ?? [],
-        independentDeterministicCount: evidence.independentDeterministicCount ?? 0,
-        lastIndependentCorrect: evidence.lastIndependentCorrect ?? false,
-        attempts: evidence.attempts ?? [],
-        lastAssessedAt: row.lastAssessedAt?.toISOString() ?? null,
-        lastIndependentAt: row.lastIndependentAt?.toISOString() ?? null,
-        firstIndependentAt: row.firstIndependentAt?.toISOString() ?? null,
-      };
-    });
+    return drizzleLearnerStore(this.db).listMastery(this.userId);
   }
 
   async masteryRecord(conceptId: string, dimension: Dimension): Promise<MasteryRecord | undefined> {
-    return (await this.masteryRecords()).find(
-      (record) => record.conceptId === conceptId && record.dimension === dimension,
-    );
+    return drizzleLearnerStore(this.db).getMastery(this.userId, conceptId, dimension);
   }
 
   async saveMastery(record: MasteryRecord): Promise<void> {
-    await this.db
-      .insert(mastery)
-      .values({
-        userId: this.userId,
-        conceptId: record.conceptId,
-        dimension: record.dimension,
-        state: record.state,
-        provisional: record.provisional,
-        inferred: record.inferred,
-        evidence: {
-          independentItemIds: record.independentItemIds,
-          independentDeterministicCount: record.independentDeterministicCount,
-          lastIndependentCorrect: record.lastIndependentCorrect,
-          attempts: record.attempts,
-        },
-        lastAssessedAt: record.lastAssessedAt ? new Date(record.lastAssessedAt) : null,
-        lastIndependentAt: record.lastIndependentAt ? new Date(record.lastIndependentAt) : null,
-        firstIndependentAt: record.firstIndependentAt ? new Date(record.firstIndependentAt) : null,
-      })
-      .onConflictDoUpdate({
-        target: [mastery.userId, mastery.conceptId, mastery.dimension],
-        set: {
-          state: record.state,
-          provisional: record.provisional,
-          inferred: record.inferred,
-          evidence: {
-            independentItemIds: record.independentItemIds,
-            independentDeterministicCount: record.independentDeterministicCount,
-            lastIndependentCorrect: record.lastIndependentCorrect,
-            attempts: record.attempts,
-          },
-          lastAssessedAt: record.lastAssessedAt ? new Date(record.lastAssessedAt) : null,
-          lastIndependentAt: record.lastIndependentAt ? new Date(record.lastIndependentAt) : null,
-          firstIndependentAt: record.firstIndependentAt
-            ? new Date(record.firstIndependentAt)
-            : null,
-        },
-      });
+    await drizzleLearnerStore(this.db).saveMastery(this.userId, record);
   }
 
   async schedulerState(
