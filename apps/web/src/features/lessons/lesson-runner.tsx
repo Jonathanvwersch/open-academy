@@ -266,15 +266,26 @@ export function LessonRunner({
     }
     const index = Number(step) - 1;
     const point = Number.isInteger(index) ? state.points[index] : undefined;
-    if (!point || (point.status !== 'passed' && point.id !== state.currentPointId)) {
+    const isPendingPracticePoint = point?.id === state.pendingPracticeProblem?.knowledgePointId;
+    if (
+      !point ||
+      (point.status !== 'passed' && point.id !== state.currentPointId && !isPendingPracticePoint)
+    ) {
       onStepChange(fallback, true);
       setViewingPointId(null);
       setViewingStage(null);
       return;
     }
+    if (isPendingPracticePoint) {
+      setPracticePointId(point.id);
+      setWarmupActive(pendingPracticeIsWarmup);
+    } else {
+      setPracticePointId(null);
+      setWarmupActive(false);
+    }
     setViewingStage(null);
     setViewingPointId(point.id === state.currentPointId ? null : point.id);
-  }, [finalAnswered, lesson, onStepChange, state, step]);
+  }, [finalAnswered, lesson, onStepChange, pendingPracticeIsWarmup, state, step]);
 
   useEffect(() => {
     if (!pendingPracticePointId || pendingPracticeIsWarmup) return;
@@ -487,8 +498,10 @@ export function LessonRunner({
       }
       setViewingPointId(pointId);
       setPracticePointId(pointId);
-      window.scrollTo({ top: 0 });
       await updateState(data.run);
+      const pointIndex = state?.points.findIndex((point) => point.id === pointId) ?? -1;
+      if (pointIndex >= 0) onStepChange(String(pointIndex + 1), true);
+      window.scrollTo({ top: 0 });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load a practice question.');
     } finally {
@@ -508,6 +521,7 @@ export function LessonRunner({
     setWarmupActive(false);
     setPracticePointId(null);
     setViewingPointId(null);
+    onStepChange('quiz', true);
     window.scrollTo({ top: 0 });
   };
 
