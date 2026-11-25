@@ -10,7 +10,7 @@ import {
   buildReviewActivityForConcept,
   interleaveReviewExercises,
 } from '@academy/aesop/planner/scheduler';
-import { and, asc, desc, eq, gt, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, notInArray, or } from 'drizzle-orm';
 import { type Card, Rating } from 'ts-fsrs';
 import type { Database } from '../db/client.js';
 import { drizzleLearnerStore } from '../db/learner-store.js';
@@ -191,6 +191,7 @@ export async function recordReviewRating(
                   and(
                     eq(reviewCards.userId, userId),
                     inArray(reviewCards.conceptId, hardPrerequisiteIds),
+                    isNull(reviewCards.suspendedAt),
                   ),
                 );
               const coveredDimensionKeys = new Set(
@@ -438,6 +439,16 @@ export async function completeReviewActivity(
           eq(remediationFlags.userId, userId),
           eq(remediationFlags.status, 'open'),
           inArray(remediationFlags.targetPrereqId, reviewedConceptIds),
+          or(
+            isNull(remediationFlags.openedByAttemptId),
+            notInArray(
+              remediationFlags.openedByAttemptId,
+              db
+                .select({ id: attempts.id })
+                .from(attempts)
+                .where(eq(attempts.activityId, activity.id)),
+            ),
+          ),
         ),
       );
   }

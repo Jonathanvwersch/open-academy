@@ -10,6 +10,7 @@ import {
   diagnosticRuns,
   lessonRuns,
   mastery,
+  placementGrants,
   users,
 } from '../../src/db/schema.js';
 
@@ -114,12 +115,26 @@ test('deduplicates study topics, connects groups and shares course progress inpu
       })),
     ),
   );
-  await db.insert(diagnosticRuns).values({
-    userId,
-    kind: 'placement',
-    status: 'completed',
-    state: { known: ['foundation', 'shared'] },
-  });
+  const [placementRun] = await db
+    .insert(diagnosticRuns)
+    .values({
+      userId,
+      kind: 'placement',
+      status: 'completed',
+      state: { known: ['foundation', 'shared'] },
+    })
+    .returning();
+  if (!placementRun) throw new Error('Could not create placement run');
+  await db.insert(placementGrants).values(
+    ['foundation', 'shared'].map((conceptId) => ({
+      userId,
+      runId: placementRun.id,
+      conceptId,
+      origin: 'inferred' as const,
+      state: 'confirmed' as const,
+      reason: 'legacy_confirmed',
+    })),
+  );
   const response = await app.request('/api/study-map');
   expect(response.status).toBe(200);
   const payload: StudyMapPayload = await response.json();

@@ -12,7 +12,7 @@ import {
   type SchedulerState,
 } from '@academy/aesop/planner/scheduler';
 import { localDateKey } from '@academy/aesop/progress/xp';
-import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, sql } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { z } from 'zod';
 import type { Database } from './client.js';
@@ -178,7 +178,7 @@ export class LearnerRepository {
       this.db
         .select()
         .from(reviewCards)
-        .where(eq(reviewCards.userId, this.userId))
+        .where(and(eq(reviewCards.userId, this.userId), isNull(reviewCards.suspendedAt)))
         .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id)),
       this.db
         .select()
@@ -554,6 +554,7 @@ export class LearnerRepository {
       .where(
         and(
           eq(reviewCards.userId, this.userId),
+          isNull(reviewCards.suspendedAt),
           lt(reviewCards.dueAt, startOfNextCalendarDay(now, timezone)),
         ),
       )

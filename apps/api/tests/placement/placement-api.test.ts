@@ -13,6 +13,7 @@ import {
   lessonRuns,
   mastery,
   masteryEvents,
+  placementGrants,
   reviewCards,
   users,
 } from '../../src/db/schema.js';
@@ -451,6 +452,16 @@ test('placement results separate known foundations from course topics', async ()
       .update(diagnosticRuns)
       .set({ state, status: 'completed', completedAt: new Date(now), summary: state })
       .where(eq(diagnosticRuns.id, id));
+    await db.insert(placementGrants).values(
+      state.known.map((conceptId) => ({
+        userId,
+        runId: id,
+        conceptId,
+        origin: 'inferred' as const,
+        state: 'confirmed' as const,
+        reason: 'legacy_confirmed',
+      })),
+    );
 
     const results = await get(`/placement/${id}/results`).then((response) => response.json());
     expect(results.placedOut).toEqual(['Vectors']);

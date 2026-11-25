@@ -62,6 +62,7 @@ import {
   lessonRuns,
   masteryEvents,
   paperProgress,
+  placementGrants,
   projectProgress,
   remediationFlags,
   sessionActivities,
@@ -73,7 +74,7 @@ import {
   buildCoursePayload,
   courseQueueStatus,
   courseTopicState,
-  placedOutConceptsFromRuns,
+  placedOutConceptsFromGrants,
   replanSessionActivities,
   restartTopic,
   suggestedNextCourses,
@@ -295,15 +296,13 @@ export function registerLearnCourseRoutes(
         repo.activePlacementRuns(),
         repo.courseEnrollments(),
         deps.db
-          .select({ state: diagnosticRuns.state })
-          .from(diagnosticRuns)
-          .where(
-            and(
-              eq(diagnosticRuns.userId, userId),
-              eq(diagnosticRuns.kind, 'placement'),
-              eq(diagnosticRuns.status, 'completed'),
-            ),
-          ),
+          .select({
+            conceptId: placementGrants.conceptId,
+            state: placementGrants.state,
+            createdAt: placementGrants.createdAt,
+          })
+          .from(placementGrants)
+          .where(eq(placementGrants.userId, userId)),
       ]);
     const mastery = filterMasteryRecordsForContent(index, masteryRows);
     const activeCourseId = index.coursesById.has(user?.activeCourseId ?? '')
@@ -358,7 +357,7 @@ export function registerLearnCourseRoutes(
       lessonRuns: runRows,
       activePlacementRuns: placementRuns,
     });
-    const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
+    const placedOutConcepts = placedOutConceptsFromGrants(completedPlacementRuns);
     const todayLocal = localDateKey(now, timeZone);
     const totalXp = events.reduce((total, event) => total + event.amount, 0);
     const todayXp = events
@@ -1066,15 +1065,13 @@ export function registerLearnCourseRoutes(
       repo.courseEnrollments(),
       repo.activePlacementRuns(),
       deps.db
-        .select({ state: diagnosticRuns.state })
-        .from(diagnosticRuns)
-        .where(
-          and(
-            eq(diagnosticRuns.userId, context.get('userId')),
-            eq(diagnosticRuns.kind, 'placement'),
-            eq(diagnosticRuns.status, 'completed'),
-          ),
-        ),
+        .select({
+          conceptId: placementGrants.conceptId,
+          state: placementGrants.state,
+          createdAt: placementGrants.createdAt,
+        })
+        .from(placementGrants)
+        .where(eq(placementGrants.userId, context.get('userId'))),
     ]);
     const mastery = filterMasteryRecordsForContent(index, masteryRows);
     const requestedCourseId = context.req.query('course');
@@ -1106,7 +1103,7 @@ export function registerLearnCourseRoutes(
       enrollments,
       placementRuns,
     });
-    const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
+    const placedOutConcepts = placedOutConceptsFromGrants(completedPlacementRuns);
     const payload = buildCoursePayload(
       index,
       activeCourseId,
@@ -1241,15 +1238,13 @@ async function loadCourseSnapshot(
     repo.courseEnrollments(),
     repo.activePlacementRuns(),
     db
-      .select({ state: diagnosticRuns.state })
-      .from(diagnosticRuns)
-      .where(
-        and(
-          eq(diagnosticRuns.userId, userId),
-          eq(diagnosticRuns.kind, 'placement'),
-          eq(diagnosticRuns.status, 'completed'),
-        ),
-      ),
+      .select({
+        conceptId: placementGrants.conceptId,
+        state: placementGrants.state,
+        createdAt: placementGrants.createdAt,
+      })
+      .from(placementGrants)
+      .where(eq(placementGrants.userId, userId)),
     db
       .select()
       .from(remediationFlags)
@@ -1264,7 +1259,7 @@ async function loadCourseSnapshot(
       .map((row) => [row.paperId, row.completedAt ? 'completed' : 'reading'] as const),
   );
   const projectStatuses = new Map(projectRows.map((row) => [row.projectId, row.status]));
-  const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
+  const placedOutConcepts = placedOutConceptsFromGrants(completedPlacementRuns);
 
   return {
     studyCourseIds,

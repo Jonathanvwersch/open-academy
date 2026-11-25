@@ -30,6 +30,7 @@ import {
 } from '@academy/aesop/memory/fsrs';
 import { calculateCredit } from '@academy/aesop/memory/mastery';
 import { applyImplicitRepetitions, type applyMastery } from '@academy/aesop/memory/mastery-service';
+import { conditionalPrerequisites } from '@academy/aesop/placement/grants';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { and, desc, eq, getTableColumns, inArray, isNull, like } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
@@ -53,6 +54,7 @@ import {
 import type { ApiEnv } from '../../http/context.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
+import { openTargetedReviews, placementGrantStates } from '../../learning/placement-grants.js';
 import { resolveLessonCourse } from './course-context.js';
 import {
   loadRunProblems,
@@ -951,6 +953,18 @@ export function registerLessonRunRoutes(
         if (!previous.halted && halted !== undefined) {
           const haltedAt = now;
           const retryAfter = startOfNextCalendarDay(now, context.get('timeZone'));
+          const grantDb = tx as unknown as Database;
+          await openTargetedReviews({
+            db: grantDb,
+            userId,
+            conceptId,
+            prerequisiteIds: conditionalPrerequisites(
+              keyPrereqsForPoint(resolved.index, conceptId, halted.pointId),
+              await placementGrantStates(grantDb, userId),
+            ),
+            attemptId,
+            now,
+          });
           if (joined.run.haltedPointIndex !== null && halted.index <= joined.run.haltedPointIndex) {
             const keyPrereqIds = keyPrereqsForPoint(resolved.index, conceptId, halted.pointId);
             const openFlags = keyPrereqIds.length
@@ -1444,6 +1458,10 @@ export function registerLessonRunRoutes(
             .update(lessonRuns)
             .set({ status: 'completed', quizPassedAt: now, completedAt: now, updatedAt: now })
             .where(eq(lessonRuns.id, run.id));
+          await tx
+            .update(reviewCards)
+            .set({ suspendedAt: null })
+            .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, run.conceptId)));
           const inserted = await tx
             .insert(xpEvents)
             .values({

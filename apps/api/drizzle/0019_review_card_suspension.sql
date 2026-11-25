@@ -1,0 +1,1 @@
+ALTER TABLE "review_cards" ADD COLUMN "suspended_at" timestamp with time zone;
