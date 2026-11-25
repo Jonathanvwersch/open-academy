@@ -103,6 +103,7 @@ export function LessonRunner({
   const [viewingStage, setViewingStage] = useState<'explain' | 'quiz' | null>(null);
   const [practicePointId, setPracticePointId] = useState<string | null>(null);
   const [warmupActive, setWarmupActive] = useState(false);
+  const seededPendingPracticeProblemId = useRef<string | null>(null);
   const [quizReview, setQuizReview] = useState<QuizReviewPayload | null>(null);
   const [quizPosition, setQuizPosition] = useState<{ attemptId: string; index: number } | null>(
     null,
@@ -146,6 +147,7 @@ export function LessonRunner({
   const practiceProblem =
     state?.pendingPracticeProblem ??
     (state?.lastAnsweredProblem?.practiceOnly ? state.lastAnsweredProblem : undefined);
+  const pendingPracticeProblemId = state?.pendingPracticeProblem?.id;
   const pendingPracticePointId = state?.pendingPracticeProblem?.knowledgePointId;
   const pendingPracticeIsWarmup = Boolean(
     state?.quiz.last &&
@@ -312,10 +314,19 @@ export function LessonRunner({
   }, [finalAnswered, lesson, onStepChange, pendingPracticeIsWarmup, practicePointId, state, step]);
 
   useEffect(() => {
-    if (!pendingPracticePointId || pendingPracticeIsWarmup || practicePointId !== null) return;
-    setPracticePointId(pendingPracticePointId);
-    setViewingPointId(pendingPracticePointId);
-  }, [pendingPracticeIsWarmup, pendingPracticePointId, practicePointId]);
+    if (
+      !pendingPracticeProblemId ||
+      seededPendingPracticeProblemId.current === pendingPracticeProblemId
+    ) {
+      return;
+    }
+    seededPendingPracticeProblemId.current = pendingPracticeProblemId;
+    const pointIndex =
+      state?.points.findIndex((point) => point.id === pendingPracticePointId) ?? -1;
+    if (pointIndex < 0) return;
+    const pendingPracticeStep = String(pointIndex + 1);
+    if (step !== pendingPracticeStep) onStepChange(pendingPracticeStep, true);
+  }, [onStepChange, pendingPracticePointId, pendingPracticeProblemId, state?.points, step]);
 
   useEffect(() => {
     tutorSidebar.setContext({

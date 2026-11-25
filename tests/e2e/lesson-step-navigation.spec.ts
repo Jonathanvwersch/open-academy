@@ -136,11 +136,12 @@ async function mockFailedQuizRun(page: Page, sessionId: string) {
     if (route.request().method() === 'POST' && url.pathname.endsWith('/run/practice')) {
       const run = lastPayload?.run as Record<string, unknown> | undefined;
       const problem = run?.lastAnsweredProblem as Record<string, unknown> | undefined;
+      const requestBody = route.request().postDataJSON() as { pointId: string };
       if (!run || !problem?.exercise)
         throw new Error('Expected the failed quiz problem in the run');
       practiceProblem = {
         ...problem,
-        knowledgePointId: 'vectors-fixture-1',
+        knowledgePointId: requestBody.pointId,
         practiceOnly: true,
         result: undefined,
       };
@@ -712,6 +713,80 @@ test('optional practice on a missed quiz step stays on the lesson step', async (
   await expect(page.getByTestId('lesson-quiz-warmup')).toHaveCount(0);
   await expect(page.getByTestId('lesson-problem')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Ask the tutor', exact: true })).toBeVisible();
+});
+
+test('switching away from unanswered optional practice restores the selected step', async ({
+  page,
+}) => {
+  const sessionId = await createLessonSession({ stepsPassed: true, explainDone: true });
+  await mockFailedQuizRun(page, sessionId);
+
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByTestId('lesson-quiz-results')).toBeVisible();
+  await page.getByRole('button', { name: 'Step 2 of 2, passed' }).click();
+  await expect(page.getByTestId('lesson-step-content')).toContainText(
+    'Vector operations combine coordinates',
+  );
+  const practiceRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().endsWith('/run/practice'),
+  );
+  await page.getByRole('button', { name: 'Practise this step', exact: true }).click();
+  expect((await practiceRequest).postDataJSON()).toMatchObject({
+    pointId: 'vectors-fixture-2',
+    warmup: false,
+  });
+  await expect(page).toHaveURL(/step=2/);
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Step 1 of 2, passed' }).click();
+  await expect(page).toHaveURL(/step=1/);
+  const stepContent = page.getByTestId('lesson-step-content');
+  await expect(stepContent).toContainText('A vector is an ordered list of coordinates');
+  await page.evaluate(() => {
+    const testWindow = window as Window & {
+      stepSnapshot?: string;
+      stepSnapshotChanges?: number;
+      stepSnapshotObserver?: MutationObserver;
+    };
+    const snapshot = () =>
+      JSON.stringify([
+        document.querySelector('[data-testid="lesson-step-content"]')?.textContent ?? '',
+        Boolean(document.querySelector('[data-testid="lesson-problem"]')),
+      ]);
+    testWindow.stepSnapshot = snapshot();
+    testWindow.stepSnapshotChanges = 0;
+    testWindow.stepSnapshotObserver = new MutationObserver(() => {
+      const next = snapshot();
+      if (next !== testWindow.stepSnapshot) {
+        testWindow.stepSnapshot = next;
+        testWindow.stepSnapshotChanges = (testWindow.stepSnapshotChanges ?? 0) + 1;
+      }
+    });
+    testWindow.stepSnapshotObserver.observe(document.body, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  });
+  await page.waitForTimeout(300);
+  const contentChanges = await page.evaluate(() => {
+    const testWindow = window as Window & {
+      stepSnapshotChanges?: number;
+      stepSnapshotObserver?: MutationObserver;
+    };
+    testWindow.stepSnapshotObserver?.disconnect();
+    return testWindow.stepSnapshotChanges ?? 0;
+  });
+  expect(contentChanges).toBe(0);
+  await expect(page).toHaveURL(/step=1/);
+  await expect(stepContent).toContainText('A vector is an ordered list of coordinates');
+  await expect(stepContent).not.toContainText('Vector operations combine coordinates');
+  await expect(page.getByTestId('lesson-problem')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Step 2 of 2, passed' }).click();
+  await expect(page).toHaveURL(/step=2/);
+  await expect(stepContent).toContainText('Vector operations combine coordinates');
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
 });
 
 test('Continue on quiz results advances to the next activity in one click', async ({ page }) => {
