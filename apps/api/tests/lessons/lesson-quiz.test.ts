@@ -70,6 +70,48 @@ test('uses the specified per-step quotas for one through four steps', () => {
   }
 });
 
+test('quiz recovery can use a new instance of a template already in the quiz', () => {
+  const template = exercise('template', 1, true);
+  const fixed = exercise('fixed', 1);
+  const items = select(
+    { knowledge_points: [point('step', [fixed.id, template.id])] },
+    new Map([
+      [fixed.id, fixed],
+      [template.id, template],
+    ]),
+    {
+      recoveryItems: [
+        { exerciseId: fixed.id, seed: null },
+        { exerciseId: template.id, seed: 0 },
+      ],
+    },
+  );
+  expect(items.length).toBeGreaterThan(0);
+  expect(items.every((item) => item.exerciseId === template.id && item.seed !== null)).toBe(true);
+  expect(new Set(items.map((item) => item.seed)).size).toBe(items.length);
+});
+
+test('quiz recovery excludes the same generated prompt even when every seed is fresh', () => {
+  const template = { ...exercise('template', 1, true), prompt: 'Calculate 1 + 1.' };
+  const items = select(
+    { knowledge_points: [point('step', [template.id])] },
+    new Map([[template.id, template]]),
+    { recoveryItems: [{ exerciseId: template.id, seed: 15 }] },
+  );
+  expect(items).toEqual([]);
+});
+
+test('the selector skips a used seed that it would otherwise generate', () => {
+  const template = exercise('template', 1, true);
+  const lesson = { knowledge_points: [point('step', [template.id])] };
+  const exercises = new Map([[template.id, template]]);
+  const blockedSeed = 166292415;
+  expect(select(lesson, exercises).map((item) => item.seed)).toContain(blockedSeed);
+  expect(
+    select(lesson, exercises, { usedSeeds: new Set([blockedSeed]) }).map((item) => item.seed),
+  ).not.toContain(blockedSeed);
+});
+
 test('spreads two-question steps across lowest and highest difficulty', () => {
   const { lesson, exercises } = makeSteps(3);
   const items = select(lesson, exercises);
