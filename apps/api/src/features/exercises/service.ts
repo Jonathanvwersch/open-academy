@@ -21,7 +21,7 @@ import {
 import type { AttemptResponse } from '@academy/contracts/exercises';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { onScreenOptions } from '@academy/shared/shuffle';
-import { and, asc, desc, eq, gt, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, notInArray, or } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
@@ -969,6 +969,16 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
               eq(remediationFlags.userId, request.userId),
               eq(remediationFlags.status, 'open'),
               inArray(remediationFlags.targetPrereqId, reviewedConceptIds),
+              or(
+                isNull(remediationFlags.openedByAttemptId),
+                notInArray(
+                  remediationFlags.openedByAttemptId,
+                  db
+                    .select({ id: attempts.id })
+                    .from(attempts)
+                    .where(eq(attempts.activityId, activity.id)),
+                ),
+              ),
             ),
           );
       }
