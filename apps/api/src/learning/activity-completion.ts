@@ -1,7 +1,8 @@
 import { localDateKey } from '@academy/aesop/progress/xp';
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
-import { attempts, sessionActivities, xpEvents } from '../db/schema.js';
+import { drizzleLearnerStore } from '../db/learner-store.js';
+import { attempts, sessionActivities } from '../db/schema.js';
 
 interface SessionActivityList {
   activities: Array<{ id: string; idx: number; status: string }>;
@@ -45,18 +46,14 @@ export async function updateActivityAndAdvance(
       const meanCorrectness =
         activityAttempts.reduce((total, attempt) => total + attempt.correct, 0) /
         activityAttempts.length;
-      await db
-        .insert(xpEvents)
-        .values({
-          userId: input.userId,
-          kind: 'activity',
-          sourceKey: `activity:${input.activityId}`,
-          conceptId: activity.conceptId,
-          amount: Math.round(activity.plannedMinutes * meanCorrectness),
-          earnedAt: input.now,
-          localDate: localDateKey(input.now, input.timeZone),
-        })
-        .onConflictDoNothing();
+      await drizzleLearnerStore(db).insertXpEventOnce(input.userId, {
+        kind: 'activity',
+        sourceKey: `activity:${input.activityId}`,
+        conceptId: activity.conceptId,
+        amount: Math.round(activity.plannedMinutes * meanCorrectness),
+        earnedAt: input.now,
+        localDate: localDateKey(input.now, input.timeZone),
+      });
     }
   }
   const nextActivity = input.session?.activities

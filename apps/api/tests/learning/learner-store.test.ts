@@ -1,32 +1,55 @@
 import { newReviewCard } from '@academy/aesop/memory/fsrs';
 import { describeLearnerStoreContract } from '@academy/aesop/store/learner-store.contract';
 import { eq, inArray } from 'drizzle-orm';
-import { afterAll, expect, test } from 'vitest';
+import { afterAll, afterEach, expect, test } from 'vitest';
 import { env } from '../../src/config.js';
 import { createDb } from '../../src/db/client.js';
 import { drizzleLearnerStore } from '../../src/db/learner-store.js';
-import { remediationFlags, reviewCards, users } from '../../src/db/schema.js';
+import {
+  hintEvents,
+  remediationFlags,
+  reviewCards,
+  sessionActivities,
+  studySessions,
+  users,
+} from '../../src/db/schema.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const learners: string[] = [];
 
+afterEach(async () => {
+  await db.delete(users).where(inArray(users.id, learners.splice(0)));
+});
+
 afterAll(async () => {
-  try {
-    await db.delete(users).where(inArray(users.id, learners));
-  } finally {
-    await db.$client.end();
-  }
+  await db.$client.end();
 });
 
 describeLearnerStoreContract('drizzleLearnerStore', async () => {
-  const [{ id: learnerId }] = await db
+  const [{ id: learnerId }, { id: otherLearnerId }] = await db
     .insert(users)
-    .values({ displayName: 'Store test' })
+    .values([{ displayName: 'Store test' }, { displayName: 'Other store learner' }])
     .returning();
-  learners.push(learnerId);
+  learners.push(learnerId, otherLearnerId);
+  const [{ id: sessionId }] = await db
+    .insert(studySessions)
+    .values({ userId: learnerId, plannedMinutes: 5 })
+    .returning({ id: studySessions.id });
+  const [{ id: activityId }] = await db
+    .insert(sessionActivities)
+    .values({ sessionId, idx: 0, kind: 'practice', plannedMinutes: 5 })
+    .returning({ id: sessionActivities.id });
+  const hint = { exerciseId: 'vectors-q1', activityId, text: 'A hint.' };
+  await db.insert(hintEvents).values([
+    { ...hint, userId: learnerId, level: 5, createdAt: new Date('2026-01-17T12:00:01Z') },
+    { ...hint, userId: learnerId, level: 1, createdAt: new Date('2026-01-17T12:00:00Z') },
+    { ...hint, userId: otherLearnerId, level: 5, createdAt: new Date('2026-01-19T12:00:00Z') },
+  ]);
   return {
     store: drizzleLearnerStore(db),
     learnerId,
+    otherLearnerId,
+    activityId,
     async addOpenFlag(conceptId, targetPrereqId) {
       await db.insert(remediationFlags).values({ userId: learnerId, conceptId, targetPrereqId });
     },

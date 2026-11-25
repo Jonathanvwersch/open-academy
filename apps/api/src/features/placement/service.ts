@@ -20,7 +20,7 @@ import { z } from 'zod';
 import type { Database } from '../../db/client.js';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { LearnerRepository } from '../../db/repository.js';
-import { attempts, diagnosticRuns, lessonRuns, masteryEvents, users } from '../../db/schema.js';
+import { attempts, diagnosticRuns, lessonRuns, masteryEvents } from '../../db/schema.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
 import { placementGrantStates, recordPlacementGrants } from '../../learning/placement-grants.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
@@ -123,7 +123,7 @@ async function completeRun(
 
 export async function postPlacement(deps: FeatureServices, request: FeatureRequest) {
   return deps.db.transaction(async (tx) => {
-    await tx.select({ id: users.id }).from(users).where(eq(users.id, request.userId)).for('update');
+    await drizzleLearnerStore(tx).lockLearner(request.userId, 'update');
     const db = tx as unknown as Database;
     return startPlacement(
       { ...deps, db },
@@ -136,7 +136,7 @@ async function startPlacement(deps: FeatureServices, request: FeatureRequest) {
   const content = await deps.content();
   const body = request.body as { courseId?: unknown } | null;
   const storedCourseId = await request.repo.activeCourseId();
-  const studyCourseIds = await request.repo.studyCourseIds(content);
+  const studyCourseIds = await request.repo.studyCourseIds(content, request.now);
   const courseId =
     typeof body?.courseId === 'string' && content.coursesById.has(body.courseId)
       ? body.courseId

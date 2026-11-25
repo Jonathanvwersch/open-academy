@@ -24,14 +24,7 @@ import { z } from 'zod';
 import type { Database } from '../../db/client.js';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { LearnerRepository } from '../../db/repository.js';
-import {
-  quizItems,
-  quizRuns,
-  sessionActivities,
-  studySessions,
-  users,
-  xpEvents,
-} from '../../db/schema.js';
+import { quizItems, quizRuns, sessionActivities, studySessions } from '../../db/schema.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
@@ -44,11 +37,7 @@ function withQuizLock<T>(
   work: (repo: LearnerRepository) => Promise<T>,
 ): Promise<T> {
   return request.repo.db.transaction(async (tx) => {
-    await tx
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.id, request.userId))
-      .for('no key update');
+    await drizzleLearnerStore(tx).lockLearner(request.userId, 'no_key_update');
     return work(new LearnerRepository(tx as unknown as Database, request.userId));
   });
 }
@@ -342,17 +331,14 @@ export async function finalizeQuiz(deps: FeatureServices, request: FeatureReques
     const score = quizScore(outcomes);
     const xpAwarded = quizXp(run.plannedMinutes, score, run.retakeOf !== null);
     if (run.retakeOf === null) {
-      await repo.db
-        .insert(xpEvents)
-        .values({
-          userId: repo.userId,
-          kind: 'mixed_quiz',
-          sourceKey: `mixed-quiz:${run.id}`,
-          amount: xpAwarded,
-          earnedAt: now,
-          localDate: localDateKey(now, request.timeZone),
-        })
-        .onConflictDoNothing();
+      await drizzleLearnerStore(repo.db).insertXpEventOnce(repo.userId, {
+        kind: 'mixed_quiz',
+        sourceKey: `mixed-quiz:${run.id}`,
+        conceptId: null,
+        amount: xpAwarded,
+        earnedAt: now,
+        localDate: localDateKey(now, request.timeZone),
+      });
     }
     if (run.activityId) {
       const [activity] = await repo.db

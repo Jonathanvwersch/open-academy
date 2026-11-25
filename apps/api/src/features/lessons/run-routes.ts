@@ -32,7 +32,7 @@ import { calculateCredit } from '@academy/aesop/memory/mastery';
 import { applyImplicitRepetitions, type applyMastery } from '@academy/aesop/memory/mastery-service';
 import { conditionalPrerequisites } from '@academy/aesop/placement/grants';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
-import { and, desc, eq, getTableColumns, inArray, isNull, like } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, inArray, isNull } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
@@ -49,7 +49,6 @@ import {
   reviewCards,
   reviewLogs,
   sessionActivities,
-  xpEvents,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
@@ -168,10 +167,9 @@ export function registerLessonRunRoutes(
         ? ''
         : (attemptFeedback ??
           (lastRow?.correct === 1 ? 'Correct.' : MULTIPLE_CHOICE_FALLBACK_FEEDBACK));
-    const earnedEvents = await deps.db
-      .select({ amount: xpEvents.amount, sourceKey: xpEvents.sourceKey })
-      .from(xpEvents)
-      .where(and(eq(xpEvents.userId, userId), like(xpEvents.sourceKey, `kp:${run.id}:%`)));
+    const earnedEvents = await drizzleLearnerStore(deps.db).listXpEvents(userId, {
+      sourcePrefix: `kp:${run.id}:`,
+    });
     const earnedByPoint = new Map(earnedEvents.map((event) => [event.sourceKey, event.amount]));
     const needsProgressSync = derived.points.some(
       (point) =>
@@ -552,20 +550,17 @@ export function registerLessonRunRoutes(
       // Unique source keys retain historical awards and make repeated recovery safe.
       const passedPoints = state.points.filter((point) => point.status === 'passed');
       if (body.data.reconcileProgress && passedPoints.length) {
-        await tx
-          .insert(xpEvents)
-          .values(
-            passedPoints.map((point) => ({
-              userId,
-              kind: 'knowledge_point' as const,
-              sourceKey: `kp:${existing.id}:${point.id}`,
-              conceptId,
-              amount: xpForPassedPoint(point.answered),
-              earnedAt: now,
-              localDate: localDate(now, context.get('timeZone')),
-            })),
-          )
-          .onConflictDoNothing();
+        const store = drizzleLearnerStore(tx);
+        for (const point of passedPoints) {
+          await store.insertXpEventOnce(userId, {
+            kind: 'knowledge_point',
+            sourceKey: `kp:${existing.id}:${point.id}`,
+            conceptId,
+            amount: xpForPassedPoint(point.answered),
+            earnedAt: now,
+            localDate: localDate(now, context.get('timeZone')),
+          });
+        }
       }
       if (state.status !== 'in_progress') {
         if (existing.status !== state.status) {
@@ -935,18 +930,14 @@ export function registerLessonRunRoutes(
         previous.points.find((item) => item.id === point.id)?.status !== 'passed'
       ) {
         xpAwarded = xpForPassedPoint(point.answered);
-        await tx
-          .insert(xpEvents)
-          .values({
-            userId,
-            kind: 'knowledge_point',
-            sourceKey: `kp:${joined.run.id}:${point.id}`,
-            conceptId,
-            amount: xpAwarded,
-            earnedAt: now,
-            localDate: localDate(now, context.get('timeZone')),
-          })
-          .onConflictDoNothing();
+        await drizzleLearnerStore(tx).insertXpEventOnce(userId, {
+          kind: 'knowledge_point',
+          sourceKey: `kp:${joined.run.id}:${point.id}`,
+          conceptId,
+          amount: xpAwarded,
+          earnedAt: now,
+          localDate: localDate(now, context.get('timeZone')),
+        });
       }
       if (!joined.problem.practiceOnly) {
         const halted = state.halted;
@@ -1462,20 +1453,15 @@ export function registerLessonRunRoutes(
             .update(reviewCards)
             .set({ suspendedAt: null })
             .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, run.conceptId)));
-          const inserted = await tx
-            .insert(xpEvents)
-            .values({
-              userId,
-              kind: 'quiz',
-              sourceKey: `quiz:${run.id}`,
-              conceptId,
-              amount: items.length,
-              earnedAt: now,
-              localDate: localDate(now, context.get('timeZone')),
-            })
-            .onConflictDoNothing()
-            .returning({ id: xpEvents.id });
-          if (inserted.length > 0) xpAwarded = items.length;
+          const inserted = await drizzleLearnerStore(tx).insertXpEventOnce(userId, {
+            kind: 'quiz',
+            sourceKey: `quiz:${run.id}`,
+            conceptId,
+            amount: items.length,
+            earnedAt: now,
+            localDate: localDate(now, context.get('timeZone')),
+          });
+          if (inserted) xpAwarded = items.length;
           const itemsByDimension = new Map<string, (typeof items)[number][]>();
           for (const item of submittedItems) {
             const exercise = resolved.index.exercisesById.get(item.exerciseId);

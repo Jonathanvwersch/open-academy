@@ -233,7 +233,11 @@ The engine does not use a database, HTTP or an AI model. The host app does these
 - It runs the AI tutor (Fable).
 - It runs the web pages.
 
-The engine reads and writes learner state through `LearnerStore`. The `memoryStore()` function makes a store that keeps that state in memory.
+The engine reads and writes mastery and review state through `LearnerStore`. `CoreStore` adds attempts, hint evidence, XP events, settings and course enrollments.
+
+A transaction gives the engine a store for that transaction. All its reads and writes use that store. If a transaction throws, its changes roll back. A nested transaction can roll back while the outer transaction continues.
+
+The API store uses PostgreSQL. It locks the learner row when a flow asks for a lock. The `memoryStore()` function keeps state in memory and runs transactions one at a time. A learner can earn XP only once for a given source key.
 
 ## 13. How we check the engine
 

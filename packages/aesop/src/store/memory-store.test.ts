@@ -7,10 +7,56 @@ import { memoryStore } from './memory-store.js';
 const learnerId = 'learner';
 
 describeLearnerStoreContract('memoryStore', async () => {
-  const store = memoryStore();
+  const otherLearnerId = 'other';
+  const activityId = 'activity';
+  const settings = {
+    activeCourseId: null,
+    studySetInitializedAt: null,
+    startDate: '',
+    timeZone: 'Europe/London',
+    prefs: {},
+  };
+  const store = memoryStore({
+    settings: new Map([
+      [learnerId, settings],
+      [otherLearnerId, settings],
+    ]),
+    hints: new Map([
+      [
+        learnerId,
+        [
+          {
+            exerciseId: 'vectors-q1',
+            activityId,
+            level: 5,
+            createdAt: new Date('2026-01-17T12:00:01Z'),
+          },
+          {
+            exerciseId: 'vectors-q1',
+            activityId,
+            level: 1,
+            createdAt: new Date('2026-01-17T12:00:00Z'),
+          },
+        ],
+      ],
+      [
+        otherLearnerId,
+        [
+          {
+            exerciseId: 'vectors-q1',
+            activityId,
+            level: 5,
+            createdAt: new Date('2026-01-19T12:00:00Z'),
+          },
+        ],
+      ],
+    ]),
+  });
   return {
     store,
     learnerId,
+    otherLearnerId,
+    activityId,
     async addOpenFlag(conceptId, targetPrereqId) {
       store.addRemediationFlag(learnerId, { conceptId, targetPrereqId });
     },

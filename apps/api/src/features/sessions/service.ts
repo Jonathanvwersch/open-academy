@@ -33,6 +33,7 @@ import { localDateKey, sessionKindForDate, xpGoalFor } from '@academy/aesop/prog
 import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
+import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { LearnerRepository } from '../../db/repository.js';
 import {
   attempts,
@@ -41,7 +42,6 @@ import {
   masteryEvents,
   sessionActivities,
   studySessions,
-  users,
   xpEvents,
 } from '../../db/schema.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
@@ -242,11 +242,7 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
 
 export async function postSessions(deps: FeatureServices, request: FeatureRequest) {
   return deps.db.transaction(async (tx) => {
-    await tx
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.id, request.userId))
-      .for('no key update');
+    await drizzleLearnerStore(tx).lockLearner(request.userId, 'no_key_update');
     const db = tx as unknown as Database;
     return createSession(
       { ...deps, db },
@@ -496,10 +492,7 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
                 lte(xpEvents.earnedAt, sessionEndedAt),
               ),
             ),
-          db
-            .select({ amount: xpEvents.amount })
-            .from(xpEvents)
-            .where(and(eq(xpEvents.userId, request.userId), eq(xpEvents.localDate, todayLocal))),
+          drizzleLearnerStore(db).listXpEvents(request.userId, { localDate: todayLocal }),
         ]);
         return {
           session: sessionEvents.reduce((total, event) => total + event.amount, 0),

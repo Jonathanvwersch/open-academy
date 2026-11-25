@@ -21,7 +21,6 @@ import type { Database } from '../db/client.js';
 import { drizzleLearnerStore } from '../db/learner-store.js';
 import {
   attempts,
-  courseEnrollments,
   lessonRuns,
   placementGrants,
   remediationFlags,
@@ -367,16 +366,13 @@ async function reopenPlanAfterWithdrawal(
     )
     .map((course) => course.id);
   if (affectedCourseIds.length > 0) {
-    await input.db
-      .update(courseEnrollments)
-      .set({ status: 'active', completedAt: null })
-      .where(
-        and(
-          eq(courseEnrollments.userId, input.userId),
-          eq(courseEnrollments.status, 'completed'),
-          inArray(courseEnrollments.courseId, affectedCourseIds),
-        ),
-      );
+    await drizzleLearnerStore(input.db).writeEnrollments(input.userId, {
+      kind: 'set_status',
+      courseIds: affectedCourseIds,
+      status: 'active',
+      completedAt: null,
+      ifStatus: 'completed',
+    });
   }
   const sessions = await input.db
     .select({ id: studySessions.id })
