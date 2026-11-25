@@ -67,9 +67,10 @@ export function PlacementPage({
   const question = nextQuery.data;
   const questionShownAt = useRef<{ exerciseId: string; at: number } | null>(null);
   const currentExerciseId = question && !question.complete ? question.exercise.id : null;
-  if (currentExerciseId && questionShownAt.current?.exerciseId !== currentExerciseId) {
-    questionShownAt.current = { exerciseId: currentExerciseId, at: Date.now() };
-  }
+  useEffect(() => {
+    if (currentExerciseId)
+      questionShownAt.current = { exerciseId: currentExerciseId, at: Date.now() };
+  }, [currentExerciseId]);
   useEffect(() => {
     if (!runId || !question?.complete || resultsNavigationRequested.current) return;
     resultsNavigationRequested.current = true;
