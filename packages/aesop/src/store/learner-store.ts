@@ -12,6 +12,7 @@ export interface StoredReviewCard {
   lastReviewAt: Date | null;
   reps: number;
   lapses: number;
+  suspendedAt: Date | null;
 }
 
 export interface NewReviewCard {

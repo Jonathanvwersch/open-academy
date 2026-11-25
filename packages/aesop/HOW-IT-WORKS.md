@@ -258,9 +258,13 @@ The engine reads and writes mastery and review state through `LearnerStore`. `Co
 
 `LessonStore` adds lesson runs, problems, quiz attempts, quiz items and flags for required reviews. The engine runs lessons and repairs saved questions that no longer exist. The host gives the engine the grade, the clock, random numbers and new IDs.
 
+`PlacementReviewStore` adds diagnostic runs, placement grants, review logs and review card edits. The engine records graded exercise answers, completes reviews and withdraws placement credit.
+
 A transaction gives the engine a store for that transaction. All its reads and writes use that store. If a transaction throws, its changes roll back. A nested transaction can roll back while the outer transaction continues.
 
 The API store uses PostgreSQL. It locks the learner row when a flow asks for a learner lock. It locks the session row for progress and explicit replans. It locks the lesson run when a command changes a run or repairs a saved question. A problem answer also locks the problem row. The `memoryStore()` function keeps state in memory and runs transactions one at a time. A memory transaction store closes when its callback ends. A learner can earn XP only once for a given source key.
+
+Starting placement locks the learner row. Answering a placement question locks the diagnostic run. Withdrawing placement credit rebuilds mastery and suspends review cards in one transaction.
 
 ## 13. How we check the engine
 

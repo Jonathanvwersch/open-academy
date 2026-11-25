@@ -1,4 +1,5 @@
 import type { Dimension } from '../course/schemas.js';
+import { activeStudyCourseIds } from '../course/study-set.js';
 import type { ContentIndex } from '../course/types.js';
 import { retrievability } from '../memory/fsrs.js';
 import { topicSpeed } from '../memory/speed.js';
@@ -25,7 +26,10 @@ export async function loadSchedulerState(
 ): Promise<SchedulerState> {
   const [settings, studyCourseIds, facts] = await Promise.all([
     loaded.settings === undefined ? store.getSettings(learnerId) : loaded.settings,
-    loaded.studyCourseIds ?? activeStudyCourseIds(store, learnerId, content),
+    loaded.studyCourseIds ??
+      store
+        .listEnrollments(learnerId)
+        .then((enrollments) => activeStudyCourseIds(content, enrollments)),
     store.readSchedulerFacts(learnerId, {
       now,
       recallExerciseIds: (content.exercisesByRole.get('recall') ?? []).map(({ id }) => id),
@@ -128,14 +132,4 @@ export async function loadSchedulerState(
     })),
     startDate: settings?.startDate || localDateKey(now, timezone),
   };
-}
-
-async function activeStudyCourseIds(store: SessionStore, learnerId: Id, content: ContentIndex) {
-  const active = new Set(
-    (await store.listEnrollments(learnerId))
-      .filter((enrollment) => enrollment.status === 'active')
-      .map((enrollment) => enrollment.courseId),
-  );
-  const courseOrder = content.curriculum?.courses ?? content.courses.map((course) => course.id);
-  return courseOrder.filter((courseId) => active.has(courseId));
 }

@@ -3,20 +3,20 @@ import { startOfNextCalendarDay } from '../memory/fsrs.js';
 import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY, type TopicSpeedEvidence } from '../memory/speed.js';
 import type { MasteryRecord } from '../memory/types.js';
 import type { Attempt, AttemptQuery, Enrollment, Settings, XpEvent } from './core-store.js';
-import type {
-  MasteryEventRecord,
-  OpenRemediationFlag,
-  ReviewLogRecord,
-  StoredReviewCard,
-} from './learner-store.js';
+import type { MasteryEventRecord, OpenRemediationFlag, StoredReviewCard } from './learner-store.js';
 import type {
   FlagQuery,
   LessonProblem,
   LessonQuizAttempt,
   LessonQuizItem,
   LessonRun,
-  LessonStore,
+  ReviewLogEntry,
 } from './lesson-store.js';
+import type {
+  DiagnosticRun,
+  PlacementGrant,
+  PlacementReviewStore,
+} from './placement-review-store.js';
 import type {
   Activity,
   ActivityQuery,
@@ -25,7 +25,7 @@ import type {
   Session,
 } from './session-store.js';
 
-export type MemoryLearnerStore = LessonStore & {
+export type MemoryLearnerStore = PlacementReviewStore & {
   addRemediationFlag(
     learnerId: string,
     flag: { conceptId: string; targetPrereqId: string | null; createdAt?: Date },
@@ -38,7 +38,9 @@ type LearnerState = {
   topicSpeed: Map<string, TopicSpeedEvidence>;
   events: MasteryEventRecord[];
   cards: Map<string, StoredReviewCard>;
-  reviewLogs: Array<ReviewLogRecord & { cardId: string }>;
+  reviewLogs: ReviewLogEntry[];
+  diagnosticRuns: Map<string, DiagnosticRun>;
+  placementGrants: Map<string, PlacementGrant>;
   flags: Map<string, RemediationFlag>;
   attempts: Attempt[];
   xpEvents: Map<string, XpEvent>;
@@ -75,6 +77,9 @@ type StoreState = {
 
 type IdCounters = {
   cardCount: number;
+  reviewLogCount: number;
+  diagnosticCount: number;
+  grantCount: number;
   flagCount: number;
   xpCount: number;
   sessionCount: number;
@@ -139,6 +144,9 @@ export function memoryStore(seed: MemorySeed = {}): MemoryLearnerStore {
     },
     {
       cardCount: 0,
+      reviewLogCount: 0,
+      diagnosticCount: 0,
+      grantCount: 0,
       flagCount: 0,
       xpCount: 0,
       sessionCount: 0,
@@ -169,6 +177,8 @@ function scopedStore(
         events: [],
         cards: new Map(),
         reviewLogs: [],
+        diagnosticRuns: new Map(),
+        placementGrants: new Map(),
         flags: new Map(),
         attempts: [],
         xpEvents: new Map(),
@@ -535,21 +545,26 @@ function scopedStore(
       if (cards.has(cardKey)) {
         throw new Error('A review card already exists for this learner, concept and dimension.');
       }
-      const stored = structuredClone({ ...card, id: `card-${++ids.cardCount}` });
+      const stored = structuredClone({
+        ...card,
+        id: `card-${++ids.cardCount}`,
+        suspendedAt: null,
+      });
       cards.set(cardKey, stored);
       markWrite(learnerId);
       return structuredClone(stored);
     },
     async recordReview(learnerId, conceptId, dimension, compute) {
       assertOpen();
-      const { cards, reviewLogs } = stateFor(learnerId);
+      const { cards } = stateFor(learnerId);
       const cardKey = key(conceptId, dimension);
       const current = cards.get(cardKey);
+      if (current?.suspendedAt) return false;
       const { card, log } = compute(structuredClone(current));
+      assertAttemptExists(log.attemptId);
       const id = current?.id ?? `card-${++ids.cardCount}`;
-      cards.set(cardKey, structuredClone({ ...card, conceptId, dimension, id }));
-      markWrite(learnerId);
-      reviewLogs.push(structuredClone({ ...log, cardId: id }));
+      cards.set(cardKey, structuredClone({ ...card, conceptId, dimension, id, suspendedAt: null }));
+      await this.appendReviewLog(learnerId, id, log);
       return true;
     },
     async updateReviewCardIfDue(learnerId, cardId, expectedDueAt, next) {
@@ -562,6 +577,158 @@ function scopedStore(
       card.fsrs = structuredClone(next.fsrs);
       card.dueAt = structuredClone(next.dueAt);
       return true;
+    },
+    async listDiagnosticRuns(learnerId, { id, courseId, status }) {
+      assertOpen();
+      return structuredClone(
+        [...(data.learners.get(learnerId)?.diagnosticRuns.values() ?? [])]
+          .filter(
+            (run) =>
+              (id === undefined || run.id === id) &&
+              (courseId === undefined || run.courseId === courseId) &&
+              (status === undefined || run.status === status),
+          )
+          .sort((left, right) => right.startedAt.getTime() - left.startedAt.getTime()),
+      );
+    },
+    async insertDiagnosticRun(learnerId, run) {
+      assertOpen();
+      const courseId = (run.state as { courseId?: unknown } | null)?.courseId;
+      const row = structuredClone({
+        ...run,
+        id: `diagnostic-${++ids.diagnosticCount}`,
+        courseId: typeof courseId === 'string' ? courseId : null,
+      });
+      stateFor(learnerId).diagnosticRuns.set(row.id, row);
+      markWrite(learnerId);
+      return structuredClone(row);
+    },
+    async patchDiagnosticRun(learnerId, runId, patch) {
+      assertOpen();
+      const runs = data.learners.get(learnerId)?.diagnosticRuns;
+      const current = runs?.get(runId);
+      if (!runs || !current) return;
+      const next = applyPatch(current, patch);
+      const courseId = (next.state as { courseId?: unknown } | null)?.courseId;
+      runs.set(runId, { ...next, courseId: typeof courseId === 'string' ? courseId : null });
+      markWrite(learnerId);
+    },
+    async listPlacementGrants(learnerId, query = {}) {
+      assertOpen();
+      return structuredClone(
+        [...(data.learners.get(learnerId)?.placementGrants.values() ?? [])].filter(
+          (row) =>
+            (query.conceptIds === undefined || query.conceptIds.includes(row.conceptId)) &&
+            (query.state === undefined || query.state === row.state) &&
+            !query.excludeReasons?.includes(row.reason),
+        ),
+      );
+    },
+    async insertPlacementGrantsOnce(learnerId, grants) {
+      assertOpen();
+      if (grants.length === 0) return;
+      const { placementGrants } = stateFor(learnerId);
+      const existing = new Set(
+        [...placementGrants.values()].map(({ runId, conceptId }) =>
+          JSON.stringify([runId, conceptId]),
+        ),
+      );
+      const inserts = grants.filter(({ runId, conceptId }) => {
+        const grantKey = JSON.stringify([runId, conceptId]);
+        if (existing.has(grantKey)) return false;
+        existing.add(grantKey);
+        return true;
+      });
+      for (const row of inserts) {
+        if (
+          ![...data.learners.values()].some(({ diagnosticRuns }) => diagnosticRuns.has(row.runId))
+        ) {
+          throw new Error('Diagnostic run not found');
+        }
+        assertAttemptExists(row.confirmedByAttemptId);
+        assertAttemptExists(row.withdrawnByAttemptId);
+      }
+      for (const row of inserts) {
+        const id = `grant-${++ids.grantCount}`;
+        placementGrants.set(id, structuredClone({ ...row, id }));
+        markWrite(learnerId);
+      }
+    },
+    async patchPlacementGrants(learnerId, { ids, conceptId, ifState }, patch) {
+      assertOpen();
+      const grants = data.learners.get(learnerId)?.placementGrants;
+      if (!grants) return;
+      for (const [id, row] of grants) {
+        if (
+          (ids !== undefined && !ids.includes(id)) ||
+          (conceptId !== undefined && conceptId !== row.conceptId) ||
+          (ifState !== undefined && ifState !== row.state)
+        )
+          continue;
+        assertAttemptExists(patch.confirmedByAttemptId);
+        assertAttemptExists(patch.withdrawnByAttemptId);
+        grants.set(id, applyPatch(row, patch));
+        markWrite(learnerId);
+      }
+    },
+    async setReviewCardSuspension(learnerId, conceptIds, suspendedAt) {
+      assertOpen();
+      for (const card of data.learners.get(learnerId)?.cards.values() ?? []) {
+        if (!conceptIds.includes(card.conceptId) || (suspendedAt && card.suspendedAt)) continue;
+        card.suspendedAt = structuredClone(suspendedAt);
+        markWrite(learnerId);
+      }
+    },
+    async listReviewLogs(learnerId, { cardIds, activityId, since }) {
+      assertOpen();
+      const linkedAttempts =
+        activityId === undefined
+          ? undefined
+          : new Set(
+              [...data.learners.values()].flatMap(({ attempts }) =>
+                attempts.filter((attempt) => attempt.activityId === activityId).map(({ id }) => id),
+              ),
+            );
+      return structuredClone(
+        (data.learners.get(learnerId)?.reviewLogs ?? [])
+          .filter(
+            (log) =>
+              (cardIds === undefined || cardIds.includes(log.cardId)) &&
+              (linkedAttempts === undefined ||
+                (log.attemptId && linkedAttempts.has(log.attemptId))) &&
+              (since === undefined || log.createdAt >= since),
+          )
+          .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime()),
+      );
+    },
+    async patchReviewCard(learnerId, cardId, patch) {
+      assertOpen();
+      const cards = data.learners.get(learnerId)?.cards;
+      if (!cards) return;
+      for (const [cardKey, card] of cards) {
+        if (card.id !== cardId) continue;
+        cards.set(cardKey, applyPatch(card, patch));
+        markWrite(learnerId);
+        break;
+      }
+    },
+    async appendReviewLog(learnerId, cardId, log) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      const card = [...(state?.cards.values() ?? [])].find(({ id }) => id === cardId);
+      if (!state || !card) throw new Error('Review card not found');
+      assertAttemptExists(log.attemptId);
+      state.reviewLogs.push(
+        structuredClone({
+          ...log,
+          id: `review-log-${++ids.reviewLogCount}`,
+          cardId,
+          conceptId: card.conceptId,
+          attemptId: log.attemptId ?? null,
+          speed: log.speed === undefined ? undefined : Math.fround(log.speed),
+        }),
+      );
+      markWrite(learnerId);
     },
     async listSessions(learnerId, query) {
       assertOpen();
@@ -1025,7 +1192,7 @@ function scopedStore(
         paperProgress: [...(projection?.paperProgress ?? [])].sort((left, right) =>
           compare(left.paperId, right.paperId),
         ),
-        cards,
+        cards: cards.filter(({ suspendedAt }) => !suspendedAt),
         topicSpeeds: await this.listTopicSpeedEvidence(learnerId),
         recentAttempts: await this.listAttempts(learnerId, { order: 'scheduler', limit: 100 }),
         flags: [...(state?.flags.values() ?? [])].sort(

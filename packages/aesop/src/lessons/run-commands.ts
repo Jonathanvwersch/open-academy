@@ -15,11 +15,13 @@ import {
   type applyMastery,
   getTopicSpeed,
 } from '../memory/mastery-service.js';
-import { conditionalPrerequisites, type PlacementGrantState } from '../placement/grants.js';
+import { openTargetedReviews } from '../memory/remediation-flags.js';
+import { placementGrantStates } from '../placement/grant-commands.js';
+import { conditionalPrerequisites } from '../placement/grants.js';
 import { updateActivityAndAdvance } from '../planner/activity-advance.js';
 import { localDateKey } from '../progress/xp.js';
-import type { NewReviewCard, ReviewLogRecord, StoredReviewCard } from '../store/learner-store.js';
 import type { LessonStore } from '../store/lesson-store.js';
+import type { PlacementReviewStore } from '../store/placement-review-store.js';
 import type { GradeResult } from './grading/types.js';
 import { scoreLessonQuiz, selectQuizItems } from './lesson-quiz.js';
 import { isLessonRetryReady } from './lesson-retry.js';
@@ -51,26 +53,9 @@ export type LessonGrader = (
 export type ProblemAnswerHost<S extends LessonStore> = MasteryHost & {
   grade: LessonGrader;
   hasTutorReply(store: S, learnerId: string, problemId: string): Promise<boolean>;
-  placementGrantStates(
-    store: S,
-    learnerId: string,
-  ): Promise<ReadonlyMap<string, PlacementGrantState>>;
 };
 
-export type QuizSubmitHost<S extends LessonStore> = MasteryHost & {
-  grade: LessonGrader;
-  unsuspendReviewCards(store: S, learnerId: string, conceptId: string): Promise<void>;
-  writeInitialReview(
-    store: S,
-    learnerId: string,
-    conceptId: string,
-    dimension: Dimension,
-    compute: (existingCard: StoredReviewCard | undefined) => {
-      card: Omit<NewReviewCard, 'conceptId' | 'dimension'>;
-      log: ReviewLogRecord;
-    },
-  ): Promise<void>;
-};
+export type QuizSubmitHost = MasteryHost & { grade: LessonGrader };
 
 export function resolveLessonExercise(
   exercise: IndexedExercise,
@@ -95,45 +80,6 @@ async function listProblemsByPoint(store: LessonStore, learnerId: string, runId:
           ? 1
           : 0) ||
       left.round - right.round,
-  );
-}
-
-export async function openTargetedReviews(
-  store: LessonStore,
-  input: {
-    learnerId: string;
-    conceptId: string;
-    prerequisiteIds: readonly string[];
-    attemptId: string | null;
-    now: Date;
-  },
-) {
-  if (!input.prerequisiteIds.length) return;
-  const existing = await store.listRemediationFlags(input.learnerId, {
-    conceptId: input.conceptId,
-    targetPrereqIds: input.prerequisiteIds,
-  });
-  const alreadyOpen = new Set(
-    existing
-      .filter(
-        (flag) =>
-          flag.status === 'open' ||
-          (input.attemptId !== null && flag.openedByAttemptId === input.attemptId),
-      )
-      .map((flag) => flag.targetPrereqId),
-  );
-  await store.insertRemediationFlags(
-    input.learnerId,
-    input.prerequisiteIds
-      .filter((id) => !alreadyOpen.has(id))
-      .map((targetPrereqId) => ({
-        conceptId: input.conceptId,
-        targetPrereqId,
-        openedByAttemptId: input.attemptId,
-        status: 'open',
-        createdAt: input.now,
-        resolvedAt: null,
-      })),
   );
 }
 
@@ -356,7 +302,7 @@ export async function practiceLessonPoint(
   });
 }
 
-export async function answerLessonProblem<S extends LessonStore>(
+export async function answerLessonProblem<S extends PlacementReviewStore>(
   store: S,
   runtime: LessonRuntime,
   input: LessonCommand & ProblemAnswer,
@@ -497,7 +443,7 @@ export async function answerLessonProblem<S extends LessonStore>(
           conceptId,
           prerequisiteIds: conditionalPrerequisites(
             keyPrereqIds,
-            await host.placementGrantStates(tx, userId),
+            await placementGrantStates(tx, userId),
           ),
           attemptId,
           now,
@@ -731,11 +677,11 @@ export async function answerLessonQuiz(
   });
 }
 
-export async function submitLessonQuiz<S extends LessonStore>(
-  store: S,
+export async function submitLessonQuiz(
+  store: PlacementReviewStore,
   runtime: LessonRuntime,
   input: LessonCommand & Attachment,
-  host: QuizSubmitHost<S>,
+  host: QuizSubmitHost,
 ) {
   const { userId, conceptId, timeZone, resolved } = input;
   const now = runtime.now();
@@ -844,7 +790,7 @@ export async function submitLessonQuiz<S extends LessonStore>(
           completedAt: now,
           updatedAt: now,
         });
-        await host.unsuspendReviewCards(tx, userId, conceptId);
+        await tx.setReviewCardSuspension(userId, [conceptId], null);
         const inserted = await tx.insertXpEventOnce(userId, {
           kind: 'quiz',
           sourceKey: `quiz:${run.id}`,
@@ -877,32 +823,35 @@ export async function submitLessonQuiz<S extends LessonStore>(
             }),
           );
           dimensionRatings.set(dimension, rating);
-          await host.writeInitialReview(tx, userId, conceptId, dimension, (existingCard) => {
-            const scheduled = scheduleReviewWithDetails(
-              existingCard?.fsrs ?? newReviewCard(now),
-              now,
-              rating,
-              timeZone,
-              runtime.enableFsrsFuzz,
-              speed,
-            );
-            return {
-              card: {
-                fsrs: scheduled.card,
-                dueAt: scheduled.card.due,
-                lastReviewAt: now,
-                reps: scheduled.card.reps,
-                lapses: scheduled.card.lapses,
-              },
-              log: {
-                attemptId: dimensionItems.find((item) => item.attemptId)?.attemptId ?? undefined,
-                rating,
-                fsrsLog: { ...scheduled.log, effectiveDueAt: scheduled.card.due },
-                speed,
-                rawDueAt: scheduled.rawDueAt,
-                createdAt: now,
-              },
-            };
+          const existingCard = await tx.getReviewCard(userId, conceptId, dimension, {
+            forUpdate: true,
+          });
+          const scheduled = scheduleReviewWithDetails(
+            existingCard?.fsrs ?? newReviewCard(now),
+            now,
+            rating,
+            timeZone,
+            runtime.enableFsrsFuzz,
+            speed,
+          );
+          const card = {
+            fsrs: scheduled.card,
+            dueAt: scheduled.card.due,
+            lastReviewAt: now,
+            reps: scheduled.card.reps,
+            lapses: scheduled.card.lapses,
+          };
+          if (existingCard) await tx.patchReviewCard(userId, existingCard.id, card);
+          const cardId =
+            existingCard?.id ??
+            (await tx.insertReviewCard(userId, { conceptId, dimension, ...card })).id;
+          await tx.appendReviewLog(userId, cardId, {
+            attemptId: dimensionItems.find((item) => item.attemptId)?.attemptId ?? undefined,
+            rating,
+            fsrsLog: { ...scheduled.log, effectiveDueAt: scheduled.card.due },
+            speed,
+            rawDueAt: scheduled.rawDueAt,
+            createdAt: now,
           });
         }
         const ratings = [...dimensionRatings.values()];

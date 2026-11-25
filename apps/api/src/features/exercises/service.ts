@@ -4,25 +4,21 @@ import type { IndexedExercise } from '@academy/aesop/course/types';
 import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
 import { gradeExercise } from '@academy/aesop/lessons/grading/index';
 import { rubricFeedbackWithScoredFlags } from '@academy/aesop/lessons/grading/rubric-score';
-import { isExplainItBeforeQuiz } from '@academy/aesop/lessons/initial-learn-progress';
-import { calculateCredit } from '@academy/aesop/memory/mastery';
-import { applyMastery } from '@academy/aesop/memory/mastery-service';
+import {
+  prepareExerciseAttempt,
+  recordExerciseAttempt,
+} from '@academy/aesop/memory/exercise-attempts';
+import { hintsSincePreviousAttempt } from '@academy/aesop/memory/hint-evidence';
 import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
-import type { MasteryRecord } from '@academy/aesop/memory/types';
 import type { AttemptResponse } from '@academy/contracts/exercises';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { onScreenOptions } from '@academy/shared/shuffle';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
-import { attempts, sessionActivities } from '../../db/schema.js';
-import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
+import { sessionActivities } from '../../db/schema.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
-import {
-  applyPlacementGrantOutcome,
-  placementCreditWithdrawn,
-} from '../../learning/placement-grants.js';
-import { completeReviewActivity, recordReviewRating } from '../../learning/review-completion.js';
+import { linkTimedQuizFollowUp } from '../../learning/timed-review-follow-up.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import {
   formatGraderFeedback,
@@ -32,7 +28,6 @@ import {
   tutorSolutionFor,
 } from '../tutor/feedback-context.js';
 import { scoreRubric } from '../tutor/scoring.js';
-import { hintsSincePreviousAttempt } from './hint-history.js';
 
 type TutorGradeResult = {
   status: 'graded';
@@ -116,7 +111,7 @@ export async function postHints(deps: FeatureServices, request: FeatureRequest) 
     }
   }
   const hintsUsed = await hintsSincePreviousAttempt(
-    db,
+    drizzleLearnerStore(db),
     request.userId,
     exercise.id,
     body.data.activityId,
@@ -267,76 +262,18 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       400,
     );
   }
-  const repo = request.repo;
-  const [activityRow] = body.data.activityId
-    ? await db
-        .select()
-        .from(sessionActivities)
-        .where(eq(sessionActivities.id, body.data.activityId))
-        .limit(1)
-    : [];
-  const session = activityRow ? await repo.session(activityRow.sessionId) : undefined;
-  let activity = session?.activities.find((item) => item.id === body.data.activityId);
-  if (body.data.activityId && !activity) {
-    return serviceResult({ error: 'Activity not found' }, 404);
-  }
-  if (body.data.mode === 'review' && !body.data.activityId) {
-    return serviceResult({ error: 'Review attempts need a review activity.' }, 400);
-  }
-  const inlineLessonExercise =
-    activity?.kind === 'learn' &&
-    typeof activity.conceptId === 'string' &&
-    index.lessonsByConcept
-      .get(activity.conceptId)
-      ?.blocks.some((block) => 'exercise' in block && block.exercise === exercise.id);
-  if (activity && !activity.exerciseIds.includes(exercise.id) && !inlineLessonExercise) {
-    return serviceResult({ error: 'Exercise is not part of this activity.' }, 400);
-  }
-  if (
-    activity &&
-    activity.kind === 'quick_check' &&
-    body.data.mode !== 'diagnostic' &&
-    body.data.mode !== 'assessment'
-  ) {
-    return serviceResult({ error: 'This activity requires assessment mode.' }, 400);
-  }
-  if (activity?.kind === 'review' && body.data.mode !== 'review') {
-    return serviceResult({ error: 'Review attempts must use review mode.' }, 400);
-  }
-  if (
-    activity &&
-    activity.kind !== 'review' &&
-    activity.kind !== 'quick_check' &&
-    body.data.mode !== 'practice'
-  ) {
-    return serviceResult({ error: 'This activity requires practice mode.' }, 400);
-  }
-  if (activity && activity.kind !== 'review' && body.data.mode === 'review') {
-    return serviceResult({ error: 'Review mode is only available for review activities.' }, 400);
-  }
-  const previousAttempts = body.data.activityId
-    ? await repo.attemptsForActivity(body.data.activityId, exercise.id)
-    : [];
-  const priorAttemptForRetry = previousAttempts.at(-1);
-  if (body.data.mode === 'practice' && previousAttempts.length >= 2) {
+  const { repo, userId, timeZone } = request;
+  const store = drizzleLearnerStore(db);
+  const prepared = await prepareExerciseAttempt(store, userId, index, exercise, body.data, (id) =>
+    repo.session(id),
+  );
+  if (prepared.kind !== 'ready') {
     return serviceResult(
-      {
-        error: 'No retries remain.',
-        ...(exercise.type === 'explain'
-          ? { exemplar: exercise.exemplar }
-          : { solution: exercise.solution }),
-      },
-      409,
+      prepared.body,
+      prepared.kind === 'not_found' ? 404 : prepared.kind === 'conflict' ? 409 : 400,
     );
   }
-  if (
-    body.data.mode !== 'practice' &&
-    priorAttemptForRetry &&
-    !attemptAllowsRetry(priorAttemptForRetry)
-  ) {
-    return serviceResult({ error: 'This activity allows one attempt.' }, 409);
-  }
-  const attemptNo = previousAttempts.length + 1;
+  const random = () => Math.random();
   let result: Awaited<ReturnType<typeof gradeExercise>> | TutorGradeResult;
   if (
     exercise.type === 'explain' &&
@@ -373,10 +310,10 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
         exemplar: exercise.exemplar,
       };
     } else {
-      result = await gradeExercise(exercise, body.data.answer);
+      result = await gradeExercise(exercise, body.data.answer, { random });
     }
   } else {
-    result = await gradeExercise(exercise, body.data.answer);
+    result = await gradeExercise(exercise, body.data.answer, { random });
   }
   const rubricForFeedback =
     exercise.type === 'explain' && 'rubric' in result && Array.isArray(result.rubric)
@@ -401,210 +338,30 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
       result.status === 'invalid' ? 422 : 200,
     );
   }
-  const followUp =
-    (body.data.mode === 'practice' || body.data.mode === 'review') &&
-    exercise.type === 'explain' &&
-    result.correct > 0 &&
-    result.correct < 1 &&
-    attemptNo < 2;
-  const retryAllowed =
-    attemptNo < 2 &&
-    ((body.data.mode === 'practice' && result.correct === 0) ||
-      ((body.data.mode === 'practice' || body.data.mode === 'review') && followUp));
-  const answerWithheld = retryAllowed;
-  const now = request.now();
-  const attemptId = crypto.randomUUID();
-  const gradedBy = result.graded_by ?? 'deterministic';
-  const hintsUsed = await hintsSincePreviousAttempt(
-    db,
-    request.userId,
-    exercise.id,
-    body.data.activityId,
-  );
-  const credit = calculateCredit({
-    correct: result.correct,
-    hintsUsed,
-    attemptNo,
-    gradedBy,
-    followUp,
-  });
-  const sessionId = activityRow?.sessionId;
-  await db.insert(attempts).values({
-    id: attemptId,
-    userId: request.userId,
-    sessionId,
-    activityId: body.data.activityId,
-    exerciseId: exercise.id,
-    exerciseVersion: exercise.contentVersion,
-    conceptId: exercise.concept,
-    dimension: exercise.dimension,
-    mode: body.data.mode,
-    answer: body.data.answer,
-    correct: result.correct,
-    credit,
-    hintsUsed,
-    attemptNo,
-    gradedBy,
-    feedback: {
-      message: result.feedback,
-      status: result.status,
+  const { step, followUp, ...attempt } = await recordExerciseAttempt(
+    store,
+    {
+      now: request.now,
+      newId: () => crypto.randomUUID(),
+      enableFsrsFuzz: fsrsFuzzEnabled(),
+      schedulerState: (now, content) => repo.schedulerState(now, content),
+      session: (id) => repo.session(id),
+      linkTimedQuizFollowUp: (id, activityId, concepts) =>
+        linkTimedQuizFollowUp(db, id, activityId, concepts),
+    },
+    prepared,
+    {
+      correct: result.correct,
+      feedback: result.feedback,
+      gradedBy: result.graded_by,
+      mistakeCategory: result.mistake_category,
       ...('yourAnswer' in result ? { yourAnswer: result.yourAnswer } : {}),
       ...('rubric' in result ? { rubric: rubricForFeedback ?? result.rubric } : {}),
-      ...(exercise.type === 'explain' && !answerWithheld
-        ? {
-            exemplar: exercise.exemplar,
-            ...(exercise.solution ? { solution: exercise.solution } : {}),
-          }
-        : {}),
-      ...(followUp ? { followUp: true } : {}),
     },
-    mistakeCategory: result.mistake_category,
-    durationMs: body.data.durationMs,
-    createdAt: now,
-  });
-  const withdrawnCredit = await placementCreditWithdrawn(db, request.userId, exercise.concept);
-  const masteryResult = await applyMastery(drizzleLearnerStore(repo.db), {
-    learnerId: request.userId,
-    exercise,
-    attemptId,
-    correct: result.correct,
-    credit,
-    hintsUsed,
-    attemptNo,
-    submitted: true,
-    mode: body.data.mode,
-    gradedBy,
-    followUp,
-    now,
-    timeZone: request.timeZone,
-    enableFuzz: fsrsFuzzEnabled(),
-    ...(withdrawnCredit ? { createReviewCard: false } : {}),
-  });
-  if (body.data.mode === 'review' && !followUp && activity?.kind === 'review') {
-    activity = await recordReviewRating(
-      db,
-      repo,
-      {
-        index,
-        userId: request.userId,
-        timeZone: request.timeZone,
-        now,
-        session,
-      },
-      activity,
-      exercise,
-      attemptId,
-    );
-  }
-  if (!followUp) {
-    await applyPlacementGrantOutcome({
-      db,
-      userId: request.userId,
-      content: index,
-      exerciseId: exercise.id,
-      attemptId,
-      mode: body.data.mode,
-      correct: result.correct,
-      hintsUsed,
-      attemptNo,
-      gradedBy,
-      now,
-    });
-  }
-  const answerOptions = answerOptionsFor(exercise, body.data.answer, !retryAllowed);
-  let activityCompleted = false;
-  if (activityRow && activity && !retryAllowed) {
-    const progress = activity.progress as {
-      completedExerciseIds?: string[];
-      outcomes?: Record<string, 'correct' | 'incorrect'>;
-    };
-    const outcomes = {
-      ...(progress.outcomes ?? {}),
-      [exercise.id]: result.correct > 0 ? 'correct' : 'incorrect',
-    };
-    const completedExerciseIds = [
-      ...new Set([...(progress.completedExerciseIds ?? []), exercise.id]),
-    ];
-    let exerciseIds = activity.exerciseIds;
-    let learningGoalMet = false;
-    let lessonFinalNeedsQuiz = false;
-    if (activity.kind === 'learn' && activity.conceptId) {
-      const mastery = masteryResult.mastery as MasteryRecord;
-      const lesson = index.lessonsByConcept.get(activity.conceptId);
-      const finalExercise = lesson?.final === exercise.id;
-      lessonFinalNeedsQuiz = isExplainItBeforeQuiz(lesson, exercise.id);
-      learningGoalMet =
-        finalExercise || (mastery.independentItemIds.length >= 2 && mastery.lastIndependentCorrect);
-      if (!learningGoalMet) {
-        const recentIds = new Set(
-          (await repo.recentAttempts(100))
-            .filter((attempt) => now.getTime() - attempt.createdAt.getTime() < 7 * 86_400_000)
-            .map((attempt) => attempt.exerciseId),
-        );
-        const nextExercise = (index.exercisesByConcept.get(activity.conceptId) ?? []).find(
-          (candidate) =>
-            candidate.dimension === exercise.dimension &&
-            (candidate.role === 'core' || candidate.role === 'check') &&
-            !exerciseIds.includes(candidate.id) &&
-            !recentIds.has(candidate.id),
-        );
-        if (nextExercise) {
-          exerciseIds = [...exerciseIds, nextExercise.id];
-        }
-      }
-    }
-    const completed =
-      !lessonFinalNeedsQuiz &&
-      (learningGoalMet || exerciseIds.every((id) => completedExerciseIds.includes(id)));
-    activityCompleted = completed;
-    const sessionForAdvance =
-      completed && session ? ((await repo.session(session.id)) ?? session) : session;
-    const activityProgress = { ...progress, completedExerciseIds, outcomes };
-    if (completed && activity.kind === 'review') {
-      await completeReviewActivity(
-        db,
-        {
-          index,
-          userId: request.userId,
-          timeZone: request.timeZone,
-          now,
-          session: sessionForAdvance,
-        },
-        activity,
-        activityProgress,
-      );
-    } else {
-      await updateActivityAndAdvance(db, {
-        activityId: activity.id,
-        completed,
-        now,
-        session: sessionForAdvance,
-        exerciseIds,
-        progress: activityProgress,
-        userId: request.userId,
-        timeZone: request.timeZone,
-        knowledgePointActivity: Boolean(
-          activity.kind === 'learn' &&
-            activity.conceptId &&
-            index.lessonsByConcept.get(activity.conceptId)?.knowledge_points?.length,
-        ),
-      });
-    }
-  }
-  const step =
-    activity?.kind === 'review' || activity?.kind === 'practice'
-      ? (() => {
-          const lesson = index.lessonsByConcept.get(exercise.concept);
-          const pointId =
-            exercise.role === 'recall'
-              ? exercise.knowledge_point
-              : lesson?.knowledge_points?.find((point) => point.problems.includes(exercise.id))?.id;
-          const point = lesson?.knowledge_points?.find((candidate) => candidate.id === pointId);
-          return point
-            ? { conceptId: exercise.concept, pointId: point.id, title: point.title }
-            : undefined;
-        })()
-      : undefined;
+    timeZone,
+  );
+  const answerWithheld = attempt.retryAllowed;
+  const answerOptions = answerOptionsFor(exercise, body.data.answer, !answerWithheld);
   const resultForResponse: Record<string, unknown> = { ...result };
   if (answerWithheld) {
     delete resultForResponse.exemplar;
@@ -612,13 +369,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
   }
   return serviceResult({
     ...resultForResponse,
-    attemptId,
-    attemptNo,
-    hintsUsed,
-    credit,
-    mastery: masteryResult,
-    retryAllowed,
-    activityCompleted,
+    ...attempt,
     ...(step ? { step } : {}),
     ...(followUp ? { followUp: true } : {}),
     ...(answerOptions ? { answerOptions } : {}),

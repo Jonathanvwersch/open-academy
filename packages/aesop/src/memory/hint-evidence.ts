@@ -1,13 +1,13 @@
-import { countHintsSincePreviousAttempt } from '@academy/aesop/memory/hints';
-import type { Database } from '../../db/client.js';
-import { drizzleLearnerStore } from '../../db/learner-store.js';
+import type { CoreStore } from '../store/core-store.js';
+import { countHintsSincePreviousAttempt } from './hints.js';
+
 export async function hintsSincePreviousAttempt(
-  db: Database,
+  store: CoreStore,
   userId: string,
   exerciseId: string,
   activityId?: string,
 ): Promise<number> {
-  const { attempts, hints } = await drizzleLearnerStore(db).readHintEvidence(
+  const { attempts, hints } = await store.readHintEvidence(
     userId,
     exerciseId,
     activityId || undefined,

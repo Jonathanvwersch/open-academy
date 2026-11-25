@@ -1,8 +1,9 @@
 import type { Dimension } from '@academy/aesop/course/schemas';
+import { activeStudyCourseIds, studySetBackfill } from '@academy/aesop/course/study-set';
 import type { ContentIndex } from '@academy/aesop/course/types';
-import { courseHasEvidence } from '@academy/aesop/graph/course-start';
 import { startOfNextCalendarDay } from '@academy/aesop/memory/fsrs';
 import type { MasteryRecord } from '@academy/aesop/memory/types';
+import { activePlacementRuns } from '@academy/aesop/placement/diagnostic-commands';
 import { loadSchedulerState } from '@academy/aesop/planner/load-scheduler-state';
 import { attemptedExerciseIdsByActivity as groupAttemptedExerciseIdsByActivity } from '@academy/aesop/planner/review-topics';
 import type { SchedulerState } from '@academy/aesop/planner/scheduler';
@@ -18,7 +19,6 @@ import type { Database } from './client.js';
 import { drizzleLearnerStore } from './learner-store.js';
 import {
   attempts,
-  diagnosticRuns,
   hintEvents,
   lessonRuns,
   mastery,
@@ -106,19 +106,7 @@ export class LearnerRepository {
           .from(lessonRuns)
           .where(eq(lessonRuns.userId, this.userId)),
       ]);
-      const startedCourseIds = new Set(enrollments.map((enrollment) => enrollment.courseId));
-      const started = content.courses
-        .filter((course) =>
-          courseHasEvidence(
-            course.units.flatMap((unit) => unit.concepts),
-            masteryRows,
-            lessonRunRows,
-          ),
-        )
-        .map((course) => course.id);
-      for (const courseId of started) startedCourseIds.add(courseId);
-      const courseOrder = content.curriculum?.courses ?? content.courses.map((course) => course.id);
-      const backfill = courseOrder.filter((courseId) => startedCourseIds.has(courseId));
+      const backfill = studySetBackfill(content, enrollments, masteryRows, lessonRunRows);
       const store = drizzleLearnerStore(this.db);
       if (backfill.length > 0) {
         const startedAt = now();
@@ -142,13 +130,7 @@ export class LearnerRepository {
   }
 
   async activeStudyCourseIds(content: ContentIndex): Promise<string[]> {
-    const activeCourseIds = new Set(
-      (await this.courseEnrollments())
-        .filter((enrollment) => enrollment.status === 'active')
-        .map((enrollment) => enrollment.courseId),
-    );
-    const courseOrder = content.curriculum?.courses ?? content.courses.map((course) => course.id);
-    return courseOrder.filter((courseId) => activeCourseIds.has(courseId));
+    return activeStudyCourseIds(content, await this.courseEnrollments());
   }
 
   async masteryRecords(): Promise<MasteryRecord[]> {
@@ -200,14 +182,6 @@ export class LearnerRepository {
       .select()
       .from(remediationFlags)
       .where(and(eq(remediationFlags.userId, this.userId), eq(remediationFlags.status, 'open')));
-  }
-
-  async attemptsForActivity(activityId: string, exerciseId: string) {
-    return this.db
-      .select()
-      .from(attempts)
-      .where(and(eq(attempts.activityId, activityId), eq(attempts.exerciseId, exerciseId)))
-      .orderBy(asc(attempts.attemptNo));
   }
 
   async attemptedExerciseIdsByActivity(activityIds: readonly string[]) {
@@ -285,33 +259,8 @@ export class LearnerRepository {
       .returning();
   }
 
-  async placementRun(runId: string) {
-    if (!z.string().uuid().safeParse(runId).success) return undefined;
-    const [run] = await this.db
-      .select()
-      .from(diagnosticRuns)
-      .where(and(eq(diagnosticRuns.id, runId), eq(diagnosticRuns.userId, this.userId)))
-      .limit(1);
-    return run?.kind === 'placement' ? run : undefined;
-  }
-
-  async activePlacementRun(courseId: string) {
-    const runs = await this.activePlacementRuns();
-    return runs.find((run) => (run.state as { courseId?: unknown }).courseId === courseId);
-  }
-
-  async activePlacementRuns() {
-    return this.db
-      .select()
-      .from(diagnosticRuns)
-      .where(
-        and(
-          eq(diagnosticRuns.userId, this.userId),
-          eq(diagnosticRuns.kind, 'placement'),
-          eq(diagnosticRuns.status, 'active'),
-        ),
-      )
-      .orderBy(desc(diagnosticRuns.startedAt));
+  activePlacementRuns() {
+    return activePlacementRuns(drizzleLearnerStore(this.db), this.userId);
   }
 
   courseEnrollments() {

@@ -1,10 +1,15 @@
 import type { ContentIndex, IndexedExercise } from '@academy/aesop/course/types';
 import { initialMastery, masteryRank } from '@academy/aesop/memory/types';
+import {
+  applyPlacementGrantOutcome,
+  recordPlacementGrants,
+} from '@academy/aesop/placement/grant-commands';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
+import { drizzleLearnerStore } from '../../src/db/learner-store.js';
 import { LearnerRepository } from '../../src/db/repository.js';
 import {
   attempts,
@@ -20,10 +25,6 @@ import {
   users,
   xpEvents,
 } from '../../src/db/schema.js';
-import {
-  applyPlacementGrantOutcome,
-  recordPlacementGrants,
-} from '../../src/learning/placement-grants.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000321';
@@ -125,7 +126,7 @@ async function seedGrant(
 async function answer(conceptId: string, correct: number) {
   const { attemptId, exercise } = await insertAttempt(conceptId, 'review', correct);
   const input = {
-    db,
+    store: drizzleLearnerStore(db),
     userId,
     content,
     exerciseId: exercise.id,
@@ -170,7 +171,7 @@ async function snapshot() {
 test('placement grants record inferred credit as conditional and on-time answers as confirmed', async () => {
   const { attemptId, exercise } = await insertAttempt('derivatives', 'diagnostic', 1);
   const grants = await recordPlacementGrants({
-    db,
+    store: drizzleLearnerStore(db),
     userId,
     runId,
     state: {
@@ -198,7 +199,7 @@ test('placement grants record inferred credit as conditional and on-time answers
 
 test('resumed pre-upgrade checks use answers without attempt ids as evidence by topic', async () => {
   await recordPlacementGrants({
-    db,
+    store: drizzleLearnerStore(db),
     userId,
     runId,
     state: {
@@ -214,7 +215,7 @@ test('resumed pre-upgrade checks use answers without attempt ids as evidence by 
     now,
   });
   await recordPlacementGrants({
-    db,
+    store: drizzleLearnerStore(db),
     userId,
     runId,
     state: {
@@ -297,7 +298,7 @@ test('new placement credit for a withdrawn topic reactivates its review cards', 
     })
     .returning();
   const grants = await recordPlacementGrants({
-    db,
+    store: drizzleLearnerStore(db),
     userId,
     runId: secondRun?.id ?? '',
     state: { courseId: 'fixture-course', answers: [], known: ['vectors'], unknown: [] },
@@ -326,7 +327,7 @@ test('an interrupted withdrawal changes nothing, and a retry completes it', asyn
   try {
     const { attemptId, exercise } = await insertAttempt('vectors', 'review', 0);
     const input = {
-      db,
+      store: drizzleLearnerStore(db),
       userId,
       content,
       exerciseId: exercise.id,

@@ -7,17 +7,16 @@ import { initialMastery, type MasteryRecord } from '../memory/types.js';
 import { activeSessionForDate } from '../planner/session-state.js';
 import type { Attempt, CoreStore, Enrollment, NewRow, XpEvent } from './core-store.js';
 import type { NewReviewCard } from './learner-store.js';
+import type { LessonProblem, LessonQuizItem, LessonRun, RemediationFlag } from './lesson-store.js';
 import type {
-  LessonProblem,
-  LessonQuizItem,
-  LessonRun,
-  LessonStore,
-  RemediationFlag,
-} from './lesson-store.js';
+  DiagnosticRun,
+  PlacementGrant,
+  PlacementReviewStore,
+} from './placement-review-store.js';
 import type { Activity, Session, SessionStore } from './session-store.js';
 
 type StoreFixture = {
-  store: LessonStore;
+  store: PlacementReviewStore;
   learnerId: string;
   otherLearnerId: string;
   activityId: string;
@@ -158,6 +157,176 @@ export function describeLearnerStoreContract(
   makeStore: (options?: { persistHintActivity?: boolean }) => Promise<StoreFixture>,
 ) {
   describe(name, () => {
+    it('filters and locks diagnostic runs by owner, course, id and status', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      const row: NewRow<DiagnosticRun> = {
+        courseId: 'maths',
+        kind: 'placement',
+        status: 'active',
+        state: { courseId: 'maths', answers: [] },
+        startedAt: date,
+        completedAt: null,
+        summary: {},
+      };
+      const created = await store.insertDiagnosticRun(learnerId, row);
+      const newer = await store.insertDiagnosticRun(learnerId, { ...row, startedAt: later });
+      await store.insertDiagnosticRun(otherLearnerId, row);
+      expect(
+        await store.listDiagnosticRuns(learnerId, { courseId: 'maths', status: 'active' }),
+      ).toEqual([newer, created]);
+      expect(await store.listDiagnosticRuns(learnerId, { courseId: 'other' })).toEqual([]);
+      await store.patchDiagnosticRun(otherLearnerId, created.id, { status: 'abandoned' });
+      await store.transaction(async (tx) => {
+        expect(await tx.listDiagnosticRuns(learnerId, { id: created.id, forUpdate: true })).toEqual(
+          [created],
+        );
+        await tx.patchDiagnosticRun(learnerId, created.id, {
+          status: 'completed',
+          completedAt: later,
+          summary: { known: ['vectors'] },
+        });
+      });
+      expect(await store.listDiagnosticRuns(learnerId, { status: 'completed' })).toEqual([
+        { ...created, status: 'completed', completedAt: later, summary: { known: ['vectors'] } },
+      ]);
+    });
+
+    it('deduplicates grants per run and concept and guards updates by owner and state', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      const { id: runId } = await store.insertDiagnosticRun(learnerId, {
+        courseId: 'maths',
+        kind: 'placement',
+        status: 'completed',
+        state: { courseId: 'maths' },
+        startedAt: date,
+        completedAt: date,
+        summary: {},
+      });
+      const evidence = attempt(1);
+      await store.insertAttempt(learnerId, evidence);
+      const grant: NewRow<PlacementGrant> = {
+        runId,
+        conceptId: 'vectors',
+        origin: 'direct',
+        state: 'conditional',
+        reason: 'slow',
+        evidenceAttemptIds: [evidence.id],
+        createdAt: date,
+        updatedAt: date,
+        confirmedAt: null,
+        confirmedByAttemptId: null,
+        withdrawnAt: null,
+        withdrawnByAttemptId: null,
+      };
+      await store.insertPlacementGrantsOnce(learnerId, [
+        grant,
+        { ...grant, conceptId: 'scalars', reason: 'inferred_only' },
+      ]);
+      await store.insertPlacementGrantsOnce(learnerId, [{ ...grant, reason: 'on_time' }]);
+      const [saved] = await store.listPlacementGrants(learnerId, {
+        excludeReasons: ['inferred_only'],
+      });
+      expect(saved).toEqual({ ...grant, id: expect.any(String) });
+      expect(await store.listPlacementGrants(otherLearnerId)).toEqual([]);
+      await store.patchPlacementGrants(otherLearnerId, { ids: [saved.id] }, { state: 'withdrawn' });
+      await store.patchPlacementGrants(
+        learnerId,
+        { ids: [saved.id], ifState: 'confirmed' },
+        { state: 'withdrawn' },
+      );
+      expect(
+        await store.listPlacementGrants(learnerId, {
+          conceptIds: ['vectors'],
+          state: 'conditional',
+        }),
+      ).toEqual([saved]);
+      await store.patchPlacementGrants(
+        learnerId,
+        { conceptId: 'vectors', ifState: 'conditional' },
+        {
+          state: 'confirmed',
+          reason: 'confirmed_by_answer',
+          confirmedAt: later,
+          confirmedByAttemptId: evidence.id,
+        },
+      );
+      expect(await store.listPlacementGrants(learnerId, { state: 'confirmed' })).toEqual([
+        {
+          ...saved,
+          state: 'confirmed',
+          reason: 'confirmed_by_answer',
+          confirmedAt: later,
+          confirmedByAttemptId: evidence.id,
+        },
+      ]);
+    });
+
+    it('locks, suspends and patches owned cards and reads review logs by attempt lineage', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      const card = await store.insertReviewCard(learnerId, cardFor('vectors'));
+      const otherCard = await store.insertReviewCard(otherLearnerId, cardFor('vectors'));
+      const session = await store.insertSession(learnerId, sessionRow(date));
+      const [{ id: activityId }] = await store.insertActivities(learnerId, session.id, [
+        activityRow(0),
+      ]);
+      const evidence = attempt(1, { activityId, sessionId: session.id });
+      await store.insertAttempt(learnerId, evidence);
+      const { card: next, log } = scheduleReview(card.fsrs, date, Rating.Good, 'UTC', false);
+      const entry = {
+        rating: Rating.Good,
+        fsrsLog: { ...log, effectiveDueAt: next.due },
+        speed: 1.25,
+        rawDueAt: next.due,
+        createdAt: date,
+      };
+      await store.transaction(async (tx) => {
+        expect(await tx.getReviewCard(learnerId, 'vectors', 'math', { forUpdate: true })).toEqual(
+          card,
+        );
+        await tx.setReviewCardSuspension(learnerId, ['vectors'], date);
+        await tx.setReviewCardSuspension(learnerId, ['vectors'], later);
+        expect(
+          await tx.recordReview(learnerId, 'vectors', 'math', () => {
+            throw new Error('Suspended card');
+          }),
+        ).toBe(false);
+        expect(await tx.getReviewCard(learnerId, 'vectors', 'math')).toMatchObject({
+          suspendedAt: date,
+        });
+        await tx.patchReviewCard(learnerId, card.id, {
+          dueAt: next.due,
+          fsrs: next,
+          reps: next.reps,
+        });
+        await tx.appendReviewLog(learnerId, card.id, { ...entry, attemptId: evidence.id });
+      });
+      await store.appendReviewLog(learnerId, card.id, { ...entry, createdAt: later });
+      await expect(store.appendReviewLog(otherLearnerId, card.id, entry)).rejects.toThrow();
+      await store.patchReviewCard(otherLearnerId, card.id, { dueAt: date });
+      expect(await store.getReviewCard(otherLearnerId, 'vectors', 'math')).toEqual(otherCard);
+      const linkedLog = {
+        ...entry,
+        id: expect.any(String),
+        cardId: card.id,
+        conceptId: 'vectors',
+        attemptId: evidence.id,
+      };
+      expect(await store.listReviewLogs(learnerId, { activityId })).toEqual([linkedLog]);
+      expect(await store.listReviewLogs(learnerId, { cardIds: [card.id], since: date })).toEqual([
+        { ...linkedLog, attemptId: null, createdAt: later },
+        linkedLog,
+      ]);
+      expect(
+        await store.listReviewLogs(learnerId, { cardIds: [card.id], since: later }),
+      ).toHaveLength(1);
+      expect(await store.listReviewLogs(otherLearnerId, { cardIds: [card.id] })).toEqual([]);
+      await store.setReviewCardSuspension(learnerId, ['vectors'], null);
+      expect(await store.getReviewCard(learnerId, 'vectors', 'math')).toMatchObject({
+        dueAt: next.due,
+        suspendedAt: null,
+      });
+    });
+
     it('owns and edits runs and their problems, with conflict and position guards', async () => {
       const { store, learnerId, otherLearnerId } = await makeStore();
       const run = await store.insertLessonRunIfAbsent(learnerId, lessonRun('vectors'));
