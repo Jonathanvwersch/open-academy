@@ -166,15 +166,6 @@ export function LessonRunner({
     state && currentPointIndex >= 0
       ? `${title} · step ${currentPointIndex + 1} of ${state.points.length}`
       : title;
-  const tutorContextProblem = practiceMode
-    ? practiceProblem
-    : viewingPastStep
-      ? undefined
-      : contextProblem;
-  const tutorContextQuestionLabel = tutorContextProblem
-    ? problemLabel(tutorContextProblem)
-    : undefined;
-  const tutorContextPointId = viewingPastStep ? viewingPointId : state?.currentPointId;
   const tutorLessonStage = viewingPastStep
     ? 'step'
     : (viewingStage ??
@@ -185,6 +176,23 @@ export function LessonRunner({
           : finalAnswered || state?.status === 'completed'
             ? 'quiz'
             : 'explain'));
+  const tutorContextProblem =
+    tutorLessonStage === 'step'
+      ? practiceMode
+        ? practiceProblem
+        : viewingPastStep
+          ? undefined
+          : contextProblem
+      : undefined;
+  const tutorContextQuestionLabel = tutorContextProblem
+    ? problemLabel(tutorContextProblem)
+    : undefined;
+  const tutorContextPointId =
+    tutorLessonStage === 'step'
+      ? viewingPastStep
+        ? viewingPointId
+        : state?.currentPointId
+      : undefined;
   const tutorStageExerciseId =
     tutorLessonStage === 'explain'
       ? lesson?.final
