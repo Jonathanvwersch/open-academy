@@ -70,6 +70,7 @@ import {
   xpEvents,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
+import { quizOffer } from '../quizzes/offer.js';
 import {
   buildCoursePayload,
   courseQueueStatus,
@@ -446,7 +447,7 @@ export function registerLearnCourseRoutes(
         : null;
     const activities: Array<ActivityRecord | PlannedActivity> = activeSessionId
       ? activeActivities
-      : plannedActivities(await loadSchedulerState(), index, prefs, timeZone, now);
+      : await plannedActivities(repo, await loadSchedulerState(), index, prefs, timeZone, now);
 
     const tasks = activities.map((activity, taskIndex) => {
       const conceptId = activity.conceptId;
@@ -1319,19 +1320,21 @@ async function completePayloadCourses(
   await repo.completeCourses(newlyCompleted, completedAt);
 }
 
-function plannedActivities(
+async function plannedActivities(
+  repo: LearnerRepository,
   state: Awaited<ReturnType<LearnerRepository['schedulerState']>>,
   index: ContentIndex,
   preferences: unknown,
   timeZone: string,
   now: Date,
-): PlannedActivity[] {
+): Promise<PlannedActivity[]> {
   const prefs = (preferences ?? {}) as SessionPreferences;
   const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(now);
   const kind: SessionKind =
     weekday === 'Sat' ? 'saturday' : weekday === 'Sun' ? 'sunday' : 'weekday';
+  const { plannedMinutes } = await quizOffer(repo, index, now, state.activeCourseId);
   return planSession(
-    state,
+    { ...state, pendingQuiz: plannedMinutes === undefined ? undefined : { plannedMinutes } },
     index,
     now,
     sessionBudget(kind, prefs, localDateKey(now, timeZone)),

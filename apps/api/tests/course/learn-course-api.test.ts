@@ -1369,6 +1369,47 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
   expect(await rowCounts()).toEqual(before);
 });
 
+test('Home previews the same quiz-first activities as a new session', async () => {
+  const quizContent = await loadContent('content');
+  const quizApp = createApp({ db, content: quizContent, tutorProvider: null });
+  const now = '2026-01-14T12:00:00.000Z';
+  await db
+    .update(users)
+    .set({ activeCourseId: 'ml-foundations', prefs: { scheduleMinutes: 35 } })
+    .where(eq(users.id, userId));
+  await db.insert(lessonRuns).values(
+    quizContent.lessons.map(({ concept }) => ({
+      userId,
+      conceptId: concept,
+      status: 'completed' as const,
+      completedAt: new Date(now),
+    })),
+  );
+  await new LearnerRepository(db, userId).completeCourses(
+    quizContent.courses.map(({ id }) => id),
+    new Date(now),
+  );
+  await db.insert(xpEvents).values({
+    userId,
+    amount: 150,
+    kind: 'knowledge_point',
+    sourceKey: 'test:home-quiz',
+    earnedAt: new Date(now),
+    localDate: '2026-01-14',
+  });
+  const headers = { 'X-Now': now, 'Content-Type': 'application/json' };
+  const home = await quizApp.request('/api/learn', { headers });
+  expect(home.status).toBe(200);
+  const session = await quizApp.request('/api/sessions', { method: 'POST', headers, body: '{}' });
+  expect(session.status).toBe(201);
+  const { activities } = await session.json();
+  expect(activities[0].kind).toBe('mixed_quiz');
+  const { tasks } = await home.json();
+  expect(tasks.map(({ activityKind }: { activityKind: string }) => activityKind)).toEqual(
+    activities.map(({ kind }: { kind: string }) => kind),
+  );
+});
+
 test('session creation matches the local-day preview kind and activities', async () => {
   for (const [now, expectedKind] of [
     ['2026-11-14T12:00:00.000Z', 'saturday'],
