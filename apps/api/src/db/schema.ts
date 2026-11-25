@@ -647,6 +647,9 @@ export const tutorMessages = pgTable(
   },
   (table) => [
     uniqueIndex('tutor_messages_thread_client_unique').on(table.threadId, table.clientId),
+    index('tutor_messages_problem_assistant_idx')
+      .on(table.userId, table.lessonProblemId)
+      .where(sql`${table.role} = 'assistant' and ${table.lessonProblemId} is not null`),
   ],
 );
 

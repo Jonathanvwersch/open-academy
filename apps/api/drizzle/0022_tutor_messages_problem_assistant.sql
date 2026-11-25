@@ -1,0 +1,1 @@
+CREATE INDEX "tutor_messages_problem_assistant_idx" ON "tutor_messages" USING btree ("user_id","lesson_problem_id") WHERE "tutor_messages"."role" = 'assistant' and "tutor_messages"."lesson_problem_id" is not null;

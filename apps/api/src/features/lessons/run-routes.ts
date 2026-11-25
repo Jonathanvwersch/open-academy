@@ -36,7 +36,7 @@ import {
 } from '@academy/aesop/memory/mastery-service';
 import { conditionalPrerequisites } from '@academy/aesop/placement/grants';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
-import { and, desc, eq, getTableColumns, inArray, isNull, like } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, inArray, isNull, like, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
@@ -873,7 +873,7 @@ export function registerLessonRunRoutes(
           and(
             eq(tutorMessages.userId, userId),
             eq(tutorMessages.lessonProblemId, joined.problem.id),
-            eq(tutorMessages.role, 'assistant'),
+            sql`${tutorMessages.role} = 'assistant'`,
           ),
         )
         .limit(1);

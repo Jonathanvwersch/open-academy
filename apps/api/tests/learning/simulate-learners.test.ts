@@ -1,6 +1,8 @@
 import { newReviewCard, scheduleReview } from '@academy/aesop/memory/fsrs';
 import { implicitRepetition } from '@academy/aesop/memory/implicit-repetition';
+import { ensureReviewCard } from '@academy/aesop/memory/mastery-service';
 import type { SchedulerState } from '@academy/aesop/planner/scheduler';
+import { eq } from 'drizzle-orm';
 import { type Card, Rating, State } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';
 import {
@@ -33,6 +35,7 @@ import {
   p18PlanCoversTopic,
   p19HasEarlyReviewViolation,
   p28ExpectedDue,
+  p28ExpectedInitialDue,
   p28Speed,
   planUsageMinutes,
   renderMarkdownReport,
@@ -50,6 +53,8 @@ import {
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
+import { drizzleLearnerStore } from '../../src/db/learner-store.js';
+import { reviewLogs, users } from '../../src/db/schema.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const invariants: InvariantId[] = [
@@ -95,6 +100,41 @@ test('P28 independently computes the speed, local floor and cap', () => {
   expect(p28ExpectedDue(new Date(+start + 55 * 86_400_000), start, 'UTC', 1.55)).toBe(
     +start + 60 * 86_400_000,
   );
+});
+
+test('P28 checks the scaled first schedule of a card with no review log', async () => {
+  const now = new Date('2026-01-01T12:00:00.000Z');
+  const [learner] = await db.insert(users).values({ displayName: 'P28 initial card' }).returning();
+  const store = drizzleLearnerStore(db);
+  const conceptId = 'vectors';
+  try {
+    for (let i = 0; i < 3; i += 1)
+      await store.addTopicSpeedAnswer(learner.id, conceptId, true, now);
+    await ensureReviewCard(store, {
+      learnerId: learner.id,
+      conceptId,
+      dimension: 'math',
+      correct: 1,
+      hintsUsed: 0,
+      attemptNo: 1,
+      now,
+      timeZone: 'UTC',
+      enableFuzz: false,
+    });
+    const card = await store.getReviewCard(learner.id, conceptId, 'math');
+    if (!card) throw new Error('Expected the initial review card');
+    expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id))).toHaveLength(
+      0,
+    );
+    const speed = p28Speed({ successes: 2.44, trials: 2.44, answers: 3 });
+    const expected = p28ExpectedInitialDue(card.fsrs, now, 'UTC', speed);
+    expect(expected).toBeGreaterThan(
+      +scheduleReview(newReviewCard(now), now, Rating.Good, 'UTC', false).card.due,
+    );
+    expect(+card.dueAt).toBe(expected);
+  } finally {
+    await db.delete(users).where(eq(users.id, learner.id));
+  }
 });
 
 test('P24 distinguishes a missed in-window opportunity from a legitimate late offer', () => {
@@ -1141,6 +1181,8 @@ test('overplaced learner loses conditional placement credit without P20-P23 viol
     expect(overplaced?.violationCounts[invariant]).toBe(0);
     expect(overplaced?.checkedCounts[invariant]).toBeGreaterThan(0);
   }
+  expect(overplaced?.violationCounts.P28).toBe(0);
+  expect(overplaced?.p28.initialSchedulesChecked).toBeGreaterThan(0);
 }, 300_000);
 
 test('P19 audits mixed-review topics in selection order, not exercise order', () => {

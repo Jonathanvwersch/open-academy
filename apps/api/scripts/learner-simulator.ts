@@ -46,9 +46,9 @@ import {
 import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
 import type { QuizPayload } from '@academy/contracts/quizzes';
 import type { SessionActivity, SessionPayload, TodayPayload } from '@academy/contracts/sessions';
-import { and, asc, desc, eq, exists, inArray, notInArray } from 'drizzle-orm';
+import { and, asc, desc, eq, exists, inArray, notInArray, sql } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
-import { Rating, State } from 'ts-fsrs';
+import { createEmptyCard, fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
 import { createApp } from '../src/app.js';
 import type { Database } from '../src/db/client.js';
 import { LearnerRepository } from '../src/db/repository.js';
@@ -423,6 +423,7 @@ export interface ProfileSimulationReport {
   p11AmbiguousEvents: number;
   p28: {
     successfulReviewsChecked: number;
+    initialSchedulesChecked: number;
     positiveTargetsChecked: number;
     slowTargetsGated: number;
     topicsBelowOne: number;
@@ -3934,10 +3935,36 @@ export function p28ExpectedDue(rawDue: Date, now: Date, timeZone: string, speed:
   );
 }
 
+const p28InitialFsrs = fsrs(
+  generatorParameters({
+    request_retention: 0.9,
+    maximum_interval: 60,
+    enable_short_term: false,
+    enable_fuzz: process.env.NODE_ENV !== 'test',
+  }),
+);
+
+export function p28ExpectedInitialDue(
+  actual: Pick<Card, 'stability' | 'difficulty'>,
+  now: Date,
+  timeZone: string,
+  speed: number,
+): number | undefined {
+  // Initial ratings have distinct stability and difficulty, independent of interval scaling.
+  for (const rating of [Rating.Again, Rating.Hard, Rating.Good]) {
+    const { card } = p28InitialFsrs.next(createEmptyCard(now), now, rating);
+    if (card.stability === actual.stability && card.difficulty === actual.difficulty) {
+      return rating === Rating.Again ? undefined : p28ExpectedDue(card.due, now, timeZone, speed);
+    }
+  }
+  return NaN;
+}
+
 class P28Audit {
   private readonly evidence = new Map<string, P28Evidence>();
   private readonly attemptsSeen = new Set<string>();
   private readonly logsSeen = new Set<string>();
+  private readonly initialCardsSeen = new Set<string>();
 
   speed(conceptId: string) {
     return p28Speed(this.evidence.get(conceptId));
@@ -3956,7 +3983,7 @@ class P28Audit {
     day: number,
     trace: readonly ImplicitRepetitionTraceEvent[],
   ) {
-    const [newAttempts, logs] = await Promise.all([
+    const [newAttempts, logs, firstCards] = await Promise.all([
       db
         .select({
           id: attempts.id,
@@ -3975,7 +4002,7 @@ class P28Audit {
                 and(
                   eq(lessonProblems.attemptId, attempts.id),
                   eq(tutorMessages.userId, userId),
-                  eq(tutorMessages.role, 'assistant'),
+                  sql`${tutorMessages.role} = 'assistant'`,
                 ),
               ),
           ),
@@ -3987,6 +4014,7 @@ class P28Audit {
       db
         .select({
           id: reviewLogs.id,
+          cardId: reviewLogs.cardId,
           rating: reviewLogs.rating,
           speed: reviewLogs.speed,
           rawDueAt: reviewLogs.rawDueAt,
@@ -3998,6 +4026,17 @@ class P28Audit {
         .from(reviewLogs)
         .innerJoin(reviewCards, eq(reviewCards.id, reviewLogs.cardId))
         .where(and(eq(reviewCards.userId, userId), eq(reviewLogs.createdAt, now)))
+        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension)),
+      db
+        .select()
+        .from(reviewCards)
+        .where(
+          and(
+            eq(reviewCards.userId, userId),
+            eq(reviewCards.lastReviewAt, now),
+            eq(reviewCards.reps, 1),
+          ),
+        )
         .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension)),
     ]);
     for (const attempt of newAttempts) {
@@ -4046,6 +4085,30 @@ class P28Audit {
         addViolation(runtime, day, 'P28', `${log.conceptId}/${log.dimension}`, [], {
           conceptId: log.conceptId,
           details: `P28(a) at ${now.toISOString()}: speed ${log.speed}, expected ${speed}; raw ${log.rawDueAt?.toISOString()}, effective ${effective}, card due ${+log.cardDueAt}, expected ${expected}`,
+        });
+      }
+    }
+    const cardsWithLogs = new Set(logs.map((log) => log.cardId));
+    for (const card of firstCards) {
+      if (this.initialCardsSeen.has(card.id)) continue;
+      this.initialCardsSeen.add(card.id);
+      if (cardsWithLogs.has(card.id)) continue;
+      const actual = card.fsrs as Card;
+      const speed = this.speed(card.conceptId);
+      const expected = p28ExpectedInitialDue(actual, now, timeZone, speed);
+      if (expected === undefined) continue;
+      runtime.report.p28.initialSchedulesChecked += 1;
+      markChecked(runtime, 'P28');
+      const fsrsDue = +new Date(actual.due);
+      if (
+        !Number.isFinite(expected) ||
+        !Number.isFinite(fsrsDue) ||
+        Math.abs(expected - +card.dueAt) > 1000 ||
+        Math.abs(expected - fsrsDue) > 1000
+      ) {
+        addViolation(runtime, day, 'P28', `${card.conceptId}/${card.dimension}`, [], {
+          conceptId: card.conceptId,
+          details: `P28(a) initial schedule at ${now.toISOString()}: speed ${speed}; card due ${card.dueAt.toISOString()}, expected ${expected}`,
         });
       }
     }
@@ -5320,6 +5383,7 @@ async function simulateProfile(
     p11AmbiguousEvents: 0,
     p28: {
       successfulReviewsChecked: 0,
+      initialSchedulesChecked: 0,
       positiveTargetsChecked: 0,
       slowTargetsGated: 0,
       topicsBelowOne: 0,
@@ -5395,6 +5459,7 @@ async function simulateProfile(
         (path === '/attempts' ||
           /^\/sessions\/[^/]+\/activities\/[^/]+\/progress$/.test(path) ||
           /^\/placement\/[^/]+\/answer$/.test(path) ||
+          path === '/placement' ||
           /^\/lessons\/[^/]+\/(run\/answer|quiz\/submit)$/.test(path) ||
           /^\/quizzes\/[^/]+\/finalize$/.test(path)))
     ) {
@@ -6275,7 +6340,7 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
     const remediation = profile.remediation;
     const speed = profile.p28;
     lines.push(
-      `P28: ${speed.successfulReviewsChecked} successful reviews checked; ${speed.positiveTargetsChecked} positive FIRe targets checked; ${speed.slowTargetsGated} gated. Final learner-topic speeds: ${speed.topicsBelowOne} below 1, ${speed.topicsAboveOne} above 1.`,
+      `P28: ${speed.successfulReviewsChecked} logged successful reviews checked; ${speed.initialSchedulesChecked} unlogged initial schedules checked; ${speed.positiveTargetsChecked} positive FIRe targets checked; ${speed.slowTargetsGated} gated. Final learner-topic speeds: ${speed.topicsBelowOne} below 1, ${speed.topicsAboveOne} above 1.`,
     );
     const flagList =
       remediation.flagsOpened

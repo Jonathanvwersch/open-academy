@@ -155,6 +155,13 @@
       "when": 1795614390019,
       "tag": "0021_topic_speed",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795619244902,
+      "tag": "0022_tutor_messages_problem_assistant",
+      "breakpoints": true
     }
   ]
 }
