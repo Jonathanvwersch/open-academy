@@ -5,6 +5,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -80,7 +81,7 @@ describe('academy CLI', () => {
     expect(noArguments.stdout).toBe(rootHelp.stdout);
     const helpLines = rootHelp.stdout.trim().split('\n');
     expect(helpLines[0]).toBe('Usage:');
-    expect(helpLines.slice(1)).toHaveLength(9);
+    expect(helpLines.slice(1)).toHaveLength(10);
     expect(helpLines.slice(1).every((line) => line.startsWith('  '))).toBe(true);
     expect(rootHelp.stdout).toContain('--pack');
     expect(rootHelp.stdout).toContain('--requires');
@@ -90,6 +91,227 @@ describe('academy CLI', () => {
     expect(run(['new', 'topic', '--help']).stdout).toContain('academy new topic');
     expect(run(['prereqs', '--help']).stdout).toContain('academy prereqs <topic-id>');
     expect(run(['sources', 'add', '--help']).stdout).toContain('academy sources add');
+    expect(run(['weights', 'verify', '--help']).stdout.trim()).toBe(
+      'academy weights verify <uses.yaml> [--pack <dir>]',
+    );
+  });
+
+  it('verifies encompassing weights against every eligible question and prerequisite step', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      cpSync(join(root, 'tests/fixtures/content'), pack, { recursive: true });
+
+      const gradientLessonPath = join(pack, 'lessons/gradient-descent.yaml');
+      const gradientLesson = parse(readFileSync(gradientLessonPath, 'utf8')) as {
+        knowledge_points: Array<{ id: string; key_prereqs?: string[] }>;
+      };
+      gradientLesson.knowledge_points[0].key_prereqs = ['derivatives', 'gradients'];
+      gradientLesson.knowledge_points[1].key_prereqs = ['derivatives'];
+      writeFileSync(gradientLessonPath, stringify(gradientLesson));
+
+      const gradientExercises = parse(
+        readFileSync(join(pack, 'exercises/gradient-descent.yaml'), 'utf8'),
+      ) as { exercises: Array<{ id: string }> };
+      const review = gradientExercises.exercises.find(
+        ({ id }) => id === 'gradient-descent-fixture-review',
+      );
+      writeFileSync(
+        join(pack, 'exercises/additional-questions.yaml'),
+        stringify({
+          concept: 'gradient-descent',
+          exercises: [
+            { ...review, id: 'additional-review' },
+            {
+              ...review,
+              id: 'additional-recall',
+              role: 'recall',
+              knowledge_point: gradientLesson.knowledge_points[0].id,
+            },
+          ],
+        }),
+      );
+
+      const exerciseIds = new Map<string, string[]>();
+      for (const file of readdirSync(join(pack, 'exercises'))) {
+        const { concept, exercises } = parse(
+          readFileSync(join(pack, 'exercises', file), 'utf8'),
+        ) as { concept: string; exercises: Array<{ id: string; role: string }> };
+        exerciseIds.set(concept, [
+          ...(exerciseIds.get(concept) ?? []),
+          ...exercises.filter(({ role }) => role !== 'recall').map(({ id }) => id),
+        ]);
+      }
+
+      type Entry = {
+        weight: number;
+        exercises: number;
+        steps: number;
+        uses: Record<string, string[]>;
+      };
+      const uses: Record<string, Record<string, Entry>> = {};
+      for (const [concept, prerequisite] of [
+        ['derivatives', 'vectors'],
+        ['gradients', 'derivatives'],
+        ['linear-algebra', 'vectors'],
+        ['linear-models', 'vectors'],
+        ['loss-functions', 'linear-models'],
+        ['gradient-descent', 'gradients'],
+        ['gradient-descent', 'loss-functions'],
+        ['gradient-descent', 'derivatives'],
+      ]) {
+        const ids = exerciseIds.get(concept) ?? [];
+        uses[concept] ??= {};
+        uses[concept][prerequisite] = {
+          weight: 0,
+          exercises: ids.length,
+          steps: 2,
+          uses: Object.fromEntries(ids.map((id) => [id, []])),
+        };
+      }
+      const edge = uses['gradient-descent'].derivatives;
+      expect(edge.exercises).toBe(16);
+      edge.uses['additional-review'] = ['derivatives-fixture-1', 'derivatives-fixture-2'];
+      edge.uses['dx-gradient-descent'] = ['derivatives-fixture-1', 'derivatives-fixture-2'];
+      edge.weight = 0.13;
+
+      for (const domain of ['math', 'ml']) {
+        const file = join(pack, 'concepts', `${domain}.yaml`);
+        const data = parse(readFileSync(file, 'utf8')) as {
+          concepts: Array<{
+            id: string;
+            encompassings?: Array<{ id: string; weight: number }>;
+          }>;
+        };
+        for (const concept of data.concepts) {
+          concept.encompassings = Object.entries(uses[concept.id] ?? {}).map(
+            ([id, { weight }]) => ({
+              id,
+              weight,
+            }),
+          );
+        }
+        writeFileSync(file, stringify(data));
+      }
+
+      function verify(data: typeof uses) {
+        writeFileSync(join(parent, 'uses.yaml'), stringify(data));
+        return runWithInitCwd(['weights', 'verify', 'uses.yaml', '--pack', 'pack'], parent);
+      }
+
+      const verified = verify(uses);
+      expect(verified.status, verified.stderr).toBe(0);
+      expect(verified.stdout).toContain('Verified 8 encompassing weights.');
+
+      function expectInvalid(change: (data: typeof uses, entry: Entry) => void, message: string) {
+        const data = structuredClone(uses);
+        change(data, data['gradient-descent'].derivatives);
+        const result = verify(data);
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain(message);
+      }
+      expectInvalid((data) => {
+        delete data['gradient-descent'].derivatives;
+      }, 'gradient-descent -> derivatives: missing edge in uses');
+      expectInvalid((_, entry) => {
+        entry.uses['additional-recall'] = [];
+      }, 'unexpected exercise id "additional-recall"');
+      expectInvalid((_, entry) => {
+        delete entry.uses['dx-gradient-descent'];
+      }, 'missing uses for dx-gradient-descent');
+      expectInvalid((_, entry) => {
+        entry.uses['additional-review'] = ['gradients-fixture-1'];
+      }, 'unknown prerequisite step "gradients-fixture-1"');
+      expectInvalid((_, entry) => {
+        entry.uses['additional-review'] = ['derivatives-fixture-1', 'derivatives-fixture-1'];
+      }, 'duplicate step "derivatives-fixture-1"');
+      expectInvalid((_, entry) => {
+        entry.steps = 1;
+      }, 'expected 16 exercises and 2 steps');
+      expectInvalid((_, entry) => {
+        entry.weight = 0.12;
+      }, 'expected weight 0.13 from uses');
+      expectInvalid((_, entry) => {
+        entry.uses['additional-review'] = [];
+        entry.weight = 0.06;
+      }, 'expected encompassing weight 0.06 in concept file');
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('makes uses optional for planned topics but verifies any supplied entries', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      const initialized = run(['init', pack, '--title', 'Applied Science']);
+      expect(initialized.status, initialized.stderr).toBe(0);
+      const planned = run([
+        'new',
+        'topic',
+        'second-topic',
+        '--title',
+        'Second topic',
+        '--requires',
+        'applied-science-first-topic',
+        '--pack',
+        pack,
+      ]);
+      expect(planned.status, planned.stderr).toBe(0);
+
+      function verify(data: unknown) {
+        writeFileSync(join(parent, 'uses.yaml'), stringify(data));
+        return runWithInitCwd(['weights', 'verify', 'uses.yaml', '--pack', 'pack'], parent);
+      }
+
+      const prerequisite = 'applied-science-first-topic';
+      const entry = { weight: 0, exercises: 0, steps: 0, uses: {} };
+      const omitted = verify({});
+      expect(omitted.status, omitted.stderr).toBe(0);
+      expect(omitted.stdout).toContain('Verified 0 encompassing weights.');
+      const supplied = { 'second-topic': { [prerequisite]: entry } };
+      const missing = verify(supplied);
+      expect(missing.status).toBe(1);
+      expect(missing.stderr).toContain('missing encompassing in concept file');
+
+      for (const [data, message] of [
+        [{ 'missing-topic': { [prerequisite]: entry } }, 'Unknown concept "missing-topic"'],
+        [{ 'second-topic': { 'missing-prereq': entry } }, 'unexpected edge in uses'],
+        [{ [prerequisite]: { 'second-topic': entry } }, 'unexpected edge in uses'],
+        [
+          { 'second-topic': { [prerequisite]: { ...entry, uses: { 'missing-exercise': [] } } } },
+          'unexpected exercise id "missing-exercise"',
+        ],
+        [
+          { 'second-topic': { [prerequisite]: { ...entry, weight: 0.5 } } },
+          'expected weight 0.00 from uses',
+        ],
+      ] as const) {
+        const result = verify(data);
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain(message);
+      }
+
+      const file = join(pack, 'concepts/main.yaml');
+      const data = parse(readFileSync(file, 'utf8')) as {
+        concepts: Array<{ id: string; encompassings?: Array<{ id: string; weight: number }> }>;
+      };
+      const topic = data.concepts.find(({ id }) => id === 'second-topic');
+      if (!topic) throw new Error('Missing planned topic');
+      topic.encompassings = [{ id: prerequisite, weight: 0.5 }];
+      writeFileSync(file, stringify(data));
+      const mismatch = verify(supplied);
+      expect(mismatch.status).toBe(1);
+      expect(mismatch.stderr).toContain('expected encompassing weight 0.00 in concept file');
+
+      topic.encompassings = [{ id: prerequisite, weight: 0 }];
+      writeFileSync(file, stringify(data));
+      const match = verify(supplied);
+      expect(match.status, match.stderr).toBe(0);
+      expect(match.stdout).toContain('Verified 1 encompassing weight.');
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
   });
 
   it('prints hard prerequisite lessons first and keeps soft links untaught', () => {
@@ -288,16 +510,19 @@ describe('academy CLI', () => {
         '.agents/skills/write-lesson/reference/CONTENT_FORMAT.md',
         '.agents/skills/write-lesson/reference/lesson-standard.md',
         '.agents/skills/write-questions/SKILL.md',
+        '.agents/skills/set-weights/SKILL.md',
       ];
       const agents = readFileSync(join(pack, 'AGENTS.md'), 'utf8');
       expect(agents).toContain(`CONTENT_DIR=. pnpm --dir "${root}" academy check`);
       expect(agents).not.toContain('{{ACADEMY}}');
+      expect(agents).toContain('.agents/skills/set-weights/SKILL.md');
       const readme = readFileSync(join(pack, 'README.md'), 'utf8');
       expect(readme).toContain(`CONTENT_DIR=. pnpm --dir "${root}" academy check`);
       for (const file of templateFiles) expect(existsSync(join(pack, file))).toBe(true);
       const transformedFiles = [
         '.agents/skills/write-lesson/SKILL.md',
         '.agents/skills/write-questions/SKILL.md',
+        '.agents/skills/set-weights/SKILL.md',
         '.agents/skills/write-lesson/reference/CONTENT_FORMAT.md',
         '.agents/skills/write-lesson/reference/lesson-standard.md',
       ];
@@ -310,6 +535,16 @@ describe('academy CLI', () => {
       );
       expect(packWriteLesson).toContain('academy prereqs <concept-id>');
       expect(packWriteLesson).not.toContain('pnpm academy prereqs');
+      const packWriteQuestions = readFileSync(
+        join(pack, '.agents/skills/write-questions/SKILL.md'),
+        'utf8',
+      );
+      expect(packWriteQuestions).toContain('../set-weights/SKILL.md');
+      const packSetWeights = readFileSync(
+        join(pack, '.agents/skills/set-weights/SKILL.md'),
+        'utf8',
+      );
+      expect(packSetWeights).toContain('academy weights verify <uses.yaml> --pack <dir>');
       const yamlTemplateCopies = [
         ['content/lessons/gradient-descent.yaml', templateFiles[3]],
         ['content/exercises/gradient-descent.yaml', templateFiles[4]],

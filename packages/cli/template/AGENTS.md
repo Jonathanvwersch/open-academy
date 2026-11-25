@@ -14,6 +14,7 @@ Rules:
 - Plan the graph before writing lessons: `.agents/skills/plan-course/SKILL.md`.
 - Write every lesson with `.agents/skills/write-lesson/SKILL.md`.
 - Write and check every question with `.agents/skills/write-questions/SKILL.md`.
+- After a topic's questions are done, use `.agents/skills/set-weights/SKILL.md` to set its encompassing weights and have a separate agent check them before the course ships.
 - When the pack has sources, write from them with `.agents/skills/write-from-sources/SKILL.md` and cite them.
 - Run `academy check` after every change and fix every issue it reports before you stop.
 - Running the CLI: `academy` means `CONTENT_DIR=. pnpm --dir "{{ACADEMY}}" academy`; run it from this folder, for example `CONTENT_DIR=. pnpm --dir "{{ACADEMY}}" academy check`.

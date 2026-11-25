@@ -98,6 +98,7 @@ Keep concept-pool questions within what the output lists or the lesson teaches. 
 3. For each MC question, confirm exactly one option is correct and each wrong one has its own feedback.
 4. Check the step's mix: at least five questions, difficulties 1 to 3, and at least two angles per idea (§3), plus three recall questions (§6).
 5. Run `pnpm content:check`, `pnpm exec vitest run apps/api/tests/content/` and `pnpm check`.
+6. Once the topic's questions are done, follow `../set-weights/SKILL.md` to work out its encompassing weights and have a separate agent check them before you record them.
 
 ## 10. Reviewing existing questions
 
