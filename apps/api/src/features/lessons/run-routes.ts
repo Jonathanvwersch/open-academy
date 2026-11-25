@@ -1593,11 +1593,9 @@ export function registerLessonRunRoutes(
       const attachedActivityId =
         body.data.activityId ?? quizAnswerAttempts.find((answer) => answer.activityId)?.activityId;
       if (attachedActivityId) {
-        const [activityRow] = await tx
-          .select()
-          .from(sessionActivities)
-          .where(eq(sessionActivities.id, attachedActivityId))
-          .limit(1);
+        const [activityRow] = await drizzleLearnerStore(tx).listActivities(userId, {
+          ids: [attachedActivityId],
+        });
         const repo = new LearnerRepository(tx as unknown as Database, userId);
         const session = activityRow ? await repo.session(activityRow.sessionId) : undefined;
         const sessionActivity = session?.activities.find((item) => item.id === attachedActivityId);
@@ -1607,6 +1605,7 @@ export function registerLessonRunRoutes(
           session
         ) {
           await updateActivityAndAdvance(tx as unknown as Database, {
+            userId,
             activityId: sessionActivity.id,
             completed: true,
             now,

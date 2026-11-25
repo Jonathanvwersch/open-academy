@@ -1,25 +1,27 @@
 import type { Dimension } from '../course/schemas.js';
+import { startOfNextCalendarDay } from '../memory/fsrs.js';
 import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY, type TopicSpeedEvidence } from '../memory/speed.js';
 import type { MasteryRecord } from '../memory/types.js';
-import type {
-  Attempt,
-  AttemptQuery,
-  CoreStore,
-  Enrollment,
-  Settings,
-  XpEvent,
-} from './core-store.js';
+import type { Attempt, AttemptQuery, Enrollment, Settings, XpEvent } from './core-store.js';
 import type {
   MasteryEventRecord,
   OpenRemediationFlag,
   ReviewLogRecord,
   StoredReviewCard,
 } from './learner-store.js';
+import type {
+  Activity,
+  ActivityQuery,
+  RemediationFlag,
+  SchedulerFacts,
+  Session,
+  SessionStore,
+} from './session-store.js';
 
-export type MemoryLearnerStore = CoreStore & {
+export type MemoryLearnerStore = SessionStore & {
   addRemediationFlag(
     learnerId: string,
-    flag: { conceptId: string; targetPrereqId: string | null },
+    flag: { conceptId: string; targetPrereqId: string | null; createdAt?: Date },
   ): OpenRemediationFlag;
   resolveRemediationFlag(learnerId: string, id: string): void;
 };
@@ -30,10 +32,12 @@ type LearnerState = {
   events: MasteryEventRecord[];
   cards: Map<string, StoredReviewCard>;
   reviewLogs: Array<ReviewLogRecord & { cardId: string }>;
-  flags: Map<string, OpenRemediationFlag>;
+  flags: Map<string, RemediationFlag>;
   attempts: Attempt[];
   xpEvents: Map<string, XpEvent>;
   enrollments: Map<string, Enrollment>;
+  sessions: Map<string, Session>;
+  activities: Map<string, Activity>;
 };
 
 type Hint = { exerciseId: string; activityId: string | null; createdAt: Date; level: number };
@@ -41,18 +45,29 @@ type Hint = { exerciseId: string; activityId: string | null; createdAt: Date; le
 type MemorySeed = {
   settings?: ReadonlyMap<string, Settings>;
   hints?: ReadonlyMap<string, readonly Hint[]>;
+  schedulerProjections?: ReadonlyMap<
+    string,
+    Pick<SchedulerFacts, 'lessonRuns' | 'projectProgress' | 'paperProgress'>
+  >;
 };
 
 type StoreState = {
   learners: Map<string, LearnerState>;
   settings: Map<string, Settings>;
+  hints: Map<string, readonly Hint[]>;
   revisions: Map<string, number>;
+  schedulerProjections: Map<
+    string,
+    Pick<SchedulerFacts, 'lessonRuns' | 'projectProgress' | 'paperProgress'>
+  >;
 };
 
 type IdCounters = {
   cardCount: number;
   flagCount: number;
   xpCount: number;
+  sessionCount: number;
+  activityCount: number;
 };
 
 const modeOrder: Attempt['mode'][] = ['practice', 'assessment', 'diagnostic', 'review'];
@@ -97,21 +112,20 @@ function key(conceptId: string, dimension: Dimension): string {
 }
 
 export function memoryStore(seed: MemorySeed = {}): MemoryLearnerStore {
-  const hints = structuredClone(new Map(seed.hints));
   return scopedStore(
     {
       learners: new Map(),
       settings: structuredClone(new Map(seed.settings)),
+      hints: structuredClone(new Map(seed.hints)),
       revisions: new Map(),
+      schedulerProjections: structuredClone(new Map(seed.schedulerProjections)),
     },
-    hints,
-    { cardCount: 0, flagCount: 0, xpCount: 0 },
+    { cardCount: 0, flagCount: 0, xpCount: 0, sessionCount: 0, activityCount: 0 },
   );
 }
 
 function scopedStore(
   data: StoreState,
-  hints: ReadonlyMap<string, readonly Hint[]>,
   ids: IdCounters,
   assertOpen: () => void = () => {},
 ): MemoryLearnerStore {
@@ -132,10 +146,22 @@ function scopedStore(
         attempts: [],
         xpEvents: new Map(),
         enrollments: new Map(),
+        sessions: new Map(),
+        activities: new Map(),
       };
       data.learners.set(learnerId, state);
     }
     return state;
+  }
+
+  function matchingActivities(learnerId: string, query: ActivityQuery) {
+    return [...(data.learners.get(learnerId)?.activities.values() ?? [])].filter(
+      (row) =>
+        (!query.ids || query.ids.includes(row.id)) &&
+        (!query.sessionIds || query.sessionIds.includes(row.sessionId)) &&
+        (!query.statuses || query.statuses.includes(row.status)) &&
+        (query.conceptId === undefined || row.conceptId === query.conceptId),
+    );
   }
 
   return {
@@ -146,7 +172,7 @@ function scopedStore(
         const original = new Map(data.revisions);
         const snapshot = structuredClone(data);
         let open = true;
-        const tx = scopedStore(snapshot, hints, ids, () => {
+        const tx = scopedStore(snapshot, ids, () => {
           if (!open) throw new Error('This memory store transaction is closed.');
           assertOpen();
         });
@@ -183,6 +209,8 @@ function scopedStore(
           if (state) data.learners.set(learnerId, state);
           const settings = snapshot.settings.get(learnerId);
           if (settings) data.settings.set(learnerId, settings);
+          const hints = snapshot.hints.get(learnerId);
+          if (hints) data.hints.set(learnerId, hints);
           data.revisions.set(learnerId, snapshot.revisions.get(learnerId) ?? 0);
         }
         return result;
@@ -235,7 +263,7 @@ function scopedStore(
         attempts: (data.learners.get(learnerId)?.attempts ?? [])
           .filter(inScope)
           .map(({ activityId, createdAt }) => ({ activityId, createdAt })),
-        hints: (hints.get(learnerId) ?? [])
+        hints: (data.hints.get(learnerId) ?? [])
           .filter(inScope)
           .map(({ activityId, createdAt, level }) => ({ activityId, createdAt, level })),
       });
@@ -441,14 +469,250 @@ function scopedStore(
       card.dueAt = structuredClone(next.dueAt);
       return true;
     },
+    async listSessions(learnerId, query) {
+      assertOpen();
+      return structuredClone(
+        [...(data.learners.get(learnerId)?.sessions.values() ?? [])]
+          .filter(
+            (row) =>
+              (!query.ids || query.ids.includes(row.id)) &&
+              (query.status === undefined || row.status === query.status),
+          )
+          .sort(
+            (left, right) =>
+              (right.startedAt?.getTime() ?? Infinity) - (left.startedAt?.getTime() ?? Infinity),
+          ),
+      );
+    },
+    async lockSession(learnerId, sessionId) {
+      assertOpen();
+      return structuredClone(data.learners.get(learnerId)?.sessions.get(sessionId));
+    },
+    async insertSession(learnerId, session) {
+      assertOpen();
+      const row = structuredClone({ ...session, id: `session-${++ids.sessionCount}` });
+      stateFor(learnerId).sessions.set(row.id, row);
+      markWrite(learnerId);
+      return structuredClone(row);
+    },
+    async patchSessions(learnerId, query, patch) {
+      assertOpen();
+      const edit = Object.fromEntries(
+        Object.entries(patch).filter(([, value]) => value !== undefined),
+      );
+      if (!Object.keys(edit).length) return;
+      for (const row of data.learners.get(learnerId)?.sessions.values() ?? []) {
+        if (
+          (!query.ids || query.ids.includes(row.id)) &&
+          (query.status === undefined || row.status === query.status)
+        ) {
+          Object.assign(row, structuredClone(edit));
+          markWrite(learnerId);
+        }
+      }
+    },
+    async listActivities(learnerId, query) {
+      assertOpen();
+      return structuredClone(
+        matchingActivities(learnerId, query).sort(
+          (left, right) => compare(left.sessionId, right.sessionId) || left.idx - right.idx,
+        ),
+      );
+    },
+    async insertActivities(learnerId, sessionId, rows) {
+      assertOpen();
+      if (!rows.length) return [];
+      const state = data.learners.get(learnerId);
+      if (!state?.sessions.has(sessionId)) throw new Error('Session not found.');
+      const indices = new Set(
+        matchingActivities(learnerId, { sessionIds: [sessionId] }).map(({ idx }) => idx),
+      );
+      for (const { idx } of rows) {
+        if (indices.has(idx)) throw new Error('An activity already exists at this session index.');
+        indices.add(idx);
+      }
+      const stored = rows.map((row) =>
+        structuredClone({
+          ...row,
+          sessionId,
+          id: `activity-${++ids.activityCount}`,
+        }),
+      );
+      for (const row of stored) state.activities.set(row.id, row);
+      markWrite(learnerId);
+      return structuredClone(stored);
+    },
+    async patchActivities(learnerId, query, patch, expected) {
+      assertOpen();
+      const edit = Object.fromEntries(
+        Object.entries(patch).filter(([, value]) => value !== undefined),
+      );
+      if (!Object.keys(edit).length) return [];
+      const rows = matchingActivities(learnerId, query).filter(
+        (row) =>
+          (!expected?.statuses || expected.statuses.includes(row.status)) &&
+          (!expected?.exerciseIds ||
+            (expected.exerciseIds.length === row.exerciseIds.length &&
+              expected.exerciseIds.every((id, i) => id === row.exerciseIds[i]))),
+      );
+      if (patch.idx !== undefined) {
+        const seen = new Set<string>();
+        for (const row of data.learners.get(learnerId)?.activities.values() ?? []) {
+          const index = JSON.stringify([row.sessionId, rows.includes(row) ? patch.idx : row.idx]);
+          if (seen.has(index)) throw new Error('An activity already exists at this session index.');
+          seen.add(index);
+        }
+      }
+      for (const row of rows) Object.assign(row, structuredClone(edit));
+      if (rows.length) markWrite(learnerId);
+      return structuredClone(rows);
+    },
+    async deleteActivities(learnerId, query) {
+      assertOpen();
+      const deleted = new Set(matchingActivities(learnerId, query).map(({ id }) => id));
+      if (!deleted.size) return;
+      const state = stateFor(learnerId);
+      for (const id of deleted) state.activities.delete(id);
+      markWrite(learnerId);
+      for (const [owner, learner] of data.learners) {
+        for (const attempt of learner.attempts) {
+          if (attempt.activityId === null || !deleted.has(attempt.activityId)) continue;
+          attempt.activityId = null;
+          markWrite(owner);
+        }
+      }
+      const linksToDeletedActivity = ({ activityId }: Hint) =>
+        activityId !== null && deleted.has(activityId);
+      for (const [owner, hints] of data.hints) {
+        if (!hints.some(linksToDeletedActivity)) continue;
+        data.hints.set(
+          owner,
+          hints.map((hint) =>
+            linksToDeletedActivity(hint) ? { ...hint, activityId: null } : hint,
+          ),
+        );
+        markWrite(owner);
+      }
+    },
+    async readSchedulerFacts(learnerId, query) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      const projection = data.schedulerProjections.get(learnerId);
+      const cards = await this.listReviewCards(learnerId);
+      const cardConcepts = new Map(cards.map(({ id, conceptId }) => [id, conceptId]));
+      const activityIds = new Map(state?.attempts.map(({ id, activityId }) => [id, activityId]));
+      const learnMinutes = new Map<string | null, number>();
+      const learnSince = new Date(query.now.getTime() - 7 * 86_400_000);
+      for (const activity of state?.activities.values() ?? []) {
+        if (
+          activity.kind !== 'learn' ||
+          activity.status !== 'completed' ||
+          !activity.completedAt ||
+          activity.completedAt < learnSince ||
+          activity.completedAt > query.now
+        )
+          continue;
+        learnMinutes.set(
+          activity.conceptId,
+          (learnMinutes.get(activity.conceptId) ?? 0) + activity.plannedMinutes,
+        );
+      }
+      const logSince = new Date(query.now.getTime() - 36 * 60 * 60 * 1000);
+      const logThrough = startOfNextCalendarDay(
+        query.now,
+        data.settings.get(learnerId)?.timeZone ?? 'UTC',
+      );
+      const reviewLogFacts: SchedulerFacts['reviewLogFacts'] = [];
+      const completedReviewLogFacts: SchedulerFacts['completedReviewLogFacts'] = [];
+      for (const log of state?.reviewLogs ?? []) {
+        const conceptId = cardConcepts.get(log.cardId);
+        if (conceptId === undefined || log.createdAt < logSince || log.createdAt >= logThrough)
+          continue;
+        if (log.fsrsLog.source !== 'mixed_quiz')
+          reviewLogFacts.push({ conceptId, createdAt: log.createdAt });
+        const activityId = log.attemptId ? activityIds.get(log.attemptId) : undefined;
+        const activity = activityId ? state?.activities.get(activityId) : undefined;
+        if (activity?.kind === 'review' && activity.status === 'completed') {
+          completedReviewLogFacts.push({
+            activityId: activity.id,
+            conceptId,
+            rating: String(log.rating),
+            createdAt: log.createdAt,
+          });
+        }
+      }
+      const recall = new Set(query.recallExerciseIds);
+      const recallRows = (state?.attempts ?? [])
+        .filter(({ exerciseId }) => recall.has(exerciseId))
+        .sort(
+          (left, right) =>
+            compare(left.exerciseId, right.exerciseId) ||
+            compareAttempts('final_evidence', left, right) ||
+            right.correct - left.correct ||
+            compare(right.id, left.id),
+        );
+      return structuredClone({
+        mastery: query.skip?.includes('mastery') ? undefined : await this.listMastery(learnerId),
+        lessonRuns: query.skip?.includes('lessonRuns')
+          ? undefined
+          : [...(projection?.lessonRuns ?? [])].sort(
+              (left, right) =>
+                compare(left.conceptId, right.conceptId) ||
+                (right.startedAt ? new Date(right.startedAt).getTime() : 0) -
+                  (left.startedAt ? new Date(left.startedAt).getTime() : 0),
+            ),
+        projectProgress: query.skip?.includes('projectProgress')
+          ? undefined
+          : [...(projection?.projectProgress ?? [])].sort((left, right) =>
+              compare(left.projectId, right.projectId),
+            ),
+        paperProgress: [...(projection?.paperProgress ?? [])].sort((left, right) =>
+          compare(left.paperId, right.paperId),
+        ),
+        cards,
+        topicSpeeds: await this.listTopicSpeedEvidence(learnerId),
+        recentAttempts: await this.listAttempts(learnerId, { order: 'scheduler', limit: 100 }),
+        flags: [...(state?.flags.values() ?? [])].sort(
+          (left, right) =>
+            compare(left.conceptId, right.conceptId) ||
+            (left.targetPrereqId === null
+              ? Number(right.targetPrereqId !== null)
+              : right.targetPrereqId === null
+                ? -1
+                : compare(left.targetPrereqId, right.targetPrereqId)) ||
+            compare(left.id, right.id),
+        ),
+        learnMinutes: [...learnMinutes].map(([conceptId, plannedMinutes]) => ({
+          conceptId,
+          plannedMinutes,
+        })),
+        reviewLogFacts,
+        completedReviewLogFacts,
+        recallAttempts: recallRows
+          .filter(({ exerciseId }, i) => recallRows[i - 1]?.exerciseId !== exerciseId)
+          .map(({ exerciseId, correct, createdAt }) => ({ exerciseId, correct, createdAt })),
+      });
+    },
     async listOpenRemediationFlags(learnerId) {
       assertOpen();
-      return structuredClone([...(data.learners.get(learnerId)?.flags.values() ?? [])]);
+      return [...(data.learners.get(learnerId)?.flags.values() ?? [])].map(
+        ({ id, conceptId, targetPrereqId }) => ({ id, conceptId, targetPrereqId }),
+      );
     },
     addRemediationFlag(learnerId, flag) {
       assertOpen();
-      const stored = { ...flag, id: `flag-${++ids.flagCount}` };
-      stateFor(learnerId).flags.set(stored.id, stored);
+      const { conceptId, targetPrereqId, createdAt = new Date(0) } = flag;
+      const stored = { id: `flag-${++ids.flagCount}`, conceptId, targetPrereqId };
+      stateFor(learnerId).flags.set(
+        stored.id,
+        structuredClone({
+          ...stored,
+          createdAt,
+          status: 'open',
+          openedByAttemptId: null,
+          resolvedAt: null,
+        }),
+      );
       markWrite(learnerId);
       return structuredClone(stored);
     },
