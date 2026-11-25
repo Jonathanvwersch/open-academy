@@ -1,6 +1,7 @@
+import { Rating } from 'ts-fsrs';
 import { describe, expect, it } from 'vitest';
 import type { Dimension } from '../course/schemas.js';
-import { newReviewCard } from '../memory/fsrs.js';
+import { newReviewCard, scheduleReview } from '../memory/fsrs.js';
 import { initialMastery, type MasteryRecord } from '../memory/types.js';
 import type { LearnerStore, NewReviewCard } from './learner-store.js';
 
@@ -123,6 +124,56 @@ export function describeLearnerStoreContract(name: string, makeStore: () => Prom
         vectors,
       ]);
       expect(await store.listReviewCards(learnerId, [])).toEqual([]);
+    });
+
+    it('records a review on a new card and then updates the same card', async () => {
+      const { store, learnerId } = await makeStore();
+      const firstReview = scheduleReview(newReviewCard(date), date, Rating.Good, 'UTC', false);
+      await store.recordReview(learnerId, 'vectors', 'math', (current) => {
+        expect(current).toBeUndefined();
+        return {
+          card: {
+            fsrs: firstReview.card,
+            dueAt: firstReview.card.due,
+            lastReviewAt: date,
+            reps: firstReview.card.reps,
+            lapses: firstReview.card.lapses,
+          },
+          log: { rating: Rating.Good, fsrsLog: firstReview.log, createdAt: date },
+        };
+      });
+      const first = await store.getReviewCard(learnerId, 'vectors', 'math');
+      expect(first).toMatchObject({
+        dueAt: firstReview.card.due,
+        lastReviewAt: date,
+        reps: firstReview.card.reps,
+      });
+
+      const now = firstReview.card.due;
+      const secondReview = scheduleReview(firstReview.card, now, Rating.Again, 'UTC', false);
+      await store.recordReview(learnerId, 'vectors', 'math', (current) => {
+        expect(current).toEqual(first);
+        return {
+          card: {
+            fsrs: { ...secondReview.card, due: now },
+            dueAt: now,
+            lastReviewAt: now,
+            reps: secondReview.card.reps,
+            lapses: secondReview.card.lapses,
+          },
+          log: { rating: Rating.Again, fsrsLog: secondReview.log, createdAt: now },
+        };
+      });
+      const cards = await store.listReviewCards(learnerId);
+      expect(cards).toHaveLength(1);
+      expect(cards[0]).toMatchObject({
+        id: first?.id,
+        dueAt: now,
+        lastReviewAt: now,
+        reps: secondReview.card.reps,
+        lapses: secondReview.card.lapses,
+      });
+      expect(new Date(cards[0].fsrs.due)).toEqual(now);
     });
 
     it('updates only FSRS and dueAt on a match and leaves a stale card unchanged', async () => {

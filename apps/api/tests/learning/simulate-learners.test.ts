@@ -15,6 +15,7 @@ import {
   attributeActivityLogs,
   auditP11DescendantCard,
   auditP15Trace,
+  auditP24Offer,
   type InvariantId,
   newActivitiesForReplan,
   p5HasNoWorkWindow,
@@ -34,7 +35,9 @@ import {
   planUsageMinutes,
   renderMarkdownReport,
   requireP17ReviewMinutes,
+  retryDecisionEvidence,
   reviewFeasible,
+  reviewOverdueDaysForAudit,
   SimulatedApiFailureError,
   type SimulationProfile,
   scenarioCourseFilterSkipReason,
@@ -71,7 +74,70 @@ const invariants: InvariantId[] = [
   'P21',
   'P22',
   'P23',
+  'P24',
+  'P25',
+  'P26',
+  'P27',
 ];
+
+test('P24 distinguishes a missed in-window opportunity from a legitimate late offer', () => {
+  const check = {
+    budget: 20,
+    positions: [0],
+    pendingRuns: 0,
+    pendingActivities: 1,
+    completedOriginals: 2,
+  };
+  const early = { xpBalance: 170, plannedMinutes: 10, active: false };
+  const late = { ...early, xpBalance: 181 };
+  const missed = auditP24Offer({ ...check, offer: early, positions: [], pendingActivities: 0 });
+  expect(missed.violation).toBeDefined();
+  const history = [{ day: 4, invariant: 'P24' as const, evidence: missed.evidence }];
+  expect(auditP24Offer({ ...check, offer: late, previous: history }).violation).toContain('day 4');
+  expect(
+    auditP24Offer({ ...check, offer: late, previous: history, completedOriginals: 3 }).violation,
+  ).toBeUndefined();
+  const didNotFit = auditP24Offer({
+    ...check,
+    offer: early,
+    budget: 5,
+    positions: [],
+    pendingActivities: 0,
+  });
+  expect(didNotFit.violation).toBeUndefined();
+  expect(
+    auditP24Offer({
+      ...check,
+      offer: late,
+      previous: [{ day: 4, invariant: 'P24', evidence: didNotFit.evidence }],
+    }).violation,
+  ).toBeUndefined();
+});
+
+test('P24–P27 observe an offered quiz, timeout, completed follow-ups, and a fresh retake', async () => {
+  const content = await loadContent('content');
+  const {
+    profiles: [profile],
+  } = await simulateLearners(db, content, {
+    profiles: ['scenario-quizzes'],
+    days: 1,
+    timeZone: 'UTC',
+  });
+  expect(
+    profile.violations.filter((violation) =>
+      ['P24', 'P25', 'P26', 'P27'].includes(violation.invariant),
+    ),
+  ).toEqual([]);
+  expect(profile.checkedCounts.P24).toBeGreaterThan(0);
+  expect(profile.checkedCounts.P25).toBeGreaterThanOrEqual(2);
+  expect(profile.checkedCounts.P26).toBeGreaterThan(0);
+  expect(profile.checkedCounts.P27).toBeGreaterThanOrEqual(2);
+  const quizTimings = profile.quizEvidence?.filter(({ invariant }) => invariant === 'P27');
+  expect(quizTimings).toHaveLength(2);
+  expect(Date.parse(String(quizTimings?.[1].evidence.startedAt))).toBeGreaterThan(
+    Date.parse(String(quizTimings?.[0].evidence.finalizedAt)),
+  );
+}, 60_000);
 
 const p11Weights = {
   weight: (conceptId: string, ancestorId: string) =>
@@ -343,6 +409,63 @@ test('P10 ignores a case-1 retry that cannot fit after preserved in-progress wor
       new Map([['probability-basics', false]]),
     ),
   ).toEqual([]);
+});
+
+test('P10 counts a newly started prerequisite review without double counting carried-over work', async () => {
+  const content = await loadContent('content');
+  const now = new Date('2026-01-14T12:00:00.000Z');
+  const state = {
+    lessonRuns: [
+      { conceptId: 'loss-functions', status: 'needs_retry', retryAfter: now },
+      {
+        conceptId: 'rank-span',
+        status: 'needs_retry',
+        retryAfter: new Date('2026-01-12T12:00:00.000Z'),
+      },
+    ],
+    cards: [],
+    remediationFlags: [{ conceptId: 'loss-functions', targetPrereqId: 'derivatives' }],
+  } as unknown as SchedulerState;
+  const activity = {
+    id: 'first-review',
+    kind: 'review',
+    conceptId: 'derivatives',
+    exerciseIds: ['der-quotient'],
+    plannedMinutes: 8,
+    status: 'in_progress',
+  } as Parameters<typeof retryDecisionEvidence>[5][number];
+  const explanations = [
+    {
+      conceptId: 'derivatives',
+      result: 'selected:overdue' as const,
+      exerciseIds: activity.exerciseIds,
+      exerciseDimensions: [],
+      candidateMinutes: 8,
+      reviewMinutes: 8,
+      reviewCap: 9,
+      usedMinutes: 8,
+      budget: 30,
+      plannedActivityCount: 1,
+    },
+  ];
+  for (const carriedOver of [false, true]) {
+    const evidence = retryDecisionEvidence(
+      state,
+      content,
+      now,
+      30,
+      new Set(['rank-span']),
+      [activity],
+      explanations,
+      new Set(carriedOver ? [activity.id] : []),
+    ).find(({ conceptId }) => conceptId === 'rank-span');
+    expect(evidence).toMatchObject({
+      preservedInProgressMinutes: carriedOver ? 8 : 0,
+      reservedDueReviewMinutes: carriedOver ? 0 : 8,
+      remainingCapacityMinutes: 22,
+      fitsSchedulerCapacity: false,
+    });
+  }
 });
 
 test('P10 flags a fitting overdue retry displaced by a lower-priority lesson', () => {
@@ -866,6 +989,18 @@ test('P16 flags a selected review when a dropped review is two days more overdue
   expect(p16HasOverduePrecedenceViolation(4, 3, 8, 4, 0, 4)).toBe(false);
 });
 
+test('P16 and P17 count overdue days only for dimensions included in the candidate', () => {
+  const now = new Date('2026-04-28T19:00:00Z');
+  const cards = [
+    { conceptId: 'vectors', dimension: 'math', dueAt: '2026-04-20T19:00:00Z' },
+    { conceptId: 'vectors', dimension: 'conceptual', dueAt: '2026-04-27T19:00:00Z' },
+  ] as const;
+  const days = reviewOverdueDaysForAudit(cards, 'vectors', now, 'UTC', ['conceptual']);
+  expect(days).toBe(1);
+  expect(p16HasOverduePrecedenceViolation(days, 5, 4, 0, 0, 6)).toBe(false);
+  expect(p17ReviewFitsRemaining(4, 4, 0, days)).toBe(false);
+});
+
 test('P17 flags a dropped review only when it fits both remaining limits', () => {
   expect(p17ReviewFitsRemaining(8, 12, 8, 0)).toBe(true);
   expect(p17ReviewFitsRemaining(8, 12, 7, 0)).toBe(false);
@@ -985,6 +1120,18 @@ test('overplaced learner loses conditional placement credit without P20-P23 viol
     expect(overplaced?.checkedCounts[invariant]).toBeGreaterThan(0);
   }
 }, 300_000);
+
+test('P19 audits mixed-review topics in selection order, not exercise order', () => {
+  expect(
+    selectedReviewConceptsForAudit(
+      ['information-theory', 'prefill-decode'],
+      [
+        { conceptId: 'information-theory', result: 'selected', selectionOrder: 2 },
+        { conceptId: 'prefill-decode', result: 'selected', selectionOrder: 1 },
+      ],
+    ),
+  ).toEqual(['prefill-decode', 'information-theory']);
+});
 
 test('a simulated API 5xx retains the originating request and response', () => {
   const failure = new SimulatedApiFailureError({

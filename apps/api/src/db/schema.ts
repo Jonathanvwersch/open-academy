@@ -1,5 +1,7 @@
+import type { QuizQuestion } from '@academy/aesop/quizzes/mixed-quiz';
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   check,
@@ -35,6 +37,7 @@ export const activityKindEnum = pgEnum('activity_kind', [
   'reflect',
   'teachback',
   'diagnostic',
+  'mixed_quiz',
   'paper',
 ]);
 export const activityStatusEnum = pgEnum('activity_status', [
@@ -86,6 +89,7 @@ export const xpEventKindEnum = pgEnum('xp_event_kind', [
   'knowledge_point',
   'review',
   'quiz',
+  'mixed_quiz',
   'project',
 ]);
 
@@ -299,6 +303,56 @@ export const xpEvents = pgTable(
     uniqueIndex('xp_events_user_source_unique').on(table.userId, table.sourceKey),
     index('xp_events_user_local_date_idx').on(table.userId, table.localDate),
   ],
+);
+
+export const quizRuns = pgTable(
+  'quiz_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    activityId: uuid('activity_id').references(() => sessionActivities.id, {
+      onDelete: 'set null',
+    }),
+    retakeOf: uuid('retake_of').references((): AnyPgColumn => quizRuns.id, { onDelete: 'cascade' }),
+    seed: integer('seed').notNull(),
+    difficulty: integer('difficulty').notNull(),
+    plannedMinutes: integer('planned_minutes').notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true, mode: 'date' }).notNull(),
+    deadline: timestamp('deadline', { withTimezone: true, mode: 'date' }).notNull(),
+    finalizedAt: timestamp('finalized_at', { withTimezone: true, mode: 'date' }),
+    score: real('score'),
+    xpAwarded: integer('xp_awarded'),
+  },
+  (table) => [
+    uniqueIndex('quiz_runs_active_user_unique')
+      .on(table.userId)
+      .where(sql`${table.finalizedAt} is null`),
+    uniqueIndex('quiz_runs_retake_unique').on(table.retakeOf),
+    index('quiz_runs_user_started_idx').on(table.userId, table.startedAt),
+  ],
+);
+
+export const quizItems = pgTable(
+  'quiz_items',
+  {
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => quizRuns.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    conceptId: text('concept_id').notNull(),
+    question: jsonb('question').$type<QuizQuestion>().notNull(),
+    reserve: jsonb('reserve').$type<QuizQuestion>(),
+    answeredAt: timestamp('answered_at', { withTimezone: true, mode: 'date' }),
+    latencyMs: integer('latency_ms'),
+    correct: boolean('correct'),
+    followUp: boolean('follow_up').notNull().default(false),
+    followUpActivityId: uuid('follow_up_activity_id').references(() => sessionActivities.id, {
+      onDelete: 'set null',
+    }),
+  },
+  (table) => [primaryKey({ columns: [table.runId, table.position] })],
 );
 
 export const hintEvents = pgTable(

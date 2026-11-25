@@ -18,6 +18,7 @@ import { registerPaperRoutes } from '../features/papers/routes.js';
 import { registerPlacementRoutes } from '../features/placement/routes.js';
 import { registerProgressRoutes } from '../features/progress/routes.js';
 import { registerProjectsRoutes } from '../features/projects/routes.js';
+import { registerQuizRoutes } from '../features/quizzes/routes.js';
 import { registerReviewsRoutes } from '../features/reviews/routes.js';
 import { registerSessionsRoutes } from '../features/sessions/routes.js';
 import { registerSettingsRoutes } from '../features/settings/routes.js';
@@ -121,5 +122,6 @@ export function createApiRoutes(deps: {
   registerProjectsRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
   registerProgressRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
   registerReviewsRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
+  registerQuizRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
   return api;
 }

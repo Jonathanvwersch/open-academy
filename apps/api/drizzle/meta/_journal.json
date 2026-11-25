@@ -141,6 +141,13 @@
       "when": 1795598830204,
       "tag": "0019_review_card_suspension",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795604386106,
+      "tag": "0020_timed_mixed_quizzes",
+      "breakpoints": true
     }
   ]
 }

@@ -14,7 +14,8 @@
     "./lessons/grading/*": "./src/lessons/grading/*.ts",
     "./placement/*": "./src/placement/*.ts",
     "./progress/*": "./src/progress/*.ts",
-    "./store/*": "./src/store/*.ts"
+    "./store/*": "./src/store/*.ts",
+    "./quizzes/*": "./src/quizzes/*.ts"
   },
   "dependencies": {
     "@academy/contracts": "workspace:*",

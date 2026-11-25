@@ -5,6 +5,7 @@ export const publicFeatureModules = {
     'features/exercises/hint-ladder.tsx',
     'features/lessons/lesson-block.tsx',
     'features/lessons/lesson-runner.tsx',
+    'features/quizzes/quiz-start.tsx',
     'features/sessions/session-activity-header.tsx',
     'features/sessions/start-session.ts',
     'features/progress/streak-card.tsx',
@@ -20,6 +21,7 @@ export const publicFeatureModules = {
   api: new Set([
     'features/course/service.ts',
     'features/papers/service.ts',
+    'features/quizzes/offer.ts',
     'features/tutor/provider.ts',
     'features/tutor/schemas.ts',
     'features/tutor/feedback-context.ts',

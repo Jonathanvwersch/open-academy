@@ -103,12 +103,13 @@ The planner makes one session for each day. The session has a time budget. The d
 
 The planner adds work in this order:
 
-1. **Chosen lesson.** If the learner chose a lesson, it goes in first. Its time counts against the budget.
-2. **Unfinished lessons.** A lesson in progress, or a stopped lesson that has waited 2 or more days for its retry. **[Ours]**
-3. **New lessons.** At most 2 new topics in one session. **[Ours]** The planner follows the course order. It spreads lessons across units and subjects. It does not put two easily confused topics on the same day. **[MA]**
-4. **Ready retries.** Stopped lessons that can now be tried again.
-5. **Reviews.** Due review cards, overdue cards first. Reviews can use at most 30% of the budget. **[Ours]** Overdue reviews can go past this limit.
-6. **Other work.** Projects and papers, if time is left.
+1. **Timed mixed quiz.** Reserve time for the chosen lesson before checking if the pending quiz fits. Put the quiz first if it fits. Count its minutes against the budget. Count it as one of the 6 activities. **[Ours]**
+2. **Chosen lesson.** Add the chosen lesson next, if there is one. Its time counts against the budget.
+3. **Unfinished lessons.** Resume lessons in progress first. Review the key prerequisites that block a stopped lesson. **[MA]** Then add eligible lesson retries that have waited 2 or more days. **[Ours]**
+4. **New lessons.** At most 2 new topics in one session. **[Ours]** The planner follows the course order. It spreads lessons across units and subjects. It does not put two easily confused topics on the same day. **[MA]**
+5. **Ready retries.** Stopped lessons that can now be tried again.
+6. **Reviews.** Due review cards, overdue cards first. Reviews can use at most 30% of the budget. **[Ours]** Overdue reviews can go past this limit.
+7. **Other work.** Projects and papers, if time is left.
 
 Rules that apply to the whole plan:
 
@@ -118,7 +119,45 @@ Rules that apply to the whole plan:
 - **Size.** A session has at most 6 activities. **[Ours]**
 - **Replan.** When the learner finishes or skips work, the planner plans the rest of the day again. It does not repeat work that the learner finished.
 
-## 9. Placement (`placement/`)
+## 9. Timed mixed quizzes (`quizzes/`)
+
+### When the quiz appears
+
+- Offer a quiz about every 150 eligible XP. **[MA]**
+- Count XP from knowledge points, review answers, and completed lesson or review activities. Count mixed review activities as reviews. Exclude all other XP. **[Ours]**
+- Subtract 150 XP from the eligible balance when the learner finishes an original timed quiz. Carry the excess into the next cycle. **[Ours]**
+- Aim to offer the quiz when the eligible balance reaches 150 to 180 XP. The simulator checks this 30 XP window when enough topics qualify and the quiz fits. Eligibility continues past the window. **[Ours]**
+- Keep at most one quiz pending. Leave lessons available when the quiz cannot run. **[Ours]**
+
+### Which questions appear
+
+- Mix topics from earlier study and recent study. **[MA]**
+- Use only authored topics from completed lessons or effective confirmed placement credit. Exclude legacy placement grants. **[Ours]**
+- Start each topic with weight 4 in the current course and weight 1 elsewhere. Divide its weight by 1 plus its previous quiz item count. Count items from originals and retakes. **[Ours]**
+- Use a fixed seed to rank the topics by weight. Skip any pair where one topic encompasses the other. **[Ours]**
+- Ask 8 questions from 8 topics. Use auto-graded multiple-choice, numeric or expression questions. Skip lesson-only questions. **[Ours]**
+- Select two distinct questions per topic. Ask one now and keep the other in reserve for a retake. Skip prompts that appeared in earlier quizzes. Keep an original quiz's reserve prompts out of new quizzes if the learner missed any question. **[Ours]**
+- Wait if fewer than 8 topics meet these rules. **[Ours]**
+- Start at difficulty 2. Use the latest original quiz score to set the next difficulty. Raise it one level if the score exceeds 80%. Lower it one level if the score is below 80%. Keep it unchanged at 80%. Keep the level between 1 and 5. Prefer questions near that level. **[Ours]**
+
+### Time, score and reviews
+
+- Add the target times for the 8 questions. Use 90 seconds for each missing target time. Multiply the total by the learner's extra-time setting. The multiplier defaults to 1. Round planned minutes up. **[Ours]**
+- Save the deadline when the learner starts. Keep it when the learner refreshes. Reject answers on the server at or after the deadline. Count late and unanswered questions as wrong. **[Ours]**
+- Accept answers in question order. Measure each answer's time from the start or from the preceding answer. Allow the learner to finish when all answers arrive or time expires. **[Ours]**
+- Keep hints, the tutor and lesson links out of the timed quiz. **[Ours]**
+- Rate each wrong answer Again. Rate a correct answer Hard when its time exceeds the question's target. Rate other correct answers Good. Apply normal FIRe credit for Good. **[Ours]**
+- Make a follow-up review due immediately for each missed topic. **[MA]**
+- Also make a follow-up review due immediately for each slow correct answer. Skip suspended cards when the quiz rates, gives FIRe credit, or schedules reviews. **[Ours]**
+- Divide the number of correct answers by 8 to get the score. Multiply planned minutes by the score and round to the nearest whole XP. Award the XP once. **[Ours]**
+
+### Retake
+
+- Offer an optional retake. **[MA]**
+- Allow one retake if the learner missed at least one question and finished all follow-up reviews. Use the reserve questions on the same topics. A retake gives no XP and leaves the quiz cadence unchanged. **[Ours]**
+- Keep the end-of-lesson quiz separate. **[Ours]**
+
+## 10. Placement (`placement/`)
 
 A new learner can take a placement test for a course. It has at most 16 questions. **[Ours]**
 
@@ -179,13 +218,13 @@ A _withdrawn_ grant gives no credit.
 - XP stays unchanged. **[Ours]**
 - The placement test record stays unchanged. **[Ours]**
 
-## 10. XP and streaks (`progress/`)
+## 11. XP and streaks (`progress/`)
 
-- Lesson steps give XP as in section 4. Other activities give XP equal to their planned minutes, times the score.
+- Lesson steps give XP as in section 4. Timed mixed quizzes use the rules in section 9. Other activities give XP equal to their planned minutes, times the score.
 - The daily XP goal is the day's time budget.
 - A day counts for the streak when the learner earns any XP that day, in their own time zone.
 
-## 11. What the engine does not do
+## 12. What the engine does not do
 
 The engine does not use a database, HTTP or an AI model. The host app does these jobs:
 
@@ -196,7 +235,7 @@ The engine does not use a database, HTTP or an AI model. The host app does these
 
 The engine reads and writes learner state through `LearnerStore`. The `memoryStore()` function makes a store that keeps that state in memory.
 
-## 12. How we check the engine
+## 13. How we check the engine
 
 The simulator runs 7 simulated learners for 120 days each, through the real app. The learners follow fixed rules and use a fixed random seed. A fake grader marks written answers. No AI is used.
 

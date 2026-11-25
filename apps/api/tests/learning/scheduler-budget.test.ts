@@ -287,6 +287,37 @@ describe('review budget reservation', () => {
     expect(focusedPlan.activities.some((activity) => activity.kind === 'review')).toBe(false);
   });
 
+  it('defers a timed quiz when it cannot fit beside the chosen lesson', () => {
+    const content = lessonCrowdingContent();
+    const state = plannerState(content, { freshConceptId: 'supervised-learning' });
+    state.inProgressConceptId = 'supervised-learning';
+    state.pendingQuiz = { plannedMinutes: 10 };
+    const plan = (budget: number) =>
+      planSession(state, content, now, budget, 'weekday', new Set(), new Set(), {
+        focusConceptId: 'supervised-learning',
+      });
+
+    const tightPlan = plan(20).activities;
+    expect(tightPlan[0]).toMatchObject({ kind: 'learn', conceptId: 'supervised-learning' });
+    expect(tightPlan.some(({ kind }) => kind === 'mixed_quiz')).toBe(false);
+    expect(tightPlan.reduce((total, activity) => total + activity.plannedMinutes, 0)).toBe(20);
+    expect(plan(25).activities.map(({ kind }) => kind)).toEqual(['mixed_quiz', 'learn']);
+  });
+
+  it('reserves one of the six activity slots for the timed quiz', async () => {
+    const content = await loadContent('content');
+    const state = plannerState(content, {
+      activeCourseId: 'maths-for-ml',
+      studyCourseIds: content.courses.map(({ id }) => id),
+      cards: content.concepts.map(({ id }) => reviewCard(id, new Date('2026-01-01'))),
+    });
+    expect(planSession(state, content, now, 600).activities).toHaveLength(6);
+    state.pendingQuiz = { plannedMinutes: 10 };
+    const plan = planSession(state, content, now, 600);
+    expect(plan.activities[0].kind).toBe('mixed_quiz');
+    expect(plan.activities).toHaveLength(6);
+  });
+
   it('keeps a fallback review when a lesson covers only one of its due topics', () => {
     const content = mixedFallbackContent();
     const vectorsCard = reviewCard('vectors', now);
