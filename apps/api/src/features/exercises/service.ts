@@ -35,6 +35,10 @@ import {
 } from '../../db/schema.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
+import {
+  applyPlacementGrantOutcome,
+  placementCreditWithdrawn,
+} from '../../learning/placement-grants.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import {
   formatGraderFeedback,
@@ -485,6 +489,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     durationMs: body.data.durationMs,
     createdAt: now,
   });
+  const withdrawnCredit = await placementCreditWithdrawn(db, request.userId, exercise.concept);
   const masteryResult = await applyMastery(drizzleLearnerStore(repo.db), {
     learnerId: request.userId,
     exercise,
@@ -499,6 +504,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     now,
     timeZone: request.timeZone,
     enableFuzz: fsrsFuzzEnabled(),
+    ...(withdrawnCredit ? { createReviewCard: false } : {}),
   });
   if (body.data.mode === 'review' && !followUp) {
     const implicitCreditAppliedConceptIds = new Set<string>();
@@ -866,6 +872,22 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
         }
       }
     }
+  }
+  if (!followUp) {
+    await applyPlacementGrantOutcome({
+      db,
+      repo,
+      userId: request.userId,
+      content: index,
+      exerciseId: exercise.id,
+      attemptId,
+      mode: body.data.mode,
+      correct: result.correct,
+      hintsUsed,
+      attemptNo,
+      gradedBy,
+      now,
+    });
   }
   const answerOptions = answerOptionsFor(exercise, body.data.answer, !retryAllowed);
   let activityCompleted = false;

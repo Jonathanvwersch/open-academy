@@ -1,0 +1,263 @@
+import type { ContentIndex, IndexedExercise } from '@academy/aesop/course/types';
+import { initialMastery, masteryRank } from '@academy/aesop/memory/types';
+import { and, eq } from 'drizzle-orm';
+import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
+import { env } from '../../src/config.js';
+import { loadContent } from '../../src/content/load.js';
+import { createDb } from '../../src/db/client.js';
+import { LearnerRepository } from '../../src/db/repository.js';
+import {
+  attempts,
+  diagnosticRuns,
+  lessonRuns,
+  mastery,
+  placementGrants,
+  remediationFlags,
+  reviewCards,
+  users,
+  xpEvents,
+} from '../../src/db/schema.js';
+import {
+  applyPlacementGrantOutcome,
+  recordPlacementGrants,
+} from '../../src/learning/placement-grants.js';
+
+const db = createDb(env.TEST_DATABASE_URL);
+const userId = '00000000-0000-4000-8000-000000000321';
+const now = new Date('2026-01-07T12:00:00.000Z');
+let content: ContentIndex;
+let repo: LearnerRepository;
+let runId = '';
+
+beforeAll(async () => {
+  content = await loadContent('tests/fixtures/content');
+});
+
+beforeEach(async () => {
+  await db.delete(users);
+  await db.insert(users).values({
+    id: userId,
+    displayName: 'Placement grant learner',
+    timezone: 'UTC',
+    startDate: '2026-01-01',
+    prefs: { scheduleMinutes: 60 },
+  });
+  repo = new LearnerRepository(db, userId);
+  const [run] = await db
+    .insert(diagnosticRuns)
+    .values({
+      userId,
+      kind: 'placement',
+      status: 'completed',
+      state: {},
+      startedAt: now,
+      completedAt: now,
+    })
+    .returning();
+  runId = run?.id ?? '';
+});
+
+afterAll(async () => {
+  await db.delete(users);
+  await db.$client.end();
+});
+
+function exerciseFor(conceptId: string): IndexedExercise {
+  const exercise = (content.exercisesByConcept.get(conceptId) ?? []).find(
+    (candidate) => candidate.type === 'mc' || candidate.type === 'numeric',
+  );
+  if (!exercise) throw new Error(`No exercise for ${conceptId}`);
+  return exercise;
+}
+
+async function insertAttempt(conceptId: string, mode: 'diagnostic' | 'review', correct: number) {
+  const exercise = exerciseFor(conceptId);
+  const [row] = await db
+    .insert(attempts)
+    .values({
+      userId,
+      exerciseId: exercise.id,
+      exerciseVersion: exercise.contentVersion,
+      conceptId,
+      dimension: exercise.dimension,
+      mode,
+      answer: {},
+      correct,
+      credit: correct,
+      gradedBy: 'deterministic',
+      createdAt: now,
+    })
+    .returning();
+  if (!row) throw new Error('Could not insert attempt');
+  return { attemptId: row.id, exercise };
+}
+
+async function seedGrant(
+  conceptId: string,
+  state: 'conditional' | 'confirmed',
+  evidenceAttemptIds: string[] = [],
+) {
+  await db.insert(placementGrants).values({
+    userId,
+    runId,
+    conceptId,
+    origin: evidenceAttemptIds.length ? 'direct' : 'inferred',
+    state,
+    reason: state === 'confirmed' ? 'on_time' : 'inferred_only',
+    evidenceAttemptIds,
+    createdAt: now,
+    updatedAt: now,
+    confirmedAt: state === 'confirmed' ? now : null,
+  });
+  for (const dimension of content.conceptsById.get(conceptId)?.dimensions ?? []) {
+    await repo.saveMastery({
+      ...initialMastery(conceptId, dimension),
+      state: 'independent',
+      provisional: state === 'conditional',
+    });
+    await db.insert(reviewCards).values({ userId, conceptId, dimension, fsrs: {}, dueAt: now });
+  }
+}
+
+async function answer(conceptId: string, correct: number) {
+  const { attemptId, exercise } = await insertAttempt(conceptId, 'review', correct);
+  const input = {
+    db,
+    repo,
+    userId,
+    content,
+    exerciseId: exercise.id,
+    attemptId,
+    mode: 'review',
+    correct,
+    hintsUsed: 0,
+    attemptNo: 1,
+    gradedBy: 'deterministic',
+    now,
+  };
+  return { input, result: await applyPlacementGrantOutcome(input) };
+}
+
+async function snapshot() {
+  return {
+    grants: await db
+      .select()
+      .from(placementGrants)
+      .where(eq(placementGrants.userId, userId))
+      .orderBy(placementGrants.conceptId),
+    mastery: await db
+      .select()
+      .from(mastery)
+      .where(eq(mastery.userId, userId))
+      .orderBy(mastery.conceptId),
+    cards: await db
+      .select({ conceptId: reviewCards.conceptId })
+      .from(reviewCards)
+      .where(eq(reviewCards.userId, userId))
+      .orderBy(reviewCards.conceptId),
+    attempts: await db.select().from(attempts).where(eq(attempts.userId, userId)),
+    xp: await db.select().from(xpEvents).where(eq(xpEvents.userId, userId)),
+    flags: await db.select().from(remediationFlags).where(eq(remediationFlags.userId, userId)),
+  };
+}
+
+test('placement grants record inferred credit as conditional and on-time answers as confirmed', async () => {
+  const { attemptId, exercise } = await insertAttempt('derivatives', 'diagnostic', 1);
+  const grants = await recordPlacementGrants({
+    db,
+    userId,
+    runId,
+    state: {
+      courseId: 'fixture-course',
+      answers: [{ conceptId: 'derivatives', exerciseId: exercise.id, correct: true, attemptId }],
+      known: ['vectors', 'derivatives'],
+      unknown: [],
+    },
+    content,
+    now,
+  });
+  expect(grants).toEqual(
+    new Map([
+      ['vectors', 'conditional'],
+      ['derivatives', 'confirmed'],
+    ]),
+  );
+  const rows = await db.select().from(placementGrants).where(eq(placementGrants.userId, userId));
+  expect(rows.find((row) => row.conceptId === 'derivatives')).toMatchObject({
+    origin: 'direct',
+    reason: 'on_time',
+    evidenceAttemptIds: [attemptId],
+  });
+});
+
+test('a direct wrong answer withdraws a conditional grant, cascades, and keeps history', async () => {
+  const placementAttempt = await insertAttempt('derivatives', 'diagnostic', 1);
+  await seedGrant('vectors', 'conditional');
+  await seedGrant('derivatives', 'conditional', [placementAttempt.attemptId]);
+  await seedGrant('linear-algebra', 'confirmed');
+  await db.insert(xpEvents).values({
+    userId,
+    kind: 'knowledge_point',
+    sourceKey: 'kp:seed',
+    amount: 5,
+    earnedAt: now,
+    localDate: '2026-01-07',
+  });
+  const { input, result } = await answer('vectors', 0);
+  expect(result.withdrawn).toEqual(['vectors', 'derivatives']);
+  const after = await snapshot();
+  expect(after.grants.map((grant) => [grant.conceptId, grant.state, grant.reason])).toEqual([
+    ['derivatives', 'withdrawn', 'cascade'],
+    ['linear-algebra', 'confirmed', 'on_time'],
+    ['vectors', 'withdrawn', 'direct_failure'],
+  ]);
+  for (const record of after.mastery.filter((row) => row.conceptId !== 'linear-algebra')) {
+    expect(masteryRank(record.state)).toBeLessThan(masteryRank('assisted'));
+    expect(record.provisional).toBe(false);
+  }
+  expect(after.mastery.find((row) => row.conceptId === 'linear-algebra')?.state).toBe(
+    'independent',
+  );
+  expect([...new Set(after.cards.map((card) => card.conceptId))]).toEqual(['linear-algebra']);
+  expect(after.attempts).toHaveLength(2);
+  expect(after.xp).toHaveLength(1);
+
+  expect(await applyPlacementGrantOutcome(input)).toEqual({
+    confirmed: [],
+    withdrawn: [],
+    targetedReviews: [],
+  });
+  expect(await snapshot()).toEqual(after);
+});
+
+test('a wrong review on a dependent topic queues a targeted review before any withdrawal', async () => {
+  await seedGrant('vectors', 'conditional');
+  const downstream = await answer('derivatives', 0);
+  expect(downstream.result).toEqual({ confirmed: [], withdrawn: [], targetedReviews: ['vectors'] });
+  const [flag] = await db
+    .select()
+    .from(remediationFlags)
+    .where(and(eq(remediationFlags.userId, userId), eq(remediationFlags.status, 'open')));
+  expect(flag).toMatchObject({ conceptId: 'derivatives', targetPrereqId: 'vectors' });
+  const [grant] = await db.select().from(placementGrants).where(eq(placementGrants.userId, userId));
+  expect(grant?.state).toBe('conditional');
+
+  const targeted = await answer('vectors', 1);
+  expect(targeted.result.confirmed).toEqual(['vectors']);
+  const [confirmed] = await db
+    .select()
+    .from(placementGrants)
+    .where(eq(placementGrants.userId, userId));
+  expect(confirmed).toMatchObject({ state: 'confirmed', reason: 'confirmed_by_answer' });
+  expect((await repo.masteryRecords()).every((record) => !record.provisional)).toBe(true);
+});
+
+test('studied and confirmed topics are never withdrawn', async () => {
+  await seedGrant('vectors', 'conditional');
+  await seedGrant('linear-algebra', 'confirmed');
+  await db.insert(lessonRuns).values({ userId, conceptId: 'vectors', startedAt: now });
+  expect((await answer('vectors', 0)).result.withdrawn).toEqual([]);
+  expect((await answer('linear-algebra', 0)).result.withdrawn).toEqual([]);
+  const grants = await db.select().from(placementGrants).where(eq(placementGrants.userId, userId));
+  expect(grants.map((grant) => grant.state).sort()).toEqual(['conditional', 'confirmed']);
+});

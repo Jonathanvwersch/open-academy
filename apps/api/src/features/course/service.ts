@@ -15,6 +15,11 @@ import {
   projectReady,
 } from '@academy/aesop/graph/prerequisites';
 import {
+  currentPlacementCredit,
+  type PlacementGrantSnapshot,
+  withdrawnPlacementCredit,
+} from '@academy/aesop/placement/grants';
+import {
   currentLearnerUnit,
   effectiveFocusSubjectId,
   type PlannedActivity,
@@ -331,17 +336,16 @@ export async function updateLearningFocus(input: {
   });
 }
 
-export function placedOutConceptsFromRuns(runs: readonly { state: unknown }[]): Set<string> {
-  const conceptIds = new Set<string>();
-  for (const run of runs) {
-    if (typeof run.state !== 'object' || run.state === null) continue;
-    const known = (run.state as { known?: unknown }).known;
-    if (!Array.isArray(known)) continue;
-    for (const conceptId of known) {
-      if (typeof conceptId === 'string') conceptIds.add(conceptId);
-    }
-  }
-  return conceptIds;
+export type PlacementCreditSet = ReadonlySet<string> & {
+  readonly withdrawn?: ReadonlySet<string>;
+};
+
+export function placedOutConceptsFromGrants(
+  grants: readonly PlacementGrantSnapshot[],
+): PlacementCreditSet {
+  return Object.assign(currentPlacementCredit(grants), {
+    withdrawn: withdrawnPlacementCredit(grants),
+  });
 }
 
 export function suggestedNextCourses(
@@ -394,7 +398,7 @@ export function courseTopicState(
   index: ContentIndex,
   masteryRecords: MasteryRecords,
   runs: RunRecords,
-  placedOutConcepts: ReadonlySet<string>,
+  placedOutConcepts: PlacementCreditSet,
   remediationFlags: SchedulerState['remediationFlags'] = [],
 ) {
   const masteryByKey = new Map(
@@ -439,6 +443,9 @@ export function courseTopicState(
       dimensionStates,
       placedOut:
         status === 'complete' && runStatus === undefined && placedOutConcepts.has(concept.id),
+      ...(status !== 'complete' && placedOutConcepts.withdrawn?.has(concept.id)
+        ? { movedBack: true as const }
+        : {}),
       missingPrereqs: prerequisiteChecker.missingFrontier(concept.id).map((id) => ({
         id,
         strength: 'hard' as const,
@@ -569,7 +576,7 @@ function buildUnits(
   runs: RunRecords,
   paperStatuses: PaperStatuses,
   projectStatuses: ProjectStatuses,
-  placedOutConcepts: ReadonlySet<string>,
+  placedOutConcepts: PlacementCreditSet,
   remediationFlags: SchedulerState['remediationFlags'],
 ) {
   const topicState = courseTopicState(
@@ -635,7 +642,8 @@ function buildUnits(
             leadsToMore: 0,
           };
         }
-        const { status, dimensionStates, placedOut, missingPrereqs, retry } = topicState(concept);
+        const { status, dimensionStates, placedOut, movedBack, missingPrereqs, retry } =
+          topicState(concept);
         const needs = missingPrereqs
           .sort((left, right) => compareOutlinePosition(left.id, right.id, index, course.id))
           .map((prerequisite) => ({
@@ -661,6 +669,7 @@ function buildUnits(
           ...(retry ? { retry } : {}),
           mastery: masteryLabel(lowestMasteryState(dimensionStates)),
           placedOut,
+          ...(movedBack ? { movedBack } : {}),
           buildsOn,
           leadsTo: nextConcepts.slice(0, 3).map((candidate) => ({
             id: candidate.id,
@@ -681,7 +690,7 @@ export function buildCoursePayload(
   runs: RunRecords,
   paperStatuses: PaperStatuses = new Map(),
   projectStatuses: ProjectStatuses = new Map(),
-  placedOutConcepts: ReadonlySet<string> = new Set(),
+  placedOutConcepts: PlacementCreditSet = new Set(),
   startedCourseIds: ReadonlySet<string> = new Set(),
   courseStart: { courseId: string | null; needed: boolean; placementRunId: string | null } = {
     courseId: null,

@@ -4,6 +4,12 @@ import type { SchedulerState } from '@academy/aesop/planner/scheduler';
 import { type Card, Rating, State } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';
 import {
+  p20HasWithdrawnCreditViolation,
+  p21HasUnboundedWithdrawalViolation,
+  p22HasProtectedWithdrawalViolation,
+  p23ChangedHistoryIds,
+} from '../../scripts/learner-simulation-placement.js';
+import {
   attributeActivityLogs,
   auditP11DescendantCard,
   auditP15Trace,
@@ -59,6 +65,10 @@ const invariants: InvariantId[] = [
   'P17',
   'P18',
   'P19',
+  'P20',
+  'P21',
+  'P22',
+  'P23',
 ];
 
 const p11Weights = {
@@ -892,6 +902,60 @@ test('P19 only audits reviews newly selected by the current plan', () => {
   ).toEqual(['selected']);
 });
 
+test('P20 flags withdrawn credit that counts as complete, shows as placed out or unlocks topics', () => {
+  const clean = { countsComplete: false, shownPlacedOut: false, unlockedDependentIds: [] };
+  expect(p20HasWithdrawnCreditViolation(clean)).toBe(false);
+  expect(p20HasWithdrawnCreditViolation({ ...clean, countsComplete: true })).toBe(true);
+  expect(p20HasWithdrawnCreditViolation({ ...clean, shownPlacedOut: true })).toBe(true);
+  expect(p20HasWithdrawnCreditViolation({ ...clean, unlockedDependentIds: ['gradients'] })).toBe(
+    true,
+  );
+});
+
+test('P21 bounds the failures a conditional grant can survive', () => {
+  const grant = { state: 'conditional', directFailures: 0, downstreamFailures: 2 };
+  expect(p21HasUnboundedWithdrawalViolation(grant)).toBe(false);
+  expect(p21HasUnboundedWithdrawalViolation({ ...grant, downstreamFailures: 3 })).toBe(true);
+  expect(p21HasUnboundedWithdrawalViolation({ ...grant, directFailures: 1 })).toBe(true);
+  expect(
+    p21HasUnboundedWithdrawalViolation({ ...grant, state: 'withdrawn', directFailures: 1 }),
+  ).toBe(false);
+});
+
+test('P22 flags withdrawn grants that were confirmed or studied', () => {
+  const grant = { state: 'withdrawn', confirmedAt: null, studiedBeforeWithdrawal: false };
+  expect(p22HasProtectedWithdrawalViolation(grant)).toBe(false);
+  expect(p22HasProtectedWithdrawalViolation({ ...grant, confirmedAt: new Date(0) })).toBe(true);
+  expect(p22HasProtectedWithdrawalViolation({ ...grant, studiedBeforeWithdrawal: true })).toBe(
+    true,
+  );
+  expect(
+    p22HasProtectedWithdrawalViolation({ ...grant, state: 'confirmed', confirmedAt: new Date(0) }),
+  ).toBe(false);
+});
+
+test('P23 reports changed or removed history rows and allows new rows', () => {
+  const before = new Map([
+    ['a', '1'],
+    ['b', '2'],
+  ]);
+  expect(p23ChangedHistoryIds(before, new Map([...before, ['c', '3']]))).toEqual([]);
+  expect(p23ChangedHistoryIds(before, new Map([['a', '9']]))).toEqual(['a', 'b']);
+});
+
+test('overplaced learner loses conditional placement credit without P20-P23 violations', async () => {
+  const report = await simulateLearners(db, await loadContent(), {
+    profiles: ['overplaced'],
+    days: 30,
+    courseIds: ['maths-for-ml'],
+  });
+  const overplaced = report.profiles[0];
+  for (const invariant of ['P20', 'P21', 'P22', 'P23'] as const) {
+    expect(overplaced?.violationCounts[invariant]).toBe(0);
+    expect(overplaced?.checkedCounts[invariant]).toBeGreaterThan(0);
+  }
+}, 300_000);
+
 test('a simulated API 5xx retains the originating request and response', () => {
   const failure = new SimulatedApiFailureError({
     method: 'POST',
@@ -997,7 +1061,19 @@ test('diligent and graph-change Mathematics for ML runs produce structured repor
     expect(profile.totals.coveredSkips).toEqual(expect.any(Number));
     expect(profile.p11CheckedEvents).toEqual(expect.any(Number));
     expect(profile.p11AmbiguousEvents).toEqual(expect.any(Number));
-    for (const invariant of ['P13', 'P14', 'P15', 'P16', 'P17', 'P18', 'P19'] as const) {
+    for (const invariant of [
+      'P13',
+      'P14',
+      'P15',
+      'P16',
+      'P17',
+      'P18',
+      'P19',
+      'P20',
+      'P21',
+      'P22',
+      'P23',
+    ] as const) {
       expect(profile.checkedCounts[invariant]).toEqual(expect.any(Number));
     }
     for (const invariant of invariants) {

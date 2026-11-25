@@ -463,6 +463,47 @@ export const remediationFlags = pgTable(
   (table) => [index('remediation_flags_user_status_idx').on(table.userId, table.status)],
 );
 
+export const placementGrants = pgTable(
+  'placement_grants',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => diagnosticRuns.id, { onDelete: 'cascade' }),
+    conceptId: text('concept_id').notNull(),
+    origin: text('origin').$type<'direct' | 'inferred'>().notNull(),
+    state: text('state').$type<'conditional' | 'confirmed' | 'withdrawn'>().notNull(),
+    reason: text('reason').notNull(),
+    evidenceAttemptIds: jsonb('evidence_attempt_ids').$type<string[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true, mode: 'date' }),
+    confirmedByAttemptId: uuid('confirmed_by_attempt_id').references(() => attempts.id, {
+      onDelete: 'set null',
+    }),
+    withdrawnAt: timestamp('withdrawn_at', { withTimezone: true, mode: 'date' }),
+    withdrawnByAttemptId: uuid('withdrawn_by_attempt_id').references(() => attempts.id, {
+      onDelete: 'set null',
+    }),
+  },
+  (table) => [
+    uniqueIndex('placement_grants_user_run_concept_unique').on(
+      table.userId,
+      table.runId,
+      table.conceptId,
+    ),
+    index('placement_grants_user_concept_idx').on(table.userId, table.conceptId),
+    check('placement_grants_origin_check', sql`${table.origin} in ('direct', 'inferred')`),
+    check(
+      'placement_grants_state_check',
+      sql`${table.state} in ('conditional', 'confirmed', 'withdrawn')`,
+    ),
+  ],
+);
+
 export const projectProgress = pgTable(
   'project_progress',
   {

@@ -51,12 +51,21 @@ import {
   lessonQuizItems,
   lessonRuns,
   mastery,
+  placementGrants,
   remediationFlags,
   reviewCards,
   reviewLogs,
   sessionActivities,
   users,
 } from '../src/db/schema.js';
+import {
+  auditPlacementGrants,
+  emptyPlacementAuditState,
+  isOverplacedGap,
+  type PlacementAuditState,
+  recordOverplacement,
+  type SimulationPlacementGrantEvidence,
+} from './learner-simulation-placement.js';
 import { answerFor, exerciseFor, wrongAnswerFor } from './learner-simulation-support.js';
 
 export const simulationProfiles = [
@@ -70,6 +79,7 @@ export const simulationProfiles = [
   'scenario-p14-fallback',
   'scenario-p17-fallback',
   'scenario-p17-covering',
+  'overplaced',
 ] as const;
 
 export type SimulationProfile = (typeof simulationProfiles)[number];
@@ -104,9 +114,24 @@ export type InvariantId =
   | 'P16'
   | 'P17'
   | 'P18'
-  | 'P19';
+  | 'P19'
+  | 'P20'
+  | 'P21'
+  | 'P22'
+  | 'P23';
 
-type CheckedInvariantId = 'P13' | 'P14' | 'P15' | 'P16' | 'P17' | 'P18' | 'P19';
+type CheckedInvariantId =
+  | 'P13'
+  | 'P14'
+  | 'P15'
+  | 'P16'
+  | 'P17'
+  | 'P18'
+  | 'P19'
+  | 'P20'
+  | 'P21'
+  | 'P22'
+  | 'P23';
 type CheckedInvariantCounts = Record<CheckedInvariantId, number>;
 
 export interface SimulationViolation {
@@ -207,6 +232,7 @@ export interface SimulationMasteryEvidence {
 }
 
 export interface SimulationViolationEvidence {
+  placementGrants?: SimulationPlacementGrantEvidence[];
   beforeCards: SimulationCardEvidence[];
   afterCards: SimulationCardEvidence[];
   implicitRepetitionTrace: Array<ImplicitRepetitionTraceEvent & { activityOrder: number | null }>;
@@ -482,6 +508,7 @@ interface ProfileRuntime {
   activeBehaviors: SimulationViolationEvidence['behaviors'];
   reviewActivityDimensionOrder: Map<string, Map<string, number>>;
   reviewActivityAttemptIndex: Map<string, number>;
+  placement: PlacementAuditState;
 }
 
 const graphRemovedConcepts = new Set([
@@ -511,9 +538,25 @@ const invariants: InvariantId[] = [
   'P17',
   'P18',
   'P19',
+  'P20',
+  'P21',
+  'P22',
+  'P23',
 ];
 
-const checkedInvariantIds: CheckedInvariantId[] = ['P13', 'P14', 'P15', 'P16', 'P17', 'P18', 'P19'];
+const checkedInvariantIds: CheckedInvariantId[] = [
+  'P13',
+  'P14',
+  'P15',
+  'P16',
+  'P17',
+  'P18',
+  'P19',
+  'P20',
+  'P21',
+  'P22',
+  'P23',
+];
 
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -684,7 +727,7 @@ class SimulatedApi {
   readonly failedRequests: SimulatedApiFailure[] = [];
 
   constructor(
-    private readonly db: Database,
+    readonly db: Database,
     private content: ContentIndex,
     private readonly timeZone: string,
     initialNow: Date,
@@ -827,16 +870,10 @@ async function readProgress(db: Database, userId: string): Promise<LearnerProgre
       .where(eq(lessonRuns.userId, userId))
       .orderBy(asc(lessonRuns.conceptId), desc(lessonRuns.startedAt), desc(lessonRuns.id)),
     db
-      .select({ state: diagnosticRuns.state })
-      .from(diagnosticRuns)
-      .where(
-        and(
-          eq(diagnosticRuns.userId, userId),
-          eq(diagnosticRuns.kind, 'placement'),
-          eq(diagnosticRuns.status, 'completed'),
-        ),
-      )
-      .orderBy(desc(diagnosticRuns.startedAt), desc(diagnosticRuns.id)),
+      .select({ conceptId: placementGrants.conceptId, state: placementGrants.state })
+      .from(placementGrants)
+      .where(eq(placementGrants.userId, userId))
+      .orderBy(asc(placementGrants.createdAt), asc(placementGrants.id)),
     db
       .select()
       .from(remediationFlags)
@@ -848,11 +885,9 @@ async function readProgress(db: Database, userId: string): Promise<LearnerProgre
       ),
   ]);
   const placedOut = new Set<string>();
-  for (const run of placements) {
-    const state = object(run.state);
-    for (const conceptId of list(state.known)) {
-      if (typeof conceptId === 'string') placedOut.add(conceptId);
-    }
+  for (const grant of placements) {
+    if (grant.state === 'withdrawn') placedOut.delete(grant.conceptId);
+    else placedOut.add(grant.conceptId);
   }
   return {
     masteryByKey: new Map(
@@ -904,12 +939,12 @@ function addViolation(
   fields: Pick<
     SimulationViolation,
     'courseId' | 'conceptId' | 'projectId' | 'startable' | 'details'
-  > & { evidenceConceptIds?: string[] } = {},
+  > & { evidenceConceptIds?: string[]; placementGrants?: SimulationPlacementGrantEvidence[] } = {},
 ) {
   const key = `${day}|${invariant}|${entityId}|${fields.details ?? ''}`;
   if (runtime.violationKeys.has(key)) return;
   runtime.violationKeys.add(key);
-  const { evidenceConceptIds = [], ...violationFields } = fields;
+  const { evidenceConceptIds = [], placementGrants: grantEvidence, ...violationFields } = fields;
   const context = runtime.violationEvidenceContext;
   const relatedConceptIds = new Set([
     fields.conceptId ?? entityId.split('/')[0] ?? entityId,
@@ -957,6 +992,7 @@ function addViolation(
       invariant === 'P10'
         ? context.retryDecisions.filter(({ conceptId }) => relatedConceptIds.has(conceptId))
         : [],
+    ...(grantEvidence ? { placementGrants: grantEvidence } : {}),
   };
   runtime.report.violations.push({
     profile: runtime.profile,
@@ -2315,7 +2351,8 @@ async function startCourse(
   day: number,
 ): Promise<void> {
   await api.require('PUT', '/course/active', now, { courseId });
-  if (runtime.profile !== 'placement') {
+  const overplaced = runtime.profile === 'overplaced';
+  if (runtime.profile !== 'placement' && !overplaced) {
     await api.require('POST', `/courses/${courseId}/start`, now, { method: 'beginning' });
     return;
   }
@@ -2325,17 +2362,24 @@ async function startCourse(
   const course = content.coursesById.get(courseId);
   const topics = [...new Set(course?.units.flatMap((unit) => unit.concepts) ?? [])];
   const knownTopics = new Set(topics.slice(0, Math.ceil(topics.length / 3)));
+  const guessedTopics = new Set(
+    overplaced ? topics.slice(knownTopics.size, Math.ceil((topics.length * 2) / 3)) : [],
+  );
+  for (const conceptId of knownTopics) runtime.placement.trulyKnown.add(conceptId);
   for (let step = 0; step < 64; step += 1) {
     const next = object(await api.require('GET', `/placement/${placementId}/next`, now));
     const exercise = object(next.exercise);
     const exerciseId = text(exercise.id);
     if (!exerciseId) break;
     const conceptId = text(exercise.concept) ?? text(next.conceptId) ?? '';
-    const know = knownTopics.has(conceptId);
+    const guessed = guessedTopics.has(conceptId);
+    const know = knownTopics.has(conceptId) || guessed;
+    const targetSeconds = content.exercisesById.get(exerciseId)?.target_seconds ?? 90;
     const body = know
       ? {
           exerciseId,
           answer: answerForProfile(content, exerciseId, 0, true),
+          ...(overplaced ? { durationMs: guessed ? targetSeconds * 3_000 : 5_000 } : {}),
         }
       : { exerciseId, dontKnow: true };
     const result = object(await api.require('POST', `/placement/${placementId}/answer`, now, body));
@@ -2343,6 +2387,9 @@ async function startCourse(
     if (result.complete === true || result.completed === true) break;
   }
   await api.require('GET', `/placement/${placementId}/results`, now);
+  if (overplaced && api.userId) {
+    await recordOverplacement(api.db, api.userId, runtime.placement);
+  }
 }
 
 function newTopicsCompleted(before: CoursePayload, after: CoursePayload): number {
@@ -2464,7 +2511,9 @@ async function answerLessonProblem(
     pointId &&
       keyPrereqsForPoint(content, conceptId, pointId).some(
         (prereqId) =>
-          runtime.weakPrereqs.includes(prereqId) && !runtime.completedRemedialReviews.has(prereqId),
+          (runtime.weakPrereqs.includes(prereqId) &&
+            !runtime.completedRemedialReviews.has(prereqId)) ||
+          isOverplacedGap(runtime.placement, prereqId),
       ),
   );
   const intendedCorrect =
@@ -2745,7 +2794,9 @@ async function attemptExercise(
       runtime.reviewActivityDimensionOrder.set(activityId, dimensionOrder);
     }
   }
-  const intendedCorrect = wantsCorrect(runtime, conceptId, day, activityId, exerciseId);
+  const intendedCorrect =
+    wantsCorrect(runtime, conceptId, day, activityId, exerciseId) &&
+    !isOverplacedGap(runtime.placement, conceptId);
   const exercise = exerciseFor(content, exerciseId, 0);
   const activityKey =
     runtime.activityKeyById.get(activityId) ?? `day:${day}|unmapped-activity:${exerciseId}`;
@@ -2844,6 +2895,7 @@ async function processActivity(
         .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
         .limit(1);
       if (finalRun[0]?.status === 'completed') {
+        runtime.placement.learned.add(activity.conceptId);
         await completeActivity(api, now, sessionId, activity, {
           lessonViewed: true,
           lessonRunnerContinued: true,
@@ -3118,6 +3170,7 @@ export function auditP15Trace(
   activityKind: 'learn' | 'review',
   reviewLogOrder: ReadonlyMap<string, number> = new Map(),
   prerequisiteResetContext?: P15PrerequisiteResetContext,
+  withdrawnConceptIds: ReadonlySet<string> = new Set(),
 ): {
   checked: number;
   violations: string[];
@@ -3206,6 +3259,7 @@ export function auditP15Trace(
         ? encompassing.descendants(sourceConceptId)
         : encompassing.ancestors(sourceConceptId);
     for (const card of cardsById.values()) {
+      if (!afterById.has(card.id) && withdrawnConceptIds.has(card.conceptId)) continue;
       const snapshot = beforeById.get(card.id) ?? card;
       if (!snapshot.fsrs || (snapshot.fsrs as Card).state === State.New) continue;
       const weight = targets.get(card.conceptId);
@@ -3627,6 +3681,14 @@ async function processActivityWithMetrics(
       activity.kind === 'learn' ? 'learn' : 'review',
       reviewLogOrder,
       prerequisiteResetContext,
+      new Set(
+        (
+          await db
+            .select({ conceptId: placementGrants.conceptId })
+            .from(placementGrants)
+            .where(and(eq(placementGrants.userId, userId), eq(placementGrants.state, 'withdrawn')))
+        ).map((grant) => grant.conceptId),
+      ),
     );
     runtime.report.checkedCounts.P15 += p15.checked;
     runtime.violationEvidenceContext = {
@@ -4578,6 +4640,7 @@ async function simulateProfile(
     },
     reviewActivityDimensionOrder: new Map(),
     reviewActivityAttemptIndex: new Map(),
+    placement: emptyPlacementAuditState(),
   };
   let activeContent = initialContent;
   let currentCourseId: string | undefined;
@@ -5175,6 +5238,29 @@ async function simulateProfile(
       }
 
       await reviewCardAudit(runtime, db, userId, now, day, timeZone, overdueReported);
+      await auditPlacementGrants({
+        db,
+        userId,
+        content: activeContent,
+        day,
+        state: runtime.placement,
+        coursePageTopics: coursePageTopics(pageAfter),
+        plannedLearnConceptIds: daily.plans.flatMap((plan) =>
+          plan.activities.flatMap((activity) =>
+            activity.kind === 'learn' && activity.conceptId ? [activity.conceptId] : [],
+          ),
+        ),
+        countsComplete: (conceptId) => isDone(conceptId, endOfDayProgress, activeContent),
+        markChecked: (invariant) => markChecked(runtime, invariant),
+        addViolation: (invariant, conceptId, details, evidenceConceptIds, grants) =>
+          addViolation(runtime, day, invariant, conceptId, [], {
+            courseId,
+            conceptId,
+            details,
+            evidenceConceptIds,
+            placementGrants: grants,
+          }),
+      });
       const switchedContent = await maybeSwitchGraphContent(
         api,
         db,
