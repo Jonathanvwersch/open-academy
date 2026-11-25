@@ -12,6 +12,48 @@ test('page content truncation leaves the required suffix within the size bound',
   expect(content.length).toBeLessThanOrEqual(12_000 + '\n…[truncated]'.length);
 });
 
+test('page content keeps diagram labels instead of SVG source', () => {
+  const content = [
+    'Before',
+    '```svg',
+    '<svg aria-label="A line with slope > 0"><path /></svg>',
+    '```',
+    '```svg academy-visual=eigen-directions',
+    "<svg\n aria-label='  Two\n directions  '><path /></svg>",
+    '```',
+    '```svg',
+    '<svg data-aria-label="Not the root label"><g aria-label="A group" /></svg>',
+    '```',
+    '```svg',
+    '<svg aria-label=" " />',
+    '```',
+    'After',
+  ].join('\n');
+
+  expect(sanitizePageContent(content)).toBe(
+    'Before\n[diagram: A line with slope > 0]\n[diagram: Two directions]\n[diagram]\n[diagram]\nAfter',
+  );
+});
+
+test('diagram labels have a bounded allowance separate from lesson text', () => {
+  const text = 'x'.repeat(11_980);
+  const diagram = (label: string) =>
+    ['', '```svg', `<svg aria-label="${label}" />`, '```', ''].join('\n');
+
+  const content = sanitizePageContent(
+    `${text}${diagram('A projection onto the horizontal line')}After`,
+  );
+  expect(content).toContain('[diagram: A projection onto the horizontal line]\nAfter');
+  expect(content).not.toContain('[truncated]');
+
+  const large = sanitizePageContent(text + diagram('y'.repeat(4_000)));
+  expect(large.endsWith('\n…[truncated]')).toBe(true);
+  expect(large.length).toBeLessThanOrEqual(14_000 + '\n…[truncated]'.length);
+
+  const discarded = sanitizePageContent('x'.repeat(12_100) + diagram('Not in the output'));
+  expect(discarded).toBe(`${'x'.repeat(12_000)}\n…[truncated]`);
+});
+
 test('lesson, session, and map tutor context include prerequisite recap facts', async () => {
   const index = await loadContent('tests/fixtures/content');
   const lesson = index.lessonsByConcept.get('derivatives');

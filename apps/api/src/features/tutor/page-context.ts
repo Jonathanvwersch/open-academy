@@ -21,13 +21,37 @@ export interface PaperTutorContext {
 }
 
 const PAGE_CONTENT_LIMIT = 12_000;
+const DIAGRAM_LABEL_ALLOWANCE = 2_000;
 const TRUNCATION_SUFFIX = '\n…[truncated]';
 
 export function sanitizePageContent(content: string): string {
-  const sanitized = content.replace(/```[ \t]*svg\b[^\n]*\r?\n[\s\S]*?```/gi, '[diagram]');
-  return sanitized.length > PAGE_CONTENT_LIMIT
-    ? `${sanitized.slice(0, PAGE_CONTENT_LIMIT)}${TRUNCATION_SUFFIX}`
-    : sanitized;
+  let sanitized = '';
+  let offset = 0;
+  let allowance = 0;
+  for (const match of content.matchAll(/```[ \t]*svg\b[^\n]*\r?\n([\s\S]*?)```/gi)) {
+    const [fence, svg] = match;
+    sanitized += content.slice(offset, match.index);
+    if (sanitized.length >= PAGE_CONTENT_LIMIT + allowance) {
+      return `${sanitized.slice(0, PAGE_CONTENT_LIMIT + allowance)}${TRUNCATION_SUFFIX}`;
+    }
+
+    const root = svg.match(/<svg\b(?:[^>"']|"[^"]*"|'[^']*')*>/)?.[0];
+    const label = Array.from(root?.matchAll(/\s+([\w:.-]+)\s*=\s*(["'])([\s\S]*?)\2/g) ?? [])
+      .find(([, name]) => name === 'aria-label')?.[3]
+      ?.replace(/\s+/g, ' ')
+      .trim();
+    const diagram = label ? `[diagram: ${label}]` : '[diagram]';
+    const nextAllowance = Math.min(
+      allowance + diagram.length - '[diagram]'.length,
+      DIAGRAM_LABEL_ALLOWANCE,
+    );
+    sanitized += diagram;
+    if (sanitized.length <= PAGE_CONTENT_LIMIT + nextAllowance) allowance = nextAllowance;
+    offset = match.index + fence.length;
+  }
+  sanitized += content.slice(offset);
+  const limit = PAGE_CONTENT_LIMIT + allowance;
+  return sanitized.length > limit ? `${sanitized.slice(0, limit)}${TRUNCATION_SUFFIX}` : sanitized;
 }
 
 function summaryFor(lesson: IndexedLesson): string {

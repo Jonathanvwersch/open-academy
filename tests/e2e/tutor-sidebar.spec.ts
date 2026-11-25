@@ -620,6 +620,41 @@ test('chat text stays visible while Markdown loads', async ({ page }) => {
   await expect(tutor.getByTestId('tutor-assistant-message').locator('.markdown')).toBeVisible();
 });
 
+test('tutor renders a projection diagram from the E2E provider', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`/session/${sessionId}`);
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.fill('Draw a projection onto a line.');
+  await textarea.press('Enter');
+
+  const image = tutor.getByTestId('tutor-assistant-message').getByRole('img', {
+    name: 'Point P projects perpendicularly onto point Q on the line',
+  });
+  await expect(image).toBeVisible();
+  await expect
+    .poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth))
+    .toBeGreaterThan(0);
+  await waitForTutorSidebarToSettle(page, '[data-slot="sidebar-container"]');
+  await page.screenshot({ path: testInfo.outputPath('tutor-diagram.png') });
+});
+
+test('tutor replaces a malformed diagram from the E2E provider with a placeholder', async ({
+  page,
+}) => {
+  await page.goto(`/session/${sessionId}`);
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.fill('Draw a projection with an incomplete SVG.');
+  await textarea.press('Enter');
+
+  const reply = tutor.getByTestId('tutor-assistant-message');
+  await expect(reply.getByText("Diagram couldn't be shown")).toBeVisible();
+  await expect(reply.locator('img')).toHaveCount(0);
+});
+
 test('pending tutor reply shows pulsing Thinking within the mobile conversation', async ({
   page,
 }) => {
