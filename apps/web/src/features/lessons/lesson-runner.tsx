@@ -272,6 +272,12 @@ export function LessonRunner({
       setViewingStage(step);
       return;
     }
+    if (state.quiz.current) {
+      onStepChange('quiz', true);
+      setViewingPointId(null);
+      setViewingStage('quiz');
+      return;
+    }
     const index = Number(step) - 1;
     const point = Number.isInteger(index) ? state.points[index] : undefined;
     const isPendingPracticePoint = point?.id === state.pendingPracticeProblem?.knowledgePointId;
