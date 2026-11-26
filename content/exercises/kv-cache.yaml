@@ -859,7 +859,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A server uses the same model weights for a cached prompt and a new prompt. To find the portion of the KV cache it can reuse, its loop compares the two prompts' token IDs at each position, starting at the beginning. What should it do at the first mismatch?
+    prompt: A server uses the same model weights for a cached prompt and a new prompt. In both prompts, the first token has model position 0 and each following token's model position increases by one. To find the portion of the KV cache it can reuse, the server compares the two prompts' token IDs from the beginning. What should it do at the first mismatch?
     options:
       - id: a
         text: Stop scanning and keep the entries already matched.
