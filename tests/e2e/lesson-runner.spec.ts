@@ -403,7 +403,10 @@ async function answerAndReload(page: Page, correct: boolean, runConceptId = conc
       response.url().endsWith(`/api/lessons/${runConceptId}/run/answer`) &&
       response.request().method() === 'POST',
   );
-  await page.getByRole('button', { name: 'Submit answer' }).click();
+  const submit = page.getByRole('button', { name: 'Submit answer', exact: true });
+  await submit.scrollIntoViewIfNeeded();
+  const scrollBeforeAnswer = await page.evaluate(() => window.scrollY);
+  await submit.click();
   const response = await responsePromise;
   const body = await response.json();
   expect(response.status()).toBe(200);
@@ -418,8 +421,19 @@ async function answerAndReload(page: Page, correct: boolean, runConceptId = conc
         : body.state.status === 'quiz'
           ? 'explain'
           : null;
+  const stepCompleted =
+    body.state.status === 'in_progress' && run.currentPointId !== body.state.currentPointId;
   const expectedStep =
-    run.currentPointId === body.state.currentPointId ? stepBeforeAnswer : stepFromState;
+    stepCompleted || run.currentPointId === body.state.currentPointId
+      ? stepBeforeAnswer
+      : stepFromState;
+  if (stepCompleted) {
+    await expect(
+      page.getByRole('button', { name: 'Continue to next step', exact: true }),
+    ).toBeEnabled();
+    expect(scrollBeforeAnswer).toBeGreaterThan(0);
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollBeforeAnswer);
+  }
   await expect.poll(() => new URL(page.url()).searchParams.get('step')).toBe(expectedStep);
   await page.reload();
   if (body.state.status === 'needs_retry') {
@@ -427,7 +441,9 @@ async function answerAndReload(page: Page, correct: boolean, runConceptId = conc
   } else if (body.state.status === 'in_progress' && currentPointIndex >= 0) {
     await expect(
       page.getByRole('button', {
-        name: `Step ${currentPointIndex + 1} of ${body.state.points.length}, current`,
+        name: stepCompleted
+          ? `Step ${run.points.findIndex((point: { id: string }) => point.id === run.currentPointId) + 1} of ${body.state.points.length}, passed`
+          : `Step ${currentPointIndex + 1} of ${body.state.points.length}, current`,
       }),
     ).toBeVisible();
     const problemCard = page.getByTestId('lesson-problem');
@@ -467,15 +483,8 @@ async function nextProblemAndReload(
     before.points.find(
       (point: { id: string }) => point.id === before.lastAnsweredProblem?.knowledgePointId,
     )?.status === 'passed';
-  const nextPointTitle = before.currentPoint?.title;
-  const buttonName = pointPassed
-    ? nextPointTitle
-      ? `Next: ${nextPointTitle}`
-      : 'Next step'
-    : 'Next problem';
-  const advancesStep = buttonName.startsWith('Next: ');
-  const checkScroll = advancesStep || buttonName === 'Next step' || assertWithinStepScroll;
-  if (checkScroll) {
+  const buttonName = pointPassed ? 'Continue to next step' : 'Next problem';
+  if (pointPassed || assertWithinStepScroll) {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   }
@@ -488,17 +497,12 @@ async function nextProblemAndReload(
   const response = await responsePromise;
   const body = await response.json();
   expect(response.status()).toBe(200);
-  if (advancesStep) {
+  if (pointPassed) {
     await expect(
       page.getByRole('heading', { name: body.run.currentPoint.title, exact: true }),
     ).toBeVisible();
     await expect(page.getByTestId('lesson-problem')).toBeVisible();
     await expect(page.getByTestId('kp-checkpoint')).toHaveCount(0);
-  } else if (buttonName === 'Next step') {
-    await expect(
-      page.getByRole('heading', { name: body.run.currentPoint.title, exact: true }),
-    ).toBeVisible();
-    await expect(page.getByTestId('lesson-problem')).toBeVisible();
   } else if (assertWithinStepScroll) {
     await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
       'data-problem-id',
@@ -542,7 +546,7 @@ async function passFirstKnowledgePoint(page: Page) {
   }
   const nextTitle = run.currentPoint?.title;
   if (!nextTitle) throw new Error('Expected a next knowledge point');
-  const actionAfter = await actionButtonBox(page, `Next: ${nextTitle}`);
+  const actionAfter = await actionButtonBox(page, 'Continue to next step');
   if (actionBefore) {
     expect(Math.abs(actionAfter.x - actionBefore.x)).toBeLessThanOrEqual(1);
     expect(Math.abs(actionAfter.y - actionBefore.y)).toBeLessThanOrEqual(1);
@@ -567,11 +571,14 @@ async function advanceToNextStep(page: Page) {
   );
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
-  await page.getByRole('button', { name: `Next: ${nextTitle}`, exact: true }).click();
+  await page.getByRole('button', { name: 'Continue to next step', exact: true }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(200);
   const body = await response.json();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  const nextStep =
+    run.points.findIndex((point: { id: string }) => point.id === run.currentPointId) + 1;
+  await expect.poll(() => new URL(page.url()).searchParams.get('step')).toBe(String(nextStep));
   await expect(page.getByRole('heading', { name: nextTitle, exact: true })).toBeVisible();
   await expect(page.getByTestId('lesson-problem')).toBeVisible();
   await expect(page.getByTestId('kp-checkpoint')).toHaveCount(0);
@@ -743,7 +750,9 @@ test('a passed knowledge point opens the next step and shows an XP toast', async
   const { sessionId, run, nextTitle } = await passFirstKnowledgePoint(page);
   expect(run.points[0].xpEarned).toBe(10);
   await expect(page.getByText('Correct · +10 XP')).toBeVisible();
-  await expect(page.getByRole('button', { name: `Next: ${nextTitle}`, exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Continue to next step', exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toHaveCount(0);
 
   const advancedRun = await advanceToNextStep(page);

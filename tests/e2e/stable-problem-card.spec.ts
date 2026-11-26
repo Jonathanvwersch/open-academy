@@ -58,7 +58,9 @@ async function submitLessonAnswer(page: Page, answer: unknown) {
   );
   await submit.click();
   await response;
-  await expect(page.getByRole('button', { name: /Next problem|Next step/ })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /Next problem|Continue to next step/ }),
+  ).toBeVisible();
   expect(await page.evaluate(() => window.scrollY)).toBe(scrollYBefore);
 }
 

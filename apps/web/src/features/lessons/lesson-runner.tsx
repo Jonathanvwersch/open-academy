@@ -90,7 +90,6 @@ export function LessonRunner({
   const previousProblemId = useRef(visibleProblemId);
   const problemCardRef = useRef<HTMLDivElement>(null);
   const problemPromptRef = useRef<HTMLDivElement>(null);
-  const previousCurrentPointId = useRef(state?.currentPointId);
   const [stableCardHeights, setStableCardHeights] = useState<{
     pointId: string;
     prompt: number;
@@ -123,26 +122,25 @@ export function LessonRunner({
     ? (lesson?.knowledge_points?.find((point) => point.id === state.currentPointId) ?? undefined)
     : undefined;
   const answeredPoint =
-    state?.lastAnsweredProblem && !state.pendingProblem
+    state?.lastAnsweredProblem && !state.lastAnsweredProblem.practiceOnly && !state.pendingProblem
       ? lesson?.knowledge_points?.find(
           (point) => point.id === state.lastAnsweredProblem?.knowledgePointId,
         )
       : undefined;
   const point = answeredPoint ?? activePoint ?? state?.currentPoint;
-  const nextPoint = state?.currentPointId
-    ? lesson?.knowledge_points?.find((item) => item.id === state.currentPointId)
-    : undefined;
+  // The engine advances on a passing answer while the learner is still viewing its feedback.
+  const currentStepId =
+    state?.status === 'in_progress' ? (point?.id ?? state.currentPointId) : state?.currentPointId;
+  const previousStepId = useRef(currentStepId);
   const contextProblem = state?.pendingProblem ?? state?.lastAnsweredProblem;
-  const currentPointIndex = state?.currentPointId
-    ? state.points.findIndex((point) => point.id === state.currentPointId)
-    : -1;
+  const currentStepIndex = state?.points.findIndex((point) => point.id === currentStepId) ?? -1;
   const viewingPointIndex = viewingPointId
     ? (state?.points.findIndex((item) => item.id === viewingPointId) ?? -1)
     : -1;
   const viewingPoint = viewingPointId
     ? lesson?.knowledge_points?.find((item) => item.id === viewingPointId)
     : undefined;
-  const viewingPastStep = Boolean(viewingPointId && viewingPointId !== state?.currentPointId);
+  const viewingPastStep = Boolean(viewingPointId && viewingPointId !== currentStepId);
   const practiceMode = Boolean(viewingPointId && viewingPointId === practicePointId);
   const practiceProblem =
     state?.pendingPracticeProblem ??
@@ -165,15 +163,15 @@ export function LessonRunner({
   );
   const displayedPoint = viewingPastStep ? viewingPoint : point;
   const pageLabel =
-    state && currentPointIndex >= 0
-      ? `${title} · step ${currentPointIndex + 1} of ${state.points.length}`
+    state && currentStepIndex >= 0
+      ? `${title} · step ${currentStepIndex + 1} of ${state.points.length}`
       : title;
   const tutorLessonStage = viewingPastStep
     ? 'step'
     : (viewingStage ??
       (state?.quiz.current
         ? 'quiz'
-        : state?.currentPointId
+        : currentStepId
           ? 'step'
           : finalAnswered || state?.status === 'completed'
             ? 'quiz'
@@ -190,11 +188,7 @@ export function LessonRunner({
     ? problemLabel(tutorContextProblem)
     : undefined;
   const tutorContextPointId =
-    tutorLessonStage === 'step'
-      ? viewingPastStep
-        ? viewingPointId
-        : state?.currentPointId
-      : undefined;
+    tutorLessonStage === 'step' ? (viewingPastStep ? viewingPointId : currentStepId) : undefined;
   const tutorStageExerciseId =
     tutorLessonStage === 'explain'
       ? lesson?.final
@@ -224,34 +218,22 @@ export function LessonRunner({
   }, [visibleProblemId]);
 
   useEffect(() => {
-    if (previousCurrentPointId.current === state?.currentPointId) return;
-    previousCurrentPointId.current = state?.currentPointId;
-    setViewingPointId(null);
-    setViewingStage(null);
-    const nextIndex = state?.points.findIndex((item) => item.id === state.currentPointId) ?? -1;
-    onStepChange(
-      nextIndex >= 0
-        ? String(nextIndex + 1)
-        : finalAnswered || state?.status === 'completed'
-          ? 'quiz'
-          : state?.status === 'quiz'
-            ? 'explain'
-            : undefined,
-      true,
-    );
-  }, [finalAnswered, onStepChange, state]);
-
-  useEffect(() => {
     if (!state || !lesson) return;
-    const currentIndex = state.points.findIndex((item) => item.id === state.currentPointId);
     const fallback =
-      currentIndex >= 0
-        ? String(currentIndex + 1)
+      currentStepIndex >= 0
+        ? String(currentStepIndex + 1)
         : state.quiz.current || finalAnswered || state.status === 'completed'
           ? 'quiz'
           : state.status === 'quiz'
             ? 'explain'
             : undefined;
+    if (previousStepId.current !== currentStepId) {
+      previousStepId.current = currentStepId;
+      setViewingPointId(null);
+      setViewingStage(null);
+      onStepChange(fallback, true);
+      return;
+    }
     if (step === undefined) {
       setViewingPointId(null);
       setViewingStage(null);
@@ -286,7 +268,7 @@ export function LessonRunner({
     if (
       !point ||
       (point.status !== 'passed' &&
-        point.id !== state.currentPointId &&
+        point.id !== currentStepId &&
         !isPendingPracticePoint &&
         !isSelectedPracticePoint)
     ) {
@@ -308,10 +290,18 @@ export function LessonRunner({
       setWarmupActive(pendingPracticeIsWarmup);
     }
     setViewingStage(null);
-    setViewingPointId(
-      isPendingPracticePoint || point.id !== state.currentPointId ? point.id : null,
-    );
-  }, [finalAnswered, lesson, onStepChange, pendingPracticeIsWarmup, practicePointId, state, step]);
+    setViewingPointId(isPendingPracticePoint || point.id !== currentStepId ? point.id : null);
+  }, [
+    currentStepId,
+    currentStepIndex,
+    finalAnswered,
+    lesson,
+    onStepChange,
+    pendingPracticeIsWarmup,
+    practicePointId,
+    state,
+    step,
+  ]);
 
   useEffect(() => {
     if (
@@ -621,7 +611,7 @@ export function LessonRunner({
     const answeredPointIndex = state.points.findIndex((item) => item.id === answeredPointId);
     const answeredPoint = state.points[answeredPointIndex];
     const checkpointDetails =
-      answeredPoint?.status === 'passed' && nextPoint
+      answeredPoint?.status === 'passed' && state.currentPointId
         ? {
             xpEarned: answeredPoint.xpEarned,
             pointNumber: answeredPointIndex + 1,
@@ -748,7 +738,7 @@ export function LessonRunner({
     totalReviewQuestions,
   );
   const stableHeightForCurrentPoint =
-    stableCardHeights?.pointId === state.currentPointId ? stableCardHeights : null;
+    stableCardHeights?.pointId === currentStepId ? stableCardHeights : null;
   const stepContent = displayedPoint ? (
     <section data-testid="lesson-step-content" className="space-y-4">
       {displayedPoint.id === lesson?.knowledge_points?.[0]?.id &&
@@ -771,7 +761,7 @@ export function LessonRunner({
       : displayedPoint?.title;
 
   const viewStep = (stepId: string) => {
-    const nextViewingPointId = stepId === state.currentPointId ? null : stepId;
+    const nextViewingPointId = stepId === currentStepId ? null : stepId;
     if (viewingPointId !== nextViewingPointId) window.scrollTo({ top: 0 });
     setViewingPointId(nextViewingPointId);
     setViewingStage(null);
@@ -782,8 +772,7 @@ export function LessonRunner({
     setViewingPointId(null);
     setViewingStage(null);
     window.scrollTo({ top: 0 });
-    const index = state.points.findIndex((item) => item.id === state.currentPointId);
-    onStepChange(index >= 0 ? String(index + 1) : undefined);
+    onStepChange(currentStepIndex >= 0 ? String(currentStepIndex + 1) : undefined);
   };
 
   const viewStage = (stage: 'explain' | 'quiz') => {
@@ -886,7 +875,7 @@ export function LessonRunner({
         state={state}
         viewingPastStep={viewingPastStep}
         viewingPointId={viewingPointId}
-        currentPointId={point?.id}
+        currentPointId={currentStepId ?? undefined}
         viewStep={viewStep}
         returnToCurrentStep={returnToCurrentStep}
         viewExplain={() => viewStage('explain')}
@@ -1189,11 +1178,9 @@ export function LessonRunner({
                       showingAnswer
                         ? {
                             label:
-                              pointStatus?.status === 'passed' && nextPoint
-                                ? `Next: ${nextPoint.title}`
-                                : pointStatus?.status === 'passed'
-                                  ? 'Next step'
-                                  : 'Next problem',
+                              pointStatus?.status === 'passed'
+                                ? 'Continue to next step'
+                                : 'Next problem',
                             onClick: () => void next(),
                             loading: busyAction === 'next',
                             disabled: busy && busyAction !== 'next',
