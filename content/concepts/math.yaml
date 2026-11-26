@@ -47,7 +47,7 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: matrices }]
-    encompassings: [{ id: matrices, weight: 0.06 }, { id: vectors, weight: 0.03 }]
+    encompassings: [{ id: matrices, weight: 0.02 }, { id: vectors, weight: 0.04 }]
     confused_with: [rank-span]
     related: [eigen-svd]
     objectives:
@@ -100,9 +100,9 @@ concepts:
     prereqs: [{ id: inverses-linear-systems }]
     encompassings:
       [
-        { id: inverses-linear-systems, weight: 0.11 },
-        { id: matrices, weight: 0.15 },
-        { id: vectors, weight: 0.26 },
+        { id: inverses-linear-systems, weight: 0.08 },
+        { id: matrices, weight: 0.12 },
+        { id: vectors, weight: 0.22 },
       ]
     objectives:
       - { text: "Decide whether a vector is in the span of others", dimension: math }
@@ -132,11 +132,11 @@ concepts:
     prereqs: [{ id: rank-span }]
     encompassings:
       [
-        { id: rank-span, weight: 0.05 },
-        { id: dot-product, weight: 0.33 },
-        { id: inverses-linear-systems, weight: 0.26 },
-        { id: matrices, weight: 0.39 },
-        { id: vectors, weight: 0.17 },
+        { id: rank-span, weight: 0.02 },
+        { id: dot-product, weight: 0.27 },
+        { id: inverses-linear-systems, weight: 0.15 },
+        { id: matrices, weight: 0.20 },
+        { id: vectors, weight: 0.14 },
       ]
     objectives:
       - {
