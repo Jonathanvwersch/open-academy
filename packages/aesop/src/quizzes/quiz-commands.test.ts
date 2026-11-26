@@ -503,12 +503,38 @@ test('a retake leaves out a topic with no fresh question and still earns no XP',
     activityRow(0, { kind: 'review', status: 'completed' }),
   ]);
   await store.linkTimedQuizFollowUps(learnerId, concepts, review.id);
+  const emptyContent = {
+    ...context.content,
+    exercisesById: new Map(),
+    exercisesByConcept: new Map(),
+  };
+  const now = new Date(+deadline + 1000);
+  expect(
+    await getQuiz(
+      store,
+      learnerId,
+      run.id,
+      async () => emptyContent,
+      () => now,
+    ),
+  ).toMatchObject({ kind: 'ok', body: { result: { retake: { eligible: false } } } });
+  expect(
+    await startQuizRetake(store, { ...context, content: emptyContent, now }, run.id),
+  ).toMatchObject({ kind: 'conflict', error: 'Fresh retake questions are not available' });
   const revised = {
     ...context.content,
     exercisesById: new Map([['vectors-1', question('vectors', 1).exercise]]),
     exercisesByConcept: new Map(),
   };
-  const now = new Date(+deadline + 1000);
+  expect(
+    await getQuiz(
+      store,
+      learnerId,
+      run.id,
+      async () => revised,
+      () => now,
+    ),
+  ).toMatchObject({ kind: 'ok', body: { result: { retake: { eligible: true } } } });
   const started = await startQuizRetake(store, { ...context, content: revised, now }, run.id);
   expect(started).toMatchObject({
     kind: 'created',

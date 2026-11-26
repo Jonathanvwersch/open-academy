@@ -101,11 +101,12 @@ async function currentQuizItems(
   return items;
 }
 
-async function retakeStatus(
+async function retakePlan(
   store: FlowStore,
   learnerId: string,
   run: TimedQuizRun,
   items: TimedQuizItem[],
+  content: ContentIndex,
 ) {
   const [retake] = await store.listTimedQuizRuns(learnerId, { retakeOf: run.id });
   const eligible =
@@ -118,7 +119,32 @@ async function retakeStatus(
       })),
       Boolean(retake),
     );
-  return { eligible, id: retake?.id };
+  const seed = quizSeed(run.seed, 'retake') & 0x7fffffff;
+  if (!eligible) return { id: retake?.id, seed, questions: null };
+  const history = await quizQuestionHistory(store, learnerId);
+  const seenKeys = new Set(
+    history.items.flatMap(({ question }) => [question.key, ...(question.previousKeys ?? [])]),
+  );
+  for (const { reserve } of items) if (reserve) history.usedKeys.add(reserve.key);
+  const questions: Array<{ question: QuizQuestion }> = [];
+  for (const { reserve, conceptId } of items) {
+    const [question] =
+      reserve && content.exercisesById.has(reserve.exercise.id) && !seenKeys.has(reserve.key)
+        ? [reserve]
+        : topicQuestions({
+            content,
+            topic: conceptId,
+            difficulty: run.difficulty,
+            seed,
+            count: 1,
+            usedKeys: history.usedKeys,
+          });
+    if (!question) continue;
+    seenKeys.add(question.key);
+    history.usedKeys.add(question.key);
+    questions.push({ question });
+  }
+  return { id: retake?.id, seed, questions };
 }
 
 async function quizPayload(
@@ -137,6 +163,7 @@ async function quizPayload(
       : [];
   const next = items.find((item) => !item.answeredAt);
   const exercise = next && serializeExercise(next.question.exercise, learnerId);
+  const retake = run.finalizedAt && (await retakePlan(store, learnerId, run, items, content));
   return {
     id: run.id,
     sessionId: activity?.sessionId,
@@ -161,7 +188,7 @@ async function quizPayload(
             },
           }
         : null,
-    result: run.finalizedAt && {
+    result: retake && {
       score: run.score,
       xpAwarded: run.xpAwarded,
       topics: items
@@ -172,7 +199,7 @@ async function quizPayload(
           missed: item.correct !== true,
           reviewed: item.followUpActivityId !== null,
         })),
-      retake: await retakeStatus(store, learnerId, run, items),
+      retake: { id: retake.id, eligible: Boolean(retake.questions?.length) },
     },
   };
 }
@@ -492,38 +519,18 @@ export function startQuizRetake(store: FlowStore, context: QuizContext, id: stri
     const items = (await tx.listTimedQuizItems(learnerId, [original.id])).filter(
       ({ question }) => !question.withdrawn,
     );
-    const status = await retakeStatus(tx, learnerId, original, items);
-    if (status.id) {
-      const existing = await runFor(tx, learnerId, status.id);
+    const {
+      id: existingId,
+      questions,
+      seed,
+    } = await retakePlan(tx, learnerId, original, items, content);
+    if (existingId) {
+      const existing = await runFor(tx, learnerId, existingId);
       if (existing) return ok(await quizPayload(tx, learnerId, existing, content, now));
     }
-    if (!status.eligible) return rejected('conflict', 'Complete the follow-up reviews first');
+    if (!questions) return rejected('conflict', 'Complete the follow-up reviews first');
     const [active] = await tx.listTimedQuizRuns(learnerId, { active: true });
     if (active) return rejected('conflict', 'Finish the current quiz first');
-    const seed = quizSeed(original.seed, 'retake') & 0x7fffffff;
-    const history = await quizQuestionHistory(tx, learnerId);
-    const seenKeys = new Set(
-      history.items.flatMap(({ question }) => [question.key, ...(question.previousKeys ?? [])]),
-    );
-    for (const { reserve } of items) if (reserve) history.usedKeys.add(reserve.key);
-    const questions: Array<{ question: QuizQuestion }> = [];
-    for (const { reserve, conceptId } of items) {
-      const [question] =
-        reserve && content.exercisesById.has(reserve.exercise.id) && !seenKeys.has(reserve.key)
-          ? [reserve]
-          : topicQuestions({
-              content,
-              topic: conceptId,
-              difficulty: original.difficulty,
-              seed,
-              count: 1,
-              usedKeys: history.usedKeys,
-            });
-      if (!question) continue;
-      seenKeys.add(question.key);
-      history.usedKeys.add(question.key);
-      questions.push({ question });
-    }
     if (questions.length === 0) {
       return rejected('conflict', 'Fresh retake questions are not available');
     }
