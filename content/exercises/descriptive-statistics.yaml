@@ -905,7 +905,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: In large, independent tests under comparable conditions, a robot succeeds 70% of the time before an update and 86% after it. The estimated standard errors are 3 percentage points before the update and 4 after it. What is the lower endpoint of the approximate 95% confidence interval for the change in success rate (after minus before)? Give a number in percentage points.
+    prompt: In large, independent tests under comparable conditions, a robot succeeds 70% of the time before an update and 86% after it. The estimated standard errors are 3 percentage points before the update and 4 after it. What is the lower endpoint of the approximate 95% confidence interval for the change in success rate (after minus before)? Use a multiplier of 2 and give a number in percentage points.
     answer: 6
     tolerance: { abs: 0.001 }
     solution: The observed increase is $86-70=16$ percentage points, and the standard error of the difference is $\sqrt{3^2+4^2}=5$ points. The lower endpoint is $16-2\times5=6$ percentage points.
