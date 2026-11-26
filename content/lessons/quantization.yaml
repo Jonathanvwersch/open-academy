@@ -111,7 +111,7 @@ knowledge_points:
 
       An 8-bit integer ranges from $-128$ to $127$. **Symmetric** quantisation uses $-127$ to $127$, so a weight and its negative map to integers of the same size.
 
-      We pick one scale $s$ for a group of numbers, such as a whole weight matrix or one row of it. Think of $s$ as the gap between neighbouring stored values. The largest absolute weight sets the scale, so it lands at $127$ if positive or $-127$ if negative. Then we round. In the diagram, the top line holds the weights $x$ and the bottom line their integers $q$. Dividing by $s=0.01$ sends $-1.27$ to $-127$ and $1.27$ to $127$. Rounding moves each result by at most half a step.
+      We pick one scale $s$ for a group of numbers, such as a whole weight matrix or one row of it. Think of $s$ as the gap between neighbouring stored values. The weight farthest from zero sets the scale, so it lands at $127$ if positive or $-127$ if negative. Then we round. In the diagram, the top line holds the weights $x$ and the bottom line their integers $q$. Dividing by $s=0.01$ sends $-1.27$ to $-127$ and $1.27$ to $127$. Rounding moves each result by at most half a step.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Two number lines. The top line runs from -1.27 to 1.27 and marks four weights: -0.514, 0.006, 0.333 and 1.27. The bottom line runs from -127 to 127, with 0 marked in the middle of both lines, and marks their integers: -51, 1, 33 and 127. A nearly vertical line joins each weight to its integer, because dividing by the scale 0.01 sends each weight right above its integer and rounding moves each point less than half a step">
@@ -227,7 +227,7 @@ knowledge_points:
     tldr: |
       - Storing only the weights in a smaller format cuts the bytes read, so decoding gets faster.
       - The maths still runs at 16 bits, so reading the prompt gets no faster.
-      - On the H100 GPU, using 8-bit floating-point maths can double the rate, so processing the prompt can speed up too.
+      - On the H100, using 8-bit floating point for both weights and activations can double the maths rate and speed up prompt processing.
     explain: |
       ### Two kinds of format
 
@@ -381,7 +381,7 @@ knowledge_points:
 
       ### Tests on real tasks
 
-      The loss is an average over ordinary text. It can barely move while a skill such as arithmetic or coding gets much worse. So we also run both models on the same tasks, with the same settings. To measure the drop, give a problem $+1$ if only the original model solves it, $-1$ if only the quantised model solves it, and $0$ if they agree. The average of these differences is the drop in success rate. For independently sampled problems, divide the sample standard deviation of the differences by the square root of the problem count to get the drop's standard error.
+      Average loss over ordinary text can barely move while a skill such as coding gets much worse. Test both models on the same tasks with the same settings. For each problem, record a paired difference: $+1$ if only the original solves it, $-1$ if only the quantised model solves it, $0$ if they agree. The mean difference is the drop in success rate. To find its standard error for independently sampled problems, sum the squared distances from the mean. Divide by one less than the problem count and take the square root to get the sample standard deviation. Divide that by the square root of the problem count.
 
       If both checks show only a small drop that is acceptable for the product, we ship the quantised model. If a task gets clearly worse, we can try a finer scale, such as one per row or per group, or keep some layers at 16 bits. To find which layers to keep, quantise one layer at a time and see which hurts the score most.
     worked: |
@@ -392,14 +392,14 @@ knowledge_points:
 
       2. **Compare the perplexities.** The INT4 model's perplexity is about $8.00/7.39\approx1.08$ times as large, about 8% higher. It's as if it chose among 8 tokens where the 16-bit model chose among about 7.4.
 
-      3. **Turn the task counts into accuracy.** We divide each count by 500.
-         $$400/500=80\%,\qquad360/500=72\%$$
+      3. **Turn the task counts into accuracy.** Add the 310 problems both solve to each model's wins on its own. Then divide by 500.
+         $$(310+90)/500=400/500=80\%,\qquad(310+50)/500=360/500=72\%$$
 
       4. **Compare the accuracies.** The score fell from 80% to 72%. We call that a drop of 8 percentage points, because we subtract the two percentages.
 
       5. **Find the standard error of the drop.** The differences average $(90-50)/500=0.08$. To find their sample standard deviation, square each difference's distance from that average, add across all 500 problems, divide by $500-1$, then take the square root. Divide that by $\sqrt{500}$:
          $$\sqrt{\frac{90(1-0.08)^2+50(-1-0.08)^2+360(0-0.08)^2}{499\times500}}\approx0.0234.$$
-         That's about 2.34 percentage points. The 8-point drop is about 3.4 standard errors, evidence that it is larger than we'd expect from sampling variation alone.
+         That's about 2.34 percentage points. The 8-point drop is about 3.4 standard errors, evidence that it is larger than we'd expect from the luck of which problems were sampled.
 
       The loss rose by only $0.08$, but the maths score fell clearly. If the assistant's users ask maths questions, this INT4 model isn't good enough as it is.
     problems:

@@ -253,7 +253,7 @@ exercises:
           correct: false,
           feedback: "Separate trained heads generally contain different keys and values.",
         }
-    solution: A model with multi-head attention learned separate weight matrices to make each head's keys and values. Deleting those sets changes the attention calculation and can change the output.
+    solution: In this model each query head has its own key-value head. Deleting the cached entries for seven key-value heads changes what their queries can attend to.
   - id: kvc-heads-new-model
     dimension: conceptual
     type: mc
@@ -362,7 +362,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A decoder has 4 layers, 2 key-value heads per layer and head size 8. Each number takes 2 bytes. How many cache bytes hold {{= batch }} independent sequences with {{= tokens }} processed tokens each? Count only the bytes of the stored keys and values. Enter digits only, without commas."
+    prompt: "A decoder has 4 layers, 2 key-value heads per layer and head size 8. Each number takes 2 bytes. How many cache bytes hold {{= batch }} independent sequences with {{= tokens }} processed tokens each? Count only the cache data. Enter digits only, without commas."
     params:
       batch: { min: 2, max: 4, step: 2 }
       tokens: { min: 10, max: 30, step: 10 }
@@ -375,7 +375,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A decoder needs 200 cache bytes per token. Three independent sequences have 10, 20 and 40 processed tokens. How many bytes store their keys and values? Count only the entries for actual tokens. Enter digits only, without commas.
+    prompt: A decoder needs 200 cache bytes per token. Three independent sequences have 10, 20 and 40 processed tokens. How many bytes of cache data do those processed tokens need in total? Enter digits only, without commas.
     answer: 14000
     tolerance: { abs: 0 }
     solution: The sequences have 10 + 20 + 40 = 70 tokens altogether. Their entries take 70 × 200 = 14,000 bytes.
@@ -412,7 +412,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A robot's decoder has 2 layers, 2 key-value heads and head size 4, with 2 bytes per number. Exactly 6,400 bytes are reserved for stored cache data after leaving room for everything else. What is the maximum total number of processed tokens that fit? Count only the bytes of the stored keys and values.
+    prompt: A robot's decoder has 2 layers, 2 key-value heads per layer and 4 numbers per key or value vector, with 2 bytes per number. Exactly 6,400 bytes are reserved for stored cache data after leaving room for everything else. What is the maximum total number of processed tokens that fit? Count only the cache data.
     answer: 100
     tolerance: { abs: 0 }
     solution: One token takes 2 × 2 × 2 × 4 × 2 = 64 bytes. The reserved cache budget fits 6,400 / 64 = 100 tokens in total.

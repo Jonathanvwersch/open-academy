@@ -189,7 +189,7 @@ exercises:
     prompt: In symmetric INT8 quantisation, how is the scale $s$ chosen for a group that contains at least one nonzero weight?
     options:
       - id: a
-        text: It is the largest size in the group divided by 127, so the largest number lands on 127.
+        text: It is the largest absolute weight divided by 127, so that weight reaches one end of the integer range.
         correct: true
         feedback: With $s=\max|x|/127$, every number in the group fits in $[-127,127]$ after dividing by $s$.
       - id: b
@@ -336,7 +336,7 @@ exercises:
     difficulty: 3
     est_minutes: 3
     prompt: |
-      This PyTorch code is meant to quantise the weights in tensor `x` to INT8 using scale `s`, but every entry in the output tensor `q` is 0. Converting to `torch.int8` drops any fractional part. What is the bug?
+      This PyTorch code is meant to quantise the weights in tensor `x` to INT8 using scale `s`, but every entry in the output tensor `q` is 0. What is the bug?
 
       ```python
       import torch
@@ -361,7 +361,7 @@ exercises:
         category: misunderstood_definition
         feedback: With that scale most values would be clamped. The scale uses the largest size.
       - id: d
-        text: Converting to `torch.int8` drops the fractions, so the rounding has to happen after the conversion.
+        text: It rounds too early. It should convert to `torch.int8` before calling `torch.round`.
         correct: false
         category: implementation_error
         feedback: Rounding before converting is right. The values were already near 0 before the conversion.
@@ -457,7 +457,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A model with {{=n}} billion parameters uses FP8 weight-and-activation quantisation. Its GPU performs about 2,000 trillion FP8 floating-point operations per second. It reads a prompt of 2,000 tokens. Counting only the weight multiplications, how many milliseconds does the prefill take?"
+    prompt: "A model with {{=n}} billion parameters uses FP8 weight-and-activation quantisation. Its GPU performs about 2,000 trillion FP8 floating-point operations per second. It reads a prompt of 2,000 tokens. Count only the work using the weights: one multiply and one add per parameter per prompt token. How many milliseconds does prefill take?"
     params:
       n:
         min: 1
@@ -751,7 +751,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A 16-bit model solves {{= 80 * m^2 }} of {{= 100 * m^2 }} maths word problems. Its INT4 version solves {{= (80 - d) * m^2 }} of the same problems. Luck alone typically moves a success rate by one standard error. How many standard errors of the 16-bit model's success rate is the drop? Give 1 decimal place."
+    prompt: "A 16-bit model and its INT4 version take the same test of {{= 100 * m^2 }} independently sampled maths problems. Only the 16-bit model solves {{= (10 + d) * m^2 }} problems, only INT4 solves {{= 10 * m^2 }}, and they agree on the rest. How many standard errors separate their success rates? Compute the standard error from the paired differences, one per problem. Give 1 decimal place."
     params:
       m:
         min: 1
@@ -761,17 +761,25 @@ exercises:
         min: 2
         max: 8
         step: 2
-    answer_expr: d * m / 4
+    answer_expr: "(d / 100) * sqrt(100 * m^2 - 1) / sqrt((20 + d) / 100 - (d / 100)^2)"
     tolerance:
       abs: 0.05
     common_wrong:
-      - answer_expr: d * m / 8
+      - answer_expr: "(20 + d) / d"
         category: misapplied_technique
-        feedback: That divides the drop by two standard errors. Divide it by one standard error.
-      - answer_expr: 25 * d * m
-        category: math_error
-        feedback: The drop is in percentage points, so write the standard error in percentage points too before dividing.
-    solution: 'The 16-bit rate is $0.8$, so $\mathrm{SE}=\sqrt{0.8(0.2)/ {{= 100 * m^2 }} }\approx{{= round(4 / m, 2) }}$ percentage points. The drop is {{=d}} points, or approximately {{= d * m / 4 }} times the 16-bit model’s standard error. This ratio does not measure the uncertainty of the paired drop.'
+        feedback: The number of disagreements helps compute the variability of the differences. It is not the standard error.
+    solution: |
+      Give each problem a difference of 1 if only the 16-bit model solves it, −1 if only INT4 solves it and 0 when they agree. The mean difference is {{= d / 100 }}, a drop of {{= d }} percentage points. For each difference, square its distance from the mean:
+
+      $$
+      {{= (10 + d) * m^2 }}(1-{{= d / 100 }})^2
+      +{{= 10 * m^2 }}(-1-{{= d / 100 }})^2
+      +{{= (80 - d) * m^2 }}(0-{{= d / 100 }})^2.
+      $$
+
+      Divide this sum by {{= 100 * m^2 - 1 }} and take the square root for the sample standard deviation. Then divide by the square root of the problem count to get the standard error.
+
+      Dividing the drop by that error gives about {{= round((d / 100) * sqrt(100 * m^2 - 1) / sqrt((20 + d) / 100 - (d / 100)^2), 1) }} standard errors.
   - id: qz-explain
     dimension: conceptual
     type: explain
@@ -781,7 +789,7 @@ exercises:
     prompt: "You want to serve Llama 3 8B with INT8 weights. Explain how to quantise one weight matrix to INT8 with a single scale, including when all its weights are zero. Why does this speed up decoding for one request at a time? How would you check the quantised model's quality?"
     rubric:
       - id: scale
-        criterion: Set the scale to the largest absolute weight divided by 127, or use a positive scale such as 1 and store zeros if the whole matrix is zero.
+        criterion: If any weight is nonzero, set the scale to the largest absolute weight divided by 127. If every weight is zero, use a positive scale such as 1 and store zeros.
         weight: 1
         required: true
       - id: round

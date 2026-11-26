@@ -27,7 +27,7 @@ knowledge_points:
     explain: |
       ### Running one operation at a time
 
-      A GPU holds tensors in HBM and does arithmetic in faster on-chip storage. Bandwidth limits how quickly large operations can move data.
+      A GPU holds tensors in HBM and does arithmetic using faster on-chip storage. Bandwidth limits how quickly large operations can move data.
 
       By default PyTorch uses **eager execution**: it starts each operation as Python reaches it. A **kernel** is a program that processes data on the GPU. An operation can run several kernels or use a prewritten kernel that combines several calculations. A transpose can create a view, reinterpreting data without moving it. Caches also serve reads.
 
@@ -145,7 +145,7 @@ knowledge_points:
 
       $$\text{eager bytes}=2kS,\qquad\text{fused bytes}=2S.$$
 
-      The fused kernel does three floating-point operations (FLOPs) on each number. Count its reads and writes to find intensity:
+      The fused kernel does three arithmetic operations per number. Each works on floating-point numbers, which can represent fractions, so it counts as one FLOP. Count its reads and writes to find intensity:
 
       $$
       \begin{aligned}
@@ -222,7 +222,7 @@ knowledge_points:
     explain: |
       ### Rewriting a graph
 
-      **Rewrite rules** replace one pattern with an equivalent one. Our toy compiler uses exact arithmetic and nonzero divisors. Each attention score adds products of query and key entries. Dividing each query entry by a scale divides every term, so it divides the whole score by that scale. If there are fewer query entries than scores, dividing queries is cheaper.
+      **Rewrite rules** replace patterns with equivalent ones. Our toy compiler uses exact arithmetic. Each attention score sums products of query and key entries. Dividing queries by a nonzero number divides each product, and thus each score. For $T$ tokens and query width $d_k$, this takes $Td_k$ divisions instead of $T^2$.
 
       Here are four rules for that exact-arithmetic model, adapted from the paper behind egg, a rewriting library (Willsey et al., 2021). The letters $x$, $y$ and $z$ stand for expressions:
 
@@ -398,7 +398,7 @@ final: mlc-explain
 summary: |
   - An ML compiler records a computational graph, splitting where a Python decision depends on tensor values, then lowers it to primitives: elementwise, reduce and movement. Eager execution starts operations as Python reaches them; the graph exposes opportunities to merge them.
   - Kernel fusion keeps in-between results on chip and reduces launch overhead. In our traffic model, $k$ elementwise operations on $S$ bytes move $2kS$ bytes eagerly and $2S$ fused. For our large, memory-bound chain, estimated time falls by the same factor as bytes.
-  - An e-graph keeps equivalent versions in groups. Equality saturation applies rewrite rules until nothing new appears, and extraction picks the cheapest by a cost model. Our toy rules assume exact real arithmetic; rewrites for real machines must follow the compiler's rules for rounding and numbers too large to store.
+  - An e-graph keeps equivalent versions in groups. Equality saturation applies rewrite rules until nothing new appears, and extraction picks the cheapest by a cost model. Our toy rules assume exact real arithmetic; rewrites for real machines must respect the number format's rounding and overflow rules.
   - Autotuning times candidate kernels on the real GPU and shape and keeps the fastest. Bytes moved divided by bandwidth gives the fastest time a memory-bound kernel could possibly take.
 
   **Next:** In the course project, you'll write a tiny graph compiler in Python that records elementwise operations, fuses each chain into one kernel and measures the speed-up.

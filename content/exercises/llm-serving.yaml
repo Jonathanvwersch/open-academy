@@ -170,7 +170,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A static batch has 4 sequences with replies of 8, 6, 4 and 2 tokens. Prompts are already processed. Of all the slots across all decode steps, what percentage produce a token? Count each slot once per step.
+    prompt: A static batch has four slots, each holding one sequence. The replies take 8, 6, 4 and 2 tokens. Prompts are already processed. Of all the slots across all decode steps, what percentage produce a token? Count each slot once per step.
     answer: 62.5
     tolerance:
       abs: 0.001
@@ -188,7 +188,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A text-to-speech server generates one audio chunk per active request each step. Reading model weights sets the step time, clips have different lengths, and requests are waiting. With the same maximum number of active requests, which schedule keeps the most slots producing chunks?
+    prompt: A text-to-speech server generates one audio chunk per active request each step. Reading model weights sets the step time, clips have different lengths, and requests are waiting. Each slot holds one active request. With the same number of slots, which schedule keeps the most slots producing chunks?
     options:
       - id: a
         text: Replace each finished clip with a waiting clip at the next step.
@@ -560,7 +560,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A model without separate experts has 70 billion parameters stored at 16-bit precision, or 2 bytes each. Available GPUs each have 80 GB of memory. Which setup can hold its weights and serve it?
+    prompt: A model that uses no mixture-of-experts layers has 70 billion parameters stored at 16-bit precision, or 2 bytes each. Available GPUs each have 80 GB of memory. Which setup can hold its weights and serve it?
     options:
       - id: a
         text: Place its experts on separate GPUs using expert parallelism.
@@ -645,7 +645,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A model has {{=N}} billion parameters. Its GPU performs 1,000 trillion floating-point operations per second. Ignoring attention scores and other overhead, about how many ms does processing a {{=P}}-token prompt take?
+    prompt: A model uses all {{=N}} billion of its parameters for each prompt token. Its GPU performs 1,000 trillion floating-point operations per second. Ignoring attention scores and other overhead, about how many ms does processing a {{=P}}-token prompt take?
     params:
       N:
         min: 1
@@ -954,7 +954,7 @@ exercises:
     knowledge_point: lsv-parallel
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A model without separate experts fits on one GPU. The team adds GPUs chiefly to shorten the weight read for each user's decode step. Which arrangement tackles that read directly?"
+    prompt: "A model that uses no mixture-of-experts layers fits on one GPU. The team adds GPUs chiefly to shorten the weight read for each user's decode step. Which arrangement tackles that read directly?"
     options:
       - id: a
         text: "Put a full model replica on each GPU."

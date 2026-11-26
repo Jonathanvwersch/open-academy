@@ -16,7 +16,7 @@ exercises:
         }
       - {
           id: b,
-          text: "The tables are too big for the GPU, so they go to a separate memory outside the GPU.",
+          text: "The tables must be sent to the host computer's memory before the next kernel can read them.",
           correct: false,
           category: misunderstood_definition,
           feedback: "HBM is the GPU's own main memory. The tables go there because each kernel hands its result to the next through it.",
@@ -420,14 +420,14 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "An array holds 1,000,000 numbers at 16-bit. One kernel multiplies every entry by 3 and a second kernel then adds 1 to every entry. Each kernel reads its input from HBM and writes its output to HBM. How many MB ($10^6$ bytes) of HBM traffic does fusing the two kernels into one save?"
+    prompt: "An array holds 1,000,000 numbers at 2 bytes each. One kernel multiplies every entry by 3 and a second kernel then adds 1 to every entry. Each kernel reads its input from HBM and writes its output to HBM. How many MB ($10^6$ bytes) of HBM traffic does fusing the two kernels into one save?"
     answer: 4
     tolerance: { abs: 0.01 }
     common_wrong:
       - {
           answer: 2,
           category: incorrect_reasoning,
-          feedback: "The in-between tensor is written once and read once, so fusion saves both trips.",
+          feedback: "The in-between array is written once and read once, so fusion saves both trips.",
         }
       - {
           answer: 8,
@@ -584,7 +584,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A kernel adds up softmax one block of keys at a time with running totals $\ell$ and $u$, then outputs $u/\ell$. How does its output compare with three-kernel attention on the same inputs?
+    prompt: A kernel computes attention one block of keys at a time. It sums the score exponentials in $\ell$ and the value vectors weighted by those exponentials in $u$, then outputs $u/\ell$. How does this compare with computing all scores, applying softmax over the whole row, and then mixing the values?
     options:
       - {
           id: a,
@@ -1075,7 +1075,7 @@ exercises:
     knowledge_point: fa-online-softmax
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what two totals does online softmax keep for one query before subtracting the largest score?"
+    prompt: "In one or two sentences, what two totals does online softmax keep for one query without subtracting a running largest score?"
     rubric:
       - id: scalar
         criterion: "State that one total sums the exponentials of the scores seen so far."
@@ -1133,7 +1133,7 @@ exercises:
     knowledge_point: fa-running-max
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, why does a kernel working in blocks subtract the largest score seen so far from each score, and what does it do to its old totals if that score rises?"
+    prompt: "In one or two sentences, why does a kernel working in blocks subtract the largest score seen so far from each score, and what does it do to its two running totals, the sum of score exponentials and the sum of the weighted values, if that score rises?"
     rubric:
       - id: shift
         criterion: "Explain that the largest score isn't known until the last block, so the kernel subtracts the largest so far, which keeps each exponential at most one and avoids overflow."
@@ -1143,7 +1143,7 @@ exercises:
         criterion: "State that both old totals are multiplied by the same factor before adding the new block's terms."
         weight: 1
         required: true
-    exemplar: "The largest score is only known after the last block, so the kernel subtracts the largest so far, which keeps each exponential at most one. If that score rises, it multiplies both old totals by the same factor before adding the new terms."
+    exemplar: "The largest score is only known after the last block, so the kernel subtracts the largest so far, which keeps each exponential at most one and avoids overflow. If that score rises, it multiplies both old totals by the same factor before adding the new terms."
   - id: fa-recall-running-max-contrast
     dimension: conceptual
     type: mc

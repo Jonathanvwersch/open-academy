@@ -6,7 +6,7 @@ recap:
   - concept: attention
     text: "Attention scores query $t$ against key $j$ with $s_{tj}=q_t\\cdot k_j/\\sqrt{d_k}$, where $d_k$ is the key width, turns each query's scores into softmax weights $a_{tj}$, and outputs the weighted sum of the values, $o_t=\\sum_j a_{tj}v_j$."
   - concept: arithmetic-intensity
-    text: "Arithmetic intensity is the number of floating-point operations (FLOPs) per byte moved between GPU memory and computing units; comparing it with the GPU's ops:byte ratio predicts its bottleneck."
+    text: "Arithmetic intensity counts floating-point operations (FLOPs) per byte moved. Floating-point numbers can represent fractions. Comparing this ratio with the GPU's ops:byte ratio predicts its bottleneck."
   - concept: gpu-inference-basics
     text: "An H100 has high-bandwidth memory for weights and smaller, faster on-chip memory for calculations; moving data between them has a speed limit."
 where_this_fits: |
@@ -27,7 +27,7 @@ knowledge_points:
     explain: |
       ### Attention as three kernels
 
-      Llama 3 8B runs on an H100 GPU. The prompt has $T=1{,}000$ tokens. Follow one of its 32 query heads, with width $d_h=128$, the recap's $d_k$. Its queries form matrix $Q$, with one row per token and one column per entry. The key matrix $K$ and value matrix $V$ have the same shape.
+      Llama 3 8B runs on an H100 SXM GPU, a module that plugs into a server board. For a prompt of $T=1{,}000$ tokens, follow one of the model's query heads. Each query, key and value vector contains $d_h=128$ numbers. The query matrix $Q$, key matrix $K$ and value matrix $V$ each have $T$ rows and $d_h$ columns.
 
       A **kernel** is one program that the GPU runs on many compute units at once, each working on part of the data. A kernel's on-chip memory is cleared when it finishes, so its result is written to HBM, and the next kernel reads it back from there. The usual way, which the FlashAttention paper calls standard attention, uses three kernels. The first finds the score table $S$, with $s_{tj}$ in row $t$, column $j$. The second applies softmax to each row of $S$ to give the weight table $P$, which holds the weights $a_{tj}$. The third multiplies $P$ by $V$ to give the outputs $O$, one row per token.
 
@@ -80,7 +80,7 @@ knowledge_points:
       \end{aligned}
       $$
 
-      Be careful not to expect longer prompts to be compute-bound. The FLOPs and the bytes both grow like $T^2$, so their ratio levels off near $64$, far below the H100's ratio of about $300$.
+      FLOPs and bytes both grow like $T^2$. Their ratio levels off near $64$, far below the H100's $300$, so longer prompts stay memory-bound.
     worked: |
       Let's count the traffic of standard attention for our head, with $T=1{,}000$ tokens, $d_h=128$ and $b=2$ bytes per number. A TB is $10^{12}$ bytes, and a TFLOP is $10^{12}$ floating-point operations. We'll use the H100's figures rounded to $1{,}000$ TFLOP/s and $3.35$ TB/s.
 

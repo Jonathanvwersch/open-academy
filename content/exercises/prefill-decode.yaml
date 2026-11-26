@@ -143,7 +143,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A code assistant handles two requests one at a time, with the same model already in memory, with identical delivery overhead. One has a short prompt and a long answer; the other has a long prompt and a short answer. Which work would you inspect first for each request?
+    prompt: A code assistant runs two requests back to back using a model already in memory. Each request finishes before the next starts. One has a short prompt and a long answer; the other has a long prompt and a short answer. Which work would you inspect first for each request?
     options:
       - {
           id: a,
@@ -287,15 +287,38 @@ exercises:
     solution: Handle zero with a separate greedy branch that selects a highest-logit token. The positive-temperature formula cannot divide by zero.
   - id: pd-temp-code
     dimension: implementation
-    type: code_complete
+    type: mc
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: Complete the exponential weight for the token's logit `z`. The positive temperature is `tau`, and `largest` is the maximum of the list `logits`, which contains all token logits. The largest logit should give an exponent of zero.
-    code: |
+    prompt: |
+      A sampler divides each token's exponential by the sum of all token exponentials to get its probability. In the code below, `z` is the current token's logit, `largest` is the largest logit across all tokens, and `tau` is the positive temperature. Which expression keeps the intended temperature-adjusted probabilities and prevents overflow in `math.exp`?
+
+      ```python
       import math
-      weight = math.exp(____)
-    accept: ["(z - largest) / tau", "(z-largest)/tau"]
+
+      numerator = math.exp(____)
+      ```
+    options:
+      - id: a
+        text: "`(z - largest) / tau`"
+        correct: true
+        feedback: The shared offset cancels when the exponentials are divided by their sum.
+      - id: b
+        text: "`(z + largest) / tau`"
+        correct: false
+        category: implementation_error
+        feedback: Adding a large positive logit can give an exponent too large to compute.
+      - id: c
+        text: "`(z - largest) * tau`"
+        correct: false
+        category: misapplied_technique
+        feedback: Multiplication reverses the effect of small and large temperatures.
+      - id: d
+        text: "`(largest - z) / tau`"
+        correct: false
+        category: implementation_error
+        feedback: This reverses the token order, giving smaller logits larger exponentials.
     solution: Divide the logit difference by temperature. Subtracting the same largest logit from every entry cancels out during normalisation and avoids large positive exponents.
   - id: pd-temp-new-setting
     dimension: conceptual
