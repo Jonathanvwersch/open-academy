@@ -1,7 +1,7 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
 import type { QuizPayload } from '@academy/contracts/quizzes';
 import type { SessionPayload } from '@academy/contracts/sessions';
-import type { Page } from '@playwright/test';
+import type { Page, TestInfo } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import { asc, eq } from 'drizzle-orm';
 import { answerFor, wrongAnswerFor } from '../../apps/api/scripts/learner-simulation-support.js';
@@ -12,6 +12,38 @@ import { lessonRuns, quizItems, users, xpEvents } from '../../apps/api/src/db/sc
 
 const db = createDb(env.TEST_DATABASE_URL);
 const start = '2026-01-01T12:00:00.000Z';
+
+async function captureShellTransitionFrames(page: Page, testInfo: TestInfo, name: string) {
+  const timestamps = [0, 80, 160, 300];
+  const startedAt = Date.now();
+  for (const timestamp of timestamps) {
+    const remaining = timestamp - (Date.now() - startedAt);
+    if (remaining > 0) await page.waitForTimeout(remaining);
+    await page.screenshot({ path: testInfo.outputPath(`${name}-${timestamp}ms.png`) });
+  }
+}
+
+async function expectSidebarFullyOffcanvas(page: Page) {
+  const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+  await expect(navigation).toHaveAttribute('data-state', 'collapsed');
+  await expect(navigation).toHaveAttribute('data-collapsible', 'offcanvas');
+  await expect
+    .poll(() =>
+      page.locator('[data-slot="sidebar-gap"]').evaluate((element) => {
+        return element.getBoundingClientRect().width;
+      }),
+    )
+    .toBe(0);
+  const container = page.locator('[data-slot="sidebar-container"]');
+  await expect(container).toHaveCSS('visibility', 'hidden');
+  const bounds = await container.evaluate((element) => {
+    const { left, right, width } = element.getBoundingClientRect();
+    return { left, right, width };
+  });
+  expect(bounds.left).toBeLessThan(-200);
+  expect(Math.abs(bounds.right)).toBeLessThanOrEqual(1);
+  expect(bounds.width).toBeGreaterThan(200);
+}
 
 async function completeReviewActivities(
   page: Page,
@@ -106,6 +138,16 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
       headers: { ...route.request().headers(), 'x-now': now, 'x-time-zone': 'UTC' },
     }),
   );
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.addInitScript(() => {
+    if (
+      location.origin !== 'null' &&
+      sessionStorage.getItem('academy.e2e.sidebar-open-initialized') !== 'true'
+    ) {
+      localStorage.setItem('academy.app-sidebar.open', 'true');
+      sessionStorage.setItem('academy.e2e.sidebar-open-initialized', 'true');
+    }
+  });
   const session = await page.request.post('/api/sessions', {
     data: { budgetMinutes: 120 },
     headers: { 'x-now': now, 'x-time-zone': 'UTC' },
@@ -114,17 +156,73 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
   const { id: sessionId, activities } = (await session.json()) as SessionPayload & { id: string };
   expect(activities[0].kind).toBe('mixed_quiz');
   expect(activities.length).toBeGreaterThan(1);
-  await page.goto(`/session/${sessionId}`);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+  const desktopNavigation = page.getByRole('navigation', { name: 'Main navigation' });
+  await expect(desktopNavigation).toHaveAttribute('data-state', 'expanded');
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('academy.app-sidebar.open')))
+    .toBe('true');
+  await page.screenshot({ path: testInfo.outputPath('desktop-home-expanded-final.png') });
+  const resumeSession = page.getByRole('link', { name: /^Resume/ });
+  await expect(resumeSession).toHaveAttribute('href', `/session/${sessionId}`);
+  await resumeSession.click();
+  await expect(page).toHaveURL(`/session/${sessionId}`);
+  await expect(page.getByRole('button', { name: 'Open quiz' })).toBeVisible();
   await page.getByRole('button', { name: 'Open quiz' }).click();
+  await expect(page).toHaveURL(/\/quizzes\//);
+  await captureShellTransitionFrames(page, testInfo, 'desktop-enter-quiz');
   await expect(page.getByText('Question 1 of 8')).toBeVisible();
   await expect(page.getByTestId('quiz-prompt')).not.toBeEmpty();
   await expect(page.getByRole('timer')).toBeVisible();
   await expect(page.getByRole('button', { name: /hint|tutor/i })).toHaveCount(0);
   await expect(page.locator('a[href*="/lessons/"]')).toHaveCount(0);
+  await expectSidebarFullyOffcanvas(page);
+  await page.screenshot({ path: testInfo.outputPath('desktop-quiz-final.png') });
   await page.screenshot({ path: testInfo.outputPath('timed-quiz-desktop.png') });
 
   const quizId = new URL(page.url()).pathname.split('/').at(-1) ?? '';
   const headers = () => ({ 'x-now': now, 'x-time-zone': 'UTC' });
+
+  const mobilePage = await page.context().newPage();
+  await mobilePage.setViewportSize({ width: 390, height: 844 });
+  await mobilePage.addInitScript(() => {
+    if (
+      location.origin !== 'null' &&
+      sessionStorage.getItem('academy.e2e.sidebar-open-initialized') !== 'true'
+    ) {
+      localStorage.setItem('academy.app-sidebar.open', 'true');
+      sessionStorage.setItem('academy.e2e.sidebar-open-initialized', 'true');
+    }
+  });
+  await mobilePage.route('**/api/**', (route) =>
+    route.continue({
+      headers: { ...route.request().headers(), 'x-now': now, 'x-time-zone': 'UTC' },
+    }),
+  );
+  await mobilePage.goto('/');
+  await expect(mobilePage.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+  await mobilePage.getByRole('link', { name: /^Resume/ }).click();
+  await expect(mobilePage).toHaveURL(`/session/${sessionId}`);
+  await mobilePage.getByRole('button', { name: 'Open quiz' }).click();
+  await expect(mobilePage).toHaveURL(new RegExp(`/quizzes/${quizId}(?:\\?.*)?$`));
+  await captureShellTransitionFrames(mobilePage, testInfo, 'mobile-enter-quiz');
+  await expect(mobilePage.getByText('Question 1 of 8')).toBeVisible();
+  const mobileHeader = mobilePage.getByTestId('mobile-app-header');
+  await expect(mobileHeader).toHaveCount(1);
+  await expect(mobileHeader).toHaveCSS('opacity', '0');
+  await expect(mobileHeader).toHaveCSS('height', '0px');
+  await mobilePage.screenshot({ path: testInfo.outputPath('mobile-quiz-final.png') });
+  await mobilePage.goBack();
+  await expect(mobilePage).toHaveURL(`/session/${sessionId}`);
+  await captureShellTransitionFrames(mobilePage, testInfo, 'mobile-exit-quiz');
+  await expect(mobileHeader).toHaveCSS('opacity', '1');
+  await expect(mobileHeader).toHaveCSS('height', '56px');
+  await mobileHeader.getByRole('link', { name: 'Open Academy home' }).click();
+  await expect(mobilePage.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+  await mobilePage.screenshot({ path: testInfo.outputPath('mobile-home-after-quiz-final.png') });
+  await mobilePage.close();
+
   const readQuiz = async () =>
     (await (
       await page.request.get(`/api/quizzes/${quizId}`, {
@@ -250,8 +348,42 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
     ),
   ).toBeVisible();
   await expect(page.getByRole('link', { name: 'Back to Home' })).toHaveAttribute('href', '/');
+  await page.screenshot({ path: testInfo.outputPath('completed-retake-mobile.png') });
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.screenshot({ path: testInfo.outputPath('completed-retake-desktop.png') });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: testInfo.outputPath('completed-retake-mobile.png') });
+  await page.getByRole('link', { name: 'Back to Home' }).click();
+  await expect(page).toHaveURL('/');
+  await captureShellTransitionFrames(page, testInfo, 'desktop-exit-quiz');
+  await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+  await expect(desktopNavigation).toHaveAttribute('data-state', 'expanded');
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('academy.app-sidebar.open')))
+    .toBe('true');
+  await page.screenshot({
+    path: testInfo.outputPath('desktop-home-after-quiz-expanded-final.png'),
+  });
+
+  await desktopNavigation.getByRole('button', { name: 'Collapse navigation' }).click();
+  await expect(desktopNavigation).toHaveAttribute('data-state', 'collapsed');
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('academy.app-sidebar.open')))
+    .toBe('false');
+  await page.goto(`/quizzes/${retakeId}`);
+  await expect(page.getByRole('heading', { name: 'Retake results' })).toBeVisible();
+  await expectSidebarFullyOffcanvas(page);
+  await page.screenshot({ path: testInfo.outputPath('desktop-collapsed-quiz-final.png') });
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('academy.app-sidebar.open')))
+    .toBe('false');
+  await page.getByRole('link', { name: 'Back to Home' }).click();
+  await expect(page).toHaveURL('/');
+  await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+  await expect(desktopNavigation).toHaveAttribute('data-state', 'collapsed');
+  await expect(desktopNavigation).toHaveAttribute('data-collapsible', 'icon');
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('academy.app-sidebar.open')))
+    .toBe('false');
+  await page.screenshot({
+    path: testInfo.outputPath('desktop-home-after-quiz-collapsed-final.png'),
+  });
 });
