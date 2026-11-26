@@ -43,7 +43,7 @@ exercises:
         text: The vertical sides keep their length but get farther apart, and orientation stays the same, so the determinant increases.
         correct: false
         feedback: The top and bottom edges get longer, but the spacing between the vertical sides is measured horizontally. Their horizontal coordinates are still 0 and 1.
-    solution: The right edge slides down by 2, keeping both vertical sides one unit long and one unit apart with their original top endpoints still above their bottom endpoints. The unit square's signed area stays $+1$, so the row addition leaves the determinant at 6.
+    solution: The right edge slides down by 2, keeping both vertical sides one unit long and one unit apart with their original top endpoints still above their bottom endpoints. The row addition therefore scales every signed area by $+1$, so the image of the unit square under $B$ keeps its signed area of 6 after the row addition.
   - id: det-pivots-triangular-template
     dimension: math
     type: numeric
