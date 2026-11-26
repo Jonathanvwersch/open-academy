@@ -122,7 +122,7 @@ exercises:
     difficulty: 2
     est_minutes: 3
     prompt: >-
-      A robot moves right from cell 1 to cell 2, receives reward $-1$, and continues its episode. The Q-network predicts action values in (left, right) order: $(3,5)$ in cell 1 and $(4,6)$ in cell 2. With discount factor $\gamma=0.9$, what is the loss for this move, defined as the square of the difference between the prediction and the DQN target?
+      A robot moves right from cell 1 to cell 2, receives reward $-1$, and continues its episode. The online Q-network predicts action values in (left, right) order: $(3,5)$ in cell 1 and $(4,6)$ in cell 2. The target network currently has the same weights as the online network. With discount factor $\gamma=0.9$, what is the loss for this move, defined as the square of the difference between the prediction and the DQN target?
     answer: 0.36
     tolerance: { abs: 0.000001 }
     common_wrong:
