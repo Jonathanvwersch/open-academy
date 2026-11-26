@@ -42,7 +42,7 @@ concepts:
     prereqs: [{ id: supervised-learning }, { id: dot-product }, { id: matrices }]
     encompassings:
       [
-        { id: supervised-learning, weight: 0 },
+        { id: supervised-learning, weight: 0.11 },
         { id: dot-product, weight: 0.21 },
         { id: matrices, weight: 0.11 },
       ]
