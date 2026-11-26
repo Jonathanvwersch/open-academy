@@ -81,7 +81,7 @@ export function LessonRunner({
           : step.correct < step.total,
       )
     : [];
-  const starting = useRef(-1);
+  const starting = useRef('');
   const [startAttempt, setStartAttempt] = useState(0);
   const visibleProblemId =
     state?.pendingPracticeProblem?.id ??
@@ -121,19 +121,28 @@ export function LessonRunner({
   const activePoint = state
     ? (lesson?.knowledge_points?.find((point) => point.id === state.currentPointId) ?? undefined)
     : undefined;
+  const lastStepAnswer = state?.lastAnsweredProblem?.practiceOnly
+    ? undefined
+    : state?.lastAnsweredProblem;
   const answeredPoint =
-    state?.lastAnsweredProblem && !state.lastAnsweredProblem.practiceOnly && !state.pendingProblem
-      ? lesson?.knowledge_points?.find(
-          (point) => point.id === state.lastAnsweredProblem?.knowledgePointId,
-        )
+    lastStepAnswer && !state?.pendingProblem
+      ? lesson?.knowledge_points?.find((point) => point.id === lastStepAnswer.knowledgePointId)
       : undefined;
   const point = answeredPoint ?? activePoint ?? state?.currentPoint;
   // The engine advances on a passing answer while the learner is still viewing its feedback.
   const currentStepId =
     state?.status === 'in_progress' ? (point?.id ?? state.currentPointId) : state?.currentPointId;
   const previousStepId = useRef(currentStepId);
-  const contextProblem = state?.pendingProblem ?? state?.lastAnsweredProblem;
+  const contextProblem = state?.pendingProblem ?? lastStepAnswer;
   const currentStepIndex = state?.points.findIndex((point) => point.id === currentStepId) ?? -1;
+  // If practice replaced the last answer, fetch the next question on returning to the active step.
+  const needsNextProblem =
+    state?.status === 'in_progress' &&
+    !contextProblem &&
+    Boolean(state.lastAnsweredProblem?.practiceOnly) &&
+    !practicePointId &&
+    (step === undefined || step === String(currentStepIndex + 1));
+  const startKey = `${startAttempt}:${needsNextProblem ? state.lastAnsweredProblem?.id : ''}`;
   const viewingPointIndex = viewingPointId
     ? (state?.points.findIndex((item) => item.id === viewingPointId) ?? -1)
     : -1;
@@ -229,10 +238,12 @@ export function LessonRunner({
             : undefined;
     if (previousStepId.current !== currentStepId) {
       previousStepId.current = currentStepId;
-      setViewingPointId(null);
-      setViewingStage(null);
-      onStepChange(fallback, true);
-      return;
+      if (!practicePointId) {
+        setViewingPointId(null);
+        setViewingStage(null);
+        onStepChange(fallback, true);
+        return;
+      }
     }
     if (step === undefined) {
       setViewingPointId(null);
@@ -377,12 +388,13 @@ export function LessonRunner({
   useEffect(() => {
     if (
       (!state ||
+        needsNextProblem ||
         state.needsProgressSync ||
         (state.status === 'in_progress' && state.halted !== undefined) ||
         (state.status === 'needs_retry' && state.retry?.ready === true)) &&
-      starting.current !== startAttempt
+      starting.current !== startKey
     ) {
-      starting.current = startAttempt;
+      starting.current = startKey;
       setBusy(true);
       void apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/run`, {
         method: 'POST',
@@ -397,7 +409,7 @@ export function LessonRunner({
         .catch(() => setError('Could not start this lesson. Check your connection and try again.'))
         .finally(() => setBusy(false));
     }
-  }, [activityId, conceptId, state, updateState, startAttempt]);
+  }, [activityId, conceptId, needsNextProblem, state, updateState, startKey]);
 
   const submit = async (answer: unknown, durationMs: number) => {
     const pending = practiceMode ? state?.pendingPracticeProblem : state?.pendingProblem;
@@ -709,9 +721,7 @@ export function LessonRunner({
   }
 
   const pointStatus = state.points.find((item) => item.id === displayedPoint?.id);
-  const shownProblem = practiceMode
-    ? practiceProblem
-    : (state.pendingProblem ?? state.lastAnsweredProblem);
+  const shownProblem = practiceMode ? practiceProblem : contextProblem;
   const practiceResult = state.lastAnsweredProblem?.result;
   const hasPracticeResult = Boolean(
     practiceMode &&
@@ -1223,6 +1233,20 @@ export function LessonRunner({
                 </CardContent>
               </Card>
             </div>
+          ) : needsNextProblem ? (
+            error ? (
+              <Button
+                type="button"
+                onClick={() => {
+                  setError('');
+                  setStartAttempt((attempt) => attempt + 1);
+                }}
+              >
+                Retry
+              </Button>
+            ) : (
+              <ThinkingIndicator />
+            )
           ) : null}
         </>
       )}

@@ -348,7 +348,7 @@ async function expectEnterToAdvance(page: Page, runConceptId: string, problemId:
   };
   const nextAction = page
     .getByTestId('lesson-problem')
-    .getByRole('button', { name: /^Next(?: problem| step|: .+)$/ });
+    .getByRole('button', { name: /^(Next problem|Continue to next step)$/ });
   await expect(nextAction).toBeEnabled();
   page.on('request', onRequest);
   const nextResponse = page.waitForResponse(
@@ -789,6 +789,12 @@ test('a passed knowledge point opens the next step and shows an XP toast', async
   expect(advancedRun.currentPoint.title).toBe(nextTitle);
 
   await page.setViewportSize({ width: 1280, height: 900 });
+  let runAfterAnswer = advancedRun;
+  while (runAfterAnswer.points[1].status !== 'passed') {
+    if (!runAfterAnswer.pendingProblem) runAfterAnswer = await nextProblemAndReload(page);
+    runAfterAnswer = await answerAndReload(page, true);
+  }
+  expect(runAfterAnswer.pendingProblem).toBeUndefined();
   await page.getByRole('button', { name: /Step 1 of \d+, passed/ }).click();
   await expect(page.getByTestId('lesson-step-content')).toBeVisible();
   await page.getByRole('button', { name: 'Practise this step', exact: true }).click();
@@ -817,9 +823,16 @@ test('a passed knowledge point opens the next step and shows an XP toast', async
         : ordinaryAnswer.answer;
     await page.getByLabel('Your answer').fill(String(value));
   }
+  // The test server uses a fixed clock. Put this answer after the two passed steps.
+  await page.route('**/run/answer', (route) =>
+    route.continue({
+      headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:01.000Z' },
+    }),
+  );
   await page.getByRole('button', { name: 'Submit answer', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Another question', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Another question', exact: true })).toBeEnabled();
+  await expect(page).toHaveURL(/[?&]step=1(?:&|$)/);
   await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Ask the tutor', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0);
@@ -844,6 +857,7 @@ test('a passed knowledge point opens the next step and shows an XP toast', async
   await expect(
     page.getByRole('heading', { name: practiceRun.currentPoint.title, exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toBeEnabled();
 });
 
 test('leaving after a step resumes on the next knowledge point', async ({ page }) => {

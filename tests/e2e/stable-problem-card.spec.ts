@@ -302,7 +302,7 @@ test('session retries keep the action in place and reveal the answer only after 
       'Submit answer',
       'Submit self-check',
       'Next problem',
-      'Next step',
+      'Continue to next step',
       'Continue',
       'Try again · 1 try left',
     ];
