@@ -210,7 +210,7 @@ function mixedNumberFormatting(text: string): string | null {
   }
 
   const withoutMath = text.replace(/\$[^$]*\$/g, (segment) => ' '.repeat(segment.length));
-  for (const match of withoutMath.matchAll(/(?<![\w.])[+-]?\d+(?:\.\d+)?(?![\w.])/g)) {
+  for (const match of withoutMath.matchAll(/(?<![\w.])[+-]?\d+(?:\.\d+)?(?![\w]|\.\d)/g)) {
     const start = match.index ?? 0;
     numberTokens.push({ kind: 'plain', start, end: start + match[0].length });
   }
