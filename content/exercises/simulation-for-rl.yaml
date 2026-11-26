@@ -1088,3 +1088,63 @@ exercises:
     answer: "(9*a - 10*(1-a) + 9*b - 10*(1-b))/2"
     variables: { a: [0, 1], b: [0, 1] }
     solution: "The overall chance of success is $(a+b)/2$. Weight the totals $9$ and $-10$ by success and failure to get $19(a+b)/2-10$."
+  - id: sim-loop-stale-state
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: |
+      In a corridor simulator, the policy chooses right in cell 1 and left in cell 2. The robot starts in cell 1, and the first step moves it to cell 2 without ending the episode. This loop chooses right again on the second iteration.
+
+      ```python
+      state = env.reset()
+      total = 0
+      while True:
+          action = policy(state)
+          next_state, reward, terminated, truncated = env.step(action)
+          total += reward
+          if terminated or truncated:
+              break
+      ```
+
+      Which line should go after `total += reward` to fix the loop?
+    options:
+      - id: a
+        text: "`next_state = state`"
+        correct: false
+        feedback: This overwrites the returned state and leaves the policy's input at the start state.
+      - id: b
+        text: "`state = env.reset()`"
+        correct: false
+        feedback: This would restart the episode on every iteration and put the robot back at the start.
+      - id: c
+        text: "`state = next_state`"
+        correct: true
+    solution: Assign the state returned by step to the variable that the policy reads at the top of the loop.
+  - id: sim-vector-log-after-finish
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: |
+      A vectorised warehouse simulator runs several copies and uses next-step resets. A logger decides whether to save each copy's transition after every call to step. For each copy it keeps two pairs of flags:
+
+      - `terminated_before` and `truncated_before` from the previous call
+      - `terminated_now` and `truncated_now` from the call it is logging
+
+      Which condition should make the logger skip saving a transition for that copy?
+    options:
+      - id: a
+        text: "`terminated_now or truncated_now`"
+        correct: false
+        feedback: The action that finished the episode still produced a transition to save.
+      - id: b
+        text: "`terminated_before or truncated_before`"
+        correct: true
+      - id: c
+        text: "`terminated_before and truncated_before`"
+        correct: false
+        feedback: Either kind of ending is enough for that copy to reset on the next call.
+    solution: In next-step reset mode, a copy that finished on the previous call only resets on the current one. Its action is ignored, so that copy produces no transition on this call.
