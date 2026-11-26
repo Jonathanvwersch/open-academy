@@ -1,0 +1,92 @@
+concept: gradient-descent
+exercises:
+  - id: gradient-descent-fixture-pool-conceptual-1
+    dimension: conceptual
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What sets the scale of a gradient descent update?"
+    accept: ["learning rate"]
+    solution: "The answer is learning rate."
+  - id: gradient-descent-fixture-pool-conceptual-2
+    dimension: conceptual
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is the size of a gradient descent update when the gradient is zero?"
+    accept: ["zero"]
+    solution: "The answer is zero."
+  - id: gradient-descent-fixture-pool-implementation-1
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What value does `w - rate * grad` return for `w = 4`, `rate = 1`, and `grad = 2`?"
+    accept: ["2"]
+    solution: "The answer is 2."
+  - id: gradient-descent-fixture-pool-implementation-2
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What value does `w - rate * grad` return for `w = 2`, `rate = 0.5`, and `grad = -2`?"
+    accept: ["3"]
+    solution: "The answer is 3."
+  - id: gradient-descent-fixture-pool-implementation-3
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What value does `w - rate * grad` return for `w = 8`, `rate = 0.5`, and `grad = 0`?"
+    accept: ["8"]
+    solution: "The answer is 8."
+  - id: gradient-descent-fixture-pool-implementation-4
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What value does `w - rate * grad` return for `w = 3`, `rate = 2`, and `grad = 1`?"
+    accept: ["1"]
+    solution: "The answer is 1."
+  - id: gradient-descent-fixture-pool-transfer-1
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "You stand on a hill that slopes upward to the north. What direction is downhill?"
+    accept: ["south"]
+    solution: "The answer is south."
+  - id: gradient-descent-fixture-pool-transfer-2
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A loss rises when you increase the only model weight. For a small descent step, should you increase or decrease the weight?"
+    accept: ["decrease"]
+    solution: "The answer is decrease."
+  - id: gradient-descent-fixture-pool-transfer-3
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "The loss falls locally as a weight increases. Should a small descent step increase or decrease that weight?"
+    accept: ["increase"]
+    solution: "The answer is increase."
+  - id: gradient-descent-fixture-pool-transfer-4
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A gradient step changes a weight by 1. What size step does doubling the learning rate give at the same gradient?"
+    accept: ["2"]
+    solution: "The answer is 2."

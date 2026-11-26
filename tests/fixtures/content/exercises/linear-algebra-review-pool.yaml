@@ -1,0 +1,47 @@
+concept: linear-algebra
+exercises:
+  - id: linear-algebra-fixture-pool-conceptual-1
+    dimension: conceptual
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "How many output entries does a matrix with four rows produce when multiplied by a vector?"
+    accept: ["4"]
+    solution: "The answer is 4."
+  - id: linear-algebra-fixture-pool-conceptual-2
+    dimension: conceptual
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What kind of matrix leaves every input vector unchanged?"
+    accept: ["identity matrix"]
+    solution: "The answer is identity matrix."
+  - id: linear-algebra-fixture-pool-implementation-1
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A Python list stores three matrix rows. What is `len(rows)`?"
+    accept: ["3"]
+    solution: "The answer is 3."
+  - id: linear-algebra-fixture-pool-implementation-2
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A Python list of rows starts with `[2, 4]`. What is `rows[0][1]`?"
+    accept: ["4"]
+    solution: "The answer is 4."
+  - id: linear-algebra-fixture-pool-implementation-3
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A Python matrix has `shape` equal to `(3, 2)`. What is `shape[1]`?"
+    accept: ["2"]
+    solution: "The answer is 2."

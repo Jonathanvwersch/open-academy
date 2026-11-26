@@ -1,0 +1,11 @@
+concept: loss-functions
+exercises:
+  - id: loss-functions-fixture-pool-conceptual-1
+    dimension: conceptual
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is the squared error when a prediction matches its target exactly?"
+    accept: ["zero"]
+    solution: "The answer is zero."

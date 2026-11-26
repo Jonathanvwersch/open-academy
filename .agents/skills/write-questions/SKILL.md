@@ -38,7 +38,7 @@ Each step needs at least five questions across difficulties 1, 2 and 3. Cover th
 
 1. **Definition.** What the idea is, or what a symbol or term means. "What does the sigmoid output represent?" Use MC with wrong options that are real confusions (a label, a score, a loss).
 2. **Which tool.** Pick the formula, method or model for a situation. "You predict whether a house sells within a month. Which model and loss fit?"
-3. **Compute.** A typed number, with the step's idea left for the learner. "Find the sigmoid probability for $z=0$." Prefer a template (`params`, `answer_expr`) so each review shows new numbers.
+3. **Compute.** A typed number, with the step's idea left for the learner. "Find the sigmoid probability for $z=0$." Prefer a template (`params`, `answer_expr`) so each lesson attempt and quiz shows new numbers.
 4. **Interpret.** Say what a result means. "A model gives $p=0.88$ for label 1. What does it predict, and how sure is it?"
 5. **Spot the mistake.** A short worked attempt with one common error. "A learner computes $\sigma(2)=1/(1+e^{2})$. What went wrong?"
 6. **New setting.** The same idea in a different place, such as a robot, a medical test or a different function. Put these last, at difficulty 3.
@@ -81,25 +81,30 @@ Write three recall questions for every lesson step, one in each style. A review 
 
 Recall questions follow the rest of this skill: they stand alone, pass the giveaway test and have one right answer. Don't copy a step's `basics` question. The basics question checks the idea straight after reading. A recall question asks for it weeks later, from a different angle.
 
-## 7. Writing
+## 7. Review pool size
+
+A topic is reviewed one dimension at a time. Each review picks a question of that dimension with role `review`, `core`, `practice`, `transfer` or `basics` that is not `lesson_only` and not a template. Templates appear in lessons and quizzes, never in spaced reviews. Every dimension a concept lists needs at least five such questions, so a learner does not meet the same question in back-to-back reviews. Lesson step problems count, but the learner has already seen them, so write at least two more that are not in the lesson. `pnpm content:check` fails when a dimension has fewer than five.
+
+## 8. Writing
 
 Follow the lesson skill's writing rules: plain words, short sentences, notation from `content/notation.yaml`, and only ideas from the concept's prerequisites. No "X, not Y" contrast lines and no em dashes. `solution` says how to get the answer in one or two sentences, using the same numbers.
 
-## 8. Prerequisite check
+## 9. Prerequisite check
 
 Run the same Prerequisite check as the lesson skill for every batch of new or rewritten questions, including lab, project, diagnostic and recall questions. Give the separate reviewer the output of `pnpm academy prereqs <concept-id>` for the question's concept, the lesson and all new questions. Follow the separate-session and API-key rules and use the prompt in `.agents/skills/write-lesson/SKILL.md`.
 
 Keep concept-pool questions within what the output lists or the lesson teaches. Put lab questions that need a later topic in the project.
 
-## 9. Checking before you ship
+## 10. Checking before you ship
 
 1. Run the giveaway test (§1) on every question.
 2. Compute every numeric answer with a script (Python or Node), including every template combination.
 3. For each MC question, confirm exactly one option is correct and each wrong one has its own feedback.
 4. Check the step's mix: at least five questions, difficulties 1 to 3, and at least two angles per idea (§3), plus three recall questions (§6).
-5. Run `pnpm content:check`, `pnpm exec vitest run apps/api/tests/content/` and `pnpm check`.
-6. Once the topic's questions are done, follow `../set-weights/SKILL.md` to work out its encompassing weights and have a separate agent check them before you record them.
+5. Check each dimension's review pool has at least five questions (§7).
+6. Run `pnpm content:check`, `pnpm exec vitest run apps/api/tests/content/` and `pnpm check`.
+7. Once the topic's questions are done, follow `../set-weights/SKILL.md` to work out its encompassing weights and have a separate agent check them before you record them.
 
-## 10. Reviewing existing questions
+## 11. Reviewing existing questions
 
 To audit a set, read every question and apply §1 to §6. Rewrite only the ones that fail. Keep each exercise's `id`, `dimension`, `role`, `difficulty`, `lesson_only` and place in the lesson, because learner progress depends on them. Rewrite `prompt`, the answer, `options`, `feedback` and `solution` as needed, and change `type` if it makes a better question. If lesson text such as a `faded` block refers to the exercise, keep it consistent. Report each rewrite as `id`: the reason, then the old stem and the new stem.

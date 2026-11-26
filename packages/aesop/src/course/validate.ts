@@ -1,6 +1,7 @@
 import { parse as parseExpression } from 'mathjs';
 import { gradeExpression } from '../lessons/grading/expression.js';
 import { gradeNumeric } from '../lessons/grading/numeric.js';
+import { isReviewPoolExercise, MIN_REVIEW_POOL } from './review-pool.js';
 import { formatTemplateNumber, instantiateExercise, isTemplate } from './templates.js';
 import type { ContentIssue, ContentSourceData } from './types.js';
 
@@ -18,14 +19,6 @@ const SVG_COLOR_PROPERTIES = new Set([
   'lighting-color',
   'solid-color',
   'background-color',
-]);
-const REVIEWABLE_EXERCISE_ROLES = new Set([
-  'review',
-  'recall',
-  'core',
-  'practice',
-  'transfer',
-  'basics',
 ]);
 const LESSON_CONTEXT_PROMPT =
   /worked example|\bthe worked\b|\bin steps? \d|\bsteps? \d\b|\bthis step\b|\bin the picture\b|\bin the table\b|\bthe lesson'?s?\b|\bin the lesson\b|taught in the lesson|the car example|\bthe [\w-]+ (?:example|picture|argument|calculation)\b|\bthe example's\b/i;
@@ -586,9 +579,10 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
       const hasReviewableExercise = conceptExercises.some(
         (entry) =>
           entry.value.dimension === dimension &&
-          REVIEWABLE_EXERCISE_ROLES.has(entry.value.role) &&
-          !entry.value.lesson_only &&
-          !isTemplate(entry.value),
+          (isReviewPoolExercise(entry.value) ||
+            (entry.value.role === 'recall' &&
+              !entry.value.lesson_only &&
+              !isTemplate(entry.value))),
       );
       if (!hasReviewableExercise) {
         addIssue(
@@ -607,6 +601,19 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
         addIssue(issues, file, value.id, 'authored concept is missing its lesson');
       }
       const conceptExercises = data.exercises.filter((entry) => entry.concept === value.id);
+      for (const dimension of value.dimensions) {
+        const count = conceptExercises.filter(
+          (entry) => entry.value.dimension === dimension && isReviewPoolExercise(entry.value),
+        ).length;
+        if (count < MIN_REVIEW_POOL) {
+          addIssue(
+            issues,
+            file,
+            value.id,
+            `dimension "${dimension}" has ${count} review questions; reviews need at least ${MIN_REVIEW_POOL} (role review, core, practice, transfer or basics; not lesson_only; not a template)`,
+          );
+        }
+      }
       if (conceptExercises.length < 3) {
         addIssue(
           issues,
