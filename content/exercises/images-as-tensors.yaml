@@ -615,7 +615,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "An RGB image batch has NCHW shape $(5,3,2,7)$: $5$ images, $3$ colour channels, a height of $2$ pixels and a width of $7$ pixels. How many pixel positions are there across the whole batch?"
+    prompt: "A batch of RGB images is stored as a tensor in NCHW layout. The tensor's shape is $(5,3,2,7)$. How many pixels are there across all images, counting each pixel once?"
     answer: 70
     tolerance: { abs: 0 }
     solution: "Each of the $5$ images has $2\\times7$ pixel positions. The $3$ channels describe the same pixels, so the batch has $5\\cdot2\\cdot7=70$ pixels."
