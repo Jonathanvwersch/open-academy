@@ -1244,16 +1244,16 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 0.5
-    prompt: A model trains with gradient descent. Its loss stays high and falls only a little on each pass. Its weights and bias also change only a little. What could explain these small updates?
+    prompt: A model trains with gradient descent. Its loss stays high and falls only a little on each pass. Its weights and bias also change only a little. What could explain this?
     options:
       - id: a
         text: A small learning rate or small loss slopes.
         correct: true
         feedback: Either factor can give small updates because the learning rate multiplies the loss slopes.
       - id: b
-        text: A large learning rate or steep loss slopes.
+        text: Training has already reached the lowest point.
         correct: false
-        feedback: Increasing either factor while keeping the other fixed makes the updates larger.
+        feedback: The loss is still falling. At the lowest point the loss cannot fall any further.
       - id: c
         text: A high starting loss or a high current loss.
         correct: false
