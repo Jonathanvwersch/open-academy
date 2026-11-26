@@ -172,7 +172,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "Two houses sold: 40 m² for 120 thousand pounds and 60 m² for 180 thousand pounds. The rule is price = w × area (thousands of pounds per m²). Which value of w fits both sales?"
+    prompt: >-
+      Two houses sold: 40 m² for 120 thousand pounds and 60 m² for 180 thousand pounds. The model
+      multiplies area in square metres by a weight $w$ to predict price in thousands of pounds. Which
+      value of $w$, in thousands of pounds per square metre, fits both sales?
     common_wrong:
       - {
           answer: 40,
@@ -298,7 +301,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A model uses weights (25, 10, −1), in £ thousands per unit. What price does it predict for a 90 m², 2-bedroom house that is 10 years old? Record area in tens of square metres. Answer in £ thousands."
+    prompt:
+      A model uses weights $(25,10,-1)$ for area in tens of square metres, bedroom count and age in
+      years, respectively. The weights are in thousands of pounds per input unit. What price does it
+      predict for a 90 m², 2-bedroom house that is 10 years old? Answer in thousands of pounds.
     answer: 235
     tolerance: { abs: 0 }
     common_wrong:

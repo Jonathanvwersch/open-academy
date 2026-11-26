@@ -78,7 +78,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "The previous average is $4$, the latest gradient is $0$, $\\beta_1=0.75$ and $\\eta=0.2$. What is momentum's change in $w$?"
+    prompt: Momentum's previous gradient average is $4$ and the latest gradient is $0$. Use memory
+      coefficient $\beta_1=0.75$ and learning rate $\eta=0.2$. What is the change in the weight $w$?
     options:
       - {
           id: a,
@@ -127,7 +128,8 @@ exercises:
     est_minutes: 3
     prompt:
       A robot model's gradients have settled into the opposite direction from its stored momentum.
-      Holding the learning rate fixed, how would reducing $\beta_1$ usually affect its response?
+      Holding the learning rate fixed, how would reducing the momentum memory coefficient $\beta_1$
+      usually affect its response?
     options:
       - id: a
         text: It would preserve the old direction longer by giving old gradients more weight.
@@ -235,7 +237,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Start with $v_0=0$ and use $\\beta_2=0.75$. The first gradient is $-4$. What is $v_1$?"
+    prompt:
+      Adam starts its squared-gradient average at $v_0=0$ and uses decay coefficient $\beta_2=0.75$
+      for that average. The first gradient is $-4$. What is the new squared-gradient average $v_1$?
     options:
       - {
           id: a,
@@ -326,7 +330,9 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "Why does Adam divide its averages by $1-\\beta_1^t$ and $1-\\beta_2^t$?"
+    prompt: In Adam, $\beta_1$ and $\beta_2$ are the decay rates for the gradient average and the
+      squared-gradient average, respectively, and $t$ counts updates. Why divide those averages by
+      $1-\beta_1^t$ and $1-\beta_2^t$, respectively?
     options:
       - {
           id: a,
@@ -446,7 +452,9 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "On the first update with gradient $4$, take $\\beta_1=0.5$ and $\\beta_2=0.75$. Stored averages are $m_1=2$, $v_1=4$. Which corrected pair $(\\hat m_1,\\hat v_1)$ is right?"
+    prompt: On Adam's first update with gradient $4$, use decay rates $\beta_1=0.5$ for the gradient
+      average and $\beta_2=0.75$ for the squared-gradient average. The stored averages are $m_1=2$ and
+      $v_1=4$, respectively. Which pair of bias-corrected averages $(\hat m_1,\hat v_1)$ is right?
     options:
       - {
           id: a,
@@ -479,7 +487,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A new model's first two gradients are $4,-4$. With $\\beta_1=0.75$, its raw averages are $m_1=1$, $m_2=-0.25$. Since $1-0.75^2=7/16$, which is the corrected second average?"
+    prompt:
+      A model's first two gradients are $4,-4$. With gradient-average decay rate $\beta_1=0.75$, its
+      uncorrected gradient averages are $m_1=1$ after one update and $m_2=-0.25$ after two. Since
+      $1-0.75^2=7/16$, which is the corrected second average?
     options:
       - {
           id: a,
@@ -653,9 +664,9 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: Two Adam runs have the same current parameter, corrected averages $\hat m_t=2$ and $\hat
-      v_t=9$, and $\epsilon=1$. Their learning rates are 0.4 and 0.2. What are their next parameter
-      changes?
+    prompt: Two Adam runs have the same current parameter, corrected gradient average $\hat m_t=2$,
+      corrected squared-gradient average $\hat v_t=9$ and numerical stabilizer $\epsilon=1$. Their
+      learning rates are 0.4 and 0.2. What are their next parameter changes?
     options:
       - id: a
         text: $-0.8$ and $-0.4$, using only the corrected signed average.
@@ -682,7 +693,10 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt: "For one parameter, Adam keeps memories $m_t$ and $v_t$. Assume zero-start correction has produced $\\hat m_t$ and $\\hat v_t$. Explain what each memory tracks and give the parameter update using the corrected values."
+    prompt:
+      After update $t$, Adam stores two running averages for one parameter, $m_t$ and $v_t$. Bias
+      correction gives $\hat m_t$ and $\hat v_t$, respectively. Explain what each average tracks and give
+      the parameter update using the corrected averages.
     rubric:
       - id: memories
         criterion: Describe $m_t$ as a running average of recent signed gradients.

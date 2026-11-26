@@ -206,7 +206,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A layer has $W = \\begin{pmatrix}2 & 1\\\\ 0 & -1\\end{pmatrix}$, $b = (-1, 1)$ and ReLU. What are its hidden values $h$ for $x = (1, 3)$?"
+    prompt: A layer uses weight matrix $W=\begin{pmatrix}2 & 1\\ 0 & -1\end{pmatrix}$, bias vector
+      $b=(-1,1)$ and ReLU. What are its hidden values $h$ for input vector $x=(1,3)$?
     options:
       - { id: a, text: "$(4, 0)$", correct: true }
       - {
@@ -319,7 +320,9 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "Why compute a layer's scores as $Wx + b$ instead of writing a separate loop for each neuron's weighted sum?"
+    prompt:
+      Why compute a layer's scores as $Wx+b$, with weight matrix $W$, input vector $x$ and bias
+      vector $b$, instead of writing a separate loop for each neuron's weighted sum?
     options:
       - {
           id: a,
@@ -354,7 +357,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A layer has $W = \\begin{pmatrix}1 & 1\\\\ -1 & 1\\end{pmatrix}$ and reads the input $x = (x_1, x_2)$. What does the $-1$ in row 2, column 1 mean?"
+    prompt: A layer has weight matrix $W=\begin{pmatrix}1 & 1\\ -1 & 1\end{pmatrix}$ and reads input
+      vector $x=(x_1,x_2)$. What does the $-1$ in row 2, column 1 mean?
     options:
       - { id: a, text: "Neuron 2's weight on $x_1$", correct: true }
       - {
@@ -378,7 +382,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "Why does a hidden layer apply an activation such as ReLU to its scores $W_1 x + b_1$?"
+    prompt:
+      A hidden layer computes scores $W_1x+b_1$ from the input vector $x$, weight matrix $W_1$ and
+      bias vector $b_1$. Why does it apply an activation such as ReLU to those scores before the next
+      layer?
     options:
       - {
           id: a,
@@ -502,7 +509,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "For the network with $W_1 = \\begin{pmatrix}1 & 1\\\\ -1 & 1\\end{pmatrix}$, $b_1 = (-1, 0)$, ReLU, $W_2 = \\begin{pmatrix}3 & 2\\end{pmatrix}$, and $b_2 = 1$, compute $\\hat y$ for $x = (4, 1)$."
+    prompt:
+      The hidden layer uses weight matrix $W_1=\begin{pmatrix}1 & 1\\ -1 & 1\end{pmatrix}$, bias
+      vector $b_1=(-1,0)$ and ReLU. The output layer is linear, with weight row $W_2=\begin{pmatrix}3 &
+      2\end{pmatrix}$ and bias $b_2=1$. Compute the prediction $\hat y$ for input vector $x=(4,1)$.
     answer: 13
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -526,7 +536,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 1
-    prompt: "A network predicts house prices directly in thousands of pounds, including a target of 250. Why leave its output as $W_2 h + b_2$ instead of applying sigmoid?"
+    prompt:
+      A network predicts house prices directly in thousands of pounds, including a target of 250.
+      Its output layer combines hidden activations $h$ with output weights $W_2$. Why leave the prediction
+      as $W_2h+b_2$, including the output bias $b_2$, instead of applying sigmoid?
     options:
       - {
           id: a,
@@ -761,7 +774,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "A layer's weights $W$ are $d_\\text{out} \\times d_\\text{in}$ and the batch $X$ is $B \\times d_\\text{in}$. Why do you compute $XW^\\top$ rather than $XW$?"
+    prompt:
+      A layer has $d_\text{in}$ inputs per example and $d_\text{out}$ outputs. Its weight matrix $W$
+      is $d_\text{out}\times d_\text{in}$ and the batch matrix $X$ is $B\times d_\text{in}$ for $B$
+      examples. Why do you compute $XW^\top$ rather than $XW$?
     options:
       - {
           id: a,

@@ -283,7 +283,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot compares two object keys. One query gives scaled scores $(1,0)$; another gives $(0,2)$. Which pair lists the weight on the first object for the first query, then for the second query?"
+    prompt:
+      A robot compares two object keys. In first-object, second-object order, one query gives scaled
+      scores $(1,0)$ and another gives $(0,2)$. Which pair lists the weight on the first object for the
+      first query, then for the second query?
     options:
       - {
           id: a,
@@ -429,7 +432,11 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 4
-    prompt: "Let $q=(2,0,0,0)$, $k_1=(2,0,0,0)$, $k_2=(0,1,0,0)$, $v_1=(4,0,0,0)$ and $v_2=(0,4,0,0)$. Compute the first component of the attention output using scaled scores with $d_k=4$, then softmax and a weighted sum. Round only the final answer to two decimals."
+    prompt:
+      An attention query is $q=(2,0,0,0)$. The first source has key $k_1=(2,0,0,0)$ and value vector
+      $v_1=(4,0,0,0)$; the second has key $k_2=(0,1,0,0)$ and value vector $v_2=(0,4,0,0)$. Compute the
+      first component of the attention output using scaled scores with key width $d_k=4$, then softmax and
+      a weighted sum. Round only the final answer to two decimals.
     answer: 3.52
     tolerance: { abs: 0.006 }
     solution: The dot products are 4 and 0, giving scaled scores 2 and 0. The first output component is $4e^2/(e^2+1)\approx3.52$, keeping full precision until the final rounding.

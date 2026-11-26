@@ -144,7 +144,9 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "A house-price model uses matrix $X$ with $n$ house rows and $d$ feature columns, weights $(w_1, \\dots, w_d)$, and bias $b$. You add a column containing 1 for every house and stop adding a separate bias. What weights keep the prices unchanged?"
+    prompt: A house-price model uses matrix $X$ with $n$ house rows and $d$ feature columns, weights
+      $(w_1,\dots,w_d)$ in column order, and bias $b$. You append a column containing 1 for every house
+      and stop adding a separate bias. What weights, in column order, keep the prices unchanged?
     options:
       - {
           id: a,
@@ -509,9 +511,9 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt:
-      The house-price model uses area and bedroom count with weights (3, 10) and bias 50. You add
-      a column containing 1 for every house to its input matrix. What weights keep the predictions
-      unchanged when you stop adding a separate bias?
+      A house-price model's input columns are area and bedroom count, in that order. Its weights are
+      $(3,10)$ and its bias is 50. You append a column containing 1 for every house. What weights, in
+      column order, keep the predictions unchanged when you stop adding a separate bias?
     options:
       - id: a
         text: Use weights (3, 10, 50) on the three columns

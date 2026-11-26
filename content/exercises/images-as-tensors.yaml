@@ -67,7 +67,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: Which (row, column) pair names the top-left pixel?
+    prompt: Using zero-based image array indices, which (row, column) pair names the top-left pixel?
     options:
       - id: a
         text: (0, 0)

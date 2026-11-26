@@ -258,7 +258,9 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: One token/position pair has $e=(2,0)$ and $p=(0,1)$; another has $e=(1,1)$ and $p=(1,0)$. What do their additive inputs show?
+    prompt:
+      One token has embedding $e=(2,0)$ and position vector $p=(0,1)$. Another token has embedding
+      $e=(1,1)$ and position vector $p=(1,0)$. What do their additive inputs show?
     options:
       - id: a
         text: Their sums differ, so addition guarantees a unique label for each pair.
@@ -402,7 +404,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A toy rotary positional encoding has only one pair and turns it by a quarter turn per slot, starting with zero turn at slot 1. Why is it insufficient for distinguishing many positions?
+    prompt:
+      A toy rotary positional encoding rotates one pair of vector components by a quarter turn per
+      slot, starting with zero rotation for slot 1. Why is it insufficient for distinguishing many
+      positions?
     options:
       - id: a
         text: Slot 5 applies the same rotation as slot 1, because four quarter turns make a full turn.

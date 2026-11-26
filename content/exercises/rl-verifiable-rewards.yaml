@@ -387,7 +387,22 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 2
-    prompt: "The Python functions below score the reply `\"3 * 4 = 12\\nAnswer: 12.\"` against reference `\"12\"`. The policy log-probability is $-1.5$, the reference log-probability is $-2.5$, and $\\beta=0.2$. If we plugged the checker reward into RLHF's KL-penalised reward, what would the adjusted reward be?\n\n```python\ndef final_answer(text):\n    for line in reversed(text.strip().splitlines()):\n        if line.startswith(\"Answer:\"):\n            return line[len(\"Answer:\"):].strip().rstrip(\". \")\n    return None\n\n\ndef reward(text, reference):\n    if final_answer(text) == reference:\n        return 1.0\n    return 0.0\n```"
+    prompt: |-
+      The Python functions below score the reply `"3 * 4 = 12\nAnswer: 12."` against reference `"12"`. The policy log-probability is $-1.5$, the reference log-probability is $-2.5$, and the KL penalty coefficient is $\beta=0.2$. If we plugged the checker reward into RLHF's KL-penalised reward, what would the adjusted reward be?
+
+      ```python
+      def final_answer(text):
+          for line in reversed(text.strip().splitlines()):
+              if line.startswith("Answer:"):
+                  return line[len("Answer:"):].strip().rstrip(". ")
+          return None
+
+
+      def reward(text, reference):
+          if final_answer(text) == reference:
+              return 1.0
+          return 0.0
+      ```
     answer: 0.8
     tolerance: { "abs": 0.006 }
     common_wrong:
@@ -615,7 +630,10 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 2
-    prompt: "A GRPO group has rewards $1,0,0,0,0$. Use the population standard deviation. For the correct answer, replace the return minus the baseline, $(G-b)$, in the policy-gradient update with its group-relative advantage. Starting at $\\theta=0$, take one update with learning rate $0.1$ and log-probability slope $0.5$. What is the new $\\theta$?"
+    prompt: A GRPO group has rewards $1,0,0,0,0$. Use the population standard deviation. In the
+      policy-gradient update for the correct answer, use its group-relative advantage in place of the
+      return minus the baseline. Starting with policy parameter $\theta=0$, take one update with learning
+      rate $0.1$ and log-probability slope $0.5$ with respect to $\theta$. What is the new $\theta$?
     answer: 0.1
     tolerance: { "abs": 0.006 }
     common_wrong:

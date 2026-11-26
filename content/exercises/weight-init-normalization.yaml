@@ -256,7 +256,9 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: What does LeCun initialization, $a=1/\sqrt n$, aim to do?
+    prompt:
+      What does LeCun initialization with a weight scale $a=1/\sqrt n$ for a neuron with $n$ inputs
+      aim to do?
     solution: For random weights of typical size $a$, scores have average square $na^2$ times the
       inputs'. Setting $a=1/\sqrt n$ makes that factor 1.
     options:

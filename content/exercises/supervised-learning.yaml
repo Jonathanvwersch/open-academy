@@ -341,7 +341,9 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A model estimates the price of a 100 m², two-bedroom house using $\\hat y=w_1\\times\\text{size}+w_2\\times\\text{bedrooms}+b$. What does $\\theta$ stand for?"
+    prompt: A model predicts the price $\hat y$ of a house using $\hat
+      y=w_1\times\text{size}+w_2\times\text{bedrooms}+b$, with two weights $w_1,w_2$ and a bias $b$. In
+      the training objective for this model, what does $\theta$ stand for?
     options:
       - { id: a, text: "The adjustable numbers $w_1$, $w_2$ and $b$", correct: true }
       - {
@@ -526,7 +528,9 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: We compare settings for a house-price model by their average squared error on past sales. In the training formula, what does $\arg\min_\theta$ ask us to find?
+    prompt:
+      We compare settings $\theta$ for a house-price model by their average squared error on past
+      sales. In the training formula, what does $\arg\min_\theta$ ask us to find?
     options:
       - id: a
         text: The value of $\theta$ that makes the average loss as small as possible
@@ -732,8 +736,9 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A house sold for 100 thousand pounds. Its squared prediction error is
-      400, and the prediction was higher than the sale price. What was the
+    prompt:
+      A house sold for 100 thousand pounds. The model's squared prediction error is 400 when prices
+      are measured in thousands of pounds. The prediction was higher than the sale price. What was the
       prediction, in thousands of pounds?
     answer: 120
     tolerance:

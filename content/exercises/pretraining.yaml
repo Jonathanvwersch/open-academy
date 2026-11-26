@@ -259,7 +259,9 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What does $C\\approx6PD$ estimate?"
+    prompt:
+      Let $P$ be a language model's parameter count and $D$ the number of training tokens. What does
+      $C\approx6PD$ estimate?
     options:
       - id: a
         text: "The total number of floating-point operations needed to train a model with $P$ parameters on $D$ tokens."
@@ -316,7 +318,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A team estimates training cost for a multilayer language model as $4PD$ FLOPs: $2PD$ for the forward pass and $2PD$ for finding each weight's own loss slope. Which additional work explains the usual $6PD$ estimate?"
+    prompt: >-
+      A team estimates training cost for a multilayer language model with $P$ parameters and $D$ training
+      tokens as $4PD$ FLOPs: $2PD$ for the forward pass and $2PD$ for finding each weight's own loss
+      slope. Which additional work explains the usual $6PD$ estimate?
     options:
       - id: a
         text: Passing loss slopes to preceding layers, so their weights can get their own slopes.

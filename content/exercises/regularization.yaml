@@ -116,7 +116,9 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: A model's data loss is $4$ and its weights are $w_1=2$ and $w_2=-1$. With an L2 penalty and $\lambda=0.3$, what is its total loss?
+    prompt:
+      A model's data loss is $4$ and its weights are $w_1=2$ and $w_2=-1$. With an L2 penalty of
+      strength $\lambda=0.3$, what is the total loss?
     answer: 5.5
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -157,8 +159,9 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt:
-      Setting A of a model's two weights is $(3,4)$ with data loss $2$. Setting B is $(1,1)$ with data loss
-      $3$. With an L2 penalty and $\lambda=0.2$, which setting has the lower total loss?
+      A model's two weights are $(3,4)$ in setting A and $(1,1)$ in setting B. The data losses are
+      $2$ and $3$, respectively. With an L2 penalty of strength $\lambda=0.2$, which setting has the lower
+      total loss?
     options:
       - id: a
         text: A
@@ -181,7 +184,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A model $\hat y=wx$ is trained on one example with $x=1$ and $y=3$, using squared error plus an L2 penalty. The best weight turns out to be $w=1.5$. What penalty strength $\lambda$ was used?
+    prompt:
+      A model predicts $\hat y=wx$ from input $x$ with weight $w$. It trains on input $x=1$ and
+      target $y=3$ with squared error plus an L2 penalty. The best weight is $w=1.5$. What penalty
+      strength $\lambda$ was used?
     answer: 1
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -198,7 +204,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot arm learns how far to turn its gripper from camera readings, trained with squared error plus an L2 penalty. The data loss is only a few units, but an engineer sets $\lambda=1000$. What will training most likely produce?
+    prompt:
+      A robot arm learns how far to turn its gripper from camera readings. It trains with squared
+      error plus an L2 penalty. The data loss is only a few units, but an engineer sets the penalty
+      strength to $\lambda=1000$. What will training most likely produce?
     options:
       - id: a
         text: Weights very close to $0$, so the turns barely respond to the readings.
@@ -315,7 +324,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A weight is $5$, and the data doesn't pull on it at all, so its data slope stays $0$. With $\eta=0.1$ and $\lambda=0.5$, what is the weight after three updates with weight decay?
+    prompt:
+      A weight is $5$, and the data doesn't pull on it at all, so its data slope stays $0$. With
+      learning rate $\eta=0.1$, what is the weight after three updates using weight decay equivalent to an
+      L2 penalty of strength $\lambda=0.5$?
     answer: 3.645
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -359,7 +371,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A model $\hat y=wx$ is trained on one example with $x=1$ and $y=6$, using squared error and weight decay with $\eta=0.1$ and $\lambda=1$. At what weight does an update leave $w$ unchanged?
+    prompt:
+      A model predicts $\hat y=wx$ from input $x$ with weight $w$, and trains on input $x=1$ and
+      target $y=6$. It uses squared-error loss and learning rate $\eta=0.1$, with weight decay equivalent
+      to an L2 penalty of strength $\lambda=1$. At what weight does an update leave $w$ unchanged?
     answer: 3
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -379,7 +394,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A training library writes its update as $w_{\text{new}}=(1-\eta d)\,w-\eta\,\partial L_{\text{data}}/\partial w$, and you set $d=0.01$. Which penalty strength $\lambda$, in $L_{\text{data}}+\lambda\sum_j w_j^2$, does that match?
+    prompt: A training library updates weight $w$ to $w_{\text{new}}=(1-\eta d)\,w-\eta\,\partial
+      L_{\text{data}}/\partial w$, where $\eta$ is the learning rate, $d$ the library's decay setting and
+      $L_{\text{data}}$ the data loss. You set $d=0.01$. Which penalty strength $\lambda$, in
+      $L_{\text{data}}+\lambda\sum_j w_j^2$, does that match?
     options:
       - id: a
         text: $\lambda=0.01$
@@ -455,7 +473,9 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: With a very large $\lambda$, a model's training error and validation error are both high and close together. What is most likely going on?
+    prompt:
+      A model trained with a very large regularization penalty strength $\lambda$ has training and
+      validation errors that are both high and close together. What is most likely going on?
     options:
       - id: a
         text: It overfits, because it has copied quirks of its training examples.
@@ -584,7 +604,9 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: You try $\lambda=0.01$, $0.1$, $1$ and $10$, and the validation error keeps falling all the way to $\lambda=10$, the largest value you tried. What should you do next?
+    prompt:
+      You try penalty strengths $\lambda=0.01$, $0.1$, $1$ and $10$. The validation error keeps
+      falling all the way to $\lambda=10$, the largest value you tried. What should you do next?
     options:
       - id: a
         text: Keep $\lambda=10$, because it was the best value tried.
@@ -609,7 +631,9 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot predicts whether each grasp will succeed. It gets 1 of every 100 training grasps wrong and 30 of every 100 validation grasps wrong when $\lambda=0$. What should you try?
+    prompt:
+      A robot predicts whether each grasp will succeed. With penalty strength $\lambda=0$, it gets 1
+      of every 100 training grasps wrong and 30 of every 100 validation grasps wrong. What should you try?
     options:
       - id: a
         text: Train with several larger values of $\lambda$ and compare their validation errors.
@@ -751,7 +775,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A model $\hat y=wx$ is trained on one example with $x=1$ and $y=0.4$, using squared error plus an L1 penalty with $\lambda=1$. Which weight gives the lowest total loss?
+    prompt:
+      A model predicts $\hat y=wx$ from input $x$ with weight $w$. It trains on input $x=1$ and
+      target $y=0.4$, using squared error plus an L1 penalty of strength $\lambda=1$. Which weight gives
+      the lowest total loss?
     answer: 0
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -793,7 +820,10 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "A model uses gradient descent on squared error plus $\\lambda\\sum_jw_j^2$. Explain how this penalty changes a weight's update, why it can reduce overfitting, and how to choose $\\lambda$."
+    prompt:
+      A model uses gradient descent on squared error plus the L2 penalty $\lambda\sum_jw_j^2$, where
+      $w_j$ is its $j$th weight and $\lambda$ controls the strength of the penalty. Explain how this
+      penalty changes a weight's update, why it can reduce overfitting, and how to choose $\lambda$.
     rubric:
       - id: decay
         criterion: Give $w_{\text{new}}=(1-2\eta\lambda)w-\eta\,\partial L_{\text{data}}/\partial w$ as the update.

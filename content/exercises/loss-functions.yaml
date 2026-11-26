@@ -389,8 +389,8 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt:
-      One house has an error of 9; another has an error of 1, in the same price units. How much
-      larger is the first contribution?
+      Two houses have prediction errors of 9 and 1, in the same price units. How many times larger
+      is the first house's contribution for mean squared error (MSE) and for mean absolute error (MAE)?
     options:
       - id: a
         text: 81 times for MSE; 9 times for MAE
@@ -609,8 +609,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: The prices are 290, 300 and 560. Only the last changes, to 900. What happens to the best
-      constant under each loss?
+    prompt:
+      Three houses sold for 290, 300 and 560 thousand pounds. Change only the last price to 900
+      thousand pounds. What happens to the best constant prediction under mean squared error and under
+      mean absolute error?
     options:
       - id: a
         text: The MSE choice rises; the MAE choice stays at 300

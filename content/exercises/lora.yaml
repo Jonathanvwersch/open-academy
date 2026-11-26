@@ -255,7 +255,9 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: A weight matrix $W$ is $6\times10$. A rank-2 LoRA change $BA$ is added to it. What shapes are $B$ and $A$?
+    prompt:
+      A weight matrix $W$ is $6\times10$. Its rank-2 LoRA change is the product of factor matrices
+      $B$ and $A$, in the order $BA$. What shapes are $B$ and $A$?
     options:
       - id: a
         text: $B$ is $6\times2$ and $A$ is $2\times10$.
@@ -375,7 +377,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot's vision model has a $512\times256$ weight matrix $W$, which maps 256 inputs to 512 outputs. An engineer adds a rank-4 LoRA change $BA$. For one input $x$, what are the shapes of $Ax$ and $B(Ax)$?
+    prompt:
+      A robot's vision model uses a $512\times256$ weight matrix $W$, which maps 256 inputs to 512
+      outputs. An engineer adds a rank-4 LoRA change made from the factor matrices $B$ and $A$ as $BA$.
+      For one input vector $x$, what are the shapes of $Ax$ and $B(Ax)$?
     options:
       - id: a
         text: $Ax$ has 4 entries and $B(Ax)$ has 512 entries.
@@ -663,7 +668,9 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: LoRA starts training with $B$ all zeros and $A$ small random numbers. What does setting $B$ to zero achieve?
+    prompt:
+      In the LoRA change $BA$, the factor matrix $B$ starts with all zeros and the factor matrix $A$
+      starts with small random numbers. What does setting $B$ to zero achieve?
     options:
       - id: a
         text: The change $BA$ starts at zero, so the model begins exactly as the pretrained one.
@@ -719,7 +726,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A rank-1 LoRA change $BA$ has a column $B$ with entries $b_i$ and a row $A$. It changes the layer's output by $\Delta Wx=BAx$, and entry $i$ of $BAx$ is $b_i$ times the number $Ax$. If both $B$ and $A$ start as all zeros, what happens during training?
+    prompt:
+      A rank-1 LoRA change $BA$ has a column $B$ with entries $b_i$ and a row $A$. For an input
+      vector $x$, this changes the layer's output by $\Delta Wx=BAx$, and entry $i$ of $BAx$ is $b_i$
+      times the number $Ax$. If both $B$ and $A$ start as all zeros, what happens during training?
     options:
       - id: a
         text: Neither ever moves, because every gradient for $B$ contains $Ax=0$ and every gradient for $A$ is built from the $b_i$, which are all 0.
