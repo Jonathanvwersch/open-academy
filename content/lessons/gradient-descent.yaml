@@ -423,7 +423,7 @@ knowledge_points:
 
       ### When to stop
 
-      We stop after a fixed number of passes, or once a pass barely lowers the loss, say by under $0.1\%$. Be careful when the loss has fallen slowly from the start and is still high. A small learning rate or shallow slopes can make each step small, so check the step sizes before stopping.
+      We stop after a fixed number of passes, or once a pass barely lowers the loss, say by under $0.1\%$. Be careful when the loss has fallen slowly from the start and is still high. A small learning rate or shallow slopes can make each step small, so check the slopes along with the step sizes. If the slopes are steep and the steps are still tiny, the learning rate is small.
 
       ### Getting stuck in a dip
 
