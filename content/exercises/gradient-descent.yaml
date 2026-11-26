@@ -1247,9 +1247,9 @@ exercises:
     prompt: A model trains with gradient descent. Its loss stays high and falls only a little on each pass. Its weights and bias also change only a little. What could explain this?
     options:
       - id: a
-        text: A small learning rate or small loss slopes.
+        text: A small learning rate or shallow slopes of the loss with respect to the weights and bias.
         correct: true
-        feedback: Either factor can give small updates because the learning rate multiplies the loss slopes.
+        feedback: Either factor can give small updates because the learning rate multiplies the slope for each weight and the bias.
       - id: b
         text: Training has already reached the lowest point.
         correct: false
@@ -1258,7 +1258,7 @@ exercises:
         text: A high starting loss or a high current loss.
         correct: false
         feedback: The update uses the slope of the loss for each parameter. The loss value alone does not set the size of the update.
-    solution: Gradient descent multiplies each loss slope by the learning rate to get the size and sign of the amount it subtracts. A small learning rate or small slopes can make the updates small even when the loss is high.
+    solution: Gradient descent multiplies the slope for each weight and the bias by the learning rate, then subtracts the result from that weight or bias. Either a small learning rate or shallow slopes can give small updates even when the loss is high.
   - id: gd-review-square-loss-code
     dimension: implementation
     type: mc
