@@ -1072,18 +1072,18 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 1
-    prompt: "You are changing the MLP half of a transformer block from pre-norm to post-norm. The vectors `u` are the output of the attention half. The function `norm` applies LayerNorm, `mlp` works on each token separately, and `add` adds matching components. Which line computes the final vectors `y` using the MLP half of a post-norm block?"
+    prompt: "A post-norm block's attention half returns token vectors `u`. The function `mlp` produces an update for each token, `norm` applies LayerNorm to each token vector, and `add` adds matching components. A bug makes the block compute its final vectors as `y = add(u, norm(mlp(u)))`. What does this line normalize that a correct post-norm block would handle differently?"
     options:
       - id: a
-        text: "`y = add(norm(u), mlp(u))`"
+        text: "It normalizes the shortcut alone. Post-norm normalizes the sum."
         correct: false
-        feedback: "This normalizes the shortcut alone and leaves the sum unnormalized."
+        feedback: "The shortcut enters the sum as the unchanged vectors `u`."
       - id: b
-        text: "`y = add(u, norm(mlp(u)))`"
-        correct: false
-        feedback: "This normalizes the MLP output alone and leaves the sum unnormalized."
-      - id: c
-        text: "`y = norm(add(u, mlp(u)))`"
+        text: "It normalizes the MLP update alone. Post-norm normalizes the sum."
         correct: true
-        feedback: "The MLP reads `u`, and LayerNorm acts on the sum of its output and the shortcut."
-    solution: "In post-norm the MLP and shortcut are added first. LayerNorm receives their sum."
+        feedback: "The MLP update reaches LayerNorm before the shortcut is added."
+      - id: c
+        text: "It normalizes the MLP update alone. Post-norm normalizes the MLP input."
+        correct: false
+        feedback: "Normalizing the MLP input is the pre-norm placement."
+    solution: "The call `norm(mlp(u))` sees only the MLP update. In post-norm, add the update to the shortcut first, then send the sum to LayerNorm."
