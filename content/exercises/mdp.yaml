@@ -6,7 +6,7 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: Two agents face the same task, described by the same Markov decision process. Which item can differ between the agents while the task stays the same?
+    prompt: Two agents face the same task, described by the same Markov decision process. Let $s$ be the current state, $a$ an action taken there, and $s'$ the next state. Which item can differ between the agents while the task stays the same?
     options:
       - id: a
         text: The rule each agent uses to choose actions
@@ -34,7 +34,7 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot's move command sometimes fails and leaves it where it was. Which part of a Markov decision process describes how often that happens?"
+    prompt: "A robot in state $s$ issues a move command, action $a$, and reaches next state $s'$. A faulty motor sometimes leaves it where it started. Which part of its Markov decision process would change if a repair made the command reliable?"
     options:
       - id: a
         text: "The transition probabilities $p(s' \\mid s, a)$"
@@ -55,7 +55,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "It lists the situations an agent can occupy. Transition probabilities describe how often each move leads to them."
-    solution: "Transition probabilities give the chance of each next state $s'$ after action $a$ in state $s$, so a failed move is a transition back to the same cell."
+    solution: "Transition probabilities give the chance of each next state $s'$ after action $a$ in state $s$. When the move fails, the next state is the same as the current state."
   - id: mdpp-state-basics
     dimension: conceptual
     type: mc
@@ -321,7 +321,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: An MDP has exactly two states. A learner lists $p(1\mid1,\text{right})=0.2$ and $p(2\mid1,\text{right})=0.7$. Which issue prevents this from being a complete transition rule for that state and action?
+    prompt: A robot can be in state 1 or state 2. Its model gives transition probabilities $p(1\mid1,\text{right})=0.2$ and $p(2\mid1,\text{right})=0.7$ when the robot tries to move right from state 1. What's wrong with the model for this move?
     options:
       - id: a
         text: Each destination must have probability $0.5$ when there are two states.
@@ -637,24 +637,24 @@ exercises:
     knowledge_point: mdp-transitions
     difficulty: 1
     est_minutes: 0.5
-    prompt: "The same robot command can either reach the goal or leave the robot in place. You want the average score from trying that command many times. Which part of the model gives you that average?"
+    prompt: "In a robot's Markov decision process, issuing a command either reaches the goal for a larger reward or leaves the robot in place for a smaller reward. Staying in place is more likely. How should the robot predict the mean reward per try if it repeats the command from the same state?"
     options:
       - id: a
-        text: "The expected next reward"
+        text: "Multiply each outcome's reward by its chance and add the results"
         correct: true
-        feedback: "Average the scores of the two outcomes using their chances as weights."
+        feedback: "Each reward contributes in proportion to how often it occurs."
       - id: b
-        text: "The transition probability"
+        text: "Add the chances of the two outcomes"
         correct: false
-        feedback: "A transition probability gives the chance of one destination. Combine it with the score for that outcome to get its contribution to the average."
+        feedback: "The chances add up to 1 regardless of the rewards."
       - id: c
-        text: "The reward rule"
+        text: "Give both outcomes' rewards equal weight"
         correct: false
-        feedback: "The reward rule gives the score of each outcome. The average also needs each outcome's chance."
+        feedback: "Equal weights only work when both outcomes are equally likely."
       - id: d
-        text: "The reward of the more likely outcome"
+        text: "Use the reward of the more likely outcome"
         correct: false
-        feedback: "The more likely outcome gives one of the two scores. The average includes both scores."
+        feedback: "The less likely outcome also contributes to the mean."
     solution: "The expected next reward combines the two scores according to how often each occurs."
   - id: mdpp-recall-transitions-formula
     dimension: math
@@ -663,7 +663,7 @@ exercises:
     knowledge_point: mdp-transitions
     difficulty: 2
     est_minutes: 0.5
-    prompt: "A command moves the robot as intended with probability $q$ and earns reward $g$. Otherwise it leaves the robot in place and earns reward $c$. Write the command's expected next reward. Type `*` for multiplication."
+    prompt: "A robot command either moves the robot and earns a positive reward or leaves it in place and earns a negative reward. Write the command's expected next reward. In your expression, use `q` for the chance of moving, `g` for the positive reward and `c` for the reward that is already negative. Type `*` for multiplication."
     answer: "q*g + (1-q)*c"
     variables: { q: [0.05, 0.95], g: [1, 20], c: [-5, -0.5] }
     solution: "Weight each reward by its chance and add: $qg+(1-q)c$."

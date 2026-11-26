@@ -248,6 +248,12 @@ terms:
       introduced_by: [simulation-for-rl],
     }
   - {
+      id: rl-observation,
+      label: "observation (reinforcement learning)",
+      match: ['\*\*observation\*\*', '\bfinal observations?\b', '\bfinal_obs\b'],
+      introduced_by: [simulation-for-rl],
+    }
+  - {
       id: domain-randomisation,
       label: "domain randomisation",
       match: ['\*\*domain randomi[sz]ation\*\*'],

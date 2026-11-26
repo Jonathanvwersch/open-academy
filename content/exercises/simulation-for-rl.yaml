@@ -187,10 +187,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "An agent learns to answer written questions. The environment's reset returns a new question. The agent sends one complete answer to step, which returns a grade as the reward. Then the agent calls reset for the next question. Which statement about this environment is right?"
+    prompt: "An agent learns to answer written questions. The environment's reset returns a new question. The agent sends one complete answer to step, which grades it from 0 to 10, returns that grade as the reward and ends the episode. Which statement about this environment is right?"
     options:
       - id: a
-        text: "Each episode takes one step: reset gives the question, and step grades the answer and ends the episode."
+        text: "Each question and answer form a one-step episode."
         correct: true
         feedback: The complete answer is one action, and step returns its grade before the next reset.
       - id: b
@@ -313,7 +313,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Moving into a wall leaves it where it is. Reaching cell 4 gives $+{{=goal}}$ and ends the episode, and every other step gives $-1$. The environment also truncates an episode after {{=n}} steps. The robot moves left {{=k}} times, then moves right until the episode ends. What is the episode's total reward?
+    prompt: A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Moving into a wall leaves it where it is. Reaching cell 4 earns $+{{=goal}}$ and ends the episode, even on the last allowed step. Every other step earns $-1$, and the episode stops after {{=n}} steps if the robot has not reached cell 4. The robot moves left {{=k}} times, then moves right until the episode ends. What is the episode's total reward?
     params:
       goal:
         min: 14
@@ -334,7 +334,7 @@ exercises:
       - answer_expr: "k + 3 <= n ? -n : goal - k - 2"
         category: incorrect_reasoning
         feedback: Count the steps first. The robot needs {{=k+3}} steps to reach cell 4, and the time limit is {{=n}} steps. Compare the two to see whether the task ends or the time limit cuts it off.
-      - answer_expr: "k + 3 <= n ? goal - k - 3 : goal - n"
+      - answer_expr: "k + 3 <= n ? goal - k - 3 : goal - (n - 1)"
         category: misunderstood_definition
         feedback: Check the last step. Reaching cell 4 gives $+{{=goal}}$ and no $-1$. A time-limit cutoff gives no goal reward, just the usual $-1$.
     solution: "The robot needs {{=k}} steps bumping the left wall plus 3 steps right, so {{=k+3}} steps, to reach cell 4. The time limit is {{=n}} steps. If the robot needs no more steps than the limit, it reaches cell 4 and the episode terminates: {{=k+2}} steps at $-1$ and one at $+{{=goal}}$ give ${{=goal}}-{{=k+2}}={{=goal-k-2}}$. Otherwise the time limit truncates the episode after {{=n}} steps, all at $-1$, giving ${{=-n}}$. Here the robot needs {{=k+3}} steps and the limit is {{=n}}, so the total is ${{=k + 3 <= n ? goal - k - 2 : -n}}$."
@@ -758,7 +758,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'An engineer says: "Our policy scores the highest reward possible in the simulator, so it''s ready for the real robot." What is wrong with this reasoning?'
+    prompt: 'An engineer says: "Our policy earns the highest possible total reward per episode in the simulator, so it''s ready for the real robot." What is wrong with this reasoning?'
     options:
       - id: a
         text: A top score can come from using things the simulator gets wrong, so it says little about the real robot until the policy is tested there.
@@ -1084,10 +1084,10 @@ exercises:
     knowledge_point: sim-to-real
     difficulty: 3
     est_minutes: 0.5
-    prompt: "A simulator picks one of two floor settings with equal chance at every reset. A robot always jumps. A successful jump gives a total reward of $9$ for the episode, and a failed jump gives $-10$. Write the expected total reward. In your expression, use `a` for the probability of a successful jump on the first floor and `b` for that probability on the second floor. Type `*` for multiplication and `/` for division."
+    prompt: "A simulator picks one of two floor settings with equal chance at every reset. The robot attempts exactly one jump per episode. Success gives an episode total of $9$; otherwise the jump fails and the total is $-10$. Write the expected total reward. Use `a` for the jump's chance of success under the first setting and `b` for its chance under the second setting. Type `*` for multiplication and `/` for division."
     answer: "(9*a - 10*(1-a) + 9*b - 10*(1-b))/2"
     variables: { a: [0, 1], b: [0, 1] }
-    solution: "The overall chance of success is $(a+b)/2$. Weight the totals $9$ and $-10$ by success and failure to get $19(a+b)/2-10$."
+    solution: "Success and failure are the only outcomes, so their chances add to 1. The overall success chance is $(a+b)/2$ and the failure chance is $1-(a+b)/2$. Weight the totals $9$ and $-10$ by those chances to get $19(a+b)/2-10$."
   - id: sim-loop-stale-state
     dimension: implementation
     type: mc

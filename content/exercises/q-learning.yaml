@@ -542,7 +542,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A robot vacuum finished learning its Q-table with Q-learning. During learning it moved epsilon-greedily, with an exploration probability of $0.2$. Now it should collect as much reward as it can. How should it choose its moves?
+    prompt: A robot vacuum finished learning its Q-table with Q-learning. During learning it moved epsilon-greedily, with exploration probability $\varepsilon=0.2$. Now it should collect as much reward as it can. How should it choose its moves?
     options:
       - id: a
         text: Greedily, because the table holds the values of acting greedily.
@@ -698,7 +698,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A robot arm's state is its joint angles, measured precisely as real numbers. Why is a Q-table a poor way to learn its action values?
+    prompt: A robot arm uses the angles reported by its joint sensors as its state. Why might a Q-table be a poor way to learn its action values?
     options:
       - id: a
         text: There are far too many states, and each would almost never be seen twice.
@@ -769,7 +769,7 @@ exercises:
     knowledge_point: ql-q-table
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A maze robot has learned the best action values. At a fork, left is the best first move, but the robot looks up the entry for turning right. What does that entry measure?"
+    prompt: "A maze robot's Q-table holds the best action values. At a fork, state $s$, left is the best first move, but the robot looks up the table entry for turning right. What does that entry measure?"
     options:
       - id: a
         text: "The return from going right once, then choosing the best later moves"
@@ -795,7 +795,7 @@ exercises:
     knowledge_point: ql-q-table
     difficulty: 2
     est_minutes: 0.5
-    prompt: "In a corridor with reliable moves, taking action $a$ in state $s$ earns reward $r$ and always lands in the same nonterminal state $s'$. The best action value $Q^*(s,a)$ starts with that move, and $\\gamma$ is the discount factor. Fill in the missing value in $Q^*(s,a)=r+\\gamma\\,\\underline{\\quad\\quad}$. Use symbols or words."
+    prompt: "In a corridor with reliable moves, taking action $a$ in state $s$ earns reward $r$ and always lands in the same nonterminal state $s'$. Use $a'$ for an available action in $s'$. The best action value $Q^*(s,a)$ starts with the move from $s$, and $\\gamma$ is the discount factor. Fill in the missing value in $Q^*(s,a)=r+\\gamma\\,\\underline{\\quad\\quad}$. Use symbols or words."
     accept:
       [
         "max_a' Q*(s',a')",
@@ -920,7 +920,7 @@ exercises:
     knowledge_point: ql-explore
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A robot moves epsilon-greedily with exploration probability $\\varepsilon$. There are $k$ available actions and one has the highest value. Write the probability of taking that action. Type `eps` for $\\varepsilon$ and `/` for division."
+    prompt: "A robot uses an epsilon-greedy rule. One action has the highest Q-value. With exploration probability $\\varepsilon$, the robot picks uniformly from all available actions, including that one. Otherwise it takes the action with the highest Q-value. What is the probability of taking that action? Type `k` for the number of available actions, `eps` for $\\varepsilon$, and `/` for division."
     answer: "1 - eps + eps/k"
     variables: { "eps": [0.01, 0.5], "k": { "values": [2, 5, 10] } }
     solution: "The greedy branch gives $1-\\varepsilon$, and the random pick lands on the greedy action with probability $\\varepsilon/k$, so the total is $1-\\varepsilon+\\varepsilon/k$."
