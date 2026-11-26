@@ -1043,20 +1043,20 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 1
-    prompt: A live translation service uses PagedAttention. One translation's KV cache occupies two blocks. Memory block 2 holds the later tokens, and memory block 5 holds the earlier tokens. What should the block table contain for this translation?
+    prompt: A live translation service uses PagedAttention. The block table lists memory block IDs in token order, starting with the block that holds the earliest tokens. For one translation, the list is currently `[5, 2]`, and the last block has room for one more token. The model adds two tokens to the cache. The server assigns the empty memory block with ID 1 if another block is needed. What list of block IDs should the table contain after both tokens are added?
     options:
       - id: a
-        text: "`[2, 5]`"
-        correct: false
-        category: implementation_error
-        feedback: Sorting by memory location puts the later tokens before the earlier tokens.
-      - id: b
         text: "`[5, 2]`"
-        correct: true
-        feedback: Block 5 holds the earlier tokens, so it comes first in the table.
-      - id: c
-        text: "`[0, 1]`"
         correct: false
         category: implementation_error
-        feedback: These give the blocks' order in the translation, but the table needs their locations in memory.
-    solution: The table lists memory locations in token order, so it stores block 5 before block 2.
+        feedback: Only the first new token fits in the last block. The second needs a new block.
+      - id: b
+        text: "`[5, 2, 1]`"
+        correct: true
+        feedback: The new block holds the latest token, so its ID goes at the end of the list.
+      - id: c
+        text: "`[1, 2, 5]`"
+        correct: false
+        category: implementation_error
+        feedback: Sorting by block ID would put the newest block first, even though it holds the latest token.
+    solution: The first new token fills the last slot in block 2. The second goes into block 1, so the table appends 1 after 5 and 2.

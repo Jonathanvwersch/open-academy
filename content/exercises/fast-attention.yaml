@@ -1195,7 +1195,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: Online softmax has processed one block for a query. The largest score it has seen is 3. It has a running sum of 1.5 from exponentiating the scores after subtracting the largest score seen so far. The next block has one key with score 2. What is the running sum after this block? Round to two decimal places.
+    prompt: Online softmax has processed one block for a query. The largest score it has seen is 3. The running sum is 1.5. To get that sum, it subtracts the largest score from each score, raises Euler's number $e$ to each result, and adds the powers. The next block has one key with score 2. What is the running sum after this block? Round to two decimal places.
     answer: 1.87
     tolerance: { abs: 0.005 }
     solution: The running maximum stays at 3, so the old sum stays on the same scale. The new key adds $e^{2-3}$, giving $1.5+e^{-1}\approx1.87$.

@@ -827,7 +827,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A KV cache already holds entries for 20 processed tokens. A decode call takes one token as input and predicts another. The model has three layers and two key-value heads per layer. Each key or value vector contains 8 numbers, and each cached number takes 2 bytes. How many bytes of keys and values does this call add? Count only the numbers stored in the new keys and values.
+    prompt: A KV cache already holds entries for 20 processed tokens. A decode call takes one token as input and predicts another. The model has three layers and two key-value heads per layer. Each head's key vector contains 8 numbers, and so does its value vector. Each cached number takes 2 bytes. How many bytes of keys and values does this call add? Count only the numbers stored in the new keys and values.
     answer: 192
     tolerance: { abs: 0 }
     solution: The call adds entries for its one input token. With one key and one value at each head in each layer, it adds $2\times3\times2\times8\times2=192$ bytes.
@@ -838,7 +838,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: A language model streams token A to a user as soon as prefill finishes. It then makes one decode call and streams token B. Which token should the entry added to the model's KV cache by that decode call describe?
+    prompt: A language model sends output token A to a user as soon as prefill finishes. It then makes one decode call and sends output token B. The call adds keys and values to the KV cache at every layer. Which token do those keys and values belong to?
     options:
       - id: a
         text: The final prompt token.
@@ -859,7 +859,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A server uses the same model weights for a cached prompt and a new prompt. In both prompts, the first token has model position 0 and each following token's model position increases by one. To find the portion of the KV cache it can reuse, the server compares the two prompts' token IDs from the beginning. What should it do at the first mismatch?
+    prompt: A server uses the same model weights for a cached prompt and a new prompt. In both prompts, token positions count from one with no gaps. To find which KV cache entries it can reuse from the cached prompt, the server compares the two prompts' token IDs in order, starting at position one. What should it do at the first mismatch?
     options:
       - id: a
         text: Stop scanning and keep the entries already matched.
@@ -880,21 +880,17 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 1
-    prompt: A service runs two versions of a causal decoder with the same architecture and different weights. Its prefix lookup compares token IDs and their positions. It finds matching entries from version A for a request routed to version B. How should it handle the match?
+    prompt: A server receives a prompt with token IDs 7, 8, 9 to run on model B. It has two cached prompts. Model A cached token IDs 7, 8, 9, and model B cached token IDs 7, 5, 9. The two models have different weights. Token positions in all three prompts start at one and count up by one. Which cached keys and values can the server reuse?
     options:
       - id: a
-        text: Reuse both the keys and the values from A.
+        text: Reuse the entries for all three tokens from model A.
         correct: false
-        feedback: Matching IDs and positions are insufficient when the weights that produced both vectors differ.
+        feedback: Matching token IDs and positions are insufficient when the model weights differ.
       - id: b
-        text: Recompute both the keys and the values with B.
+        text: Reuse only the entry at position one from model B.
         correct: true
       - id: c
-        text: Reuse the keys from A and recompute the values with B.
+        text: Reuse the entries at positions one and three from model B.
         correct: false
-        feedback: The keys also come from the model's weights.
-      - id: d
-        text: Reuse the values from A and recompute the keys with B.
-        correct: false
-        feedback: The values also come from the model's weights.
-    solution: A prefix hit requires the same model weights as well as matching IDs and positions, so version B must compute its own entries.
+        feedback: The mismatch at position two changes the earlier context for the third token.
+    solution: Model A's weights differ, so its entries cannot be reused. Model B's cached prompt matches through position one, but the mismatch at position two ends the reusable prefix.
