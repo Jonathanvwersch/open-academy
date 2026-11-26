@@ -579,10 +579,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: For a proposed token, let $p$ be its probability under the target model and $q$ its
-      probability under the draft model. A developer accepts the draft token with probability
-      $\min(1,p/q)$ but samples a replacement directly from the target distribution after every rejection.
-      What goes wrong?
+    prompt: Let $p$ be the target model's next-token distribution, $q$ the draft model's next-token
+      distribution, and $x$ the proposed token. A developer accepts $x$ with probability
+      $\min(1,p(x)/q(x))$ but samples a replacement directly from $p$ after every rejection. What goes
+      wrong?
     options:
       - {
           id: a,
