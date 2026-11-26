@@ -2,7 +2,7 @@ import type { ClientExercise } from './exercises.js';
 
 export interface QuizAnswer {
   position: number;
-  questionId: string;
+  questionId?: string;
   answer: unknown;
 }
 

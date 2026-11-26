@@ -322,7 +322,7 @@ export function answerQuiz(
   store: FlowStore,
   context: QuizContext,
   id: string | undefined,
-  input: { position: number; questionId: string; answer: unknown },
+  input: { position: number; questionId?: string; answer: unknown },
 ) {
   const { learnerId, content, now, random } = context;
   return withQuizLock(store, learnerId, async (tx) => {
@@ -335,7 +335,10 @@ export function answerQuiz(
     const requested = storedItems.find(({ position }) => position === input.position);
     if (
       requested &&
-      (requested.question.withdrawn || requested.question.exercise.id !== input.questionId)
+      (requested.question.withdrawn ||
+        (input.questionId === undefined
+          ? requested.question.previousKeys?.length
+          : requested.question.exercise.id !== input.questionId))
     ) {
       return rejected('conflict', 'Question changed. Answer the current question.');
     }

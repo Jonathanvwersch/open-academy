@@ -65,7 +65,7 @@ export async function answerQuiz(deps: FeatureServices, request: FeatureRequest)
   const body = z
     .object({
       position: z.number().int().nonnegative(),
-      questionId: z.string().min(1),
+      questionId: z.string().min(1).optional(),
       answer: z.unknown(),
     })
     .safeParse(request.body);

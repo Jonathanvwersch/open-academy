@@ -168,7 +168,7 @@ Rules that apply to the whole plan:
 - Add the target times for the 8 questions. Use 90 seconds for each missing target time. Multiply the total by the learner's extra-time setting. The multiplier defaults to 1. Round planned minutes up. **[Ours]**
 - Save the deadline when the learner starts. Keep it on refresh and when a question changes. Reject answers on the server at or after the deadline. Count late and unanswered live questions as wrong. **[Ours]**
 - Keep saved answers when questions are deleted. Before the deadline, replace an unanswered deleted question with a fresh question from the same topic. If none is available, drop the question. Drop any still-deleted unanswered question at expiry. Do not rate it or require a follow-up. **[Ours]**
-- Send the question ID with the answer. If the question changed, reject the old answer. Show the message and load the current question. **[Ours]**
+- Send the question ID with the answer. If the question changed, reject the old answer. Show the message and load the current question. An older tab can send a position without an ID only for an unchanged question. **[Ours]**
 - Accept answers in question order. Measure each answer's time from the start or from the preceding answer. Allow the learner to finish when all answers arrive or time expires. **[Ours]**
 - Keep hints, the tutor and lesson links out of the timed quiz. **[Ours]**
 - Rate each wrong answer Again. Rate a correct answer Hard when its time exceeds the question's target. Rate other correct answers Good. Apply normal FIRe credit for Good. **[Ours]**
