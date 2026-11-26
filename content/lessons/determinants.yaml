@@ -327,7 +327,7 @@ knowledge_points:
 
       This replaces row 2 and keeps row 1. Adding a multiple of one row to another leaves the determinant unchanged. In two dimensions this move slides one output coordinate in proportion to the other. The slide keeps the base, perpendicular height and orientation, so the signed area scale stays the same.
 
-      The picture shows a rectangle's top sliding right while its base stays fixed. Both shapes have base 2 and height 3.
+      The picture shows a different row addition, adding row 2 to row 1. The rectangle's top slides right while its base stays fixed. Both shapes have base 2 and height 3.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 220" aria-label="A rectangle with corners (0,0), (2,0), (2,3), (0,3) becomes a parallelogram with corners (0,0), (2,0), (5,3), (3,3) under (x,y) to (x+y,y). Both have base 2, height 3 and area 6." font-family="ui-sans-serif, system-ui, sans-serif">
