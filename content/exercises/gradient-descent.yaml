@@ -1315,7 +1315,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: A Python program computes the slope of each example's squared error with respect to the current model weight `w`. It stores the slope for the first example in `dw_a` and the slope for the second in `dw_b`. Which line takes one gradient descent step on the mean squared error for the two examples with learning rate `lr`?
+    prompt: A Python program computes the slope of each example's squared error with respect to the current model weight `w`. It stores those slopes in `dw_a` and `dw_b`, one per example. Which line takes one gradient descent step on the mean squared error for the two examples with learning rate `lr`?
     options:
       - id: a
         text: "`w = w - lr * (dw_a + dw_b)`"
