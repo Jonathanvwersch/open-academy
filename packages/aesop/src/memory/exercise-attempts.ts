@@ -5,6 +5,7 @@ import {
   placementCreditWithdrawn,
 } from '../placement/grant-commands.js';
 import { updateActivityAndAdvance } from '../planner/activity-advance.js';
+import { reviewActivityReason } from '../planner/review-topics.js';
 import type { Attempt } from '../store/core-store.js';
 import type { FlowStore } from '../store/flow-store.js';
 import type { PlacementReviewStore } from '../store/placement-review-store.js';
@@ -16,6 +17,7 @@ import { attemptAllowsRetry } from './retry.js';
 import {
   completeReviewActivity,
   type ReviewScheduler,
+  recordRecoveredReviewRatings,
   recordReviewRating,
 } from './review-completion.js';
 import type { GradedBy, MasteryRecord } from './types.js';
@@ -292,9 +294,23 @@ export async function recordExerciseAttempt(
         }
       }
     }
-    const completed =
+    let completed =
       !lessonFinalNeedsQuiz &&
       (learningGoalMet || exerciseIds.every((id) => completedExerciseIds.includes(id)));
+    if (
+      completed &&
+      activity.kind === 'review' &&
+      reviewActivityReason(activity.reason).removedQuestions
+    ) {
+      activity = await recordRecoveredReviewRatings(
+        store,
+        runtime,
+        { index, userId, timeZone, now, session },
+        activity,
+      );
+      exerciseIds = activity.exerciseIds;
+      completed = exerciseIds.every((id) => completedExerciseIds.includes(id));
+    }
     activityCompleted = completed;
     const sessionForAdvance =
       completed && session ? ((await runtime.session(session.id)) ?? session) : session;

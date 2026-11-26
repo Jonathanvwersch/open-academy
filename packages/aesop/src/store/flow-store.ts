@@ -50,6 +50,8 @@ export type TimedQuizItemKey = {
   conceptId: Id;
   questionKey: string;
   reserveKey: string | null;
+  previousKeys: string[];
+  withdrawn: boolean;
 };
 
 export function collectTimedQuizItemKeys(
@@ -65,9 +67,9 @@ export function collectTimedQuizItemKeys(
         compare(a.questionKey, b.questionKey) ||
         compare(a.reserveKey ?? '', b.reserveKey ?? ''),
     )
-    .map(({ runId, conceptId, questionKey, reserveKey, correct }) => {
-      if (correct === false) missedRunIds.add(runId);
-      return { runId, conceptId, questionKey, reserveKey };
+    .map(({ position: _position, correct, ...item }) => {
+      if (correct === false) missedRunIds.add(item.runId);
+      return item;
     });
   return { items, missedRunIds };
 }

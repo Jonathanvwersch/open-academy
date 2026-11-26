@@ -62,6 +62,18 @@ type SeededProjections = Pick<SchedulerFacts, 'lessonRuns' | 'paperProgress'> & 
   projectProgress?: CourseProjectProgress[];
 };
 
+function jsonWithSortedKeys(value: unknown) {
+  return JSON.stringify(value, (_, item) =>
+    item && typeof item === 'object' && !Array.isArray(item)
+      ? Object.fromEntries(
+          Object.keys(item)
+            .sort()
+            .map((key) => [key, item[key]]),
+        )
+      : item,
+  );
+}
+
 type MemorySeed = {
   settings?: ReadonlyMap<string, Settings>;
   hints?: ReadonlyMap<string, readonly Hint[]>;
@@ -699,6 +711,8 @@ function scopedStore(
             position,
             questionKey: question.key,
             reserveKey: reserve?.key ?? null,
+            previousKeys: [...(question.previousKeys ?? [])],
+            withdrawn: question.withdrawn === true,
             correct,
           })),
         ),
@@ -995,6 +1009,8 @@ function scopedStore(
       const rows = matchingActivities(learnerId, query).filter(
         (row) =>
           (!expected?.statuses || expected.statuses.includes(row.status)) &&
+          (expected?.reason === undefined ||
+            jsonWithSortedKeys(expected.reason) === jsonWithSortedKeys(row.reason)) &&
           (!expected?.exerciseIds ||
             (expected.exerciseIds.length === row.exerciseIds.length &&
               expected.exerciseIds.every((id, i) => id === row.exerciseIds[i]))),
