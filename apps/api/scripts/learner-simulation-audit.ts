@@ -59,7 +59,8 @@ export interface AuditAttemptHistory {
 
 /**
  * Facts the simulator's invariants read directly from learner state. Each driver answers them
- * from its own storage, so the checks never depend on the engine's own answers.
+ * from its own storage, so the checks never depend on the engine's own answers. Lists keep
+ * the row order the PostgreSQL queries return; implementations must match it.
  */
 export interface SimulatorAudit {
   progressRows(userId: string): Promise<AuditProgressRows>;
@@ -88,6 +89,7 @@ export interface SimulatorAudit {
   ): Promise<Pick<AuditLessonRunRow, 'id' | 'status'> | undefined>;
   lessonRunTopics(userId: string): Promise<string[]>;
   completedLessonTopics(userId: string): Promise<string[]>;
+  /** Attempts by ascending attempt number: invariants read the last one as the newest. */
   lessonQuizAttempts(runId: string): Promise<AuditLessonQuizAttemptRow[]>;
   /** Items ordered by position and id. */
   lessonQuizItems(quizAttemptId: string): Promise<AuditLessonQuizItemRow[]>;
