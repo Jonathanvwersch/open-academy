@@ -604,3 +604,66 @@ exercises:
       ]
     regex: "^\\s*\\$?\\s*(?:[-−]\\s*(?:∞|\\\\infty|infinity|inf|np\\s*\\.\\s*inf)|(?:minus|negative)\\s+infinity)\\s*\\$?\\s*$"
     solution: "For a blocked cell, $m_{tj}=-\\infty$, making its exponential zero."
+  - id: cm-code-block-predicate
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A loop visits row `t` and column `j` of an attention score grid. The row is the token making the prediction, and the column is the token it might read. Both indices start at zero. Which Python condition should trigger replacement of the score by negative infinity for a causal mask?"
+    options:
+      - id: a
+        text: "`j >= t`"
+        correct: false
+        feedback: "This blocks the diagonal too. The current token is available when predicting the next token."
+      - id: b
+        text: "`j > t`"
+        correct: true
+        feedback: "Only source positions after the row's position are blocked."
+      - id: c
+        text: "`j < t`"
+        correct: false
+        feedback: "This blocks the earlier tokens and leaves future tokens visible."
+    solution: "A causal mask hides sources later than the current token. With both indices starting at zero, those cells have `j > t`."
+  - id: cm-code-score-overwrite
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "This code builds a new causal score row with `[s if j <= t else 0 for j, s in enumerate(scores)]` and then applies softmax to it. `enumerate(scores)` pairs each source's zero-based index `j` with its original score `s`. Which replacement for the `0` keeps the allowed weights normalized and gives later sources zero weight?"
+    options:
+      - id: a
+        text: "The smallest score in the row."
+        correct: false
+        feedback: "The minimum finite score still has a positive exponential."
+      - id: b
+        text: "The constant `-1`."
+        correct: false
+        feedback: "Softmax assigns a positive weight to a finite negative score."
+      - id: c
+        text: "Negative infinity."
+        correct: true
+        feedback: "The exponential of negative infinity contributes zero to the softmax."
+    solution: "Replace blocked scores with negative infinity before softmax. Their exponentials vanish and the allowed scores supply the whole denominator."
+  - id: cm-code-output-invariance
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: "You are testing one causal attention layer on a four-token input. In a second run you change only the value vector at source position 3 (positions start at 1). All scores and other value vectors stay fixed. Which test checks the full set of output positions that must stay unchanged because position 3 is hidden from them?"
+    options:
+      - id: a
+        text: "Compare outputs at positions 1 and 2 between the runs."
+        correct: true
+        feedback: "Those rows hide source 3 because it is later than either row."
+      - id: b
+        text: "Compare outputs at positions 1, 2 and 3 between the runs."
+        correct: false
+        feedback: "The diagonal is visible, so changing source 3 can affect output 3."
+      - id: c
+        text: "Compare outputs at positions 3 and 4 between the runs."
+        correct: false
+        feedback: "Source 3 is visible to itself and to position 4."
+    solution: "Rows 1 and 2 give source 3 zero weight. Rows 3 and 4 can include that value in their output."

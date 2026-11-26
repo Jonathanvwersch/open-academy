@@ -1309,3 +1309,24 @@ exercises:
       ]
     exemplar: "The policy writes a group of answers to each prompt. A checker compares final answers with the reference or runs code tests to give rewards. GRPO subtracts the group mean from each reward and divides by the population standard deviation. Every token gets its answer's advantage in the clipped update. The checker supplies rewards directly, so no learned reward model is needed."
     solution: "A checker compares final answers with the reference or runs code tests, supplying rewards directly without a learned reward model. GRPO subtracts the group mean from each reward and divides by the population standard deviation. Every token gets its answer's advantage in the clipped update."
+  - id: rlvr2-test-text-match
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'A reward checker extracts the final `Answer:` line and removes spaces around the answer and trailing periods. A colleague proposes converting the extracted text to an integer before comparing it with the reference `"9"`. Which pair of replies would get different rewards from each other with exact text comparison, but the same reward as each other with integer comparison?'
+    options:
+      - id: a
+        text: "`Answer: 9` and `Answer: 9.`"
+        correct: false
+        feedback: "The trailing period is removed. Both extracted strings become `9`."
+      - id: b
+        text: "`Answer: 9` and `Answer: 8`"
+        correct: false
+        feedback: "These replies give different numbers, so numeric comparison would distinguish them too."
+      - id: c
+        text: "`Answer: 9` and `Answer: 09`"
+        correct: true
+        feedback: "Trimming leaves the leading zero in `09`, so exact text comparison gives different rewards."
+    solution: "Use `Answer: 9` and `Answer: 09`. They denote the same number, but only the first leaves the exact reference string after trimming."

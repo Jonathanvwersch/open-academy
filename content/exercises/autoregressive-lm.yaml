@@ -820,3 +820,71 @@ exercises:
         correct: false
         feedback: "Later tokens do not exist yet. Causal prediction uses only the prefix already available."
     solution: "Each chosen token extends the prefix needed to predict the following token."
+  - id: alm-code-target-offset
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "`tokens` is the full training sequence as a Python list, and `inputs = tokens[:-1]`. Which assignment makes `targets[t]` the right label for the prediction at `inputs[t]`?"
+    options:
+      - id: a
+        text: "`targets = tokens[:-1]`"
+        correct: false
+        feedback: "This aligns each prediction with the token it just read."
+      - id: b
+        text: "`targets = tokens[1:]`"
+        correct: true
+        feedback: "Dropping the first token shifts each label one position ahead."
+      - id: c
+        text: "`targets = tokens[2:]`"
+        correct: false
+        feedback: "This shifts labels two positions ahead and leaves the final input without a label."
+    solution: "Keep every token after the first as a target. At each index the target is the token immediately after the matching input."
+  - id: alm-code-sample-boundary
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "The code samples the next token using a fixed draw `u`. Which word does `sample` return?"
+    code: |
+      def sample(words, probs, u):
+          total = 0
+          for word, p in zip(words, probs):
+              total += p
+              if u < total:
+                  return word
+          return words[-1]
+
+      sample(["oak", "elm", "ash", "yew"], [0.25, 0.25, 0.25, 0.25], 0.5)
+    accept: ["ash", '"ash"', "'ash'"]
+    solution: "After `elm` the running total equals the draw $0.5$, so the strict comparison is false. The total first exceeds the draw at `ash`."
+  - id: alm-code-refresh-prefix
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: |
+      `predict(prefix)` gives the next-token probabilities, and `sample(probs)` chooses one token. This loop starts with `prefix = ["we"]` and runs twice. Which change makes both predictions use the correct prefix? `prefix.append(...)` adds the chosen token to the end of the list.
+
+      ```python
+      probs = predict(prefix)
+      for _ in range(2):
+          prefix.append(sample(probs))
+      ```
+    options:
+      - id: a
+        text: "Move `probs = predict(prefix)` inside the loop, before sampling."
+        correct: true
+        feedback: "Each draw uses a fresh prediction from the prefix as it stands at that step."
+      - id: b
+        text: "Leave `probs = predict(prefix)` outside and sample twice from it before appending either token."
+        correct: false
+        feedback: "Both draws still use the initial prefix, so the second cannot depend on the first."
+      - id: c
+        text: "Move `probs = predict(prefix)` inside the loop and pass `prefix[:1]` to `predict`."
+        correct: false
+        feedback: "Slicing to the first token omits the chosen continuation from later predictions."
+    solution: "Recompute the distribution from the current prefix at the start of each iteration. On the second iteration the prefix includes the first sampled token."

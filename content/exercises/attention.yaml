@@ -660,3 +660,112 @@ exercises:
     answer: "w*x+(1-w)*y"
     variables: { "w": [0.05, 0.95], "x": [-5, 5], "y": [-5, 5] }
     solution: "Multiply each value entry by its weight and add, giving $wx+(1-w)y$."
+  - id: attn-recover-weight
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "Two sources have one-component values $2$ and $10$. Their attention output is $8$. What attention weight did the source with value $10$ receive?"
+    answer: 0.75
+    tolerance: { abs: 0 }
+    solution: "The two weights add to $1$. If the second weight is $w$, the output is $2(1-w)+10w=2+8w$, so $w=0.75$."
+  - id: attn-code-scale-width
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What numeric divisor belongs in place of `scale` to compute a scaled attention score for these inputs?"
+    code: |
+      q = [2, 1, 3, 0]
+      k = [1, 2, 0, 1]
+      dot = sum(q[i] * k[i] for i in range(len(k)))
+      score = dot / scale
+    solution: "The divisor is the square root of the key width. The key has four entries, so the divisor is $2$."
+    answer: 2
+    tolerance: { abs: 0 }
+  - id: attn-code-query-pair
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "`queries` and `keys` hold the query and key vectors by token position. The code fills `scores[t][j]` for output position `t` and source position `j`. The function `dot` computes a dot product, and `scale` holds the square root of the key width. Which line assigns the scaled attention score?"
+    options:
+      - id: a
+        text: "`scores[t][j] = dot(queries[j], keys[t]) / scale`"
+        correct: false
+        feedback: "This scores the source's query against the output position's key. Their roles are swapped."
+      - id: b
+        text: "`scores[t][j] = dot(queries[t], keys[j]) / scale`"
+        correct: true
+        feedback: "Each entry compares the output position's query to the source's key."
+      - id: c
+        text: "`scores[t][j] = dot(queries[t], keys[t]) / scale`"
+        correct: false
+        feedback: "This uses the output position's own key for every source."
+    solution: "Use the query indexed by the row and the key indexed by the source column. `scale` is the square root of the key width."
+  - id: attn-code-softmax-axis
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "In a self-attention implementation, `scores[t][j]` holds the score from query position `t` to source position `j`. The function `softmax` takes a list of scores and returns their weights in order. Which Python expression supplies the scores for query position `t`?"
+    options:
+      - id: a
+        text: "`[scores[j][j] for j in range(len(scores))]`"
+        correct: false
+        feedback: "This takes only the scores where the query and source are the same token."
+      - id: b
+        text: "`[scores[j][t] for j in range(len(scores))]`"
+        correct: false
+        feedback: "This fixes the source and collects scores from different queries."
+      - id: c
+        text: "`[scores[t][j] for j in range(len(scores))]`"
+        correct: true
+        feedback: "This row contains every source score for a single query."
+    solution: "Softmax normalizes over the source scores for one query, so pass row `t`."
+  - id: attn-code-value-array
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "For one query, `weights[j]` is the attention weight for source `j`. The `keys`, `queries`, and `values` lists contain the corresponding vectors. Which Python expression computes the first component of the attention output?"
+    options:
+      - id: a
+        text: "`sum(weights[j] * keys[j][0] for j in range(len(weights)))`"
+        correct: false
+        feedback: "Keys are used to find scores. The output carries the source values."
+      - id: b
+        text: "`sum(weights[j] * values[j][0] for j in range(len(weights)))`"
+        correct: true
+        feedback: "This adds the first value components after weighting each by its source weight."
+      - id: c
+        text: "`sum(weights[j] * queries[j][0] for j in range(len(weights)))`"
+        correct: false
+        feedback: "Queries describe what each token looks for. They do not supply the content to mix."
+    solution: "Apply each source's weight to its value's first component and sum those contributions."
+  - id: attn-code-output-width
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: "An attention function creates the output with `out = [0] * len(query)`. It then loops over the components of each value vector and adds each weighted component to the matching entry in `out`. Which input will make the function try to write beyond the end of `out`?"
+    options:
+      - id: a
+        text: "Queries and keys of width 4, with three value vectors of width 2."
+        correct: false
+        feedback: "The function allocates too many entries, but both value components fit."
+      - id: b
+        text: "Queries and keys of width 4, with five value vectors of width 4."
+        correct: false
+        feedback: "This changes how many vectors are mixed while keeping the component count right."
+      - id: c
+        text: "Queries and keys of width 4, with three value vectors of width 6."
+        correct: true
+        feedback: "The code allocates four components and has six components to add for each value."
+    solution: "The output needs one component for every component in a value vector. A query width of 4 and value width of 6 expose the mismatch."

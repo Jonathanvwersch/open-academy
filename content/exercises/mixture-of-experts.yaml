@@ -530,3 +530,43 @@ exercises:
     answer: "2*(f1*P1+(1-f1)*(1-P1))"
     variables: { f1: [0.2, 0.8], P1: [0.41, 0.59] }
     solution: "For two experts, multiply the sum of the two fraction-probability products by 2."
+  - id: moe-route-excluded-weight
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A top-2 router assigns four experts probabilities $0.1$, $0.3$, $0.4$ and $0.2$, in order. What weight does expert 4 have in the final mixture?"
+    answer: 0
+    tolerance: { abs: 0 }
+    solution: "The two largest probabilities belong to experts 3 and 2. Expert 4 is outside the selected pair and contributes zero weight."
+  - id: moe-route-rescaled-output
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A top-2 router assigns probabilities $0.2$, $0.3$ and $0.5$ to three experts. Their one-component outputs would be $20$, $8$ and $4$, respectively. The router rescales the selected weights to sum to $1$. What is the layer's output?"
+    answer: 5.5
+    tolerance: { abs: 0 }
+    solution: "Experts 2 and 3 are selected. Their probabilities total $0.8$, so the output is $(0.3\\times8+0.5\\times4)/0.8=5.5$."
+  - id: moe-count-infer-top-k
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: "An expert layer has five experts of 12 parameters each. Its bias-free router reads a width-2 vector and scores all five experts. For one token, the layer uses 46 active parameters, including the router. How many experts run for the token?"
+    answer: 3
+    tolerance: { abs: 0 }
+    solution: "The router uses $5\\times2=10$ parameters. The remaining $36$ are used by experts, so $36/12=3$ experts run."
+  - id: moe-balance-mixed-batch
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: "A top-1 layer has two experts and a batch of four tokens. For the first three tokens the router gives expert 1 probability $0.75$; for the fourth it gives expert 1 probability $0.25$. Each token's remaining probability goes to expert 2. What is the batch's load-balancing loss $L_{\\text{aux}}$?"
+    answer: 1.125
+    tolerance: { abs: 0 }
+    solution: "The assignment fractions are $(0.75,0.25)$ and the mean probabilities are $(0.625,0.375)$. Twice their dot product is $1.125$."

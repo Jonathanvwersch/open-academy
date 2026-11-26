@@ -1003,3 +1003,87 @@ exercises:
     answer: "12*d*d+13*d"
     variables: { "d": { "values": [2, 64, 1024] } }
     solution: "Matrix weights contribute $12d^2$, biases contribute $9d$, and LayerNorm contributes $4d$, giving $12d^2+13d$."
+  - id: tbp-code-mlp-input
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A transformer block without LayerNorm has just computed `u = add(x, attn(x))`. Here `add` adds token vectors component by component, and `mlp` applies the MLP separately to each token. Which Python line should finish the block?"
+    options:
+      - id: a
+        text: "`y = add(x, mlp(u))`"
+        correct: false
+        feedback: "This skips the attention update on the second shortcut."
+      - id: b
+        text: "`y = add(u, mlp(x))`"
+        correct: false
+        feedback: "This gives the MLP the old token vectors, before attention updated them."
+      - id: c
+        text: "`y = add(u, mlp(u))`"
+        correct: true
+        feedback: "Both the MLP input and its shortcut begin with the attention-updated vectors."
+    solution: "The MLP reads `u`, and the second shortcut adds its output to `u`."
+  - id: tbp-code-prenorm-shortcut
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "In a pre-norm block, `x` holds the input token vectors and `z = norm(x)` holds their LayerNorm copies. `attn` produces an update for each token, and `add` adds matching components. Which line should compute the vectors just after the attention shortcut?"
+    options:
+      - id: a
+        text: "`u = add(z, attn(x))`"
+        correct: false
+        feedback: "This puts the normalized copies on the shortcut and sends the original vectors to attention."
+      - id: b
+        text: "`u = add(x, attn(z))`"
+        correct: true
+        feedback: "Attention reads the normalized copies and the shortcut carries the original vectors."
+      - id: c
+        text: "`u = add(z, attn(z))`"
+        correct: false
+        feedback: "This replaces the vectors on the shortcut with their normalized copies."
+    solution: "Send `z` into attention, then add attention's output to the original `x`."
+  - id: tbp-code-stack-flow
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "In a pre-norm model, `first` and `second` are two transformer blocks in that order, each with its own LayerNorms. The model also has a final LayerNorm called `norm` and a function `score` that maps token vectors to next-token scores. Which Python expression computes the scores from input vectors `x`?"
+    options:
+      - id: a
+        text: "`score(second(norm(first(x))))`"
+        correct: false
+        feedback: "This applies the model's final LayerNorm between the two blocks."
+      - id: b
+        text: "`score(norm(second(first(x))))`"
+        correct: true
+        feedback: "The last block's vectors pass through the final LayerNorm before scoring."
+      - id: c
+        text: "`norm(score(second(first(x))))`"
+        correct: false
+        feedback: "This applies LayerNorm to the scores. It belongs on the token vectors before scoring."
+    solution: "Pass each block's output to the next. Apply the final LayerNorm to the last block's output before computing scores."
+  - id: tbp-code-postnorm-placement
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: "You are changing the MLP half of a transformer block from pre-norm to post-norm. The attention half already produced `u`. Here `norm` is LayerNorm, `mlp` works on each token separately, and `add` adds matching components. Which replacement implements the MLP half of a post-norm block?"
+    options:
+      - id: a
+        text: "`y = add(norm(u), mlp(u))`"
+        correct: false
+        feedback: "This normalizes the shortcut alone and leaves the sum unnormalized."
+      - id: b
+        text: "`y = add(u, norm(mlp(u)))`"
+        correct: false
+        feedback: "This normalizes the MLP output alone and leaves the sum unnormalized."
+      - id: c
+        text: "`y = norm(add(u, mlp(u)))`"
+        correct: true
+        feedback: "The MLP reads `u`, and LayerNorm acts on the sum of its output and the shortcut."
+    solution: "In post-norm the MLP and shortcut are added first. LayerNorm receives their sum."
