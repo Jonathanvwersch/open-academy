@@ -1102,17 +1102,17 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A GPU kernel for a weight-only INT8 model loads stored integer weights and 16-bit activations. Where should the kernel reconstruct the weights, and what precision should the multiply use?
+    prompt: A program on the GPU runs a matrix multiply for a model with weight-only INT8 quantisation. Which sequence keeps the weight reads small and uses the precision intended by this mode?
     options:
       - id: a
-        text: Reconstruct on chip after loading, then multiply with 16-bit inputs.
+        text: Read INT8 weights, reconstruct on chip, then multiply with 16-bit inputs.
         correct: true
       - id: b
-        text: Reconstruct in GPU memory before loading, then multiply with 16-bit inputs.
+        text: Read 16-bit weights reconstructed in GPU memory, then multiply with 16-bit inputs.
         correct: false
         feedback: Loading reconstructed weights would lose the weight-read savings of the smaller format.
       - id: c
-        text: Convert the activations on chip after loading, then multiply with INT8 inputs.
+        text: Read INT8 weights, convert activations on chip, then multiply with INT8 inputs.
         correct: false
         feedback: Changing the activation format as well would make this weight-and-activation quantisation.
     solution: The kernel reads the small weights and reconstructs them on chip right before multiplication. The activations and the reconstructed weights used in the multiply are both 16-bit.
