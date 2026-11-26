@@ -742,7 +742,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: From the same starting cell, a robot's forward command earns $8$ when it reaches the goal and $-2$ when its motor fails and it stays in place. These are the only two outcomes. The expected reward for that command is $4$. What is the probability the robot reaches the goal? Give an exact decimal.
+    prompt: A robot tries a forward command from a fixed starting cell. Its reward is $8$ points if it reaches the goal and $-2$ points if its motor fails and it stays in place. These are the only two outcomes. The expected reward for that one command is $4$ points. What is the probability it reaches the goal on that command? Give an exact decimal.
     answer: 0.6
     tolerance: { abs: 0 }
     solution: If $p$ is the goal probability, the expected reward is $8p-2(1-p)=10p-2$. Setting it equal to $4$ gives $p=0.6$.
@@ -752,7 +752,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: A warehouse cart receives a penalty of $-4$ after its first command and a penalty of $-25$ after its third command. You evaluate the two penalties separately from before the first command. What discount factor makes their weighted amounts equal? Give an exact decimal.
+    prompt: A warehouse cart receives a penalty of $-4$ points after its first command and a penalty of $-25$ points after its third command. What discount factor makes the two individual penalties count for the same number of points when evaluated from just before the first command? Give an exact decimal.
     answer: 0.4
     tolerance: { abs: 0 }
     solution: The first penalty has weight 1, and the third has weight $\gamma^2$ because it arrives two steps later. Solving $-25\gamma^2=-4$ with $0\le\gamma\le1$ gives $\gamma=0.4$.

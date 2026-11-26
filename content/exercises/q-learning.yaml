@@ -1000,7 +1000,10 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: The random number generator returns 0.65 for this draw, and the random action picker would return "left" if called. What action does this epsilon-greedy code print? Type the action name.
+    prompt: |
+      A robot is in cell `s` and can move left or right. The Q-table entry `Q[(s, a)]` is the stored value for action `a` in cell `s`. The exploration probability is `eps`.
+
+      For this run, `random.random()` returns 0.65, and `random.choice(actions)` would return "left" if called. What action does the code print? Type the action name.
     code: |
       import random
 
@@ -1022,7 +1025,9 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: |
-      A robot in a warehouse can wait or advance. After taking action `a` in state `s`, it receives reward `r` and reaches a nonterminal state `s2`. The robot's epsilon-greedy policy has chosen to wait in `s2` while exploring. The code below uses the Q-table and discount factor `gamma` to build a target for updating `Q[(s, a)]`.
+      A robot in a warehouse can wait or advance. After taking action `a` in state `s`, it receives reward `r` and reaches a nonterminal state `s2`. Its epsilon-greedy policy has chosen `next_action`, which is to wait in `s2`.
+
+      The Q-table entry `Q[(s, a)]` is the stored value for action `a` in state `s`. The code uses `gamma` as the discount factor and `best_next` as the estimate of future value when it builds the update target for `Q[(s, a)]`.
 
       ```python
       next_action = "wait"
