@@ -234,9 +234,9 @@ exercises:
       each tie as half a win. Which assessment is right?
     options:
       - id: a
-        text: Dropping ties is the half-credit rule whenever wins equal losses.
+        text: Dropping ties gives the same win rate as counting ties for half credit for every record.
         correct: false
-        feedback: Equal numerical results in this case do not make the conventions identical.
+        feedback: The rates agree here, but they can differ when the win and loss counts differ.
       - id: b
         text: Half credit means treating both ties as full wins and dividing by four.
         correct: false
