@@ -879,7 +879,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: A model trains with gradient descent. After 10,000 update steps, its loss is still falling slowly and is much higher than the loss other runs on the same data reach. Which check would best help you tell whether the learning rate is too small?
+    prompt: A model trains with gradient descent. After 10,000 update steps, its loss is still falling slowly and is much higher than the loss other runs on the same data reach. Which check would best help you tell whether this run is using a small learning rate?
     options:
       - id: a
         text: Compare the loss slopes for the weights and bias with the sizes of their updates.
@@ -900,7 +900,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: The runs can reach places where the loss has different slopes. The learning rates alone cannot tell you why this run is slow.
-    solution: Gradient descent multiplies each slope by the learning rate to get the update size. If the updates are tiny even where the slopes are steep, the learning rate is small. Shallow slopes can make the updates small even with a larger learning rate.
+    solution: The size of each update depends on the learning rate and the steepness of the corresponding slope. Tiny updates on steep slopes point to a small learning rate, while shallow slopes can give tiny updates even with a larger rate.
   - id: gd-explain-lr
     dimension: conceptual
     type: explain
