@@ -879,28 +879,28 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: One gradient descent run still has high loss and is improving more slowly than other runs of the same model on the same data. Its learning rate is $0.001$, and the other runs use $0.01$. In all runs, the slopes of the loss with respect to the weights and bias have absolute values of about $40$. What is most likely slowing this run?
+    prompt: Two gradient descent runs train the same model on the same data. In the slower run, where the loss is still high, the learning rate is $0.001$ and the slopes of the loss with respect to the weights and bias have absolute values of about $20$. In the other run, the learning rate is $0.01$ and the slopes have absolute values of about $10$. Which explanation fits how far the weights and bias move in the two runs?
     options:
       - id: a
-        text: Its learning rate is smaller than in the other runs.
+        text: The smaller learning rate outweighs the steeper slopes, so the slower run moves its weights and bias less.
         correct: true
-        feedback: With slopes of about the same size, a smaller learning rate moves the weights and bias less on each update.
+        feedback: The learning rate is one tenth as large and the slopes are about twice as steep. Multiplying these factors gives about one fifth as much movement.
       - id: b
-        text: Its slopes are shallower than in the other runs.
+        text: The steeper slopes outweigh the smaller learning rate, so the slower run moves its weights and bias more.
         correct: false
         category: incorrect_reasoning
-        feedback: The slopes have about the same absolute value in all the runs, so their sizes do not explain the difference in progress.
+        feedback: The slopes are about twice as steep, but the learning rate is one tenth as large. The product is smaller.
       - id: c
-        text: Its learning rate is smaller and its slopes are shallower.
+        text: The learning rate and slopes balance each other, so the two runs move their weights and bias equally far.
         correct: false
         category: incorrect_reasoning
-        feedback: The learning rate is smaller, but the slopes have about the same absolute value in all the runs.
+        feedback: To balance a learning rate one tenth as large, the slopes would have to be ten times as steep. They are only about twice as steep.
       - id: d
-        text: It has already reached a low point and finished training.
+        text: The movement of the weights and bias cannot be compared without knowing the current loss in each run.
         correct: false
         category: incorrect_reasoning
-        feedback: At a low point the slopes would be zero, and here they still have absolute values of about $40$.
-    solution: With slopes of about the same size, a learning rate of $0.001$ moves the weights and bias about one tenth as far per update as a rate of $0.01$. That smaller learning rate is the likely reason this run is progressing more slowly.
+        feedback: The learning rate and slope together determine how far each weight or bias moves.
+    solution: Multiplying the learning rate by the absolute value of the slope gives movements of about $0.02$ in the slower run and $0.1$ in the other run. The slower run's weights and bias move less because its smaller learning rate outweighs its steeper slopes.
   - id: gd-explain-lr
     dimension: conceptual
     type: explain
