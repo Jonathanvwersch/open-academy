@@ -527,7 +527,9 @@ export function CoursePage() {
                                     <CourseMetadata>{unit.project.title}</CourseMetadata>
                                   </span>
                                   <span className="block text-xs text-muted-foreground">
-                                    Project coming soon
+                                    {unit.project.authored
+                                      ? 'Waiting on prerequisites'
+                                      : 'Project coming soon'}
                                   </span>
                                 </span>
                               </div>

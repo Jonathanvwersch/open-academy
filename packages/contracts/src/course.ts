@@ -125,6 +125,7 @@ export interface CoursePayload {
     project: {
       id: string;
       title: string;
+      authored: boolean;
       available: boolean;
       status: 'not_started' | 'in_progress' | 'completed';
     } | null;

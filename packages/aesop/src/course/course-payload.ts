@@ -299,6 +299,7 @@ function buildUnits(
         ? {
             id: project.id,
             title: project.title,
+            authored: project.status === 'authored' && project.tests.length > 0,
             available: projectReady(project, masteryByKey, runs, index),
             status: projectStatuses.get(project.id) ?? 'not_started',
           }
