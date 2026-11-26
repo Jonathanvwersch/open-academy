@@ -170,10 +170,10 @@ describe('academy CLI', () => {
         };
       }
       const edge = uses['gradient-descent'].derivatives;
-      expect(edge.exercises).toBe(16);
+      expect(edge.exercises).toBe(26);
       edge.uses['additional-review'] = ['derivatives-fixture-1', 'derivatives-fixture-2'];
       edge.uses['dx-gradient-descent'] = ['derivatives-fixture-1', 'derivatives-fixture-2'];
-      edge.weight = 0.13;
+      edge.weight = 0.08;
 
       for (const domain of ['math', 'ml']) {
         const file = join(pack, 'concepts', `${domain}.yaml`);
@@ -227,14 +227,14 @@ describe('academy CLI', () => {
       }, 'duplicate step "derivatives-fixture-1"');
       expectInvalid((_, entry) => {
         entry.steps = 1;
-      }, 'expected 16 exercises and 2 steps');
+      }, 'expected 26 exercises and 2 steps');
       expectInvalid((_, entry) => {
         entry.weight = 0.12;
-      }, 'expected weight 0.13 from uses');
+      }, 'expected weight 0.08 from uses');
       expectInvalid((_, entry) => {
         entry.uses['additional-review'] = [];
-        entry.weight = 0.06;
-      }, 'expected encompassing weight 0.06 in concept file');
+        entry.weight = 0.04;
+      }, 'expected encompassing weight 0.04 in concept file');
     } finally {
       rmSync(parent, { recursive: true, force: true });
     }
