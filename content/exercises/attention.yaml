@@ -728,7 +728,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 1
-    prompt: "An attention function processes two tokens. In its weight grid, $a_{tj}$ is the weight that position $t$ gives source $j$. The first components of source $j$'s key and value are $k_{j1}$ and $v_{j1}$. Which expression should the function use to compute the first output component at position 2?"
+    prompt: "An attention function processes two tokens. Token positions and vector components are numbered from $1$. In the weight grid, $a_{tj}$ is the weight that position $t$ gives source $j$. The first components of source $j$'s key and value are $k_{j1}$ and $v_{j1}$. Which expression should the function use to compute the first output component at position $2$?"
     options:
       - id: a
         text: "$a_{21}k_{11}+a_{22}k_{21}$"
