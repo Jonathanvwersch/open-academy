@@ -295,7 +295,7 @@ exercises:
     difficulty: 1
     est_minutes: 1
     prompt: >-
-      Generalised advantage estimation (GAE) uses a decay parameter $\lambda$. At step $t$, the agent moves from state $s_t$ to $s_{t+1}$ and earns reward $r_{t+1}$. Let $V$ be the critic's state-value estimate and $\gamma$ the discount factor. What does the advantage estimate $\hat A_t$ at step $t$ become when $\lambda=0$?
+      Generalised advantage estimation (GAE) uses a decay parameter $\lambda$. At step $t$, the agent moves from state $s_t$ to $s_{t+1}$, earns reward $r_{t+1}$ and continues the episode. Let $V$ be the critic's state-value estimate and $\gamma$ the discount factor. What does the advantage estimate $\hat A_t$ at step $t$ become when $\lambda=0$?
     options:
       - id: a
         text: 'The one-step error $\delta_t=r_{t+1}+\gamma V(s_{t+1})-V(s_t)$.'
@@ -398,7 +398,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      Early in training, a critic's predictions for later states are mostly wrong but much less variable than the noisy returns they replace. Which choice of the GAE decay parameter $\lambda$ leans least on those values, and what does it cost?
+      Compare repeated episodes that visit the same sequence of states. The critic's values for those states are fixed but inaccurate, and the discount factor is positive. The first reward is fixed, but rewards on later steps are random and independent of one another. For the first action, which choice of the GAE decay parameter $\lambda$ leans least on the critic's predictions for later states, and what does it cost?
     options:
       - id: a
         text: '$\lambda$ close to $1$, at the cost of noisier estimates.'

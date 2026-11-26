@@ -156,7 +156,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      A corridor has cells 1 to 4 from left to right. A robot starts in cell 1; moving left into the wall leaves it there. Reaching cell 4 gives $+10$ and ends the episode; other steps give $-1$. With policy parameter $\theta$, the robot chooses right with probability $p=e^\theta/(e^\theta+1)$ in every cell and left otherwise. At $\theta=0$, what is the probability of exactly left, right, right, right?
+      A corridor has cells 1 to 4 from left to right. A robot starts in cell 1. Each action moves it exactly one cell in the chosen direction, except that moving left into the wall leaves it in cell 1. Reaching cell 4 gives $+10$ and ends the episode; other steps give $-1$. With policy parameter $\theta$, the robot chooses right with probability $p=e^\theta/(e^\theta+1)$ in every cell and left otherwise. At $\theta=0$, what is the probability that the entire episode consists of left, right, right, right?
     solution:
       Both choices have chance $0.5$. The left hits the wall and three rights finish, so the probability
       is $0.5^4=0.0625$.
@@ -397,7 +397,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      A slot machine has arms A and B. A policy with parameter $\theta$ pulls B with probability $p=e^\theta/(e^\theta+1)$ and A otherwise. A always pays 2 and B always pays 6. For each pull, estimate the expected payout's slope by multiplying the observed payout by the slope, with respect to $\theta$, of the log probability of the arm pulled. At $\theta=0$, what is the average of this estimate over repeated single pulls?
+      A slot machine has arms A and B. A policy with parameter $\theta$ pulls B with probability $p=e^\theta/(e^\theta+1)$ and A otherwise. A always pays 2 and B always pays 6. For each pull, estimate the expected payout's slope by multiplying the observed payout by the slope, with respect to $\theta$, of the natural log of the probability of the arm pulled. At $\theta=0$, what is the average of this estimate over repeated single pulls?
     solution:
       Both arms have chance $0.5$ and log-probability slopes $-0.5$ and $0.5$. Their estimates average
       $0.5\times2\times(-0.5)+0.5\times6\times0.5=1$.
