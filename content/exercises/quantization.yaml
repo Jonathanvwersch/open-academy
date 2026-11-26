@@ -460,7 +460,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A model with {{=n}} billion parameters uses FP8 weight-and-activation quantisation. Its GPU performs about 2,000 trillion FP8 floating-point operations per second. Each of the 2,000 prompt tokens meets each weight in one multiply-add, which counts as two operations. Counting only these multiply-adds, how many milliseconds does prefill take?"
+    prompt: "A model with {{=n}} billion parameters uses FP8 weight-and-activation quantisation. Its GPU performs about 2,000 trillion FP8 floating-point operations per second. Each of the 2,000 prompt tokens uses every weight. Counting only the calculations that use the weights, how many milliseconds does prefill take?"
     params:
       n:
         min: 1
