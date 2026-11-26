@@ -1124,7 +1124,7 @@ exercises:
     difficulty: 3
     est_minutes: 1
     prompt: |
-      A team has two separate sets of prompts for one task. It used `set_a` to choose activation scales. The two model runs use the same sampling settings.
+      A team has two sets of prompts for one task. Neither set was used to train the model. The team used `set_a` to choose the activation scales. The helper `evaluate(model, prompts)` gives the model's score on those prompts, using the same sampling settings for both models.
 
       ```python
       original_score = evaluate(original, set_b)
@@ -1144,4 +1144,4 @@ exercises:
       - id: c
         text: Pass `set_b` to both calls.
         correct: true
-    solution: Both models should see the same prompts. Use the held-out `set_b` list because its prompts played no part in choosing the scales.
+    solution: Both models should see the same prompts. Use `set_b` because those prompts were kept out of training and played no part in choosing the scales.
