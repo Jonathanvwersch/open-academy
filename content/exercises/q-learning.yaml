@@ -795,7 +795,7 @@ exercises:
     knowledge_point: ql-q-table
     difficulty: 2
     est_minutes: 0.5
-    prompt: "In a corridor with reliable moves, taking action $a$ in state $s$ earns reward $r$ and always lands in the same nonterminal state $s'$. Use $a'$ for an available action in $s'$. Here $Q^*(s,a)$ is the best return achievable after starting with action $a$ in state $s$. With discount factor $\\gamma$, fill in the missing term in $Q^*(s,a)=r+\\gamma\\,\\underline{\\quad\\quad}$. Use symbols or words."
+    prompt: "In a corridor with reliable moves, taking action $a$ in state $s$ earns reward $r$ and always lands in the same nonterminal state $s'$. Use $a'$ for an available action in $s'$. Here $Q^*(s,a)$ is the highest expected discounted return when $a$ is the first action in $s$. This return includes the first reward $r$. With discount factor $\\gamma$, fill in the missing term in $Q^*(s,a)=r+\\gamma\\,\\underline{\\quad\\quad}$. Use symbols or words."
     accept:
       [
         "max_a' Q*(s',a')",
@@ -975,7 +975,7 @@ exercises:
     knowledge_point: ql-full-run
     difficulty: 2
     est_minutes: 0.5
-    prompt: "For a task with finitely many states and actions, rewards between fixed lower and upper limits, and a discount factor $\\gamma$ below 1, what conditions on exploration and the learning rate guarantee that Q-learning reaches the best values?"
+    prompt: "For a task with finitely many states and actions, rewards between fixed lower and upper limits, and a discount factor $\\gamma$ below 1, what conditions on exploration and the learning rate guarantee that the estimates approach the best action values as Q-learning continues?"
     options:
       - id: a
         text: "Keep trying all actions in every state and shrink the learning rate at the right speed"

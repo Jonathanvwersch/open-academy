@@ -6,17 +6,17 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: Two agents face the same task, described by the same Markov decision process. Which item can differ between the agents while the task stays the same?
+    prompt: Two robots face the same task. Each can move left or right along a corridor and earns points as it moves. Which item can differ between the robots while the task stays the same?
     options:
       - id: a
         text: The rule each agent uses to choose actions
         correct: true
         feedback: Each agent can choose its actions differently in the same task.
       - id: b
-        text: The transition probabilities for each available action
+        text: The chances of each next position after a given move from a given spot
         correct: false
         category: misunderstood_definition
-        feedback: For any given state and action, the chances of each next state are the same for both agents.
+        feedback: From the same spot, a given move has the same chances of reaching each next position for both robots.
       - id: c
         text: The reward rule
         correct: false
@@ -27,14 +27,14 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: The available actions are part of the task the agent acts in.
-    solution: The task sets the available actions, transition probabilities and rewards. Each agent can use its own rule to choose among the available actions.
+    solution: The task sets which moves are possible, where they can lead and how they earn points. Each robot can use its own rule to choose a move.
   - id: dx-rl-1b
     dimension: conceptual
     type: mc
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot starts in state $s$, receives move command $a$, and ends in next state $s'$. In many tests on the old floor it stayed put on about 1 in 10 tries. In equally many tests on the new floor it stayed put on about 4 in 10 tries, using the same command from the same starting spot. Which part of the Markov decision process should the engineer update to reflect these results?"
+    prompt: "A robot starts in state $s$, receives move command $a$, and ends in next state $s'$. In many tests on the old floor it stayed put on about 1 in 10 tries. In equally many tests on the new floor it stayed put on about 4 in 10 tries, using the same command from the same starting spot. The robot will now operate only on the new floor. Which part of the Markov decision process should the engineer update to reflect these results?"
     options:
       - id: a
         text: "The transition probabilities $p(s' \\mid s, a)$"
@@ -324,9 +324,9 @@ exercises:
     prompt: A robot can be in state 1 or state 2. Its model gives transition probabilities $p(1\mid1,\text{right})=0.2$ and $p(2\mid1,\text{right})=0.7$ when the robot tries to move right from state 1. What's wrong with the model for this move?
     options:
       - id: a
-        text: The row is missing the chance of reaching state 2 with a left command.
+        text: The list should also include the chance of reaching state 2 by moving left.
         correct: false
-        feedback: Each command has its own row. The chances for the right command must sum to 1 by themselves.
+        feedback: The listed probabilities cover moving right from state 1. For that starting state and command, they must sum to 1 on their own.
       - id: b
         text: The probabilities of the listed destinations add up to less than 1.
         correct: true
@@ -637,10 +637,10 @@ exercises:
     knowledge_point: mdp-transitions
     difficulty: 1
     est_minutes: 0.5
-    prompt: "In a robot's Markov decision process, issuing a command either reaches the goal for a larger reward or leaves the robot in place for a smaller reward. Staying in place is more likely. How should you estimate the mean reward if the command is tried many times from the same state?"
+    prompt: "From a fixed starting state, a robot's command can reach the goal for a larger reward or leave it in place for a smaller reward. You know both rewards and both outcome probabilities, and staying put is more likely. Before running any trials, how should you predict the mean reward per try from that state?"
     options:
       - id: a
-        text: "Average the two rewards, giving more weight to the reward for staying put"
+        text: "Weight each reward by the probability of its outcome and add the results"
         correct: true
         feedback: "Each reward contributes in proportion to how often it occurs."
       - id: b

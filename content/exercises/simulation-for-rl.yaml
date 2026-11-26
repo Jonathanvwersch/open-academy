@@ -164,7 +164,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Reaching cell 4 ends the episode. There is no time limit. The robot always tries to move right. Each attempt independently moves it one cell right with probability {{=p}}. Otherwise it slips and stays put. What is the probability that the episode lasts exactly 4 steps? Give your answer to 3 decimal places."
+    prompt: "A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Reaching cell 4 ends the episode. There is no time limit. The robot always tries to move right. Each attempt independently moves it one cell right with probability {{=p}}. Otherwise it slips and stays put. What is the probability that it first reaches cell 4 on its fourth attempt? Give your answer to 3 decimal places."
     params:
       p:
         min: 0.5
@@ -176,38 +176,38 @@ exercises:
     common_wrong:
       - answer_expr: (1 - p) * p^3
         category: incorrect_reasoning
-        feedback: The one slip can happen on step 1, 2 or 3, so there are 3 different ways.
+        feedback: The one slip can happen on attempt 1, 2 or 3, so there are 3 different ways.
       - answer_expr: p^3
         category: misunderstood_definition
-        feedback: That is the chance the robot reaches cell 4 in exactly 3 steps, with no slips.
-    solution: The robot needs 3 moves that work. To take exactly 4 steps, one of the first 3 steps slips and step 4 works. The slip can be on step 1, 2 or 3, and each way has probability $(1-{{=p}})\times{{=p}}^3$. So the answer is $3\times{{=1-p}}\times{{=p}}^3={{=3*(1-p)*p^3}}$, which is ${{=round(3*(1-p)*p^3, 3)}}$ to 3 decimal places.
+        feedback: That is the chance the robot reaches cell 4 on its third attempt, with no slips.
+    solution: The robot needs 3 successful moves. To reach cell 4 on attempt 4, one of the first 3 attempts must be a slip and attempt 4 must work. Each of the 3 orders has probability $(1-{{=p}})\times{{=p}}^3$. So the answer is $3\times{{=1-p}}\times{{=p}}^3={{=3*(1-p)*p^3}}$, which is ${{=round(3*(1-p)*p^3, 3)}}$ to 3 decimal places.
   - id: sim-game-step
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "An agent learns to answer written questions. Each task is to answer one question. The agent chooses its complete answer at once and cannot revise it. The grader assigns a score from 0 to 10. Which design fits this task?"
+    prompt: "An agent submits an answer to a written question and receives a grade from 0 to 10. Its next try uses a different question. Which design for `reset` and `step` handles the question, grade and episode ending correctly?"
     options:
       - id: a
-        text: "Each question and answer form a one-step episode."
+        text: "`reset` returns a question. `step` returns the answer's grade and reports that the episode ended."
         correct: true
-        feedback: The complete answer is one action. After grading it, there is nothing left to do for that question.
+        feedback: The question starts the episode. Submitting an answer is the action, so its grade is the reward from that step.
       - id: b
-        text: The grading rule chooses the agent's answer, because it decides the reward.
+        text: "`reset` returns a question. `step` returns the answer's grade and keeps the episode open."
         correct: false
         category: misunderstood_definition
-        feedback: The agent chooses the answer. The grading rule is part of the environment and supplies the reward.
+        feedback: Once the answer is graded, there is no further action to take for that question.
       - id: c
-        text: step must leave the episode running, because an episode always lasts many steps.
+        text: "`reset` returns a question and the last grade. `step` reports that the episode ended."
         correct: false
         category: incorrect_reasoning
-        feedback: An episode lasts until it ends, which can be after one step.
+        feedback: The grade is the reward for submitting an answer, so it belongs in the result of step.
       - id: d
-        text: reset should return the grade for the previous answer, so the agent can learn from it.
+        text: "`reset` returns a question and the last grade. `step` keeps the episode open."
         correct: false
         category: misunderstood_definition
-        feedback: reset starts a new episode by returning a question. The grade comes back from step.
+        feedback: The answer submission earns the grade and ends that episode, so step returns both results.
     solution: reset returns a question. One call to step takes the agent's whole answer, returns its grade as the reward and ends the episode.
   - id: sim-loop-basics
     dimension: conceptual

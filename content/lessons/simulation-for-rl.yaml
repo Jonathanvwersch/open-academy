@@ -24,7 +24,7 @@ knowledge_points:
 
       Our example is a corridor of 4 cells, numbered 1 to 4. The robot starts in cell 1 and moves left or right; walls keep it in place. Reaching cell 4 gives $+10$ and ends the task. Every other step gives $-1$, so the robot does best by reaching cell 4 quickly.
 
-      One try from the start until the task ends is an **episode**. A state where it ends, like cell 4, is a **terminal state**.
+      One run is an **episode**. Reaching a **terminal state**, like cell 4, ends the task itself.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Top: a corridor of four cells numbered 1 to 4, with the robot as a green dot in cell 1, the start. Cell 4 is marked plus 10, episode ends, and every other step gives minus 1. Bottom: an agent box and an environment box. A blue arrow from the agent to the environment is labelled step with an action. A blue arrow back is labelled next state, reward and whether the episode ended. A note says reset puts the robot in cell 1 and returns state 1">
