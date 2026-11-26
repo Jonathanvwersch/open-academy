@@ -1257,7 +1257,7 @@ exercises:
       - id: c
         text: Training has finished because the latest drop in loss measures how much room there is to improve.
         correct: false
-        feedback: A tiny drop can be a stopping signal after the loss has already fallen substantially. Here the loss has stayed high, so check why the weights and bias are barely moving.
+        feedback: The latest drop measures progress on one update, so the loss could still fall much farther.
     solution: Gradient descent multiplies each slope of the loss with respect to a weight or the bias by the learning rate. A small learning rate or shallow slopes can make the weights and bias move very little even while the loss is high.
   - id: gd-review-square-loss-code
     dimension: implementation
