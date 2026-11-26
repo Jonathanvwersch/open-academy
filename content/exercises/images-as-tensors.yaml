@@ -590,7 +590,7 @@ exercises:
   - id: iat-grid-row-from-index
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 1
     est_minutes: 1
     prompt: "A grayscale image has two rows of brightness values: $(14,38,72)$ and $(101,53,26)$, in that order. What is the brightness at row $1$, column $0$ in the image array?"
@@ -601,7 +601,7 @@ exercises:
   - id: iat-rgba-channel-axis
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 1
     est_minutes: 1
     prompt: "A colour image has HWC shape $(6,9,4)$ because it includes a channel for transparency. It is transposed to CHW. What is the size of the first axis of the result?"
@@ -612,7 +612,7 @@ exercises:
   - id: iat-batch-pixels-from-shape
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 2
     prompt: "An RGB image batch in NCHW layout has shape $(5,3,2,7)$. How many pixels are there across the whole batch, counting each pixel once?"
@@ -623,7 +623,7 @@ exercises:
   - id: iat-blue-plane-read
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 2
     prompt: "An RGB image in HWC layout has two rows of pixels. Row $0$ contains $(15,20,25)$ and $(30,35,40)$. Row $1$ contains $(45,50,55)$ and $(60,65,70)$. After transposing the image to CHW, what value is at index $(2,0,1)$? All indices start at zero."
@@ -634,7 +634,7 @@ exercises:
   - id: iat-standardise-from-uint8
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 3
     est_minutes: 2
     prompt: "A uint8 RGB pixel has values $(51,204,102)$ in red, green and blue order. A model expects values rescaled to $[0,1]$ and then standardised. In that same colour order, its means are $(0.5,0.7,0.3)$ and its standard deviations are $(0.1,0.25,0.2)$. What green value should go to the model?"

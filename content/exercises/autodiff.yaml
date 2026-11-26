@@ -672,7 +672,7 @@ exercises:
   - id: ad-record-squared-input
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 1
     est_minutes: 1
     prompt: "An autodiff routine records the operation $L=e^2$. Which value should it save so the backward step can apply the local slope rule for squaring directly?"
@@ -693,7 +693,7 @@ exercises:
   - id: ad-rebuild-before-backward
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 2
     prompt: "A PyTorch program computes `loss`, calls `loss.backward()` and clears the weight's `.grad`. It now needs another backward pass without changing the weight or the loss formula. What should it do first?"
@@ -714,7 +714,7 @@ exercises:
   - id: ad-mode-count-with-recording
     dimension: implementation
     type: numeric
-    role: practice
+    role: review
     difficulty: 3
     est_minutes: 2
     prompt: "A calculation has three adjustable inputs and three scalar outputs. An implementation can either run ordinary forward-mode passes or use reverse mode. It counts the recording pass as one pass if needed. How many more passes does reverse mode take to find every input-output slope?"

@@ -682,7 +682,7 @@ exercises:
   - id: cg-local-target-slope
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 1
     est_minutes: 1
     prompt: "A graph computes $e=p-t$ and then $L=e^2$. At $p=4$ and $t=7$, what is the local derivative $\\partial e/\\partial t$?"
@@ -693,7 +693,7 @@ exercises:
   - id: cg-intermediate-slope
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 2
     prompt: "A graph computes $p=wx$, $e=p-t$ and $L=e^2$. At $w=3$, $x=2$ and $t=8$, what is $\\partial L/\\partial p$?"
@@ -704,7 +704,7 @@ exercises:
   - id: cg-two-squared-paths
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 3
     est_minutes: 2
     prompt: "A graph uses $x$ in two operations, $a=x-2$ and $b=2x$, then gives the output $g=a^2+b^2$. At $x=1$, what is $\\partial g/\\partial x$?"

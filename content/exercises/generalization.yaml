@@ -581,7 +581,7 @@ exercises:
   - id: gen-reused-test
     dimension: transfer
     type: mc
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 2
     prompt: "A factory tests three defect detectors on the same inspection records and chooses the detector with the lowest error there. What should it do to estimate the chosen detector's error on future items?"

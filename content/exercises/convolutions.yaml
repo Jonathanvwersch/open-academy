@@ -855,7 +855,7 @@ exercises:
   - id: conv-parameter-increase
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 1
     est_minutes: 1
     prompt: "A convolution takes two input channels. Each filter is $2\\times2$ and has one bias. How many additional adjustable parameters does the layer gain if it adds one more filter?"
@@ -866,7 +866,7 @@ exercises:
   - id: conv-field-unequal-sides
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 3
     est_minutes: 2
     prompt: "Three convolution layers in order use square filters with sides $3$, $5$ and $5$. All have stride $1$, with no padding or pooling. What is the side length in pixels of one final output cell's receptive field in the original input?"

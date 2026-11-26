@@ -890,7 +890,7 @@ exercises:
   - id: bp-backward-add-slopes
     dimension: implementation
     type: numeric
-    role: practice
+    role: review
     difficulty: 1
     est_minutes: 1
     prompt: "A backward routine has stored a loss slope of $8$ at a node. A second branch that uses that same node sends it a slope contribution of $-3$. What number should the routine now store at the node?"
@@ -901,7 +901,7 @@ exercises:
   - id: bp-relu-backward-mask
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 2
     prompt: "A layer uses ReLU. Two neurons have saved scores $-3$ and $4$, and the arriving loss slopes for their outputs are $7$ and $-2$, respectively. Which backward instruction gives the correct slopes for the scores?"
@@ -922,7 +922,7 @@ exercises:
   - id: bp-weight-slope-product
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 2
     prompt: "A backward routine for a layer with scores $Z=XW$ has batch input matrix $X$ and loss-slope matrix $G$ for the scores. Each row of both matrices is one example. Which expression should the routine use for the slopes of the weights in $W$?"
@@ -943,7 +943,7 @@ exercises:
   - id: bp-check-isolate-bias
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 3
     est_minutes: 2
     prompt: "A gradient-check routine has a function `loss(w, b)` for fixed training data. To check the bias $b$, it calculates `hi = loss(w + d, b + d)` and `lo = loss(w - d, b - d)`, then computes `(hi - lo) / (2 * d)`. Here `d` is a small positive nudge. Which change fixes what the routine measures?"
@@ -964,7 +964,7 @@ exercises:
   - id: bp-steering-prediction-unchanged
     dimension: transfer
     type: mc
-    role: practice
+    role: review
     difficulty: 1
     est_minutes: 1
     prompt: "A steering model predicts an angle larger than the target. The training program runs only the backward pass, then predicts again for the same input. How does this prediction compare with the first one?"
@@ -985,7 +985,7 @@ exercises:
   - id: bp-valve-relu-path
     dimension: transfer
     type: numeric
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 2
     prompt: "A valve controller uses one ReLU neuron to pass a sensor signal on to its prediction. The neuron's score is $-2$ on a training example. The slope of the loss with respect to the neuron's output is $5$. What slope does this example give for a weight used only in that neuron's score?"
@@ -996,7 +996,7 @@ exercises:
   - id: bp-thermostat-shared-bias
     dimension: transfer
     type: numeric
-    role: practice
+    role: review
     difficulty: 3
     est_minutes: 2
     prompt: "A thermostat model adds the same bias to every prediction in a batch. It makes three predictions: $18$, $23$ and $22$, and their targets are $20$, $20$ and $24$, respectively. The loss is the mean squared error. What is the loss slope with respect to the shared bias? Give an exact fraction or round to four decimal places."
@@ -1007,7 +1007,7 @@ exercises:
   - id: bp-pump-check-reuse
     dimension: transfer
     type: mc
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 2
     prompt: "An engineer checks a pump model's backpropagation slope for one weight. The numerical and backpropagation slopes agree at that weight's starting value. Later in training, another weight gives a surprising slope. Which action tests whether that slope is right?"
@@ -1028,7 +1028,7 @@ exercises:
   - id: bp-camera-check-corner
     dimension: transfer
     type: mc
-    role: practice
+    role: review
     difficulty: 3
     est_minutes: 2
     prompt: "A camera controller uses ReLU. One gradient check compares a backward slope at a positive ReLU score with a numerical slope from two nudges. The upward nudge leaves the score positive, but the downward nudge makes it negative. What is the best next check at the same parameter values?"
