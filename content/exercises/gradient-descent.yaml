@@ -320,23 +320,23 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: After 1,000 passes the training loss still falls smoothly, but only by about $0.1\%$ per pass, and it is far from the values other runs reach. What is the most likely fix?
+    prompt: After 1,000 gradient descent updates, the training loss still falls smoothly, by about $0.1\%$ per update, and remains much higher than in other runs on the same data. Which change is worth trying first?
     options:
       - id: a
-        text: Increase the learning rate, then check that the loss still falls every pass.
+        text: Increase the learning rate, then check that the loss still falls after each update.
         correct: true
-        feedback: A smooth but tiny fall is the sign of steps that are too small.
+        feedback: A small learning rate or shallow slopes can make the weights and bias move very little. A cautious increase may help them move farther.
       - id: b
         text: Decrease the learning rate, because the loss is not yet low.
         correct: false
         category: incorrect_reasoning
-        feedback: Smaller steps would make the slow fall even slower.
+        feedback: A smaller learning rate moves the weights and bias less for the same slopes.
       - id: c
         text: Add the gradient instead of subtracting it.
         correct: false
         category: misunderstood_definition
-        feedback: The loss is falling, so the direction is right; only the step size is off.
-    solution: A loss that falls smoothly but very slowly is taking steps that are too small. Raise $\eta$ carefully and watch that the loss keeps falling.
+        feedback: Subtracting the gradient is already moving the model downhill. Adding it would send the model uphill.
+    solution: The loss can fall slowly because the learning rate is small or because the slopes of the loss with respect to the weights and bias are shallow. A cautious increase is worth trying while checking that the loss keeps falling.
   - id: gdp-two-steps-template
     dimension: math
     type: numeric
@@ -879,28 +879,28 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: A model trains with gradient descent. After 10,000 update steps, its loss is still falling slowly and is much higher than the loss other runs on the same data reach. Which check would best help you tell whether a small learning rate, shallow slopes of the loss, or both are slowing this run?
+    prompt: One gradient descent run still has high loss and is improving more slowly than other runs of the same model on the same data. Its learning rate is $0.001$, and the other runs use $0.01$. In all runs, the slopes of the loss with respect to the weights and bias have absolute values of about $40$. What is most likely slowing this run?
     options:
       - id: a
-        text: Compare each change in a weight or bias with the corresponding slope before that update.
+        text: Its learning rate is smaller than in the other runs.
         correct: true
-        feedback: The update size depends on both the slope and the learning rate. Tiny updates where the slopes are steep point to a small learning rate.
+        feedback: With slopes of about the same size, a smaller learning rate moves the weights and bias less on each update.
       - id: b
-        text: Compare the slopes for the weights and bias in this run with those in other runs.
+        text: Its slopes are shallower than in the other runs.
         correct: false
         category: incorrect_reasoning
-        feedback: This can tell you whether this run is on shallower slopes. You need the update sizes as well to tell how the learning rate scales those slopes.
+        feedback: The slopes have about the same absolute value in all the runs, so their sizes do not explain the difference in progress.
       - id: c
-        text: Compare the drop in loss in this run with the drop in the other runs.
+        text: Its learning rate is smaller and its slopes are shallower.
         correct: false
         category: incorrect_reasoning
-        feedback: The drop in loss tells you how much progress each run made. A small drop can come from a small learning rate or shallow slopes.
+        feedback: The learning rate is smaller, but the slopes have about the same absolute value in all the runs.
       - id: d
-        text: Compare the learning rate in this run with the rates used in the other runs.
+        text: It has already reached a low point and finished training.
         correct: false
         category: incorrect_reasoning
-        feedback: This can tell you which run uses a smaller learning rate. Even with a smaller rate, shallow slopes could also be slowing this run.
-    solution: The size of each update depends on the learning rate and the steepness of the corresponding slope. Tiny updates on steep slopes point to a small learning rate, while shallow slopes can give tiny updates even with a larger rate.
+        feedback: At a low point the slopes would be zero, and here they still have absolute values of about $40$.
+    solution: With slopes of about the same size, a learning rate of $0.001$ moves the weights and bias about one tenth as far per update as a rate of $0.01$. That smaller learning rate is the likely reason this run is progressing more slowly.
   - id: gd-explain-lr
     dimension: conceptual
     type: explain
@@ -1244,21 +1244,21 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 0.5
-    prompt: A model trains with gradient descent. Its loss stays high and falls only a little on each update step. Its weights and bias also change only a little. What could explain this?
+    prompt: A model trains with gradient descent. Its loss is still high and has fallen only a little since training began. Its weights and bias move only a little on each update. What could explain this pattern?
     options:
       - id: a
         text: A small learning rate or shallow slopes of the loss with respect to the weights and bias.
         correct: true
-        feedback: Either factor can give small updates because the learning rate multiplies the slope for each weight and the bias.
+        feedback: The learning rate multiplies each slope of the loss with respect to a weight or the bias. A small factor in that product can make the parameter move very little.
       - id: b
-        text: A large learning rate paired with steep slopes of the loss for the weights and bias.
+        text: The learning rate is so large that each update overshoots the bottom of the loss curve.
         correct: false
-        feedback: The learning rate multiplies each slope. A large rate and steep slopes together would make the updates large.
+        feedback: When the learning rate is large enough to send the model farther past the bottom each time, the loss rises.
       - id: c
-        text: A high loss at the start of training or a high loss at the current step.
+        text: Training has finished because each update lowers the loss by such a small amount.
         correct: false
-        feedback: The update uses the slope of the loss for each parameter. The loss value alone does not set the size of the update.
-    solution: Gradient descent multiplies the slope for each weight and the bias by the learning rate, then subtracts the result from that weight or bias. Either a small learning rate or shallow slopes can give small updates even when the loss is high.
+        feedback: A tiny drop can be a stopping signal after the loss has already fallen substantially. Here the loss has stayed high, so check why the weights and bias are barely moving.
+    solution: Gradient descent multiplies each slope of the loss with respect to a weight or the bias by the learning rate. A small learning rate or shallow slopes can make the weights and bias move very little even while the loss is high.
   - id: gd-review-square-loss-code
     dimension: implementation
     type: mc
