@@ -1115,7 +1115,7 @@ exercises:
         text: Read INT8 weights from main memory, convert the activations to INT8 in on-chip memory, then multiply the INT8 weights and activations.
         correct: false
         feedback: Changing the activation format as well would make this weight-and-activation quantisation.
-    solution: The GPU reads the INT8 weights and turns them back into FP16 in on-chip memory right before multiplying by the FP16 activations.
+    solution: The GPU reads the INT8 weights and multiplies each stored integer by its scale in on-chip memory to get an approximate FP16 weight. It then multiplies those weights by the FP16 activations.
 
   - id: qzp-eval-prompt-wiring
     dimension: implementation
