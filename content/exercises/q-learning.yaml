@@ -1027,7 +1027,7 @@ exercises:
     prompt: |
       A robot in a warehouse can wait or advance. After taking action `a` in state `s`, it receives reward `r` and reaches a nonterminal state `s2`. Its epsilon-greedy policy has chosen `next_action`, which is to wait in `s2`.
 
-      The Q-table entry `Q[(s, a)]` is the stored value for action `a` in state `s`. The code uses `gamma` as the discount factor and `best_next` as the estimate of future value when it builds the update target for `Q[(s, a)]`.
+      The Q-table entry `Q[(s, a)]` is the stored value for action `a` in state `s`. The code uses the discount factor `gamma` to build the update target for `Q[(s, a)]`. The variable `best_next` should hold the highest stored value across all actions available after the move.
 
       ```python
       next_action = "wait"
@@ -1044,6 +1044,7 @@ exercises:
       - id: b
         text: '`best_next = max(Q[(s2, "wait")], Q[(s2, "advance")])`'
         correct: true
+        feedback: This compares both actions in the state the robot reached.
       - id: c
         text: "`best_next = max(Q[(s2, a)], Q[(s2, next_action)])`"
         correct: false

@@ -1095,7 +1095,7 @@ exercises:
     difficulty: 2
     est_minutes: 1
     prompt: |
-      In a corridor simulator `env`, the policy chooses right in cell 1 and left in cell 2. The robot starts in cell 1, and the first step moves it to cell 2 without ending the episode. This loop chooses right again on the second iteration.
+      In a corridor simulator `env`, the robot starts in cell 1, the goal is cell 4, and each episode lasts at most five steps. The function `policy` takes a state and returns an action. It chooses right in cell 1 and left in cell 2. The first step moves the robot to cell 2, but this loop chooses right again on the second iteration.
 
       The variable `state` starts with the cell returned by `env.reset()`. Each call to `env.step(action)` returns the cell after the action (`next_state`), the reward for that step, and two flags: `terminated` for reaching the goal and `truncated` for hitting the time limit. The variable `total` holds the sum of the rewards so far.
 
@@ -1123,6 +1123,7 @@ exercises:
       - id: c
         text: "`state = next_state`"
         correct: true
+        feedback: On the next iteration, the policy reads cell 2 and chooses left.
     solution: Assign the state returned by step to the variable that the policy reads at the top of the loop.
   - id: sim-vector-log-after-finish
     dimension: implementation
@@ -1131,9 +1132,9 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: |
-      A vectorised warehouse simulator runs several copies and uses next-step resets. An episode ends only when the robot reaches its goal. The training code sends one action per copy on each call to `step`, then saves the resulting transitions. For each copy it has two true-or-false flags:
+      A vectorised warehouse simulator runs several copies. An episode ends only when the robot reaches its goal. In next-step reset mode, a copy resets on the call after its episode ends. The training code sends one action per copy on each call to `step` and decides which copies produced a transition to save. For each copy it has two true-or-false flags:
 
-      - `terminated_before` tells whether the robot reached its goal on the previous call.
+      - `terminated_before` tells whether the robot reached its goal on the previous call. It starts as false on the first call.
       - `terminated_now` tells whether the robot reached its goal on the current call.
 
       Which condition should make the code skip saving a transition for that copy?
@@ -1145,6 +1146,7 @@ exercises:
       - id: b
         text: "`terminated_before`"
         correct: true
+        feedback: That copy reached the goal on the previous call, so this call only resets it.
       - id: c
         text: "`terminated_before or terminated_now`"
         correct: false
