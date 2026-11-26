@@ -920,3 +920,20 @@ exercises:
       - A transpose times b
     regex: ^\s*(?:a\s*\^\s*\{?\s*\\?(?:t|top)\s*\}?\s*(?:\*|\\cdot)?\s*b|a\s*\.\s*t\s*@\s*b|transpose\s*\(\s*a\s*\)\s*\*?\s*b)\s*$
     solution: The error is orthogonal to each column, giving $A^\top A\hat x=A^\top b$.
+  - id: orthp-missing-input-coordinate
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: The projection of $x=(8,y)$ onto the line through the origin and $(2,4)$ is $(2,4)$. What is $y$?
+    answer: 1
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer: 4
+        category: misunderstood_definition
+        feedback: The input and its projection can have different second entries. Their difference must be perpendicular to the line.
+      - answer: -4
+        category: incorrect_reasoning
+        feedback: Making $x$ perpendicular to the line would give a zero projection. The leftover after subtracting $(2,4)$ is the vector that must be perpendicular.
+    solution: The leftover $(6,y-4)$ must have dot product zero with $(2,4)$. Solving $2\times6+4(y-4)=0$ gives $y=1$.

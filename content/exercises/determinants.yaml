@@ -907,3 +907,26 @@ exercises:
         correct: false
         feedback: Negative determinants reverse orientation and still allow inverses, so positive leaves out invertible matrices.
     solution: A positive or negative nonzero determinant guarantees an inverse.
+  - id: det-stencil-mirror-map
+    dimension: transfer
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 1
+    prompt: A print shop uses a matrix to move every point of a flat stencil. Which matrix reverses the orientation of the stencil and keeps its area the same?
+    options:
+      - id: same-orientation
+        text: '$\begin{bmatrix}2&1\\1&1\end{bmatrix}$'
+        correct: false
+        feedback: Its determinant is $1$, so it keeps both the area and the orientation.
+        category: misunderstood_definition
+      - id: reverse-same-area
+        text: '$\begin{bmatrix}1&2\\1&1\end{bmatrix}$'
+        correct: true
+        feedback: Its determinant is $-1$, which reverses orientation and leaves the area unchanged.
+      - id: reverse-larger-area
+        text: '$\begin{bmatrix}1&2\\2&1\end{bmatrix}$'
+        correct: false
+        feedback: Its determinant is $-3$, so it reverses orientation but triples the area.
+        category: misunderstood_definition
+    solution: The stencil needs a negative determinant with magnitude 1. The matrix with rows $(1,2)$ and $(1,1)$ has determinant $1\times1-2\times1=-1$.
