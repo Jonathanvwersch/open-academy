@@ -206,8 +206,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A layer uses weight matrix $W=\begin{pmatrix}2 & 1\\ 0 & -1\end{pmatrix}$, bias vector
-      $b=(-1,1)$ and ReLU. What are its hidden values $h$ for input vector $x=(1,3)$?
+    prompt: A layer computes hidden values $h=\operatorname{ReLU}(Wx+b)$ using weight matrix
+      $W=\begin{pmatrix}2 & 1\\ 0 & -1\end{pmatrix}$ and bias vector $b=(-1,1)$. It multiplies $W$
+      by the input column vector $x=(1,3)$. What are the hidden values $h$?
     options:
       - { id: a, text: "$(4, 0)$", correct: true }
       - {
@@ -357,8 +358,10 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: A layer has weight matrix $W=\begin{pmatrix}1 & 1\\ -1 & 1\end{pmatrix}$ and reads input
-      vector $x=(x_1,x_2)$. What does the $-1$ in row 2, column 1 mean?
+    prompt:
+      A layer computes scores $h=Wx$ from input column vector $x=(x_1,x_2)$, using weight matrix
+      $W=\begin{pmatrix}1 & 1\\ -1 & 1\end{pmatrix}$. Each row of $W$ holds one neuron's weights.
+      What does the $-1$ in row 2, column 1 mean?
     options:
       - { id: a, text: "Neuron 2's weight on $x_1$", correct: true }
       - {

@@ -117,8 +117,9 @@ exercises:
     difficulty: 1
     est_minutes: 1
     prompt:
-      A model's data loss is $4$ and its weights are $w_1=2$ and $w_2=-1$. With an L2 penalty of
-      strength $\lambda=0.3$, what is the total loss?
+      A model's data loss is $4$. Its L2 penalty is $\lambda\sum_{j=1}^{2}w_j^2$, where $w_j$ is
+      weight number $j$. The weights are $w_1=2$ and $w_2=-1$, and the penalty strength is $\lambda=0.3$.
+      What is the total loss?
     answer: 5.5
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -185,8 +186,9 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt:
-      A model predicts $\hat y=wx$ from input $x$ with weight $w$. It trains on input $x=1$ and
-      target $y=3$ with squared error plus an L2 penalty. The best weight is $w=1.5$. What penalty
+      A model predicts $\hat y=wx$ from input $x$ with its only weight $w$. It trains on input $x=1$
+      and target $y=3$ with squared error plus the L2 penalty $\lambda\sum_j w_j^2$, where $w_j$ is
+      weight number $j$ and the sum here contains only $w^2$. The best weight is $w=1.5$. What penalty
       strength $\lambda$ was used?
     answer: 1
     tolerance: { abs: 0.001 }
@@ -324,10 +326,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt:
-      A weight is $5$, and the data doesn't pull on it at all, so its data slope stays $0$. With
-      learning rate $\eta=0.1$, what is the weight after three updates using weight decay equivalent to an
-      L2 penalty of strength $\lambda=0.5$?
+    prompt: A model's weight $w$ starts at $5$, and the data loss has zero slope with respect to $w$
+      throughout training. Weight decay is equivalent to adding the L2 penalty $\lambda\sum_j w_j^2$,
+      where $w_j$ is weight number $j$ and the sum runs over all weights. With penalty strength
+      $\lambda=0.5$ and learning rate $\eta=0.1$, what is $w$ after three gradient updates?
     answer: 3.645
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -372,9 +374,11 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt:
-      A model predicts $\hat y=wx$ from input $x$ with weight $w$, and trains on input $x=1$ and
-      target $y=6$. It uses squared-error loss and learning rate $\eta=0.1$, with weight decay equivalent
-      to an L2 penalty of strength $\lambda=1$. At what weight does an update leave $w$ unchanged?
+      A model predicts $\hat y=wx$ from input $x$ with its only weight $w$. It trains on input $x=1$
+      and target $y=6$ with squared-error loss and learning rate $\eta=0.1$. Weight decay is equivalent
+      to adding the L2 penalty $\lambda\sum_j w_j^2$, where $w_j$ is weight number $j$ and the sum here
+      contains only $w^2$. With penalty strength $\lambda=1$, at what weight does an update leave $w$
+      unchanged?
     answer: 3
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -633,8 +637,8 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt:
-      A robot predicts whether each grasp will succeed. With penalty strength $\lambda=0$, it gets 1
-      of every 100 training grasps wrong and 30 of every 100 validation grasps wrong. What should you try?
+      A robot predicts whether each grasp will succeed. With penalty strength $\lambda=0$, it gets
+      $1\%$ of its training grasps wrong and 6 of its 20 validation grasps wrong. What should you try?
     options:
       - id: a
         text: Train with several larger values of $\lambda$ and compare their validation errors.

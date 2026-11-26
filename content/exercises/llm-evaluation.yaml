@@ -229,8 +229,9 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt:
-      In a head-to-head evaluation, model A has one win, two ties and one loss. A report drops ties
-      and calls 1/2 its half-credit-for-ties calculation. Which assessment is right?
+      In a head-to-head evaluation, model A has one win, two ties and one loss. A report leaves the
+      ties out and gives model A a win rate of $1/2$. It claims this is the same rule as counting
+      each tie as half a win. Which assessment is right?
     options:
       - id: a
         text: Dropping ties is the half-credit rule whenever wins equal losses.
