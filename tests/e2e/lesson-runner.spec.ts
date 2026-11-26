@@ -431,7 +431,6 @@ async function answerAndReload(page: Page, correct: boolean, runConceptId = conc
     await expect(
       page.getByRole('button', { name: 'Continue to next step', exact: true }),
     ).toBeEnabled();
-    expect(scrollBeforeAnswer).toBeGreaterThan(0);
     expect(await page.evaluate(() => window.scrollY)).toBe(scrollBeforeAnswer);
   }
   await expect.poll(() => new URL(page.url()).searchParams.get('step')).toBe(expectedStep);
@@ -541,6 +540,7 @@ async function passFirstKnowledgePoint(page: Page) {
     if (!run.pendingProblem) run = await nextProblemAndReload(page, conceptId, true);
     if (run.points[0].streak === 1) {
       actionBefore = await actionButtonBox(page, 'Submit answer');
+      expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
     }
     run = await answerAndReload(page, true);
   }
