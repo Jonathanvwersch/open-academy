@@ -43,7 +43,7 @@ exercises:
         text: The vertical sides keep their length but get farther apart, and orientation stays the same, so the determinant increases.
         correct: false
         feedback: The top and bottom edges get longer, but the spacing between the vertical sides is measured horizontally. Their horizontal coordinates are still 0 and 1.
-    solution: The vertical sides stay one unit long and one unit apart, so the resulting parallelogram has area 1. The right side moves down, not across the left side, and both sides still point up when read from bottom to top. The orientation stays the same, so the row addition preserves signed area and leaves the determinant unchanged.
+    solution: The right edge slides down by 2, keeping both vertical sides one unit long and one unit apart with their original top endpoints still above their bottom endpoints. The unit square's signed area stays $+1$, so the row addition leaves the determinant at 6.
   - id: det-pivots-triangular-template
     dimension: math
     type: numeric
