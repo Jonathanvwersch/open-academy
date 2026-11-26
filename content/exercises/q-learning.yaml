@@ -698,7 +698,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A robot arm uses the angles reported by its joint sensors as its state. Why might a Q-table be a poor way to learn its action values?
+    prompt: A robot arm uses the angles reported by its joint sensors as its state. Each angle is measured in degrees to four decimal places. Why might a Q-table be a poor way to learn its action values?
     options:
       - id: a
         text: There are far too many states, and each would almost never be seen twice.

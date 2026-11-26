@@ -187,7 +187,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "An agent learns to answer written questions. The environment's reset returns a new question. The agent sends one complete answer to step, which grades it from 0 to 10, returns that grade as the reward and ends the episode. Which statement about this environment is right?"
+    prompt: "An agent learns to answer written questions. The environment's reset returns a new question. The agent sends one complete answer to step. The call returns a terminal state and the answer's grade from 0 to 10 as the reward. Which statement about this environment is right?"
     options:
       - id: a
         text: "Each question and answer form a one-step episode."

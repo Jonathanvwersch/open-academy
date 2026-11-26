@@ -308,7 +308,7 @@ knowledge_points:
 
       ### What the table ends up as
 
-      On the corridor without the charger, with $\eta=0.5$, $\varepsilon=0.1$ and $\gamma=0.9$, 500 episodes are enough for every entry to match the best values to 2 decimals. Right is worth $6.2$, $8$ and $10$ in cells 1, 2 and 3, and left is worth $4.58$, $4.58$ and $6.2$. Once right is greedy, left values change only through exploration, so they settle last.
+      The 500-episode worked example uses the corridor without the charger, with $\eta=0.5$, $\varepsilon=0.1$, $\gamma=0.9$ and a fixed sequence of random draws. In that run, right ends up worth $6.2$, $8$ and $10$ in cells 1, 2 and 3, and left ends up worth $4.58$, $4.58$ and $6.2$, rounded to 2 decimals. Once right is greedy, left values change only through exploration, so they settle last.
 
       Chris Watkins introduced Q-learning in his 1989 PhD thesis. In 1992, Watkins and Peter Dayan proved that it reaches the best values under certain conditions: there are finitely many states and actions, rewards stay between fixed lower and upper limits, and the discount factor $\gamma$ is below $1$. Every action must keep being tried in every state, and the learning rate must shrink toward $0$ at the right speed. On the corridor, a fixed rate such as $0.5$ also works.
 
