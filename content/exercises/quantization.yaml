@@ -1102,7 +1102,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A program on the GPU runs a matrix multiply for a model with weight-only INT8 quantisation. Which sequence keeps the weight reads small and uses the precision intended by this mode?
+    prompt: A program on the GPU runs a matrix multiply for a model with weight-only INT8 quantisation and 16-bit activations. Which sequence keeps the weight reads small and uses the precision intended by this mode?
     options:
       - id: a
         text: Read INT8 weights, reconstruct on chip, then multiply with 16-bit inputs.
