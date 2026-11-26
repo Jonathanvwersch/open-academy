@@ -121,11 +121,8 @@ async function retakePlan(
     );
   const seed = quizSeed(run.seed, 'retake') & 0x7fffffff;
   if (!eligible) return { id: retake?.id, seed, questions: null };
-  const history = await quizQuestionHistory(store, learnerId);
-  const seenKeys = new Set(
-    history.items.flatMap(({ question }) => [question.key, ...(question.previousKeys ?? [])]),
-  );
-  for (const { reserve } of items) if (reserve) history.usedKeys.add(reserve.key);
+  const { seenKeys, usedKeys } = await quizQuestionHistory(store, learnerId);
+  for (const { reserve } of items) if (reserve) usedKeys.add(reserve.key);
   const questions: Array<{ question: QuizQuestion }> = [];
   for (const { reserve, conceptId } of items) {
     const [question] =
@@ -137,11 +134,11 @@ async function retakePlan(
             difficulty: run.difficulty,
             seed,
             count: 1,
-            usedKeys: history.usedKeys,
+            usedKeys,
           });
     if (!question) continue;
     seenKeys.add(question.key);
-    history.usedKeys.add(question.key);
+    usedKeys.add(question.key);
     questions.push({ question });
   }
   return { id: retake?.id, seed, questions };

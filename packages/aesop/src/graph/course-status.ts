@@ -3,13 +3,13 @@ import { masteryRank } from '../memory/types.js';
 
 export type CourseTopicStatus = 'locked' | 'not_started' | 'in_progress' | 'quiz' | 'complete';
 
-const masteryLabels: Record<MasteryState, string> = {
+const masteryLabels = {
   not_assessed: 'Not started',
   introduced: 'Attempted',
   assisted: 'Familiar',
   independent: 'Proficient',
   retained: 'Mastered',
-};
+} as const satisfies Record<MasteryState, string>;
 
 export function lowestMasteryState(states: readonly MasteryState[]): MasteryState {
   return states.length
@@ -17,7 +17,7 @@ export function lowestMasteryState(states: readonly MasteryState[]): MasteryStat
     : 'not_assessed';
 }
 
-export function masteryLabel(state: MasteryState): string {
+export function masteryLabel(state: MasteryState) {
   return masteryLabels[state];
 }
 

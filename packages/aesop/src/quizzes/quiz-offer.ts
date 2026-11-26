@@ -2,7 +2,6 @@ import type { ContentIndex } from '../course/types.js';
 import { effectiveGrantStates } from '../placement/grants.js';
 import type { FlowStore, TimedQuizRun } from '../store/flow-store.js';
 import type { PlacementReviewStore } from '../store/placement-review-store.js';
-import type { SessionStore } from '../store/session-store.js';
 import {
   nextQuizDifficulty,
   QUIZ_XP_INTERVAL,
@@ -15,26 +14,28 @@ import {
 
 export async function quizQuestionHistory(store: FlowStore, learnerId: string) {
   const runs = await store.listTimedQuizRuns(learnerId, {});
-  const items = await store.listTimedQuizItems(
+  const { items, missedRunIds } = await store.listTimedQuizItemKeys(
     learnerId,
     runs.map(({ id }) => id),
   );
-  const originalIds = new Set(runs.filter(({ retakeOf }) => retakeOf === null).map(({ id }) => id));
   const missedOriginals = new Set(
-    items
-      .filter(({ runId, correct }) => correct === false && originalIds.has(runId))
-      .map(({ runId }) => runId),
+    runs
+      .filter(({ id, retakeOf }) => retakeOf === null && missedRunIds.has(id))
+      .map(({ id }) => id),
   );
+  const seenKeys = new Set<string>();
   const usedKeys = new Set<string>();
   const exposure = new Map<string, number>();
-  for (const { runId, conceptId, question, reserve } of items) {
-    usedKeys.add(question.key);
-    for (const key of question.previousKeys ?? []) usedKeys.add(key);
-    if (question.withdrawn) continue;
+  for (const { runId, conceptId, questionKey, reserveKey, previousKeys, withdrawn } of items) {
+    for (const key of [questionKey, ...previousKeys]) {
+      seenKeys.add(key);
+      usedKeys.add(key);
+    }
+    if (withdrawn) continue;
     exposure.set(conceptId, (exposure.get(conceptId) ?? 0) + 1);
-    if (reserve && missedOriginals.has(runId)) usedKeys.add(reserve.key);
+    if (reserveKey !== null && missedOriginals.has(runId)) usedKeys.add(reserveKey);
   }
-  return { items, usedKeys, exposure };
+  return { seenKeys, usedKeys, exposure };
 }
 
 export function quizAccommodation(prefs: unknown): number {
@@ -56,33 +57,6 @@ export async function confirmedPlacementTopicIds(
   );
 }
 
-async function eligibleXp(store: SessionStore, learnerId: string, now: Date) {
-  const events = await store.listXpEvents(learnerId, { through: now });
-  const prefix = 'activity:';
-  const ids = [
-    ...new Set(
-      events
-        .filter(({ kind, sourceKey }) => kind === 'activity' && sourceKey.startsWith(prefix))
-        .map(({ sourceKey }) => sourceKey.slice(prefix.length)),
-    ),
-  ];
-  const activities = ids.length ? await store.listActivities(learnerId, { ids }) : [];
-  const activityKeys = new Set(
-    activities
-      .filter(({ kind }) => kind === 'learn' || kind === 'review')
-      .map(({ id }) => `${prefix}${id}`),
-  );
-  return events.reduce(
-    (total, { kind, amount, sourceKey }) =>
-      kind === 'knowledge_point' ||
-      kind === 'review' ||
-      (kind === 'activity' && activityKeys.has(sourceKey))
-        ? total + amount
-        : total,
-    0,
-  );
-}
-
 export async function quizOffer(
   store: FlowStore,
   learnerId: string,
@@ -101,12 +75,17 @@ export async function quizOffer(
     accommodation: number;
   };
 }> {
-  const [xp, originals, [active]] = await Promise.all([
-    eligibleXp(store, learnerId, now),
+  const [originals, [active]] = await Promise.all([
     store.listTimedQuizRuns(learnerId, { original: true, finalizedThrough: now }),
     store.listTimedQuizRuns(learnerId, { active: true }),
   ]);
-  const xpBalance = quizXpBalance(xp, originals.length);
+  const previous = originals.at(-1);
+  const { throughLastQuiz, sinceLastQuiz } = await store.sumQuizEligibleXp(
+    learnerId,
+    now,
+    previous?.finalizedAt ?? undefined,
+  );
+  const xpBalance = quizXpBalance(throughLastQuiz + sinceLastQuiz, originals.length);
   if (active) return { xpBalance, active, plannedMinutes: active.plannedMinutes };
   if (xpBalance < QUIZ_XP_INTERVAL) return { xpBalance };
 
@@ -124,7 +103,6 @@ export async function quizOffer(
       )
       .map(({ conceptId }) => conceptId),
   );
-  const previous = originals.at(-1);
   const difficulty = nextQuizDifficulty(
     previous?.score == null
       ? undefined

@@ -89,6 +89,8 @@ test('offers and starts one timed quiz using eligible XP, with its accommodation
   expect(await startQuiz(store, context, start)).toMatchObject({ kind: 'conflict' });
   const offer = () => quizOffer(store, learnerId, context.content, startedAt, 'maths-for-ml');
   const activityReads = vi.spyOn(store, 'listActivities');
+  const xpReads = vi.spyOn(store, 'listXpEvents');
+  const xpTotals = vi.spyOn(store, 'sumQuizEligibleXp');
   expect(await offer()).toEqual({ xpBalance: 0 });
   expect(activityReads).not.toHaveBeenCalled();
   const xp = { conceptId: null, earnedAt: startedAt, localDate: '2026-01-17' };
@@ -124,10 +126,12 @@ test('offers and starts one timed quiz using eligible XP, with its accommodation
     earnedAt: deadline,
   });
   expect(await offer()).toEqual({ xpBalance: 145 });
-  expect(activityReads).toHaveBeenCalledExactlyOnceWith(learnerId, {
-    ids: [review.id, lab.id, 'missing'],
-  });
+  expect(xpTotals).toHaveBeenLastCalledWith(learnerId, startedAt, undefined);
+  expect(xpReads).not.toHaveBeenCalled();
+  expect(activityReads).not.toHaveBeenCalled();
   activityReads.mockRestore();
+  xpReads.mockRestore();
+  xpTotals.mockRestore();
   await store.insertXpEventOnce(learnerId, {
     ...xp,
     kind: 'review',
