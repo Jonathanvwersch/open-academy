@@ -43,7 +43,7 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: >-
-      A policy has adjustable parameters $\theta$. In standard episodic REINFORCE, what does the policy objective $J(\theta)$ measure?
+      A policy has adjustable parameters $\theta$. In the standard policy-gradient setup for whole episodes, what does the policy objective $J(\theta)$ measure?
     solution: $J(\theta)=E[G_0]$ averages return from the start over episodes played with $\pi_\theta$.
     options:
       - id: a
@@ -397,7 +397,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      A slot machine has arms A and B. A policy with parameter $\theta$ pulls B with probability $p=e^\theta/(e^\theta+1)$ and A otherwise. A always pays 2 and B always pays 6. At $\theta=0$, what is the average REINFORCE estimate of the expected payout's slope with respect to $\theta$ over repeated single pulls, without a baseline?
+      A slot machine has arms A and B. A policy with parameter $\theta$ pulls B with probability $p=e^\theta/(e^\theta+1)$ and A otherwise. A always pays 2 and B always pays 6. For each pull, estimate the expected payout's slope by multiplying the observed payout by the slope, with respect to $\theta$, of the log probability of the arm pulled. At $\theta=0$, what is the average of this estimate over repeated single pulls?
     solution:
       Both arms have chance $0.5$ and log-probability slopes $-0.5$ and $0.5$. Their estimates average
       $0.5\times2\times(-0.5)+0.5\times6\times0.5=1$.
