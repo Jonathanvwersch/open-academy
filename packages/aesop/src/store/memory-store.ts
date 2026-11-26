@@ -589,7 +589,12 @@ function scopedStore(
       const concepts = conceptIds && new Set(conceptIds);
       const records = [...(data.learners.get(learnerId)?.topicSpeed.values() ?? [])]
         .filter((record) => !concepts || concepts.has(record.conceptId))
-        .sort((left, right) => compare(left.conceptId, right.conceptId));
+        .sort((left, right) => compare(left.conceptId, right.conceptId))
+        .map((record) => ({
+          ...record,
+          successes: postgresReal(record.successes),
+          trials: postgresReal(record.trials),
+        }));
       return structuredClone(records);
     },
     async saveTopicSpeedEvidence(learnerId, record) {
@@ -603,8 +608,8 @@ function scopedStore(
       const previous = records.get(conceptId);
       records.set(conceptId, {
         conceptId,
-        successes: postgresReal((previous?.successes ?? 0) * TOPIC_SPEED_DECAY + Number(correct)),
-        trials: postgresReal((previous?.trials ?? 0) * TOPIC_SPEED_DECAY + 1),
+        successes: Math.fround((previous?.successes ?? 0) * TOPIC_SPEED_DECAY + Number(correct)),
+        trials: Math.fround((previous?.trials ?? 0) * TOPIC_SPEED_DECAY + 1),
         answers: (previous?.answers ?? 0) + 1,
         updatedAt: new Date(now),
         policyVersion: TOPIC_SPEED_POLICY,
