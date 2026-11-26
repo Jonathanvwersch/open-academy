@@ -2754,7 +2754,7 @@ test('spaced reviews cycle through review and practice questions with eight-day 
       reviewContent,
       date,
       'vectors',
-      ['math', 'conceptual', 'transfer'].map((dimension) => ({
+      (['math', 'conceptual', 'transfer'] as const).map((dimension) => ({
         conceptId: 'vectors',
         dimension,
         dueAt: date.toISOString(),
