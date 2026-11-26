@@ -752,20 +752,20 @@ exercises:
     dimension: implementation
     type: mc
     role: review
-    difficulty: 3
+    difficulty: 2
     est_minutes: 1
-    prompt: "An attention function creates the output with `out = [0] * len(query)`. It then loops over the components of each value vector and adds each weighted component to the matching entry in `out`. Which input will make the function try to write beyond the end of `out`?"
+    prompt: "An attention function mixes the source values for one query. It needs to allocate a vector `out` for the result. The query width, number of sources and value width are different. How many components should `out` have?"
     options:
       - id: a
-        text: "Queries and keys of width 4, with three value vectors of width 2."
+        text: "The number of components in the query."
         correct: false
-        feedback: "The function allocates too many entries, but both value components fit."
+        feedback: "The query width matters for the dot products used to find the scores."
       - id: b
-        text: "Queries and keys of width 4, with five value vectors of width 4."
+        text: "The number of source value vectors."
         correct: false
-        feedback: "This changes how many vectors are mixed while keeping the component count right."
+        feedback: "This counts how many vectors go into the mixture."
       - id: c
-        text: "Queries and keys of width 4, with three value vectors of width 6."
+        text: "The number of components in one value vector."
         correct: true
-        feedback: "The code allocates four components and has six components to add for each value."
-    solution: "The output needs one component for every component in a value vector. A query width of 4 and value width of 6 expose the mismatch."
+        feedback: "A weighted sum of value vectors keeps their width."
+    solution: "Each component of `out` adds the matching weighted components from the source values. Allocate one entry per component of a value vector."
