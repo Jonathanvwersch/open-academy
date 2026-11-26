@@ -24,7 +24,7 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: perceptron }, { id: derivatives }]
-    encompassings: [{ id: perceptron, weight: 0.03 }, { id: derivatives, weight: 0.1 }]
+    encompassings: [{ id: perceptron, weight: 0.04 }, { id: derivatives, weight: 0.07 }]
     objectives:
       - { text: "Evaluate and differentiate ReLU and sigmoid", dimension: math }
       - {
@@ -42,9 +42,9 @@ concepts:
     prereqs: [{ id: activation-functions }, { id: matrices }]
     encompassings:
       [
-        { id: activation-functions, weight: 0.12 },
-        { id: matrices, weight: 0.32 },
-        { id: perceptron, weight: 0.14 },
+        { id: activation-functions, weight: 0.13 },
+        { id: matrices, weight: 0.39 },
+        { id: perceptron, weight: 0.11 },
       ]
     objectives:
       - { text: "Compute a 2-layer forward pass by hand", dimension: math }
@@ -60,9 +60,9 @@ concepts:
     prereqs: [{ id: chain-rule }]
     encompassings:
       [
-        { id: chain-rule, weight: 0.21 },
-        { id: derivatives, weight: 0.15 },
-        { id: partial-derivatives, weight: 0.33 },
+        { id: chain-rule, weight: 0.24 },
+        { id: derivatives, weight: 0.13 },
+        { id: partial-derivatives, weight: 0.38 },
       ]
     objectives:
       - { text: "Draw the computational graph of an expression", dimension: conceptual }
@@ -84,13 +84,13 @@ concepts:
       ]
     encompassings:
       [
-        { id: computational-graphs, weight: 0.52 },
+        { id: computational-graphs, weight: 0.44 },
         { id: mlp-forward-pass, weight: 0.12 },
-        { id: loss-functions, weight: 0.09 },
-        { id: partial-derivatives, weight: 0.31 },
-        { id: activation-functions, weight: 0.15 },
-        { id: derivatives, weight: 0.11 },
-        { id: matrices, weight: 0.03 },
+        { id: loss-functions, weight: 0.08 },
+        { id: partial-derivatives, weight: 0.33 },
+        { id: activation-functions, weight: 0.12 },
+        { id: derivatives, weight: 0.13 },
+        { id: matrices, weight: 0.04 },
       ]
     confused_with: [autodiff]
     objectives:
@@ -113,9 +113,9 @@ concepts:
     prereqs: [{ id: backpropagation }]
     encompassings:
       [
-        { id: backpropagation, weight: 0.16 },
-        { id: computational-graphs, weight: 0.28 },
-        { id: partial-derivatives, weight: 0.18 },
+        { id: backpropagation, weight: 0.08 },
+        { id: computational-graphs, weight: 0.29 },
+        { id: partial-derivatives, weight: 0.08 },
       ]
     objectives:
       - { text: "Explain what loss.backward() does", dimension: conceptual }
@@ -202,13 +202,13 @@ concepts:
       [{ id: sgd-minibatch }, { id: overfitting }, { id: pytorch-basics }, { id: regularization }]
     encompassings:
       [
-        { id: sgd-minibatch, weight: 0.02 },
-        { id: overfitting, weight: 0.02 },
+        { id: sgd-minibatch, weight: 0.07 },
+        { id: overfitting, weight: 0.06 },
         { id: pytorch-basics, weight: 0.03 },
-        { id: regularization, weight: 0.02 },
-        { id: gradient-descent, weight: 0.23 },
-        { id: loss-functions, weight: 0.13 },
-        { id: partial-derivatives, weight: 0.16 },
+        { id: regularization, weight: 0.01 },
+        { id: gradient-descent, weight: 0.19 },
+        { id: loss-functions, weight: 0.12 },
+        { id: partial-derivatives, weight: 0.14 },
       ]
     objectives:
       - { text: "Diagnose a failing training run from its symptoms", dimension: transfer }
