@@ -1079,6 +1079,13 @@ export function describeLearnerStoreContract(
         attempt(3, { exerciseId: 'old-recall', createdAt: boundary, correct: 0 }),
       );
       await store.insertAttempt(
+        learnerId,
+        attempt(4, {
+          exerciseId: 'old-recall',
+          createdAt: new Date(boundary.getTime() - 1),
+        }),
+      );
+      await store.insertAttempt(
         otherLearnerId,
         attempt(4, { exerciseId: 'old-recall', createdAt: date }),
       );
@@ -1094,6 +1101,12 @@ export function describeLearnerStoreContract(
       expect(facts.learnMinutes).toEqual([{ conceptId: 'vectors', plannedMinutes: 5 }]);
       expect(facts.recentAttempts).toHaveLength(100);
       expect(facts.recentAttempts[0]?.attemptNo).toBe(110);
+      const exerciseLastSeen = [
+        { exerciseId: 'old-recall', lastAt: boundary },
+        { exerciseId: 'recent', lastAt: date },
+        { exerciseId, lastAt: date },
+      ];
+      expect(facts.exerciseLastSeen).toEqual(exerciseLastSeen);
       expect(facts.recallAttempts).toEqual([
         { exerciseId: 'old-recall', createdAt: boundary, correct: 0 },
       ]);
@@ -1117,6 +1130,7 @@ export function describeLearnerStoreContract(
       expect(facts.topicSpeeds).toEqual(await store.listTopicSpeedEvidence(learnerId));
       facts.recallAttempts[0]?.createdAt.setTime(0);
       facts.recentAttempts[0]?.createdAt.setTime(0);
+      facts.exerciseLastSeen[0]?.lastAt.setTime(0);
       facts.reviewLogFacts[0]?.createdAt.setTime(0);
       expect(
         await store.readSchedulerFacts(learnerId, {
@@ -1127,6 +1141,7 @@ export function describeLearnerStoreContract(
         mastery: undefined,
         lessonRuns: undefined,
         projectProgress: undefined,
+        exerciseLastSeen,
         recallAttempts: [{ exerciseId: 'old-recall', createdAt: boundary, correct: 0 }],
         recentAttempts: expect.arrayContaining([
           expect.objectContaining({ attemptNo: 110, createdAt: date }),
@@ -1139,6 +1154,7 @@ export function describeLearnerStoreContract(
         learnMinutes: [],
         reviewLogFacts: [],
         completedReviewLogFacts: [],
+        exerciseLastSeen: [{ exerciseId: 'old-recall', lastAt: date }],
         recallAttempts: [{ exerciseId: 'old-recall', createdAt: date, correct: 1 }],
       });
     });

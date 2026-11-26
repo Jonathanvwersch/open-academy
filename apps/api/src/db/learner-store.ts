@@ -22,6 +22,7 @@ import {
   like,
   lt,
   lte,
+  max,
   notInArray,
   or,
   sql,
@@ -1236,6 +1237,7 @@ export function drizzleLearnerStore(
         masteryRows,
         cards,
         recentAttempts,
+        exerciseLastSeen,
         flags,
         projects,
         lessonRunRows,
@@ -1253,6 +1255,12 @@ export function drizzleLearnerStore(
           .where(and(eq(reviewCards.userId, learnerId), isNull(reviewCards.suspendedAt)))
           .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id)),
         this.listAttempts(learnerId, { order: 'scheduler', limit: 100 }),
+        db
+          .select({ exerciseId: attempts.exerciseId, lastAt: max(attempts.createdAt) })
+          .from(attempts)
+          .where(eq(attempts.userId, learnerId))
+          .groupBy(attempts.exerciseId)
+          .orderBy(asc(attempts.exerciseId)),
         db
           .select(flagFields)
           .from(remediationFlags)
@@ -1375,6 +1383,9 @@ export function drizzleLearnerStore(
         cards: cards.map(mapReviewCard),
         topicSpeeds: speedEvidence,
         recentAttempts,
+        exerciseLastSeen: exerciseLastSeen.flatMap(({ exerciseId, lastAt }) =>
+          lastAt ? [{ exerciseId, lastAt }] : [],
+        ),
         flags,
         paperProgress: paperRows,
         learnMinutes: recentLearnActivities,

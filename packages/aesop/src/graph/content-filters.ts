@@ -36,6 +36,9 @@ export function filterSchedulerStateForContent(
       const exercise = content.exercisesById.get(attempt.exerciseId);
       return content.conceptsById.has(attempt.conceptId) && exercise?.concept === attempt.conceptId;
     }),
+    exerciseLastSeen: new Map(
+      [...state.exerciseLastSeen].filter(([id]) => content.exercisesById.has(id)),
+    ),
     ...(state.recallAttempts
       ? {
           recallAttempts: state.recallAttempts.filter(

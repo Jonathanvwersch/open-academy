@@ -2,7 +2,6 @@ import type { Card } from 'ts-fsrs';
 import { Rating, State } from 'ts-fsrs';
 import { orderCourseIdsBySubject } from '../course/course-order.js';
 import { subjectForCourse } from '../course/index.js';
-import { isReviewPoolExercise } from '../course/review-pool.js';
 import { isTemplate } from '../course/templates.js';
 import type {
   ContentIndex,
@@ -60,6 +59,7 @@ export const SCHEDULER_CONFIG = {
 } as const;
 
 const RETRY_OVERDUE_DAYS = 2;
+const REVIEW_EXERCISE_ROLES = ['review', 'core', 'practice', 'transfer', 'basics'];
 
 export interface PriorityTerms {
   goal: number;
@@ -73,7 +73,6 @@ export interface PriorityTerms {
 
 export interface ActivityReason {
   courseId?: string;
-  topicIds?: string[];
   terms: PriorityTerms;
   summary: string;
 }
@@ -114,6 +113,7 @@ export interface SchedulerState {
     itemRole: string;
     createdAt: string;
   }>;
+  exerciseLastSeen: ReadonlyMap<string, number>;
   recallAttempts?: Array<{
     exerciseId: string;
     correct: number;
@@ -1718,9 +1718,6 @@ export function mixReviewActivities(selected: Candidate[], content: ContentIndex
           0,
         ),
         reason: {
-          topicIds: reviews.flatMap(({ activity }) =>
-            activity.conceptId ? [activity.conceptId] : [],
-          ),
           terms: {
             ...firstReason.terms,
             review: Math.max(...reviews.map((review) => review.activity.reason.terms.review)),
@@ -1810,11 +1807,7 @@ function generateCandidates(
     state.lessonRuns ?? [],
     content,
   );
-  const recentIds = new Set(
-    state.recentAttempts
-      .filter((attempt) => daysSince(attempt.createdAt, now) < SCHEDULER_CONFIG.repeatWindowDays)
-      .map((attempt) => attempt.exerciseId),
-  );
+  const recentIds = recentlySeenExerciseIds(state, now);
   for (const concept of courseContexts.length ? content.concepts : []) {
     if (concept.status === 'stub') {
       continue;
@@ -1880,19 +1873,7 @@ function generateCandidates(
       });
       const exercise = hasKnowledgePointLesson
         ? content.exercisesById.get(content.lessonsByConcept.get(concept.id)?.final ?? '')
-        : chooseExercise(
-            state,
-            content,
-            concept,
-            dimension,
-            ['core', 'check'],
-            (exercise) =>
-              (exercise.role === 'core' || exercise.role === 'check') &&
-              !exercise.lesson_only &&
-              !isTemplate(exercise),
-            now,
-            recentIds,
-          );
+        : chooseExercise(state, content, concept, dimension, [['core'], ['check']], recentIds);
       if (exercise) {
         candidates.push(
           makeCandidate(
@@ -1928,7 +1909,6 @@ function generateCandidates(
       conceptId,
       dueCards,
       courseContexts,
-      masteryByKey,
       recentIds,
       candidates,
       reviewSelectionTrace,
@@ -1957,7 +1937,6 @@ function generateCandidates(
       conceptId,
       conceptCards,
       courseContexts,
-      masteryByKey,
       recentIds,
       candidates,
     );
@@ -2011,7 +1990,6 @@ function buildReviewCandidateForConcept(
   conceptId: string,
   dueCards: SchedulerState['cards'],
   courseContexts: SchedulerCourseContext[],
-  masteryByKey: Map<string, MasteryRecord>,
   recentIds: Set<string>,
   candidates: Candidate[],
   reviewSelectionTrace?: ReviewSelectionTrace,
@@ -2089,11 +2067,6 @@ function buildReviewCandidateForConcept(
     exercises: IndexedExercise[];
   }[] = [];
   for (const card of dueCards) {
-    const record = masteryByKey.get(masteryKey(card.conceptId, card.dimension));
-    const isIndependent = record && masteryRank(record.state) >= masteryRank('independent');
-    const reviewRoles = isIndependent
-      ? ['transfer', 'review', 'core', 'practice', 'basics']
-      : ['review', 'core', 'practice', 'transfer', 'basics'];
     const exercises: IndexedExercise[] = [];
     while (exercises.length < perDimension) {
       const exercise = chooseExercise(
@@ -2101,9 +2074,7 @@ function buildReviewCandidateForConcept(
         content,
         concept,
         card.dimension,
-        reviewRoles,
-        isReviewPoolExercise,
-        now,
+        [REVIEW_EXERCISE_ROLES],
         recentIds,
       );
       if (!exercise) break;
@@ -2168,7 +2139,6 @@ function buildReviewCandidateForConcept(
     reviewProject,
   );
   candidate.activity.reason.terms.review = terms.review;
-  candidate.activity.reason.topicIds = [conceptId];
   candidate.score = scoreTerms(candidate.activity.reason.terms, candidate.adjustedMinutes);
   const earliestDueAt = Math.min(...includedCards.map((card) => Date.parse(card.dueAt)));
   const lowestRetrievability = Math.min(...includedCards.map((card) => card.retrievability ?? 0.9));
@@ -2230,14 +2200,7 @@ export function buildReviewActivityForConcept(
     content,
   );
   const newConceptIds = new Set(courseContexts.flatMap((course) => [...course.newConceptIds]));
-  const masteryByKey = new Map(
-    state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
-  );
-  const recentIds = new Set(
-    state.recentAttempts
-      .filter((attempt) => daysSince(attempt.createdAt, now) < SCHEDULER_CONFIG.repeatWindowDays)
-      .map((attempt) => attempt.exerciseId),
-  );
+  const recentIds = recentlySeenExerciseIds(state, now);
   const dueCards = collectDueReviewCards(
     dueCardState,
     content,
@@ -2253,7 +2216,6 @@ export function buildReviewActivityForConcept(
     conceptId,
     dueCards,
     courseContexts,
-    masteryByKey,
     recentIds,
     [],
   )?.activity;
@@ -2378,40 +2340,30 @@ function chooseExercise(
   content: ContentIndex,
   concept: IndexedConcept,
   dimension: string | undefined,
-  preferredRoles: string[],
-  isEligible: (exercise: IndexedExercise) => boolean,
-  now: Date,
-  recentIds?: Set<string>,
+  roleGroups: string[][],
+  recent: Set<string>,
 ): IndexedExercise | undefined {
   const used = new Set(state.usedExerciseIds ?? []);
-  const recent =
-    recentIds ??
-    new Set(
-      state.recentAttempts
-        .filter((attempt) => daysSince(attempt.createdAt, now) < SCHEDULER_CONFIG.repeatWindowDays)
-        .map((attempt) => attempt.exerciseId),
-    );
   const pool = (content.exercisesByConcept.get(concept.id) ?? []).filter(
     (exercise) =>
       (!dimension || exercise.dimension === dimension) &&
       !used.has(exercise.id) &&
-      isEligible(exercise),
+      !isTemplate(exercise) &&
+      !exercise.lesson_only,
   );
-  const leastRecentlySeen = (exercises: IndexedExercise[]) =>
-    exercises.sort((left, right) => lastSeen(left.id, state) - lastSeen(right.id, state))[0];
-  for (const role of preferredRoles) {
-    const fresh = pool.filter((exercise) => exercise.role === role && !recent.has(exercise.id));
-    if (fresh.length > 0) return leastRecentlySeen(fresh);
-  }
-  const otherFresh = pool.filter(
-    (exercise) => !recent.has(exercise.id) && !preferredRoles.includes(exercise.role),
+  const lastSeen = (id: string) => state.exerciseLastSeen.get(id) ?? Number.MIN_SAFE_INTEGER;
+  pool.sort(
+    (left, right) =>
+      lastSeen(left.id) - lastSeen(right.id) ||
+      (left.id < right.id ? -1 : left.id > right.id ? 1 : 0),
   );
-  if (otherFresh.length > 0) return leastRecentlySeen(otherFresh);
-  for (const role of preferredRoles) {
-    const matching = pool.filter((exercise) => exercise.role === role);
-    if (matching.length > 0) return leastRecentlySeen(matching);
+  for (const candidates of [pool.filter(({ id }) => !recent.has(id)), pool]) {
+    for (const roles of roleGroups) {
+      const match = candidates.find(({ role }) => roles.includes(role));
+      if (match) return match;
+    }
   }
-  return leastRecentlySeen(pool);
+  return undefined;
 }
 
 function optionalProjectAndPaperActivities(
@@ -2560,11 +2512,9 @@ function goalWeightedUnlocks(conceptId: string, content: ContentIndex): number {
   return [...unlocked].filter((id) => (content.conceptsById.get(id)?.goal_weight ?? 0) > 0).length;
 }
 
-function lastSeen(exerciseId: string, state: SchedulerState): number {
-  const attempt = state.recentAttempts.find((entry) => entry.exerciseId === exerciseId);
-  return attempt ? Date.parse(attempt.createdAt) : 0;
-}
-
-function daysSince(iso: string, now: Date): number {
-  return (now.getTime() - Date.parse(iso)) / 86_400_000;
+function recentlySeenExerciseIds(state: SchedulerState, now: Date): Set<string> {
+  const cutoff = now.getTime() - SCHEDULER_CONFIG.repeatWindowDays * 86_400_000;
+  return new Set(
+    [...state.exerciseLastSeen].filter(([, lastAt]) => lastAt > cutoff).map(([id]) => id),
+  );
 }
