@@ -63,7 +63,7 @@ exercises:
     difficulty: 1
     est_minutes: 1
     prompt: >-
-      At step $t$, a critic-based estimate gives the sampled action an advantage of $\hat A_t=-2$ in state $s_t$. What does a policy gradient update do with this action?
+      At step $t$, a critic-based estimate gives the sampled action an advantage of $\hat A_t=-2$ in state $s_t$. What happens to this action's probability in that state if you take a small policy-gradient step using only this sample, whose log-probability gradient is nonzero?
     options:
       - id: a
         text: It makes the action less likely in that state.
@@ -92,7 +92,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      A robot in a 4-cell corridor gets reward $-1$ for each step that doesn't reach the goal. The critic's state values are $V(2)=6$ and $V(3)=8$. The discount factor is $\gamma=0.9$. The robot moves left from cell 3 to cell 2. What is the one-step advantage estimate for this move?
+      A robot in a 4-cell corridor gets reward $-1$ for each step that doesn't reach the goal. The critic's state values are $V(2)=6$ and $V(3)=8$. The discount factor is $\gamma=0.9$. The robot moves left from cell 3 to cell 2 and the episode continues; the goal is cell 4. What is the one-step advantage estimate for this move?
     answer: -3.6
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -164,7 +164,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      A robot in cell 1 moves left into a wall, stays in cell 1 and gets reward $-1$. A critic values cell 1 at $5$, and the discount factor is $\gamma=0.9$. What is the one-step advantage estimate for this move?
+      A robot in cell 1 moves left into a wall, stays in cell 1 and gets reward $-1$ without ending the episode. A critic values cell 1 at $5$, and the discount factor is $\gamma=0.9$. What is the one-step advantage estimate for this move?
     answer: -1.5
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -210,7 +210,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      A robot arm earns reward $1$ when a grasp succeeds and $0$ on every other step. The discount factor is $\gamma=1$. One action gives reward $0$ before the grasp happens, and the critic's state value rises from $0.4$ to $0.7$. What does the one-step advantage estimate say about the action?
+      A robot arm earns reward $1$ when a grasp succeeds and $0$ on every other step. The discount factor is $\gamma=1$. One action gives reward $0$ before the grasp happens, and the critic's state value rises from $0.4$ to $0.7$. With a nonzero log-probability gradient, what is the action's one-step advantage estimate and what happens to its probability if you take a small policy-gradient step using only this sample?
     options:
       - id: a
         text: "It is $0.3$, so the action becomes more likely even though it earned nothing yet."
@@ -295,7 +295,7 @@ exercises:
     difficulty: 1
     est_minutes: 1
     prompt: >-
-      Generalised advantage estimation (GAE) uses a decay parameter $\lambda$. What does the advantage estimate $\hat A_t$ at step $t$ become when $\lambda=0$?
+      Generalised advantage estimation (GAE) uses a decay parameter $\lambda$. At step $t$, the agent moves from state $s_t$ to $s_{t+1}$ and earns reward $r_{t+1}$. Let $V$ be the critic's state-value estimate and $\gamma$ the discount factor. What does the advantage estimate $\hat A_t$ at step $t$ become when $\lambda=0$?
     options:
       - id: a
         text: 'The one-step error $\delta_t=r_{t+1}+\gamma V(s_{t+1})-V(s_t)$.'
@@ -369,7 +369,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      A learner says: "Setting the decay parameter $\lambda=1$ in GAE always gives the best advantage estimates, because it uses real rewards instead of the critic's guesses." What is the best reply?
+      A learner says: "Setting the decay parameter $\lambda=1$ in GAE always gives the best advantage estimates, because it uses real rewards instead of the critic's guesses." Assume the critic's value for the starting state is exact, but its predictions for later states can introduce bias. Full sampled returns fluctuate more than the bootstrapped estimates in this task. What is the best reply?
     options:
       - id: a
         text: "They're right: real rewards are always better than estimates."
@@ -398,7 +398,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      Early in training, a critic's values are mostly wrong. Which choice of the GAE decay parameter $\lambda$ leans least on those values, and what does it cost?
+      Early in training, a critic's predictions for later states are mostly wrong but much less variable than the noisy returns they replace. Which choice of the GAE decay parameter $\lambda$ leans least on those values, and what does it cost?
     options:
       - id: a
         text: '$\lambda$ close to $1$, at the cost of noisier estimates.'
@@ -657,7 +657,7 @@ exercises:
     difficulty: 1
     est_minutes: 1
     prompt: >-
-      PPO has a clip width $c$ for the ratio of current to collection probability of a sampled action. What does clipping that ratio to the range $1-c$ to $1+c$ do in the objective?
+      PPO has a clip width $c$ for the ratio of current to collection probability of a sampled action. What does clipping do to the sample's contribution when the action probability changes beyond the range $1-c$ to $1+c$ times its collection probability?
     options:
       - id: a
         text: "It forces every action probability to lie between $1-c$ and $1+c$."
@@ -768,7 +768,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      A batch contains one lucky episode, so one action, which the old policy took with probability $0.3$, gets an inflated advantage estimate of $+8$. PPO runs 10 passes on this batch with the clipped objective and clip width $c=0.2$. What happens to that action's probability?
+      A batch contains one lucky episode, so one action, which the old policy took with probability $0.3$, gets an inflated advantage estimate of $+8$. PPO uses the clipped objective with clip width $c=0.2$. Consider only this sample's contribution, and imagine the probability can rise in arbitrarily small steps. How far does this term push the probability up before it goes flat?
     options:
       - id: a
         text: "It rises until it is about $1.2$ times its old value, $0.36$. Then that sample's term goes flat and stops pushing."

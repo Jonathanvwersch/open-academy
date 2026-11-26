@@ -532,7 +532,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      A house app records feature vectors in (number of rooms, kilometres to the town centre) order. It compares two houses whose vectors are $(2,5)$ and $(4,1)$. It converts the second component to metres and leaves the first unchanged. What happens to its distance comparisons?
+      A house app records feature vectors in (number of rooms, kilometres to the town centre) order. It compares two houses whose vectors are $(2,5)$ and $(4,1)$. It computes Euclidean distances directly from the recorded numbers, with no scaling. It converts the second component to metres and leaves the first unchanged. What happens to its distance comparisons?
     solution: "In metres, the town-centre gaps become 1,000 times larger, and their squares 1,000,000 times larger. Rescaling measurements to similar ranges stops one choice of units dominating the comparison."
     options:
       - id: a
@@ -703,7 +703,7 @@ exercises:
     difficulty: 2
     est_minutes: 4
     prompt: >-
-      A house app records a house's area, bedroom count and age as the feature vector $(120,3,15)$, in square metres, bedrooms and years, respectively. In 2–4 sentences, explain what this vector represents and why the numerical range of each measurement matters when comparing houses by distance.
+      A house app records a house's area, bedroom count and age as the feature vector $(120,3,15)$, in square metres, bedrooms and years, respectively. In 2–4 sentences, explain what this vector represents and why the numerical range of each measurement matters when comparing these vectors by Euclidean distance without rescaling.
     rubric:
       - id: r1
         criterion: Explain that $(120,3,15)$ records one house's area, bedroom count and age in a fixed order.

@@ -492,7 +492,7 @@ exercises:
     difficulty: 3
     est_minutes: 3
     prompt: >-
-      Two policies are compared using expected return plus an entropy bonus weighted by $\beta$. Policy X has expected return $5.0$ and entropy $0.06$. Policy Y has expected return $4.8$ and entropy $0.69$. What is the smallest bonus weight $\beta$ at which Y's objective is at least as large as X's? Give two decimal places.
+      Two policies are compared using expected return plus an entropy bonus weighted by $\beta$, with entropy measured in nats. Policy X has expected return $5.0$ and entropy $0.06$. Policy Y has expected return $4.8$ and entropy $0.69$. What is the smallest bonus weight $\beta$ at which Y's objective is at least as large as X's? Give two decimal places.
     answer: 0.32
     tolerance:
       abs: 0.005

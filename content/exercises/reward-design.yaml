@@ -134,7 +134,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      Two robots each get $+10$ for reaching the goal and $0$ for every other move, with discount factor $\gamma=0.9$. Robot A's starting return is $8.1$ and robot B's is $7.29$. What do these returns tell you?
+      Two robots each get $+10$ for reaching the goal, which ends the episode, and $0$ for every other move, with discount factor $\gamma=0.9$. Robot A's starting return is $8.1$ and robot B's is $7.29$. What do these returns tell you?
     options:
       - id: a
         text: Robot A reached the goal one move sooner than robot B.
@@ -163,7 +163,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      A robot gets $+10$ for reaching its goal and $0$ for every other move, with discount factor $\gamma=0.9$. A learner says: "Every path that reaches the goal gets the same return, $10$, so the robot has no reason to prefer the shortest path." What is wrong with this?
+      A robot gets $+10$ for reaching its goal, which ends the episode, and $0$ for every other move, with discount factor $\gamma=0.9$. A learner says: "Every path that reaches the goal gets the same return, $10$, so the robot has no reason to prefer the shortest path." What is wrong with this?
     options:
       - id: a
         text: With $\gamma<1$, a later $10$ is discounted more, so shorter paths get higher returns.
@@ -394,7 +394,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      A corridor has cells 1 to 4 from left to right. Each move from cell $s$ to cell $s'$ earns a bonus $\Psi(s')-\Psi(s)$, where the potential $\Psi$ of a cell is its number. The discount factor is $\gamma=1$. A learner says: "The path right, left, right, right, right makes four moves right, so its bonuses add up to $4$, more than the direct path's $3$." What went wrong?
+      A robot starts in cell 1 of a corridor numbered 1 to 4 from left to right. Each move from cell $s$ to cell $s'$ earns a bonus $\Psi(s')-\Psi(s)$, where the potential $\Psi$ of a cell is its number. The discount factor is $\gamma=1$. A learner says: "The path right, left, right, right, right makes four moves right, so its bonuses add up to $4$, more than the direct path's $3$." What went wrong?
     options:
       - id: a
         text: The move left earns $-1$, so the bonuses add up to $3$, like the direct path.
@@ -494,7 +494,7 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: >-
-      A robot in a corridor gets $-1$ for every move and $+10$ for reaching the goal at the right-hand end, with discount factor $\gamma=1$. Which added bonus lets it raise its return without limit by moving back and forth?
+      A robot can move left or right between adjacent cells in a four-cell corridor and starts at the left end. It pays a movement cost of $1$ per move and earns a reward of $+10$ when it reaches the goal at the right end, ending the episode. The discount factor is $\gamma=1$. Which added bonus lets it raise its return without limit by moving back and forth?
     options:
       - id: a
         text: $+3$ for each move right, and nothing for a move left.
@@ -550,7 +550,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      A robot uses discount factor $\gamma=1$. It finds that one round trip between two cells adds $+1$ to its return, and afterwards it can still reach the goal just as before. What will a robot that maximises its return learn to do?
+      A robot uses discount factor $\gamma=1$. It finds that one round trip between two cells adds $+1$ to its return, and afterwards it can still reach the goal just as before. There is no time limit, and the return of a never-ending episode is the sum of its rewards, allowed to be infinite. What will a robot that maximises its return learn to do?
     options:
       - id: a
         text: Keep looping and never finish, since every extra loop adds more reward.
@@ -574,7 +574,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      A corridor robot gets $-1$ per move and $+10$ for reaching the goal, with discount factor $\gamma=1$. It also earns a bonus of $+3$ for each move right and nothing for a move left. It has learned to move back and forth forever. Which change keeps a progress bonus but removes the loophole?
+      A corridor robot gets $-1$ per move and $+10$ for reaching the goal, which ends the episode, with discount factor $\gamma=1$. It also earns a bonus of $+3$ for each move right and nothing for a move left. It has learned to move back and forth forever. Which change keeps a progress bonus but removes the loophole?
     options:
       - id: a
         text: Pay $+1$ for each move right and $-1$ for each move left ($0$ into the wall) instead.

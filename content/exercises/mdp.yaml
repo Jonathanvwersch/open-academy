@@ -461,7 +461,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      A reward arrives after the third command from now. With discount factor $\gamma=0.9$, a learner gives it weight $0.9$ when evaluating it from before the first command. Which timing error caused this?
+      A reward arrives after the third command from now. The reward after the first command would have weight $1$. With discount factor $\gamma=0.9$, a learner gives it weight $0.9$ when evaluating it from before the first command. Which timing error caused this?
     options:
       - id: a
         text: They included the first command as an extra step of delay.
@@ -525,7 +525,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      A charger controller receives a reward of $8$ after its third command. The discount factor is $\gamma=0.5$. What is the weighted amount of that reward when evaluated from before its first command?
+      A charger controller receives a reward of $8$ after its third command. The discount factor is $\gamma=0.5$, and the reward after the first command would have weight $1$. What is the weighted amount of that reward when evaluated from before its first command?
     answer: 2
     tolerance: { abs: 0.001 }
     solution: The reward arrives two extra steps beyond the next reward, so its weighted amount is $0.5^2\times8=2$.

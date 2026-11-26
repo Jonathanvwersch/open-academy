@@ -122,7 +122,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      A robot in a 4-cell corridor follows the policy $\pi$ of always moving right, and every move works. From cell 2 it gets $-1$, then $+10$ on reaching cell 4. With discount factor $\gamma=0.9$, a learner writes the state value as $V^\pi(2)=0.9\times(-1)+0.81\times10=7.2$. What went wrong?
+      A robot in a 4-cell corridor follows the policy $\pi$ of always moving right, and every move works. From cell 2 it gets $-1$, then $+10$ on reaching cell 4, which ends the episode. With discount factor $\gamma=0.9$, a learner writes the state value as $V^\pi(2)=0.9\times(-1)+0.81\times10=7.2$. What went wrong?
     options:
       - id: a
         text: The first reward should not be discounted, so the value is $-1+0.9\times10=8$.
@@ -293,7 +293,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      A robot in a 4-cell corridor follows policy $\pi$, "always move right". Reaching cell 4 gives $+10$ and ends the episode; every other step gives $-1$. The discount factor is $\gamma=0.9$ and the state value of cell 1 is $V^\pi(1)=6.2$. A learner says the action value $Q^\pi(2,\text{left})$ is $-10$, because moving left forever never reaches the goal. What went wrong?
+      A robot in a 4-cell corridor follows policy $\pi$, "always move right". Moving left from cell 2 always takes it to cell 1. Reaching cell 4 gives $+10$ and ends the episode; every other step gives $-1$. The discount factor is $\gamma=0.9$ and the state value of cell 1 is $V^\pi(1)=6.2$. A learner says the action value $Q^\pi(2,\text{left})$ is $-10$, because moving left forever never reaches the goal. What went wrong?
     options:
       - id: a
         text: After the first move left, the robot follows "always move right" again, so the value is $-1+0.9\times6.2=4.58$.
@@ -628,7 +628,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      In a 4-cell corridor, reaching cell 4 gives $+10$ and other steps give $-1$. The discount factor is $\gamma=0.9$. Value iteration starts every state-value estimate at $0$. After the first sweep, the estimates are $V(3)=10$ and $V(1)=-1$, even though the optimal state value of cell 1 is $V^*(1)=6.2$. Why?
+      In a 4-cell corridor, reaching cell 4 gives $+10$ and other steps give $-1$. The discount factor is $\gamma=0.9$. Value iteration starts every state-value estimate at $0$. Each sweep computes all new values from the previous sweep's estimates. After the first sweep, the estimates are $V(3)=10$ and $V(1)=-1$, even though the optimal state value of cell 1 is $V^*(1)=6.2$. Why?
     options:
       - id: a
         text: Each backup looks one step ahead, so the $+10$ moves back only one cell per sweep.
@@ -671,7 +671,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      In a 4-cell corridor, reaching cell 4 gives $+10$ and other steps give $-1$. With discount factor $\gamma=0.9$, a learner says moving left and right from cell 2 are equally good because each gives an immediate reward of $-1$. What went wrong?
+      A robot moves one cell at a time in a corridor numbered 1 to 4 from left to right. Reaching cell 4 gives $+10$ and ends the episode; other steps give $-1$. With discount factor $\gamma=0.9$, a learner says moving left and right from cell 2 are equally good because each gives an immediate reward of $-1$. What went wrong?
     options:
       - id: a
         text: 'The learner ignored where each move leads; $Q^*(2,\text{right})=8$ and $Q^*(2,\text{left})=4.58$.'

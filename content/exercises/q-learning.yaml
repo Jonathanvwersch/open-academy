@@ -167,7 +167,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      A robot in a 4-cell corridor gets $-1$ per move and $+10$ for reaching cell 4, with discount factor $\gamma=0.9$. Its best values say moving right from cell 2 is worth $8$, but that move only earns $-1$. A learner says the value must be wrong. What is the mistake?
+      A robot moves one cell at a time in a corridor numbered 1 to 4 from left to right. Reaching cell 4 pays $+10$ and ends the episode; any other move pays $-1$. The discount factor is $\gamma=0.9$. Its best values say moving right from cell 2 is worth $8$, but that move only earns $-1$. A learner says the value must be wrong. What is the mistake?
     options:
       - id: a
         text: The value also counts the discounted rewards after the move.
@@ -335,7 +335,7 @@ exercises:
     difficulty: 2
     est_minutes: 3
     prompt: >-
-      A robot in cell 2 moves right to cell 3 and gets reward $-1$. Its action values are $Q(2,\text{left})=1$, $Q(2,\text{right})=2$, $Q(3,\text{left})=0$ and $Q(3,\text{right})=6$. The discount factor is $\gamma=0.9$. A learner writes the TD target as $-1+0.9\times2=0.8$. What went wrong?
+      A robot in cell 2 moves right to cell 3 and gets reward $-1$ without ending the episode. Its action values are $Q(2,\text{left})=1$, $Q(2,\text{right})=2$, $Q(3,\text{left})=0$ and $Q(3,\text{right})=6$. The discount factor is $\gamma=0.9$. A learner writes the Q-learning TD target as $-1+0.9\times2=0.8$. What went wrong?
     options:
       - id: a
         text: They used cell 2's best value; the target uses cell 3's, giving $4.4$.
@@ -383,7 +383,7 @@ exercises:
     difficulty: 3
     est_minutes: 4
     prompt: >-
-      A delivery robot moves along a path B, then C, then the goal, with one action, forward, in each place. Moving into the goal gives $+6$ and ends the episode, and moving from B to C gives $-1$. All action values start at $0$. The learning rate is $\eta=0.5$ and the discount factor is $\gamma=0.9$. Episode 1 starts in C and moves to the goal. Episode 2 starts in B and moves to C, then to the goal. What is the action value $Q(\text{B},\text{forward})$ at the end of episode 2? Give two decimal places.
+      A delivery robot moves along a path B, then C, then the goal, with one action, forward, in each place. Moving into the goal gives $+6$ and ends the episode, and moving from B to C gives $-1$. The robot makes one tabular Q-learning update immediately after each move. All action values start at $0$. The learning rate is $\eta=0.5$ and the discount factor is $\gamma=0.9$. Episode 1 starts in C and moves to the goal. Episode 2 starts in B and moves to C, then to the goal. What is the action value $Q(\text{B},\text{forward})$ at the end of episode 2? Give two decimal places.
     answer: 0.85
     tolerance:
       abs: 0.005
@@ -459,7 +459,7 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: >-
-      A robot learns with Q-learning but always moves greedily. In state $s$, action A always gives reward $+1$ and ends the episode. The robot has tried A once, so its action value is $Q(s,\text{A})=0.5$. It has never tried action B, so $Q(s,\text{B})=0$. Action B is really much better. What happens?
+      A robot learns with tabular Q-learning but always moves greedily. In state $s$, action A always gives reward $+1$ and ends the episode. The robot has tried A once, so its action value is $Q(s,\text{A})=0.5$. It has never tried action B, so $Q(s,\text{B})=0$. Action B is really much better. What happens?
     options:
       - id: a
         text: It keeps choosing A, so it never learns how good B is.

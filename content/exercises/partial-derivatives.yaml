@@ -319,7 +319,7 @@ exercises:
     target_seconds: 30
     est_minutes: 1
     prompt: >-
-      A price formula $P(s,a)$ uses the house's size $s$ and age $a$. At one house, $\partial P/\partial a=-3$ thousand pounds per year. What happens to its estimated price if it is one year older and the same size?
+      A price formula $P(s,a)$ uses the house's size $s$ and age $a$. At one house, $\partial P/\partial a=-3$ thousand pounds per year. Using the local linear approximation, how much does its estimated price change if it is one year older and the same size?
     options:
       - { id: a, text: "It falls by about £3k", correct: true }
       - id: b

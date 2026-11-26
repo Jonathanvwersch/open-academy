@@ -43,7 +43,7 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: >-
-      A policy has adjustable parameters $\theta$. What does its objective $J(\theta)$ measure?
+      A policy has adjustable parameters $\theta$. In standard episodic REINFORCE, what does the policy objective $J(\theta)$ measure?
     solution: $J(\theta)=E[G_0]$ averages return from the start over episodes played with $\pi_\theta$.
     options:
       - id: a
@@ -244,7 +244,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      A grasping robot tests two policies for 1000 episodes each. Policy A's best return is 9 and its average is 4. Policy B's best return is 7 and its average is 6. Which has the higher estimated policy objective $J$, and why?
+      A grasping robot tests two policies for 1000 episodes each. Policy A's best return is 9 and its average is 4. Policy B's best return is 7 and its average is 6. If the goal is to maximise expected starting return $J$, which policy scores higher on this test, and why?
     solution: $J$ is estimated by the average return. B has average $6>4$.
     options:
       - id: a
@@ -272,7 +272,7 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: >-
-      Let $\pi_\theta(a)$ be the probability of action $a$ under a policy with parameters $\theta$. What does the log-derivative trick say about the gradient of that probability with respect to $\theta$?
+      Let $\pi_\theta(a)$ be the positive, differentiable probability of action $a$ under a policy with parameters $\theta$. What does the log-derivative trick say about the gradient of that probability with respect to $\theta$?
     solution:
       The chain rule gives $\nabla_\theta\ln\pi_\theta=(\nabla_\theta\pi_\theta)/\pi_\theta$. Multiplying
       by $\pi_\theta$ gives the identity.
@@ -397,7 +397,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      A slot machine has arms A and B. A policy with parameter $\theta$ pulls B with probability $p=e^\theta/(e^\theta+1)$ and A otherwise. A always pays 2 and B always pays 6. At $\theta=0$, what is the average one-pull estimate of the expected payout's slope with respect to $\theta$?
+      A slot machine has arms A and B. A policy with parameter $\theta$ pulls B with probability $p=e^\theta/(e^\theta+1)$ and A otherwise. A always pays 2 and B always pays 6. At $\theta=0$, what is the average REINFORCE estimate of the expected payout's slope with respect to $\theta$ over repeated single pulls, without a baseline?
     solution:
       Both arms have chance $0.5$ and log-probability slopes $-0.5$ and $0.5$. Their estimates average
       $0.5\times2\times(-0.5)+0.5\times6\times0.5=1$.
@@ -449,7 +449,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      A policy with parameters $\theta$ chooses action $a$ with probability $\pi_\theta(a)$. When estimating the slope of expected payout from sampled pulls, why rewrite $\nabla_\theta\pi_\theta(a)$ as $\pi_\theta(a)\nabla_\theta\ln\pi_\theta(a)$?
+      A policy with parameters $\theta$ chooses action $a$ with positive, differentiable probability $\pi_\theta(a)$. When estimating the slope of expected payout from sampled pulls, why rewrite $\nabla_\theta\pi_\theta(a)$ as $\pi_\theta(a)\nabla_\theta\ln\pi_\theta(a)$?
     solution:
       The probability factor turns the sum into an average over the policy choices. Observed payouts
       and log-probability slopes provide samples of that average.
