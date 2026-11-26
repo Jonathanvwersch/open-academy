@@ -38,15 +38,52 @@ export type TimedQuizItem = {
 export type TimedQuizQuery = {
   id?: Id;
   activityId?: Id;
+  activityIds?: readonly Id[];
   retakeOf?: Id;
   active?: true;
   original?: true;
   finalizedThrough?: Date;
 };
 
+export type TimedQuizItemKey = {
+  runId: Id;
+  conceptId: Id;
+  questionKey: string;
+  reserveKey: string | null;
+};
+
+export function collectTimedQuizItemKeys(
+  rows: Array<TimedQuizItemKey & { position: number; correct: boolean | null }>,
+) {
+  const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+  const missedRunIds = new Set<Id>();
+  const items = rows
+    .sort(
+      (a, b) =>
+        a.position - b.position ||
+        compare(a.conceptId, b.conceptId) ||
+        compare(a.questionKey, b.questionKey) ||
+        compare(a.reserveKey ?? '', b.reserveKey ?? ''),
+    )
+    .map(({ runId, conceptId, questionKey, reserveKey, correct }) => {
+      if (correct === false) missedRunIds.add(runId);
+      return { runId, conceptId, questionKey, reserveKey };
+    });
+  return { items, missedRunIds };
+}
+
 export interface FlowStore extends PlacementReviewStore {
+  sumQuizEligibleXp(
+    learnerId: Id,
+    through: Date,
+    lastQuizAt?: Date,
+  ): Promise<{ throughLastQuiz: number; sinceLastQuiz: number }>;
   listTimedQuizRuns(learnerId: Id, query: TimedQuizQuery): Promise<TimedQuizRun[]>;
   listTimedQuizItems(learnerId: Id, runIds: readonly Id[]): Promise<TimedQuizItem[]>;
+  listTimedQuizItemKeys(
+    learnerId: Id,
+    runIds: readonly Id[],
+  ): Promise<{ items: TimedQuizItemKey[]; missedRunIds: ReadonlySet<Id> }>;
   insertTimedQuiz(
     learnerId: Id,
     run: NewRow<TimedQuizRun>,

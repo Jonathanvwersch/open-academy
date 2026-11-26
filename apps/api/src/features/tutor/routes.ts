@@ -1,3 +1,4 @@
+import { buildCoursePayload } from '@academy/aesop/course/course-payload';
 import { serializedOptionOrder } from '@academy/aesop/course/serialize';
 import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
 import type { ContentIndex } from '@academy/aesop/course/types';
@@ -25,7 +26,6 @@ import {
   users,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
-import { buildCoursePayload } from '../course/service.js';
 import { extractPaperPages } from '../papers/service.js';
 import {
   formatGraderFeedback,

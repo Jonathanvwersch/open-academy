@@ -7,6 +7,8 @@ import { createDb } from '../../src/db/client.js';
 import { drizzleLearnerStore } from '../../src/db/learner-store.js';
 import {
   hintEvents,
+  paperProgress,
+  projectProgress,
   remediationFlags,
   reviewCards,
   sessionActivities,
@@ -25,12 +27,22 @@ afterAll(async () => {
   await db.$client.end();
 });
 
-describeLearnerStoreContract('drizzleLearnerStore', async () => {
+describeLearnerStoreContract('drizzleLearnerStore', async (options) => {
   const [{ id: learnerId }, { id: otherLearnerId }] = await db
     .insert(users)
     .values([{ displayName: 'Store test' }, { displayName: 'Other store learner' }])
     .returning();
   learners.push(learnerId, otherLearnerId);
+  if (options?.seedCourseProgress) {
+    await db.insert(projectProgress).values([
+      { userId: learnerId, projectId: 'z', status: 'in_progress' },
+      { userId: learnerId, projectId: 'a', status: 'completed' },
+    ]);
+    await db.insert(paperProgress).values([
+      { userId: learnerId, paperId: 'z' },
+      { userId: learnerId, paperId: 'a', completedAt: new Date('2026-01-17T12:00:00Z') },
+    ]);
+  }
   const [{ id: sessionId }] = await db
     .insert(studySessions)
     .values({ userId: learnerId, plannedMinutes: 5 })

@@ -3,7 +3,8 @@ import { startOfNextCalendarDay } from '@academy/aesop/memory/fsrs';
 import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY } from '@academy/aesop/memory/speed';
 import { initialMastery, type MasteryRecord, type MasteryState } from '@academy/aesop/memory/types';
 import type { AttemptQuery, Settings } from '@academy/aesop/store/core-store';
-import type { FlowStore } from '@academy/aesop/store/flow-store';
+import { type CourseStore, compareCompletedActivities } from '@academy/aesop/store/course-store';
+import { collectTimedQuizItemKeys } from '@academy/aesop/store/flow-store';
 import type { ReviewLogRecord, StoredReviewCard } from '@academy/aesop/store/learner-store';
 import type { FlagQuery, LessonKey } from '@academy/aesop/store/lesson-store';
 import type { DiagnosticRun, PlacementGrant } from '@academy/aesop/store/placement-review-store';
@@ -141,7 +142,7 @@ export function drizzleLearnerStore(
     activeReviewCardsOnly?: boolean;
     schedulerTimezone?: string;
   } = {},
-): FlowStore & { connection: Database | Transaction } {
+): CourseStore & { connection: Database | Transaction } {
   const timedQuizOwner = (learnerId: string) => eq(quizRuns.userId, learnerId);
   const ownedTimedQuizRuns = (learnerId: string) =>
     db.select({ id: quizRuns.id }).from(quizRuns).where(timedQuizOwner(learnerId));
@@ -271,6 +272,13 @@ export function drizzleLearnerStore(
         .orderBy(...attemptOrder(query.order));
       return query.limit === undefined ? rows : rows.limit(query.limit);
     },
+    async listActivityAttemptKeys(learnerId, activityIds) {
+      if (!activityIds.length) return [];
+      return db
+        .select({ activityId: attempts.activityId, exerciseId: attempts.exerciseId })
+        .from(attempts)
+        .where(and(eq(attempts.userId, learnerId), inArray(attempts.activityId, activityIds)));
+    },
     async insertAttempt(learnerId, attempt) {
       const [row] = await db
         .insert(attempts)
@@ -323,6 +331,40 @@ export function drizzleLearnerStore(
             query.sourceKey === undefined ? undefined : eq(xpEvents.sourceKey, query.sourceKey),
           ),
         );
+    },
+    async sumQuizEligibleXp(learnerId, through, lastQuizAt) {
+      const activityKeys = db
+        .select({ key: sql<string>`'activity:' || ${sessionActivities.id}::text` })
+        .from(sessionActivities)
+        .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
+        .where(
+          and(
+            eq(studySessions.userId, learnerId),
+            inArray(sessionActivities.kind, ['learn', 'review']),
+          ),
+        );
+      const before = lastQuizAt ? lte(xpEvents.earnedAt, lastQuizAt) : sql`false`;
+      const [sums] = await db
+        .select({
+          throughLastQuiz:
+            sql`coalesce(sum(${xpEvents.amount}) filter (where ${before}), 0)`.mapWith(Number),
+          sinceLastQuiz:
+            sql`coalesce(sum(${xpEvents.amount}) filter (where not (${before})), 0)`.mapWith(
+              Number,
+            ),
+        })
+        .from(xpEvents)
+        .where(
+          and(
+            eq(xpEvents.userId, learnerId),
+            lte(xpEvents.earnedAt, through),
+            or(
+              inArray(xpEvents.kind, ['knowledge_point', 'review']),
+              and(eq(xpEvents.kind, 'activity'), inArray(xpEvents.sourceKey, activityKeys)),
+            ),
+          ),
+        );
+      return sums;
     },
     async insertXpEventOnce(learnerId, event) {
       const rows = await db
@@ -591,7 +633,7 @@ export function drizzleLearnerStore(
     },
     async listTimedQuizRuns(
       learnerId,
-      { id, activityId, retakeOf, active, original, finalizedThrough },
+      { id, activityId, activityIds, retakeOf, active, original, finalizedThrough },
     ) {
       const query = db
         .select(timedQuizFields)
@@ -601,6 +643,7 @@ export function drizzleLearnerStore(
             timedQuizOwner(learnerId),
             id === undefined ? undefined : eq(quizRuns.id, id),
             activityId === undefined ? undefined : eq(quizRuns.activityId, activityId),
+            activityIds === undefined ? undefined : inArray(quizRuns.activityId, activityIds),
             retakeOf === undefined ? undefined : eq(quizRuns.retakeOf, retakeOf),
             active ? isNull(quizRuns.finalizedAt) : undefined,
             original ? isNull(quizRuns.retakeOf) : undefined,
@@ -625,6 +668,26 @@ export function drizzleLearnerStore(
           ),
         )
         .orderBy(asc(quizItems.position));
+    },
+    async listTimedQuizItemKeys(learnerId, runIds) {
+      if (!runIds.length) return collectTimedQuizItemKeys([]);
+      const rows = await db
+        .select({
+          runId: quizItems.runId,
+          position: quizItems.position,
+          conceptId: quizItems.conceptId,
+          questionKey: sql<string>`${quizItems.question}->>'key'`,
+          reserveKey: sql<string | null>`${quizItems.reserve}->>'key'`,
+          correct: quizItems.correct,
+        })
+        .from(quizItems)
+        .where(
+          and(
+            inArray(quizItems.runId, runIds),
+            inArray(quizItems.runId, ownedTimedQuizRuns(learnerId)),
+          ),
+        );
+      return collectTimedQuizItemKeys(rows);
     },
     async insertTimedQuiz(learnerId, run, items) {
       const [row] = await db
@@ -846,6 +909,83 @@ export function drizzleLearnerStore(
         .where(activityWhere(learnerId, { ...query, ids }))
         .orderBy(asc(sessionActivities.sessionId), asc(sessionActivities.idx));
     },
+    async listProjectProgress(learnerId) {
+      return db
+        .select({ projectId: projectProgress.projectId, status: projectProgress.status })
+        .from(projectProgress)
+        .where(eq(projectProgress.userId, learnerId))
+        .orderBy(projectProgress.projectId);
+    },
+    async listPaperProgress(learnerId) {
+      return db
+        .select({ paperId: paperProgress.paperId, completedAt: paperProgress.completedAt })
+        .from(paperProgress)
+        .where(eq(paperProgress.userId, learnerId))
+        .orderBy(paperProgress.paperId);
+    },
+    async listCompletedActivities(learnerId, since) {
+      const rows = await db
+        .select({ activity: sessionActivities, sessionStartedAt: studySessions.startedAt })
+        .from(sessionActivities)
+        .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
+        .where(
+          and(
+            eq(studySessions.userId, learnerId),
+            eq(sessionActivities.status, 'completed'),
+            gte(sessionActivities.completedAt, since),
+          ),
+        );
+      return rows.sort(compareCompletedActivities).map(({ activity }) => activity);
+    },
+    async listCourseLessonProblems(learnerId, runIds) {
+      if (runIds.length === 0) return [];
+      return db
+        .select(getTableColumns(lessonProblems))
+        .from(lessonProblems)
+        .innerJoin(lessonRuns, eq(lessonProblems.runId, lessonRuns.id))
+        .where(and(eq(lessonRuns.userId, learnerId), inArray(lessonProblems.runId, runIds)))
+        .orderBy(
+          lessonRuns.conceptId,
+          lessonProblems.servedAt,
+          lessonProblems.knowledgePointId,
+          lessonProblems.round,
+          lessonProblems.position,
+        );
+    },
+    async listCourseMasteryEvents(learnerId, conceptIds) {
+      if (conceptIds.length === 0) return [];
+      return db
+        .select({
+          conceptId: masteryEvents.conceptId,
+          fromState: masteryEvents.fromState,
+          toState: masteryEvents.toState,
+          createdAt: masteryEvents.createdAt,
+        })
+        .from(masteryEvents)
+        .where(
+          and(eq(masteryEvents.userId, learnerId), inArray(masteryEvents.conceptId, conceptIds)),
+        )
+        .orderBy(
+          masteryEvents.conceptId,
+          masteryEvents.createdAt,
+          sql`${masteryEvents.fromState}::text`,
+          sql`${masteryEvents.toState}::text`,
+        );
+    },
+    async listDueReviewConcepts(learnerId, before) {
+      const rows = await db
+        .select({ conceptId: reviewCards.conceptId })
+        .from(reviewCards)
+        .where(
+          and(
+            eq(reviewCards.userId, learnerId),
+            isNull(reviewCards.suspendedAt),
+            lt(reviewCards.dueAt, before),
+          ),
+        )
+        .orderBy(reviewCards.dueAt, reviewCards.conceptId, reviewCards.dimension);
+      return rows.map(({ conceptId }) => conceptId);
+    },
     async insertActivities(learnerId, sessionId, rows) {
       if (rows.length === 0) return [];
       const owned = db
@@ -904,14 +1044,15 @@ export function drizzleLearnerStore(
       return row;
     },
     async lockLessonProblem(learnerId, conceptId, problemId) {
-      const [row] = await db
-        .select({ run: lessonRunFields, problem: lessonProblems })
+      const run = await this.getLessonRun(learnerId, { conceptId }, { forUpdate: true });
+      if (!run) return undefined;
+      const [problem] = await db
+        .select()
         .from(lessonProblems)
-        .innerJoin(lessonRuns, eq(lessonProblems.runId, lessonRuns.id))
-        .where(and(lessonWhere(learnerId, { conceptId }), eq(lessonProblems.id, problemId)))
+        .where(and(eq(lessonProblems.runId, run.id), eq(lessonProblems.id, problemId)))
         .for('update')
         .limit(1);
-      return row;
+      return problem ? { run, problem } : undefined;
     },
     async insertLessonRunIfAbsent(learnerId, run) {
       const [row] = await db

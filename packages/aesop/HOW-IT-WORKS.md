@@ -147,6 +147,7 @@ Rules that apply to the whole plan:
 - Offer a quiz about every 150 eligible XP. **[MA]**
 - Count XP from knowledge points, review answers, and completed lesson or review activities. Count mixed review activities as reviews. Exclude all other XP. **[Ours]**
 - Subtract 150 XP from the eligible balance when the learner finishes an original timed quiz. Carry the excess into the next cycle. **[Ours]**
+- The quiz offer reads XP totals through the last original quiz and since that quiz, so it keeps the carry without loading XP events. It reads question keys and topics from past quizzes, not the question text.
 - Aim to offer the quiz when the eligible balance reaches 150 to 180 XP. The simulator checks this 30 XP window when enough topics qualify and the quiz fits. Eligibility continues past the window. **[Ours]**
 - Keep at most one quiz pending. Leave lessons available when the quiz cannot run. **[Ours]**
 
@@ -263,6 +264,10 @@ The engine reads and writes mastery and review state through `LearnerStore`. `Co
 `PlacementReviewStore` adds diagnostic runs, placement grants, review logs and review card edits. The engine records graded exercise answers, completes reviews and withdraws placement credit.
 
 `FlowStore` adds timed quiz runs, items and links to completed follow-up reviews. The engine offers and runs timed quizzes in `quizzes/`. Starting, answering and finishing a quiz, and starting its retake or follow-up reviews, use the same learner lock as session start.
+
+`CourseStore` adds project and paper progress, completed activities and the evidence for course progress. The engine builds Home, the course catalog and course pages from this state. Home replans the remaining session if a planned lesson no longer meets its prerequisites. Done today gets timed quiz XP from the original run's XP event, not from a retake.
+
+Course reads check whether courses are complete and update enrollments when needed. Starting a specific course from the beginning abandons its active placement test before saving the enrollment. The older active-course start does not abandon placement tests.
 
 A transaction gives the engine a store for that transaction. All its reads and writes use that store. If a transaction throws, its changes roll back. A nested transaction can roll back while the outer transaction continues.
 

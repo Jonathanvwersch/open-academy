@@ -1,4 +1,5 @@
 import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
+import { courseTopicState } from '@academy/aesop/course/course-payload';
 import { subjectForCourse } from '@academy/aesop/course/index';
 import type { ContentIndex } from '@academy/aesop/course/types';
 import { filterMasteryRecordsForContent } from '@academy/aesop/graph/content-filters';
@@ -9,7 +10,6 @@ import { desc, eq } from 'drizzle-orm';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { lessonRuns, masteryEvents, projectSubmissions } from '../../db/schema.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
-import { courseTopicState } from '../course/service.js';
 
 const masteryStates: ProgressMasteryState[] = [
   'not_assessed',

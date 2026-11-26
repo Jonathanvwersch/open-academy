@@ -447,7 +447,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: Let $a=(1,0)$ and $b=(1/2,1/2)$. Which statement is correct?
+    prompt:
+      Two probability distributions over the same two outcomes are $a=(1,0)$, which gives the first
+      outcome probability 1, and $b=(1/2,1/2)$, which gives each outcome probability $1/2$. Which
+      statement is correct?
     options:
       - id: a
         text: $\mathrm{KL}(a\Vert b)$ is 1 bit, while $\mathrm{KL}(b\Vert a)$ is infinite.
