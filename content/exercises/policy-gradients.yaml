@@ -664,7 +664,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      A corridor has cells 1 to 4. A robot starts in cell 1, and a wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode; other steps give $-1$. The discount factor is $\gamma=0.9$. With policy parameter $\theta$, the robot chooses right with probability $p=e^\theta/(e^\theta+1)$ in every cell and left otherwise. Currently $p=0.8$. The episode left, right, right, right has return $4.58$. What whole-episode REINFORCE slope estimate with respect to $\theta$ does it give? Round to two decimal places.
+      A corridor has cells 1 to 4 from left to right. A robot starts in cell 1, and an attempted move into a wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode; other steps give $-1$. The discount factor is $\gamma=0.9$. With policy parameter $\theta$, the robot chooses right with probability $p=e^\theta/(e^\theta+1)$ in every cell and left otherwise. Currently $p=0.8$. The episode left, right, right, right has return $4.58$. What whole-episode REINFORCE slope estimate with respect to $\theta$ does it give? Round to two decimal places.
     solution:
       The slopes sum to $-0.8+3\times0.2=-0.2$. Multiplying by $4.58$ gives $-0.916$, which rounds
       to $-0.92$.
@@ -685,7 +685,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: >-
-      A corridor has cells 1 to 4. A robot starts in cell 1, and a wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode; other steps give $-1$. The discount factor is $\gamma=0.9$. With policy parameter $\theta$, the robot chooses right with probability $p=e^\theta/(e^\theta+1)$ and left otherwise. Now each attempted move succeeds with probability $0.8$ and otherwise leaves the robot in place. These movement probabilities do not depend on $\theta$. What changes in whole-episode REINFORCE?
+      A corridor has cells 1 to 4 from left to right. A robot starts in cell 1, and an attempted move into a wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode; other steps give $-1$. The discount factor is $\gamma=0.9$. With policy parameter $\theta$, the robot chooses right with probability $p=e^\theta/(e^\theta+1)$ and left otherwise. Now each attempted move succeeds with probability $0.8$ and otherwise leaves the robot in place. These movement probabilities do not depend on $\theta$. What changes in whole-episode REINFORCE?
     solution:
       The transition log terms still have zero slope with respect to $\theta$. Use the same update
       with the actions and returns that actually happened.
