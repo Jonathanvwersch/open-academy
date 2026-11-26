@@ -83,7 +83,7 @@ The engine uses the FSRS algorithm (the `ts-fsrs` library) for spaced repetition
   - **Good**: correct, first try, no hint, in time.
 - A review activity gives one rating for each topic. The rating is Good if every answer is correct, with no hint and in time. It is Hard if at least 2 of 3 answers are correct. Otherwise it is Again.
 - FSRS uses the rating to set the next due date.
-- The planner tracks the last answer to each question across all of the learner's attempts. It picks unseen questions first, then the ones the learner answered longest ago. It reuses a question from the last 7 days only when it runs out of other questions. If two questions tie, it picks the one with the lower question ID. Answers from lesson steps count too. **[Ours]**
+- The planner tracks the last answer to each question across all of the learner's attempts. Answers from lesson steps count too. The planner first looks for questions the learner has not answered in the last 7 days. It checks roles in order: review, core, practice, transfer, basics. For an independent learner in that dimension, it checks transfer first. If no question is available, it checks the roles again in the same order and lets recent questions count. Within a role, it picks unseen questions first, then the ones the learner answered longest ago. If two questions tie, it picks the one with the lower question ID. **[Ours]**
 - When a review card gets Again twice in a row, the engine brings the weakest eligible hard prerequisite card due now. If cards tie, choose the alphabetically first topic ID, then the alphabetically first dimension. **[Ours]**
 
 ### Learning speed (`memory/speed.ts`)

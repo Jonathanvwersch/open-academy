@@ -2672,8 +2672,8 @@ test('due review prefers a fresh practice exercise over a recent review exercise
 test('due reviews use the last attempt even after 120 answers on other exercises', async () => {
   const example = required(content.exercisesById.get('vectors-magnitude'), 'vectors exercise');
   const a = { ...example, id: 'vectors-a', role: 'review' as const };
-  const b = { ...example, id: 'vectors-b', role: 'practice' as const };
-  const c = { ...example, id: 'vectors-c', role: 'core' as const };
+  const b = { ...a, id: 'vectors-b' };
+  const c = { ...a, id: 'vectors-c' };
   const reviewContent: ContentIndex = {
     ...content,
     exercisesByConcept: new Map(content.exercisesByConcept).set('vectors', [a, c, b]),

@@ -59,7 +59,6 @@ export const SCHEDULER_CONFIG = {
 } as const;
 
 const RETRY_OVERDUE_DAYS = 2;
-const REVIEW_EXERCISE_ROLES = ['review', 'core', 'practice', 'transfer', 'basics'];
 
 export interface PriorityTerms {
   goal: number;
@@ -1873,7 +1872,7 @@ function generateCandidates(
       });
       const exercise = hasKnowledgePointLesson
         ? content.exercisesById.get(content.lessonsByConcept.get(concept.id)?.final ?? '')
-        : chooseExercise(state, content, concept, dimension, [['core'], ['check']], recentIds);
+        : chooseExercise(state, content, concept, dimension, ['core', 'check'], recentIds);
       if (exercise) {
         candidates.push(
           makeCandidate(
@@ -1909,6 +1908,7 @@ function generateCandidates(
       conceptId,
       dueCards,
       courseContexts,
+      masteryByKey,
       recentIds,
       candidates,
       reviewSelectionTrace,
@@ -1937,6 +1937,7 @@ function generateCandidates(
       conceptId,
       conceptCards,
       courseContexts,
+      masteryByKey,
       recentIds,
       candidates,
     );
@@ -1990,6 +1991,7 @@ function buildReviewCandidateForConcept(
   conceptId: string,
   dueCards: SchedulerState['cards'],
   courseContexts: SchedulerCourseContext[],
+  masteryByKey: Map<string, MasteryRecord>,
   recentIds: Set<string>,
   candidates: Candidate[],
   reviewSelectionTrace?: ReviewSelectionTrace,
@@ -2067,6 +2069,11 @@ function buildReviewCandidateForConcept(
     exercises: IndexedExercise[];
   }[] = [];
   for (const card of dueCards) {
+    const record = masteryByKey.get(masteryKey(card.conceptId, card.dimension));
+    const isIndependent = record && masteryRank(record.state) >= masteryRank('independent');
+    const reviewRoles = isIndependent
+      ? ['transfer', 'review', 'core', 'practice', 'basics']
+      : ['review', 'core', 'practice', 'transfer', 'basics'];
     const exercises: IndexedExercise[] = [];
     while (exercises.length < perDimension) {
       const exercise = chooseExercise(
@@ -2074,7 +2081,7 @@ function buildReviewCandidateForConcept(
         content,
         concept,
         card.dimension,
-        [REVIEW_EXERCISE_ROLES],
+        reviewRoles,
         recentIds,
       );
       if (!exercise) break;
@@ -2200,6 +2207,9 @@ export function buildReviewActivityForConcept(
     content,
   );
   const newConceptIds = new Set(courseContexts.flatMap((course) => [...course.newConceptIds]));
+  const masteryByKey = new Map(
+    state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
   const recentIds = recentlySeenExerciseIds(state, now);
   const dueCards = collectDueReviewCards(
     dueCardState,
@@ -2216,6 +2226,7 @@ export function buildReviewActivityForConcept(
     conceptId,
     dueCards,
     courseContexts,
+    masteryByKey,
     recentIds,
     [],
   )?.activity;
@@ -2340,7 +2351,7 @@ function chooseExercise(
   content: ContentIndex,
   concept: IndexedConcept,
   dimension: string | undefined,
-  roleGroups: string[][],
+  preferredRoles: string[],
   recent: Set<string>,
 ): IndexedExercise | undefined {
   const used = new Set(state.usedExerciseIds ?? []);
@@ -2352,16 +2363,19 @@ function chooseExercise(
       !exercise.lesson_only,
   );
   const lastSeen = (id: string) => state.exerciseLastSeen.get(id) ?? Number.MIN_SAFE_INTEGER;
-  pool.sort(
-    (left, right) =>
-      lastSeen(left.id) - lastSeen(right.id) ||
-      (left.id < right.id ? -1 : left.id > right.id ? 1 : 0),
-  );
-  for (const candidates of [pool.filter(({ id }) => !recent.has(id)), pool]) {
-    for (const roles of roleGroups) {
-      const match = candidates.find(({ role }) => roles.includes(role));
-      if (match) return match;
-    }
+  const leastRecentlySeen = (exercises: IndexedExercise[]) =>
+    exercises.sort(
+      (left, right) =>
+        lastSeen(left.id) - lastSeen(right.id) ||
+        (left.id === right.id ? 0 : left.id < right.id ? -1 : 1),
+    )[0];
+  for (const role of preferredRoles) {
+    const fresh = pool.filter((exercise) => exercise.role === role && !recent.has(exercise.id));
+    if (fresh.length > 0) return leastRecentlySeen(fresh);
+  }
+  for (const role of preferredRoles) {
+    const matching = pool.filter((exercise) => exercise.role === role);
+    if (matching.length > 0) return leastRecentlySeen(matching);
   }
   return undefined;
 }
