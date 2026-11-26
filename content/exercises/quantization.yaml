@@ -1019,7 +1019,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: A matrix with 2,048 INT8 weights is quantised in groups of 128 weights, with 16-bit scales. An engineer cuts the group size to 32. How many extra bytes do the scales take? Count scale storage only.
+    prompt: A matrix with 2,048 INT8 weights is quantised in groups of 128 weights, with 16-bit scales. An engineer cuts the group size to 32 weights per group. How many extra bytes do the scales take? Count scale storage only.
     answer: 96
     tolerance: { abs: 0 }
     solution: There are 64 scales with groups of 32 and 16 with groups of 128. The 48 extra scales take 2 bytes each, for 96 extra bytes.
@@ -1041,7 +1041,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 1
-    prompt: A decoder with 12 billion weights stored in INT4 serves one request at a time. It aims to generate 400 tokens per second. Counting only the weights read, what is the minimum memory bandwidth it would need in TB/s? Ignore scale storage and use 1 TB = one trillion bytes.
+    prompt: A decoder with 12 billion weights stored in INT4 serves one request at a time. It aims to generate 400 output tokens per second for that request. Counting only the weight reads, what is the minimum memory bandwidth it would need in TB/s? Ignore reads of the scales and use 1 TB = one trillion bytes.
     answer: 2.4
     tolerance: { abs: 0 }
     solution: The weights take 6 GB at half a byte each. Reading them 400 times a second requires 2,400 GB/s, or 2.4 TB/s.
@@ -1053,7 +1053,7 @@ exercises:
     difficulty: 1
     est_minutes: 1
     prompt: |
-      This Python function chooses the scale for symmetric INT8 quantisation. The weights are a list of real numbers with at least one nonzero entry.
+      This Python function chooses the scale for symmetric INT8 quantisation. The list `weights` contains real-valued weights, at least one of which is nonzero. The largest positive integer in the quantised range is 127.
 
       ```python
       def scale(weights):
@@ -1081,7 +1081,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A quantiser visits the rows of a matrix from top to bottom, appending one scale per row to `scales` and storing the quantised integers in `q`. A program now reads only column `j`, with `i` as its row index. Which line reconstructs the entry at each iteration?
+    prompt: A quantiser visits the rows of a weight matrix from top to bottom, appending one scale per row to `scales` and storing the quantised integers in a matrix called `q` with the same layout. A program now reads only column `j`, with `i` as its row index. Which line reconstructs the entry at each iteration?
     options:
       - id: a
         text: "`x[i][j] = q[i][j] * scales[j]`"
@@ -1124,7 +1124,7 @@ exercises:
     difficulty: 3
     est_minutes: 1
     prompt: |
-      A team has two sets of prompts for one task. They share no prompts, and neither set was used to train the model. The team used `set_a` to choose the activation scales. The helper `evaluate(model, prompts)` gives the model's score on those prompts, using the same sampling settings for both models.
+      A team compares its original model, `original`, with its quantised version, `quantised`. It has two sets of prompts for one task, `set_a` and `set_b`. They share no prompts, and neither set was used to train the model. The team used `set_a` to choose the activation scales. The helper `evaluate(model, prompts)` gives the model's score on those prompts, using the same sampling settings for both models.
 
       ```python
       original_score = evaluate(original, set_b)

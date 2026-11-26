@@ -1043,7 +1043,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 1
-    prompt: A live translation service uses PagedAttention. It stores the newest tokens of a translation in memory block 2 and the earlier tokens from that translation in memory block 5. What should its block table contain for this translation?
+    prompt: A live translation service uses PagedAttention. One translation's KV cache occupies two blocks. Memory block 2 holds the later tokens, and memory block 5 holds the earlier tokens. What should the block table contain for this translation?
     options:
       - id: a
         text: "`[2, 5]`"

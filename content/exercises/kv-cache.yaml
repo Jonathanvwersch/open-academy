@@ -827,7 +827,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A KV cache already holds 20 processed tokens. A decode call takes one token as input and predicts another. The model has three layers, two key-value heads per layer and head size 8. Each cached number takes 2 bytes. How many bytes of keys and values does this call add? Count only the numbers stored in the new keys and values.
+    prompt: A KV cache already holds entries for 20 processed tokens. A decode call takes one token as input and predicts another. The model has three layers and two key-value heads per layer. Each key or value vector contains 8 numbers, and each cached number takes 2 bytes. How many bytes of keys and values does this call add? Count only the numbers stored in the new keys and values.
     answer: 192
     tolerance: { abs: 0 }
     solution: The call adds entries for its one input token. With one key and one value at each head in each layer, it adds $2\times3\times2\times8\times2=192$ bytes.
@@ -838,7 +838,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: A language model streams token A to a user as soon as prefill finishes. It then makes one decode call and streams token B. Which token should the cache entry added by that decode call describe?
+    prompt: A language model streams token A to a user as soon as prefill finishes. It then makes one decode call and streams token B. Which token should the entry added to the model's KV cache by that decode call describe?
     options:
       - id: a
         text: The final prompt token.
@@ -859,7 +859,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A server uses the same model weights and token positions for a cached prompt and a new prompt. Its loop compares the token IDs at each position to find the portion of the cache it can reuse. What should it do at the first mismatch?
+    prompt: A server uses the same model weights for a cached prompt and a new prompt. To find the portion of the KV cache it can reuse, its loop compares the two prompts' token IDs at each position, starting at the beginning. What should it do at the first mismatch?
     options:
       - id: a
         text: Stop scanning and keep the entries already matched.

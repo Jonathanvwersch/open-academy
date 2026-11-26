@@ -843,7 +843,7 @@ exercises:
     difficulty: 1
     est_minutes: 1
     prompt: |
-      A sampling loop visits tokens A, B and C in that order, with probabilities 0.25, 0.5 and 0.25. A draw exactly at the boundary between two tokens belongs to the second token. For example, a draw of 0.25 belongs to B.
+      A sampling loop visits tokens A, B and C in that order, with probabilities 0.25, 0.5 and 0.25. The list `distribution` holds those token-probability pairs. Let `u` be the random draw. A draw exactly at the boundary between two tokens belongs to the second token. For example, a draw of 0.25 belongs to B.
 
       ```python
       total = 0
