@@ -1124,7 +1124,7 @@ exercises:
     difficulty: 3
     est_minutes: 1
     prompt: |
-      A team has two sets of prompts for one task. Neither set was used to train the model. The team used `set_a` to choose the activation scales. The helper `evaluate(model, prompts)` gives the model's score on those prompts, using the same sampling settings for both models.
+      A team has two sets of prompts for one task. They share no prompts, and neither set was used to train the model. The team used `set_a` to choose the activation scales. The helper `evaluate(model, prompts)` gives the model's score on those prompts, using the same sampling settings for both models.
 
       ```python
       original_score = evaluate(original, set_b)
