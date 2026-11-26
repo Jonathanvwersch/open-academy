@@ -1080,7 +1080,7 @@ export function describeLearnerStoreContract(
       );
       await store.insertAttempt(
         learnerId,
-        attempt(4, {
+        attempt(5, {
           exerciseId: 'old-recall',
           createdAt: new Date(boundary.getTime() - 1),
         }),
