@@ -678,6 +678,8 @@ export function drizzleLearnerStore(
           conceptId: quizItems.conceptId,
           questionKey: sql<string>`${quizItems.question}->>'key'`,
           reserveKey: sql<string | null>`${quizItems.reserve}->>'key'`,
+          previousKeys: sql<string[]>`coalesce(${quizItems.question}->'previousKeys', '[]'::jsonb)`,
+          withdrawn: sql<boolean>`coalesce(${quizItems.question}->'withdrawn' = 'true'::jsonb, false)`,
           correct: quizItems.correct,
         })
         .from(quizItems)
@@ -1011,6 +1013,9 @@ export function drizzleLearnerStore(
             expected?.exerciseIds === undefined
               ? undefined
               : eq(sessionActivities.exerciseIds, [...expected.exerciseIds]),
+            expected?.reason === undefined
+              ? undefined
+              : sql`${sessionActivities.reason} = ${JSON.stringify(expected.reason)}::jsonb`,
           ),
         )
         .returning();

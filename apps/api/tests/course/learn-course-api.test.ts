@@ -2695,6 +2695,7 @@ test('done-today XP rows include XP from a finalized timed quiz', async () => {
       headers,
       body: JSON.stringify({
         position: item.position,
+        questionId: item.question.exercise.id,
         answer: answerFor(quizContent, item.question.exercise.id, item.question.seed),
       }),
     });

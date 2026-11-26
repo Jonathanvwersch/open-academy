@@ -2990,6 +2990,7 @@ async function processTimedQuiz(
           quizId,
           body: {
             position: item.position,
+            questionId: exercise.id,
             answer,
           },
         },
@@ -3012,6 +3013,7 @@ async function processTimedQuiz(
             quizId,
             body: {
               position: item.position,
+              questionId: item.question.exercise.id,
               answer: answerFor(content, item.question.exercise.id, item.question.seed),
             },
           },

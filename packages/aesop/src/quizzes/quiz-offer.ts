@@ -12,6 +12,32 @@ import {
   selectQuizQuestions,
 } from './mixed-quiz.js';
 
+export async function quizQuestionHistory(store: FlowStore, learnerId: string) {
+  const runs = await store.listTimedQuizRuns(learnerId, {});
+  const { items, missedRunIds } = await store.listTimedQuizItemKeys(
+    learnerId,
+    runs.map(({ id }) => id),
+  );
+  const missedOriginals = new Set(
+    runs
+      .filter(({ id, retakeOf }) => retakeOf === null && missedRunIds.has(id))
+      .map(({ id }) => id),
+  );
+  const seenKeys = new Set<string>();
+  const usedKeys = new Set<string>();
+  const exposure = new Map<string, number>();
+  for (const { runId, conceptId, questionKey, reserveKey, previousKeys, withdrawn } of items) {
+    for (const key of [questionKey, ...previousKeys]) {
+      seenKeys.add(key);
+      usedKeys.add(key);
+    }
+    if (withdrawn) continue;
+    exposure.set(conceptId, (exposure.get(conceptId) ?? 0) + 1);
+    if (reserveKey !== null && missedOriginals.has(runId)) usedKeys.add(reserveKey);
+  }
+  return { seenKeys, usedKeys, exposure };
+}
+
 export function quizAccommodation(prefs: unknown): number {
   const value = (prefs as { quizTimeMultiplier?: unknown } | null)?.quizTimeMultiplier;
   return typeof value === 'number' && Number.isFinite(value) && value >= 1 ? value : 1;
@@ -66,18 +92,7 @@ export async function quizOffer(
   const [lessons, confirmedPlacementTopics, history, learnerSettings] = await Promise.all([
     store.listLessonRuns(learnerId),
     confirmedPlacementTopicIds(store, learnerId),
-    store.listTimedQuizRuns(learnerId, {}).then(async (runs) => {
-      const { items, missedRunIds } = await store.listTimedQuizItemKeys(
-        learnerId,
-        runs.map(({ id }) => id),
-      );
-      const missedOriginals = new Set(
-        runs
-          .filter(({ id, retakeOf }) => retakeOf === null && missedRunIds.has(id))
-          .map(({ id }) => id),
-      );
-      return { items, missedOriginals };
-    }),
+    quizQuestionHistory(store, learnerId),
     settings === undefined ? store.getSettings(learnerId) : settings,
   ]);
   const completedTopics = new Set(
@@ -88,14 +103,6 @@ export async function quizOffer(
       )
       .map(({ conceptId }) => conceptId),
   );
-  const usedKeys = new Set(history.items.map(({ questionKey }) => questionKey));
-  const exposure = new Map<string, number>();
-  for (const item of history.items) {
-    exposure.set(item.conceptId, (exposure.get(item.conceptId) ?? 0) + 1);
-    if (item.reserveKey !== null && history.missedOriginals.has(item.runId)) {
-      usedKeys.add(item.reserveKey);
-    }
-  }
   const difficulty = nextQuizDifficulty(
     previous?.score == null
       ? undefined
@@ -110,8 +117,8 @@ export async function quizOffer(
     courseId,
     seed,
     difficulty,
-    exposure,
-    usedKeys,
+    exposure: history.exposure,
+    usedKeys: history.usedKeys,
   });
   if (!questions) return { xpBalance };
   const accommodation = quizAccommodation(learnerSettings?.prefs);

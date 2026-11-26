@@ -54,6 +54,7 @@ export type ActivityQuery = {
 export type ActivityExpected = {
   statuses?: readonly Activity['status'][];
   exerciseIds?: readonly Id[];
+  reason?: unknown;
 };
 export type SchedulerRead = {
   now: Date;
