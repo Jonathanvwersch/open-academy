@@ -1,12 +1,12 @@
-import { getLessonPrerequisites } from '@academy/aesop/course/index';
-import { serializeExercise } from '@academy/aesop/course/serialize';
-import { formatTemplateNumber } from '@academy/aesop/course/templates';
-import type { ContentIndex, IndexedExercise, IndexedLesson } from '@academy/aesop/course/types';
-import { lessonCourseContext } from '@academy/aesop/graph/lesson-course-context';
-import { answerDisplay, answerText } from '@academy/aesop/lessons/answer-display';
-import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
-import { gradeExercise } from '@academy/aesop/lessons/grading/index';
-import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '@academy/aesop/lessons/grading/multiple-choice';
+import { emptyAnswerMessage } from '@academy/shared/answer-validation';
+import { getLessonPrerequisites } from '../course/index.js';
+import { serializeExercise } from '../course/serialize.js';
+import { formatTemplateNumber } from '../course/templates.js';
+import type { ContentIndex, IndexedExercise, IndexedLesson } from '../course/types.js';
+import { lessonCourseContext } from '../graph/lesson-course-context.js';
+import { answerDisplay, answerText } from '../lessons/answer-display.js';
+import { answerOptionsFor } from '../lessons/answer-options.js';
+import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../lessons/grading/multiple-choice.js';
 import {
   answerLessonProblem,
   answerLessonQuiz,
@@ -16,40 +16,12 @@ import {
   startLessonQuiz,
   startLessonRun,
   submitLessonQuiz,
-} from '@academy/aesop/lessons/run-commands';
-import type { LessonRuntime } from '@academy/aesop/lessons/run-recovery';
-import { readLessonState } from '@academy/aesop/lessons/run-state';
-import { applyMastery } from '@academy/aesop/memory/mastery-service';
-import type { LessonRun } from '@academy/aesop/store/lesson-store';
-import type { MemoryLearnerStore } from '@academy/aesop/store/memory-store';
-import { emptyAnswerMessage } from '@academy/shared/answer-validation';
-import type { DirectLearnerRepository } from './learner-simulation-direct-repo.js';
-
-/** One engine call as the HTTP app would answer it: a status and a JSON body. */
-export type DirectResponse = { status: number; body: unknown };
-
-export interface DirectRequest {
-  store: MemoryLearnerStore;
-  userId: string;
-  timeZone: string;
-  now: () => Date;
-  content: ContentIndex;
-  random: () => number;
-  newId: () => string;
-  /** The repository the HTTP app builds for each request. */
-  repo: DirectLearnerRepository;
-  /** A repository on a transaction, without the request's learner row, as HTTP handlers use. */
-  freshRepo: (store: MemoryLearnerStore, withSessionContent: boolean) => DirectLearnerRepository;
-}
-
-export const respond = (body: unknown, status = 200): DirectResponse => ({ status, body });
-
-const gradeLessonAnswer: LessonGrader = (exercise, answer, { random, requireAnswer }) => {
-  const feedback = requireAnswer ? emptyAnswerMessage(exercise.type, answer) : null;
-  return feedback
-    ? Promise.resolve({ status: 'invalid', feedback, graded_by: 'deterministic' })
-    : gradeExercise(exercise, answer, { random });
-};
+} from '../lessons/run-commands.js';
+import type { LessonRuntime } from '../lessons/run-recovery.js';
+import { readLessonState } from '../lessons/run-state.js';
+import { applyMastery } from '../memory/mastery-service.js';
+import type { LessonRun } from '../store/lesson-store.js';
+import { type EngineRequest, type EngineResult, respond } from './types.js';
 
 function correctAnswerDisplay(exercise: IndexedExercise): string {
   if (exercise.type === 'mc') {
@@ -73,16 +45,16 @@ function correctAnswerDisplay(exercise: IndexedExercise): string {
   return '';
 }
 
-function runtime(request: DirectRequest): LessonRuntime {
+function runtime(request: EngineRequest): LessonRuntime {
   return {
     now: request.now,
     random: request.random,
     newId: request.newId,
-    enableFsrsFuzz: process.env.NODE_ENV !== 'test',
+    enableFsrsFuzz: request.fsrsFuzz,
   };
 }
 
-async function lessonCourse(request: DirectRequest, conceptId: string, activityId?: string) {
+async function lessonCourse(request: EngineRequest, conceptId: string, activityId?: string) {
   const { content, store, userId } = request;
   const containing = content.courses.filter((course) =>
     course.units.some((unit) => unit.concepts.includes(conceptId)),
@@ -121,7 +93,7 @@ async function lessonCourse(request: DirectRequest, conceptId: string, activityI
 }
 
 async function runState(
-  request: DirectRequest,
+  request: EngineRequest,
   lesson: IndexedLesson,
   index: ContentIndex,
   run: LessonRun,
@@ -237,7 +209,7 @@ async function runState(
 }
 
 async function verifyActivity(
-  request: DirectRequest,
+  request: EngineRequest,
   activityId: string | undefined,
   conceptId: string,
 ) {
@@ -253,7 +225,7 @@ type LessonBody = Record<string, unknown> & { activityId?: string };
 
 /** The lesson routes in `features/lessons/run-routes.ts`, called on the memory store. */
 export async function lessonOperation(
-  request: DirectRequest,
+  request: EngineRequest,
   kind:
     | 'startLessonRun'
     | 'practiceLessonPoint'
@@ -263,7 +235,7 @@ export async function lessonOperation(
     | 'submitLessonQuiz',
   conceptId: string,
   body: LessonBody,
-): Promise<DirectResponse> {
+): Promise<EngineResult> {
   const { store, userId, timeZone } = request;
   const index = request.content;
   const lesson = index.lessonsByConcept.get(conceptId);
@@ -280,6 +252,12 @@ export async function lessonOperation(
   };
   const course = () => lessonCourse(request, conceptId, body.activityId);
   const sessionId = activity.activity ? activity.session?.id : undefined;
+  const grade: LessonGrader = (exercise, answer, { random, requireAnswer }) => {
+    const feedback = requireAnswer ? emptyAnswerMessage(exercise.type, answer) : null;
+    return feedback
+      ? Promise.resolve({ status: 'invalid', feedback, graded_by: 'deterministic' })
+      : request.grade(exercise, answer, { random });
+  };
   switch (kind) {
     case 'startLessonRun': {
       const run = await startLessonRun(store, runtime(request), {
@@ -328,7 +306,7 @@ export async function lessonOperation(
           }),
           sessionId,
         },
-        { applyMastery, grade: gradeLessonAnswer, hasTutorReply: async () => false },
+        { applyMastery, grade, hasTutorReply: async () => false },
       );
       if (result.kind === 'not_found') return respond({ error: 'Lesson problem not found' }, 404);
       if (result.kind === 'invalid') return respond({ error: 'Invalid answer' }, 422);
@@ -373,7 +351,7 @@ export async function lessonOperation(
             durationMs?: number;
           }),
         },
-        gradeLessonAnswer,
+        grade,
       );
       if (result.kind === 'not_found') return respond({ error: 'Quiz item not found' }, 404);
       if (result.kind === 'invalid') return respond({ error: 'Invalid answer' }, 422);
@@ -388,7 +366,7 @@ export async function lessonOperation(
         store,
         runtime(request),
         { ...command, activityId: body.activityId, sessionId },
-        { grade: gradeLessonAnswer, applyMastery },
+        { grade, applyMastery },
       );
       if (result.kind === 'not_found') return respond({ error: 'Lesson quiz not found' }, 404);
       if (result.kind === 'unanswered') {

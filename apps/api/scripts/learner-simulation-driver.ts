@@ -1,42 +1,11 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
+import type { EngineOperation } from '@academy/aesop/engine/create-engine';
 import type { ImplicitRepetitionTraceEvent } from '@academy/aesop/memory/mastery-service';
 import type { SimulatorAudit, SimulatorFixtures } from './learner-simulation-audit.js';
 
 /** One logical learner action. Each driver runs it; `httpRequestFor` gives its HTTP form. */
 export type SimulatorOperation =
-  | { kind: 'today' }
-  | { kind: 'learn' }
-  | { kind: 'courseCatalog' }
-  | { kind: 'course'; courseId: string }
-  | { kind: 'setActiveCourse'; body: Record<string, unknown> }
-  | { kind: 'startCourse'; courseId: string; body: Record<string, unknown> }
-  | { kind: 'createSession'; body: Record<string, unknown> }
-  | { kind: 'session'; sessionId: string }
-  | { kind: 'replanSession'; sessionId: string }
-  | { kind: 'endSession'; sessionId: string }
-  | {
-      kind: 'activityProgress';
-      sessionId: string;
-      activityId: string;
-      body: Record<string, unknown>;
-    }
-  | { kind: 'startLessonRun'; conceptId: string; body: { activityId: string } }
-  | { kind: 'practiceLessonPoint'; conceptId: string; body: Record<string, unknown> }
-  | { kind: 'answerLessonProblem'; conceptId: string; body: Record<string, unknown> }
-  | { kind: 'startLessonQuiz'; conceptId: string; body: { activityId: string } }
-  | { kind: 'answerLessonQuiz'; conceptId: string; body: Record<string, unknown> }
-  | { kind: 'submitLessonQuiz'; conceptId: string; body: { activityId: string } }
-  | { kind: 'exerciseAttempt'; body: Record<string, unknown> }
-  | { kind: 'startPlacement'; body: Record<string, unknown> }
-  | { kind: 'placementNext'; placementId: string }
-  | { kind: 'placementAnswer'; placementId: string; body: Record<string, unknown> }
-  | { kind: 'placementResults'; placementId: string }
-  | { kind: 'startTimedQuiz'; body: { sessionId: string; activityId: string } }
-  | { kind: 'timedQuiz'; quizId: string }
-  | { kind: 'answerTimedQuiz'; quizId: string; body: Record<string, unknown> }
-  | { kind: 'finalizeTimedQuiz'; quizId: string }
-  | { kind: 'retakeTimedQuiz'; quizId: string }
-  | { kind: 'timedQuizFollowUps'; quizId: string }
+  | EngineOperation
   | { kind: 'paperProgress'; paperId: string; body: Record<string, unknown> };
 
 export type SimulatorOperationKind = SimulatorOperation['kind'];
