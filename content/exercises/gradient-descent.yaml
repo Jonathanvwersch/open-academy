@@ -879,7 +879,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: Two gradient descent runs train the same model on the same data. In the slower run, where the loss is still high, the learning rate is $0.001$ and the slopes of the loss with respect to the weights and bias have absolute values of about $20$. In the other run, the learning rate is $0.01$ and the slopes have absolute values of about $10$. Which explanation fits how far the weights and bias move in the two runs?
+    prompt: Two gradient descent runs train the same model on the same data. In the slower run, where the loss is still high, the learning rate is $0.001$ and the slopes of the loss with respect to the weights and bias have absolute values of about $20$. In the other run, the learning rate is $0.01$ and the slopes have absolute values of about $10$. Which explanation fits how far the weights and bias move on the next update step?
     options:
       - id: a
         text: The smaller learning rate outweighs the steeper slopes, so the slower run moves its weights and bias less.
@@ -1251,11 +1251,11 @@ exercises:
         correct: true
         feedback: The learning rate multiplies each slope of the loss with respect to a weight or the bias. A small factor in that product can make the parameter move very little.
       - id: b
-        text: A small learning rate gives the same small change on every update, whatever the slopes.
+        text: The small drops in loss determine how far the weights and bias move on the next update.
         correct: false
-        feedback: Even at a fixed learning rate, the amount each weight and bias moves changes with the corresponding slope.
+        feedback: A drop in loss measures progress from an update. The next update uses the current slopes of the loss with respect to the weights and bias.
       - id: c
-        text: Training has finished because a tiny drop in loss always means the model has converged.
+        text: Training has finished because the latest drop in loss measures how much room there is to improve.
         correct: false
         feedback: A tiny drop can be a stopping signal after the loss has already fallen substantially. Here the loss has stayed high, so check why the weights and bias are barely moving.
     solution: Gradient descent multiplies each slope of the loss with respect to a weight or the bias by the learning rate. A small learning rate or shallow slopes can make the weights and bias move very little even while the loss is high.
