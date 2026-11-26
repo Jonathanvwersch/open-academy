@@ -182,17 +182,17 @@ knowledge_points:
 
       ### A penalty for uneven routing
 
-      A **load-balancing loss** encourages work to spread across experts. A batch is the group of tokens processed together in one training step. Let $f_i$ be the fraction assigned to expert $i$, and $P_i$ its router probability averaged over all batch tokens, whichever expert they chose. With $n$ experts, one penalty is
+      A **load-balancing loss** encourages work to spread across experts. A batch is the group of tokens processed together in one training step. Let $f_i$ be the fraction of batch tokens assigned to expert $i$, and $P_i$ its mean router probability across all batch tokens. With $n$ experts, one penalty is
 
       $$L_{\text{aux}}=n\sum_{i=1}^{n}f_iP_i.$$
 
-      “Aux” means auxiliary, or extra. A **gradient** tells how much the loss changes when a weight is nudged. Gradient descent uses it to adjust weights. The fraction $f_i$ comes from counting chosen tokens. Tiny weight changes leave that count unchanged until a token switches experts, giving zero gradient.
+      “Aux” means auxiliary, or extra. A **gradient** tells how much the loss changes when a weight is nudged. Gradient descent uses it to adjust weights. The count behind $f_i$ changes only when a token switches experts, so its gradient is zero between switches.
 
       But $P_i$ moves with the weights. In $f_iP_i$, lowering $P_i$ reduces the penalty more when $f_i$ is large. The penalty's slope passes back through the batch average and the softmax to the router's scores and weights $W_R$. Its gradient pushes the most-used experts' scores down, so later tokens can choose others. This spreads work.
 
       We use probabilities before selection. An unchosen expert's weight stays at 0 if a small score change leaves the chosen set unchanged, so that weight gives zero gradient.
 
-      Under perfect balance, each $f_i=1/n$ and each $P_i=1/n$. We call this uniform. Substitute those fractions to check the penalty's size:
+      With top-1 routing, perfect balance gives each expert $f_i=1/n$. If the mean probabilities are also uniform, then each $P_i=1/n$. Substitute these fractions to find the penalty:
       $$
       \begin{aligned}
       f_iP_i&=\frac1n\frac1n=\frac1{n^2} &&\text{multiply the uniform fractions}\\
