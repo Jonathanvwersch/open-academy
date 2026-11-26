@@ -879,28 +879,28 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: After 10,000 steps a loss curve is still decreasing smoothly but very slowly, almost in a straight line, and it is far above the loss other runs reach. What is going on, and what should you try?
+    prompt: A model trains with gradient descent. After 10,000 update steps, its loss is still falling slowly and is much higher than the loss other runs on the same data reach. Which check would best help you tell whether the learning rate is too small?
     options:
       - id: a
-        text: The learning rate is too small; raise it while checking that the loss still falls smoothly
+        text: Compare the loss slopes for the weights and bias with the sizes of their updates.
         correct: true
-        feedback: Smooth, steady, slow progress means each step is safe but short.
+        feedback: The update size depends on both the slope and the learning rate. Tiny updates where the slopes are steep point to a small learning rate.
       - id: b
-        text: The learning rate is too large; lower it so each step stops overshooting
+        text: Compare the weights and bias in this run with their values in the other runs.
         correct: false
         category: incorrect_reasoning
-        feedback: Overshooting makes the loss zigzag or grow, not fall smoothly.
+        feedback: The values of the weights and bias tell you where each run is on the loss curve. You still need the slopes there and the sizes of the updates.
       - id: c
-        text: The gradient has the wrong sign; flip the update so each step goes downhill
+        text: Compare the drop in loss in this run with the drop in the other runs.
         correct: false
         category: incorrect_reasoning
-        feedback: With the wrong sign the loss would rise, but here it is falling.
+        feedback: The drop in loss tells you how much progress each run made. A small drop can come from a small learning rate or shallow slopes.
       - id: d
-        text: The loss has reached its minimum; stop training and keep these parameters
+        text: Compare the learning rate in this run with the rates used in the other runs.
         correct: false
         category: incorrect_reasoning
-        feedback: The loss is still falling and is far above what other runs reach, so it hasn't reached its minimum.
-    solution: A loss that falls smoothly but slowly means the steps are stable but too short. Raise the learning rate, stopping before the loss starts to zigzag or grow.
+        feedback: The runs can reach places where the loss has different slopes. The learning rates alone cannot tell you why this run is slow.
+    solution: Gradient descent multiplies each slope by the learning rate to get the update size. If the updates are tiny even where the slopes are steep, the learning rate is small. Shallow slopes can make the updates small even with a larger learning rate.
   - id: gd-explain-lr
     dimension: conceptual
     type: explain
