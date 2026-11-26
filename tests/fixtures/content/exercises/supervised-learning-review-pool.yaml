@@ -1,0 +1,38 @@
+concept: supervised-learning
+exercises:
+  - id: supervised-learning-fixture-pool-math-1
+    dimension: math
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A model predicts 5 and the observed target is 2. What is the squared error?"
+    accept: ["9"]
+    solution: "The answer is 9."
+  - id: supervised-learning-fixture-pool-math-2
+    dimension: math
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A model predicts 2 and the observed target is 7. What is the squared error?"
+    accept: ["25"]
+    solution: "The answer is 25."
+  - id: supervised-learning-fixture-pool-math-3
+    dimension: math
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A model predicts 6 and the observed target is 6. What is the squared error?"
+    accept: ["0"]
+    solution: "The answer is 0."
+  - id: supervised-learning-fixture-pool-math-4
+    dimension: math
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A model predicts 3 and the observed target is 5. What is the squared error?"
+    accept: ["4"]
+    solution: "The answer is 4."

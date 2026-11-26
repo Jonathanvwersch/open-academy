@@ -1,0 +1,56 @@
+concept: vectors
+exercises:
+  - id: vectors-fixture-pool-conceptual-1
+    dimension: conceptual
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What quantity gives the length of a vector?"
+    accept: ["magnitude"]
+    solution: "The answer is magnitude."
+  - id: vectors-fixture-pool-transfer-1
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A drone flies 3 m east and 4 m north. What is its straight-line displacement in metres?"
+    accept: ["5"]
+    solution: "The answer is 5."
+  - id: vectors-fixture-pool-transfer-2
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A boat travels 5 km east and 12 km north. How far is it from its starting point in kilometres?"
+    accept: ["13"]
+    solution: "The answer is 13."
+  - id: vectors-fixture-pool-transfer-3
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Two pushes of 7 N and 2 N act in opposite directions. What is the net force in newtons?"
+    accept: ["5"]
+    solution: "The answer is 5."
+  - id: vectors-fixture-pool-transfer-4
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A robot moves 8 m east, then 8 m west. What is its net horizontal displacement in metres?"
+    accept: ["0"]
+    solution: "The answer is 0."
+  - id: vectors-fixture-pool-transfer-5
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A wind vector points due north. What is its eastward component?"
+    accept: ["0"]
+    solution: "The answer is 0."

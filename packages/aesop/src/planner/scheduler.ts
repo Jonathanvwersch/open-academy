@@ -2,6 +2,7 @@ import type { Card } from 'ts-fsrs';
 import { Rating, State } from 'ts-fsrs';
 import { orderCourseIdsBySubject } from '../course/course-order.js';
 import { subjectForCourse } from '../course/index.js';
+import { isReviewPoolExercise } from '../course/review-pool.js';
 import { isTemplate } from '../course/templates.js';
 import type {
   ContentIndex,
@@ -1879,7 +1880,19 @@ function generateCandidates(
       });
       const exercise = hasKnowledgePointLesson
         ? content.exercisesById.get(content.lessonsByConcept.get(concept.id)?.final ?? '')
-        : chooseExercise(state, content, concept, dimension, ['core', 'check'], now, recentIds);
+        : chooseExercise(
+            state,
+            content,
+            concept,
+            dimension,
+            ['core', 'check'],
+            (exercise) =>
+              (exercise.role === 'core' || exercise.role === 'check') &&
+              !exercise.lesson_only &&
+              !isTemplate(exercise),
+            now,
+            recentIds,
+          );
       if (exercise) {
         candidates.push(
           makeCandidate(
@@ -2089,6 +2102,7 @@ function buildReviewCandidateForConcept(
         concept,
         card.dimension,
         reviewRoles,
+        isReviewPoolExercise,
         now,
         recentIds,
       );
@@ -2365,6 +2379,7 @@ function chooseExercise(
   concept: IndexedConcept,
   dimension: string | undefined,
   preferredRoles: string[],
+  isEligible: (exercise: IndexedExercise) => boolean,
   now: Date,
   recentIds?: Set<string>,
 ): IndexedExercise | undefined {
@@ -2380,8 +2395,7 @@ function chooseExercise(
     (exercise) =>
       (!dimension || exercise.dimension === dimension) &&
       !used.has(exercise.id) &&
-      !isTemplate(exercise) &&
-      !exercise.lesson_only,
+      isEligible(exercise),
   );
   const leastRecentlySeen = (exercises: IndexedExercise[]) =>
     exercises.sort((left, right) => lastSeen(left.id, state) - lastSeen(right.id, state))[0];
@@ -2389,11 +2403,15 @@ function chooseExercise(
     const fresh = pool.filter((exercise) => exercise.role === role && !recent.has(exercise.id));
     if (fresh.length > 0) return leastRecentlySeen(fresh);
   }
+  const otherFresh = pool.filter(
+    (exercise) => !recent.has(exercise.id) && !preferredRoles.includes(exercise.role),
+  );
+  if (otherFresh.length > 0) return leastRecentlySeen(otherFresh);
   for (const role of preferredRoles) {
     const matching = pool.filter((exercise) => exercise.role === role);
     if (matching.length > 0) return leastRecentlySeen(matching);
   }
-  return undefined;
+  return leastRecentlySeen(pool);
 }
 
 function optionalProjectAndPaperActivities(

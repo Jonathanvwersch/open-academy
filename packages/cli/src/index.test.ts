@@ -170,10 +170,10 @@ describe('academy CLI', () => {
         };
       }
       const edge = uses['gradient-descent'].derivatives;
-      expect(edge.exercises).toBe(16);
+      expect(edge.exercises).toBe(26);
       edge.uses['additional-review'] = ['derivatives-fixture-1', 'derivatives-fixture-2'];
       edge.uses['dx-gradient-descent'] = ['derivatives-fixture-1', 'derivatives-fixture-2'];
-      edge.weight = 0.13;
+      edge.weight = 0.08;
 
       for (const domain of ['math', 'ml']) {
         const file = join(pack, 'concepts', `${domain}.yaml`);
@@ -227,14 +227,14 @@ describe('academy CLI', () => {
       }, 'duplicate step "derivatives-fixture-1"');
       expectInvalid((_, entry) => {
         entry.steps = 1;
-      }, 'expected 16 exercises and 2 steps');
+      }, 'expected 26 exercises and 2 steps');
       expectInvalid((_, entry) => {
         entry.weight = 0.12;
-      }, 'expected weight 0.13 from uses');
+      }, 'expected weight 0.08 from uses');
       expectInvalid((_, entry) => {
         entry.uses['additional-review'] = [];
-        entry.weight = 0.06;
-      }, 'expected encompassing weight 0.06 in concept file');
+        entry.weight = 0.04;
+      }, 'expected encompassing weight 0.04 in concept file');
     } finally {
       rmSync(parent, { recursive: true, force: true });
     }
@@ -1378,6 +1378,50 @@ describe('academy CLI', () => {
           .split('\n')
           .every((issue) => issue.includes('TODO field at ')),
       ).toBe(true);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('generates a loadable review pool for every dimension of a new lesson', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      const initialized = run(['init', pack, '--title', 'Applied Science']);
+      expect(initialized.status, initialized.stderr).toBe(0);
+      const topicId = 'applied-science-first-topic';
+      const conceptFile = join(pack, 'concepts', 'main.yaml');
+      const source = parse(readFileSync(conceptFile, 'utf8')) as {
+        concepts: Array<{ dimensions: string[] }>;
+      };
+      const [concept] = source.concepts;
+      if (!concept) throw new Error('Expected a starter concept');
+      concept.dimensions = ['math', 'implementation'];
+      writeFileSync(conceptFile, stringify(source));
+
+      const created = run(['new', 'lesson', topicId, '--pack', pack]);
+      expect(created.status, created.stderr).toBe(0);
+      const checked = runWithInitCwd(['check', pack], parent);
+      expect(checked.status).toBe(1);
+      expect(checked.stderr).toContain('TODO field at .objective');
+      expect(
+        checked.stderr
+          .trim()
+          .split('\n')
+          .every((issue) => issue.includes('TODO field at ')),
+      ).toBe(true);
+
+      const { exercises } = parse(
+        readFileSync(join(pack, 'exercises', `${topicId}.yaml`), 'utf8'),
+      ) as { exercises: Array<{ dimension: string; role: string }> };
+      for (const dimension of concept.dimensions) {
+        expect(
+          exercises.filter(
+            ({ dimension: questionDimension, role }) =>
+              questionDimension === dimension && role === 'review',
+          ),
+        ).toHaveLength(5);
+      }
     } finally {
       rmSync(parent, { recursive: true, force: true });
     }

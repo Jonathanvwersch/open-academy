@@ -180,6 +180,7 @@ and reduced-motion verification. Include the visual in the normal cold-reader re
 - Mix: recognition, computation (a parameterised template when there is arithmetic), misconception MC (each wrong option is a real mistake, with its own `feedback`), and application in a new setting.
 - Every problem has a 1–3 sentence `solution` that says _why_. MC options are of similar length, with no "all of the above".
 - Problems test this step and earlier ones, never later ones.
+- Check each dimension's review pool has at least five questions ([§7 of the questions skill](../write-questions/SKILL.md#7-review-pool-size)).
 - In a rewrite, keep every existing problem ID and its correct answer, so learners' progress and reviews carry over; improve the wording freely, and reword problems to use the lesson's terms and examples. Never delete or repurpose an existing problem. When the rewrite adds a section that no existing problem tests, such as a new limitation, add a new problem with a new ID at the end of that step's list.
 
 ## 6. Plan before writing
