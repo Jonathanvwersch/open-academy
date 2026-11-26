@@ -1012,3 +1012,136 @@ exercises:
     answer: "exp(L)"
     variables: { L: [0.1, 5] }
     solution: "Perplexity is $e^L$, the exponential of the average loss."
+
+  - id: qzp-scale-storage-change
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: A matrix with 2,048 INT8 weights is quantised in groups of 128 weights, with 16-bit scales. An engineer cuts the group size to 32. How many extra bytes do the scales take? Count scale storage only.
+    answer: 96
+    tolerance: { abs: 0 }
+    solution: There are 64 scales with groups of 32 and 16 with groups of 128. The 48 extra scales take 2 bytes each, for 96 extra bytes.
+
+  - id: qzp-clipped-activation
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A symmetric INT8 activation quantiser uses a scale of 0.02 from calibration. At runtime it sees an activation of $-3.2$. What value does the model get back after quantising and dequantising it? Give the signed value to two decimal places.
+    answer: -2.54
+    tolerance: { abs: 0 }
+    solution: Dividing by 0.02 gives $-160$, which clamps to $-127$. Dequantising gives $-127\times0.02=-2.54$.
+
+  - id: qzp-decode-required-bandwidth
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 1
+    prompt: A decoder with 12 billion weights stored in INT4 serves one request at a time. It aims to generate 400 tokens per second. Counting only the weights read, what is the minimum memory bandwidth it would need in TB/s? Ignore scale storage and use 1 TB = one trillion bytes.
+    answer: 2.4
+    tolerance: { abs: 0 }
+    solution: The weights take 6 GB at half a byte each. Reading them 400 times a second requires 2,400 GB/s, or 2.4 TB/s.
+
+  - id: qzp-signed-scale-input
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: |
+      This Python function chooses the scale for symmetric INT8 quantisation. The weights are a list of real numbers with at least one nonzero entry.
+
+      ```python
+      def scale(weights):
+          return max(weights) / 127
+      ```
+
+      What should the function pass to `max`?
+    options:
+      - id: a
+        text: "`[-w for w in weights]`"
+        correct: false
+        feedback: Flipping the sign makes a large positive weight negative, so a smaller weight can set the scale.
+      - id: b
+        text: "`[round(w) for w in weights]`"
+        correct: false
+        feedback: The scale depends on the original magnitudes. Rounding happens after scaling.
+      - id: c
+        text: "`[abs(w) for w in weights]`"
+        correct: true
+    solution: The weight with the largest magnitude sets the scale, whether its sign is positive or negative.
+
+  - id: qzp-row-scale-lookup
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A matrix was quantised with a separate scale for each row. In the reconstruction loop, `i` is the row index, `j` is the column index, `q` holds the stored integers and `scales` lists the scales in row order. Which line reconstructs the entry at row `i`, column `j`?
+    options:
+      - id: a
+        text: "`x[i][j] = q[i][j] * scales[j]`"
+        correct: false
+        feedback: This looks up a scale by column, even though the scale was chosen for the whole row.
+      - id: b
+        text: "`x[i][j] = q[i][j] * scales[i]`"
+        correct: true
+      - id: c
+        text: "`x[i][j] = q[i][j] / scales[i]`"
+        correct: false
+        feedback: Division puts a weight on the integer scale. Reconstruction reverses that step.
+    solution: Multiply the stored integer by the scale used to quantise it. All entries in row `i` use `scales[i]`.
+
+  - id: qzp-weight-only-trace
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A GPU kernel for a weight-only INT8 model loads stored integer weights and 16-bit activations. Where should the kernel reconstruct the weights, and what precision should the multiply use?
+    options:
+      - id: a
+        text: Reconstruct on chip after loading, then multiply with 16-bit inputs.
+        correct: true
+      - id: b
+        text: Reconstruct in GPU memory before loading, then multiply with 16-bit inputs.
+        correct: false
+        feedback: Loading reconstructed weights would lose the weight-read savings of the smaller format.
+      - id: c
+        text: Convert the activations on chip after loading, then multiply with INT8 inputs.
+        correct: false
+        feedback: Changing the activation format as well would make this weight-and-activation quantisation.
+    solution: The kernel reads the small weights and reconstructs them on chip right before multiplication. The activations and the reconstructed weights used in the multiply are both 16-bit.
+
+  - id: qzp-eval-prompt-wiring
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 1
+    prompt: |
+      A team has two separate sets of prompts for one task. It used `set_a` to choose activation scales. The two model runs use the same sampling settings.
+
+      ```python
+      original_score = evaluate(original, set_b)
+      quantised_score = evaluate(quantised, set_a)
+      ```
+
+      Which change gives a fair comparison on held-out prompts?
+    options:
+      - id: a
+        text: Pass `set_a` to both calls.
+        correct: false
+        feedback: The prompts would match, but they helped set the activation scales.
+      - id: b
+        text: Swap the prompt lists used by the two calls.
+        correct: false
+        feedback: The model scores would still be measured on different prompts.
+      - id: c
+        text: Pass `set_b` to both calls.
+        correct: true
+    solution: Both models should see the same prompts. Use the held-out `set_b` list because its prompts played no part in choosing the scales.

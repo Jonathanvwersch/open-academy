@@ -1084,3 +1084,24 @@ exercises:
     answer: "D/(W*t)"
     variables: { "D": { "values": [100, 500, 1000] }, "W": [1000, 5000], "t": [1.1, 10] }
     solution: "The fastest possible time is $D/W$ seconds. Divide it by the measured time to get $D/(Wt)$."
+
+  - id: mlcp-lower-row-sum-subtract
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A compiler lowers an operation that sums each row of a tensor and subtracts that row's sum from every number in the row. Which sequence of primitives implements it?
+    options:
+      - id: a
+        text: Movement to gather the row totals, then elementwise subtraction.
+        correct: false
+        feedback: Rearranging the numbers cannot compute the row totals.
+      - id: b
+        text: Elementwise subtraction within each row, then reduction to a total.
+        correct: false
+        feedback: That tries to subtract before computing the row totals and finishes with one number per row.
+      - id: c
+        text: Reduction to each row total, then elementwise subtraction.
+        correct: true
+    solution: The sum is a reduction because it combines a row's numbers. Subtracting that sum from each entry is elementwise.

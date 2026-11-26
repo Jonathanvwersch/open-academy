@@ -809,3 +809,92 @@ exercises:
     answer: "T-R"
     variables: { "T": { "values": [32, 128, 256] }, "R": { "values": [1, 16, 31] } }
     solution: "Subtract the reused prefix length from the new prompt length. There are $T-R$ prompt tokens left to process."
+
+  - id: kvc-gqa-head-overcount
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: A decoder has 24 query heads per layer and uses grouped-query attention with six query heads per group. A cache estimate counts one key-value head for each query head. By how many key-value heads per layer does it overcount?
+    answer: 20
+    tolerance: { abs: 0 }
+    solution: Each group shares one stored key-value head, so the cache stores $24/6=4$ per layer. The estimate counts $24-4=20$ too many.
+
+  - id: kvc-bytes-added-this-pass
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A KV cache already holds 20 processed tokens. A decode call takes one token as input and predicts another. The model has three layers, two key-value heads per layer and head size 8. Each cached number takes 2 bytes. How many bytes of stored keys and values does this call add? Ignore allocation overhead.
+    answer: 192
+    tolerance: { abs: 0 }
+    solution: The call adds entries for its one input token. With one key and one value at each head in each layer, it adds $2\times3\times2\times8\times2=192$ bytes.
+
+  - id: kvc-trace-new-entry
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: A decoder's cache holds the prompt. The decoder processes token A in the first decode call and predicts token B. Which token should the newly appended cache entry describe?
+    options:
+      - id: a
+        text: The final prompt token.
+        correct: false
+        feedback: Prefill already stored that token's keys and values.
+      - id: b
+        text: The predicted token B.
+        correct: false
+        feedback: B gets an entry when a later call processes it.
+      - id: c
+        text: The input token A.
+        correct: true
+    solution: The call computes and appends keys and values for its input, token A.
+
+  - id: kvc-prefix-scan-stop
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A server uses the same model weights and token positions for a cached prompt and a new prompt. Its loop compares the token IDs at each position to find the portion of the cache it can reuse. What should it do at the first mismatch?
+    options:
+      - id: a
+        text: Stop scanning and keep the entries already matched.
+        correct: true
+      - id: b
+        text: Skip that entry and keep any later entries that match.
+        correct: false
+        feedback: Later tokens have different earlier context even if their IDs match.
+      - id: c
+        text: Stop scanning and throw out the entries already matched.
+        correct: false
+        feedback: Causal attention means the later mismatch cannot affect the entries for earlier tokens.
+    solution: Reuse ends at the first mismatch. The matching beginning can still be reused because its tokens have the same earlier context.
+
+  - id: kvc-model-change-hit
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 1
+    prompt: A service runs two versions of a causal decoder with the same architecture and different weights. Its prefix lookup compares token IDs and their positions. It finds matching entries from version A for a request routed to version B. How should it handle the match?
+    options:
+      - id: a
+        text: Reuse both the keys and the values from A.
+        correct: false
+        feedback: Matching IDs and positions are insufficient when the weights that produced both vectors differ.
+      - id: b
+        text: Recompute both the keys and the values with B.
+        correct: true
+      - id: c
+        text: Reuse the keys from A and recompute the values with B.
+        correct: false
+        feedback: The keys also come from the model's weights.
+      - id: d
+        text: Reuse the values from A and recompute the keys with B.
+        correct: false
+        feedback: The values also come from the model's weights.
+    solution: A prefix hit requires the same model weights as well as matching IDs and positions, so version B must compute its own entries.
