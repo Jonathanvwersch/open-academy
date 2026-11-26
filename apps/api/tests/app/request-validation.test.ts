@@ -66,6 +66,21 @@ test('unknown activity ids are rejected before recording an attempt', async () =
   expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(0);
 });
 
+test('empty activity ids are rejected before recording an attempt', async () => {
+  const response = await app.request('/api/attempts', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      exerciseId: 'vectors-magnitude',
+      activityId: '',
+      answer: '5',
+    }),
+  });
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({ error: 'Invalid attempt' });
+  expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(0);
+});
+
 test('settings reject impossible dates before changing learner preferences', async () => {
   for (const startDate of ['garbage', '2026-02-30']) {
     const response = await app.request('/api/settings', {

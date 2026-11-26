@@ -1,6 +1,7 @@
 import type { EngineGrade, EngineResult } from '@academy/aesop/engine/create-engine';
 import { gradeExercise } from '@academy/aesop/lessons/grading/index';
 import type { Context, Hono } from 'hono';
+import { z } from 'zod';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
 import { featureRequest } from '../../http/feature-service.js';
 import { scoreRubric } from '../tutor/scoring.js';
@@ -22,6 +23,12 @@ export function registerExercisesRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
     return context.json(response.body, response.status);
   });
   api.post('/attempts', async (context) => {
+    const body = await context.req.json().catch(() => ({}));
+    if (
+      !z.object({ activityId: z.string().uuid().optional() }).passthrough().safeParse(body).success
+    ) {
+      return context.json({ error: 'Invalid attempt' }, 400);
+    }
     const tutor = deps.tutor(context);
     const grade: EngineGrade = async (exercise, answer, { random }) => {
       if (
@@ -64,7 +71,7 @@ export function registerExercisesRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
     return send(
       context,
       await deps.learner(context, grade).exerciseAttempt({
-        body: await context.req.json().catch(() => ({})),
+        body,
       }),
     );
   });
