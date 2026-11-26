@@ -112,15 +112,23 @@ export class DirectMemoryDriver implements SimulatorDriver {
     const trace: ImplicitRepetitionTraceEvent[] = [];
     setImplicitRepetitionTrace((event) => trace.push(event));
     try {
-      const settings = await store.getSettings(learnerId);
+      let settings = await store.getSettings(learnerId);
       if (settings && settings.timeZone !== this.timeZone) {
-        throw new Error('The direct driver does not change a learner time zone');
+        if ((await store.listXpEvents(learnerId, {})).length > 0) {
+          throw new Error('The direct driver cannot move XP days to a new time zone');
+        }
+        await store.patchSettings(learnerId, { timeZone: this.timeZone });
+        settings = await store.getSettings(learnerId);
       }
       const content = this.content;
       const clock = () => now;
-      const repository = (requestUser: boolean, sessionContent: boolean) =>
+      const repository = (
+        target: MemoryLearnerStore,
+        requestUser: boolean,
+        sessionContent: boolean,
+      ) =>
         new DirectLearnerRepository(
-          store,
+          target,
           learnerId,
           createdAt,
           requestUser ? directUser(learnerId, createdAt, settings) : undefined,
@@ -134,8 +142,8 @@ export class DirectMemoryDriver implements SimulatorDriver {
         content,
         random,
         newId: this.newId,
-        repo: repository(true, true),
-        freshRepo: (sessionContent) => repository(false, sessionContent),
+        repo: repository(store, true, true),
+        freshRepo: (target, sessionContent) => repository(target, false, sessionContent),
       };
       let response: { status: number; body: unknown };
       try {

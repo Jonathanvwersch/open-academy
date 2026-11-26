@@ -38,8 +38,8 @@ export interface DirectRequest {
   newId: () => string;
   /** The repository the HTTP app builds for each request. */
   repo: DirectLearnerRepository;
-  /** A repository without the request's learner row, as transactional HTTP handlers use. */
-  freshRepo: (withSessionContent: boolean) => DirectLearnerRepository;
+  /** A repository on a transaction, without the request's learner row, as HTTP handlers use. */
+  freshRepo: (store: MemoryLearnerStore, withSessionContent: boolean) => DirectLearnerRepository;
 }
 
 export const respond = (body: unknown, status = 200): DirectResponse => ({ status, body });

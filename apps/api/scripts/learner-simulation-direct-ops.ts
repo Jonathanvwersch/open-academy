@@ -122,7 +122,7 @@ export async function directOperation(
       return store.transaction(async (tx) => {
         await tx.lockLearner(userId, 'no_key_update');
         return createSessionRequest(
-          { ...request, store: tx, repo: request.freshRepo(false) },
+          { ...request, store: tx, repo: request.freshRepo(tx, false) },
           operation.body,
         );
       });
@@ -133,7 +133,7 @@ export async function directOperation(
         const session = await tx.lockSession(userId, operation.sessionId);
         const locked = session && { ...session, userId };
         return activityProgress(
-          { ...request, store: tx, repo: request.freshRepo(true) },
+          { ...request, store: tx, repo: request.freshRepo(tx, true) },
           operation.sessionId,
           operation.activityId,
           operation.body,
@@ -145,7 +145,7 @@ export async function directOperation(
         const session = await tx.lockSession(userId, operation.sessionId);
         const locked = session && { ...session, userId };
         return replanSession(
-          { ...request, store: tx, repo: request.freshRepo(true) },
+          { ...request, store: tx, repo: request.freshRepo(tx, true) },
           operation.sessionId,
           {},
           locked,
