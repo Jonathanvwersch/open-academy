@@ -162,11 +162,10 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 3
-    prompt: "Ten sigmoid functions are applied in sequence, with each function after the first taking the previous function's output as its input. Use $0.25$, the maximum slope of a sigmoid, for each of the ten slopes. What upper bound does this give for the slope of the final output with respect to the initial input? You may answer in scientific notation."
+    prompt: "Ten sigmoid functions are applied in sequence, each after the first taking the previous function's output as its input. As a small change in the initial input passes through each sigmoid, it is multiplied by that sigmoid's slope. Use $0.25$, the maximum slope of a sigmoid, for each of the ten slopes. What upper bound does this give for the slope of the final output with respect to the initial input? Give your answer to three significant figures in e-notation, such as `1.23e-4`."
     answer: 9.5367e-7
     tolerance: { abs: 0, rel: 0.01 }
-    hints: ["Each sigmoid scales a small change in its input by its slope."]
-    solution: "The overall slope is the product of the ten local slopes. Each slope is at most $0.25$, so multiplying the ten bounds gives $0.25^{10} \\approx 9.5367\\times10^{-7}$."
+    solution: "Multiplying ten factors of $0.25$ gives an upper bound of $0.25^{10}$. To three significant figures, type `9.54e-7`."
   - id: act-review-deriv
     dimension: math
     type: mc
