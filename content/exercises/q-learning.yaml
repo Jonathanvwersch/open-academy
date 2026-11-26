@@ -795,7 +795,7 @@ exercises:
     knowledge_point: ql-q-table
     difficulty: 2
     est_minutes: 0.5
-    prompt: "In a corridor with reliable moves, taking action $a$ in state $s$ earns reward $r$ and always lands in the same nonterminal state $s'$. Use $a'$ for an available action in $s'$. The star in $Q^*$ means the best achievable value, not the agent's current estimate. With discount factor $\\gamma$, fill in the missing term in $Q^*(s,a)=r+\\gamma\\,\\underline{\\quad\\quad}$. Use symbols or words."
+    prompt: "In a corridor with reliable moves, taking action $a$ in state $s$ earns reward $r$ and always lands in the same nonterminal state $s'$. Use $a'$ for an available action in $s'$. Here $Q^*(s,a)$ is the best return achievable after starting with action $a$ in state $s$. With discount factor $\\gamma$, fill in the missing term in $Q^*(s,a)=r+\\gamma\\,\\underline{\\quad\\quad}$. Use symbols or words."
     accept:
       [
         "max_a' Q*(s',a')",
