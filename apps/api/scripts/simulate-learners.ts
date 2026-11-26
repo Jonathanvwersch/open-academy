@@ -43,7 +43,10 @@ function parseProfiles(value: string | undefined): SimulationProfile[] {
 async function driverFor(
   value: string | undefined,
 ): Promise<{ driver: SimulatorDriverFactory; close: () => Promise<void> }> {
-  if (value === undefined || value === 'http') {
+  if (value === undefined || value === 'direct') {
+    return { driver: directMemoryDriver, close: async () => {} };
+  }
+  if (value === 'http') {
     const [{ env }, { createDb }, { httpPostgresDriver }] = await Promise.all([
       import('../src/config.js'),
       import('../src/db/client.js'),
@@ -52,7 +55,6 @@ async function driverFor(
     const db = createDb(env.TEST_DATABASE_URL);
     return { driver: httpPostgresDriver(db), close: () => db.$client.end() };
   }
-  if (value === 'direct') return { driver: directMemoryDriver, close: async () => {} };
   throw new Error(`Unknown driver ${value}; expected direct or http`);
 }
 
