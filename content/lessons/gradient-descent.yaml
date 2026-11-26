@@ -423,7 +423,7 @@ knowledge_points:
 
       ### When to stop
 
-      We stop after a fixed number of passes, or once a pass barely lowers the loss, say by under $0.1\%$. Be careful not to confuse this with a loss that has crept down slowly from the start and is still high. That's the sign of a learning rate that's too small, not of being finished.
+      We stop after a fixed number of passes, or once a pass barely lowers the loss, say by under $0.1\%$. Be careful when the loss has fallen slowly from the start and is still high. A small learning rate or shallow slopes can make each step small, so check the step sizes before stopping.
 
       ### Getting stuck in a dip
 
