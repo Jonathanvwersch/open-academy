@@ -795,6 +795,9 @@ test('a passed knowledge point opens the next step and shows an XP toast', async
     runAfterAnswer = await answerAndReload(page, true);
   }
   expect(runAfterAnswer.pendingProblem).toBeUndefined();
+  const sessionUrl = new URL(page.url());
+  sessionUrl.searchParams.delete('step');
+  await page.goto(sessionUrl.toString());
   await page.getByRole('button', { name: /Step 1 of \d+, passed/ }).click();
   await expect(page.getByTestId('lesson-step-content')).toBeVisible();
   await page.getByRole('button', { name: 'Practise this step', exact: true }).click();
@@ -853,6 +856,12 @@ test('a passed knowledge point opens the next step and shows an XP toast', async
     (point: { id: string }) => point.id === practiceRun.currentPointId,
   );
   const currentStepButtonName = `Step ${currentStepIndex + 1} of ${practiceRun.points.length}, current`;
+  expect(practiceRun.pendingProblem).toBeUndefined();
+  await page.goBack();
+  await expect(page).toHaveURL(sessionUrl.toString());
+  await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: /Step 1 of \d+, passed/ }).click();
+  await expect(page.getByRole('button', { name: 'Practise this step', exact: true })).toBeVisible();
   await page.getByRole('button', { name: currentStepButtonName, exact: true }).click();
   await expect(
     page.getByRole('heading', { name: practiceRun.currentPoint.title, exact: true }),

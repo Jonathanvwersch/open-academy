@@ -248,6 +248,10 @@ export function LessonRunner({
     if (step === undefined) {
       setViewingPointId(null);
       setViewingStage(null);
+      if (practicePointId && !state.pendingPracticeProblem) {
+        setPracticePointId(null);
+        setWarmupActive(false);
+      }
       return;
     }
     if (step === 'explain' || step === 'quiz') {
