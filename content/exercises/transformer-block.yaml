@@ -1003,3 +1003,93 @@ exercises:
     answer: "12*d*d+13*d"
     variables: { "d": { "values": [2, 64, 1024] } }
     solution: "Matrix weights contribute $12d^2$, biases contribute $9d$, and LayerNorm contributes $4d$, giving $12d^2+13d$."
+  - id: tbp-code-mlp-input
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: |
+      In a transformer block without LayerNorm, `x` holds the input token vectors and `u` holds the vectors after the attention shortcut. The function `mlp` produces an update for each token, and `add` adds matching components. A trace shows how the code computes the MLP updates `m` and the block outputs `y`. Which diagnosis fits this trace?
+
+      ```python
+      m = mlp(x)
+      y = add(u, m)
+      ```
+    options:
+      - id: a
+        text: "The MLP reads the right vectors and its update goes to the wrong shortcut."
+        correct: false
+        feedback: "The shortcut carries the attention-updated vectors. The mistake is the input to the MLP."
+      - id: b
+        text: "The MLP reads the wrong vectors and its update goes to the right shortcut."
+        correct: true
+        feedback: "The MLP reads the original vectors. Its update is added to the attention-updated vectors."
+      - id: c
+        text: "The MLP reads the wrong vectors and its update goes to the wrong shortcut."
+        correct: false
+        feedback: "Only the MLP input is wrong. The second line uses the right shortcut."
+    solution: "Change `mlp(x)` to `mlp(u)` so that the MLP can use the attention update. The second line already adds the MLP result to `u`."
+  - id: tbp-code-prenorm-shortcut
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: "In a pre-norm block, `x` holds the input token vectors. The call `norm(x)` applies LayerNorm to each vector, and `z` holds the normalized copies. The function `attn` produces an update for each token, and `add` adds matching components. Which line computes the vectors `u` just after the attention shortcut?"
+    options:
+      - id: a
+        text: "`u = add(z, attn(x))`"
+        correct: false
+        feedback: "This puts the normalized copies on the shortcut and sends the original vectors to attention."
+      - id: b
+        text: "`u = add(x, attn(z))`"
+        correct: true
+        feedback: "Attention reads the normalized copies and the shortcut carries the original vectors."
+      - id: c
+        text: "`u = add(z, attn(z))`"
+        correct: false
+        feedback: "This replaces the vectors on the shortcut with their normalized copies."
+    solution: "Send `z` into attention, then add attention's output to the original `x`."
+  - id: tbp-code-stack-flow
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: "In a pre-norm model, `first` and `second` are two transformer blocks in that order, each with its own LayerNorms. The function `norm` applies the model-level LayerNorm, and `score` maps token vectors to next-token scores. Which expression computes the scores from input vectors `x`?"
+    options:
+      - id: a
+        text: "`score(second(norm(first(x))))`"
+        correct: false
+        feedback: "This applies the model's final LayerNorm between the two blocks."
+      - id: b
+        text: "`score(norm(second(first(x))))`"
+        correct: true
+        feedback: "The last block's vectors pass through the final LayerNorm before scoring."
+      - id: c
+        text: "`norm(score(second(first(x))))`"
+        correct: false
+        feedback: "This applies LayerNorm to the scores. It belongs on the token vectors before scoring."
+    solution: "Pass each block's output to the next. Apply the final LayerNorm to the last block's output before computing scores."
+  - id: tbp-code-postnorm-placement
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 1
+    prompt: "A post-norm block's attention half returns token vectors `u`. The function `mlp` produces an update for each token, `norm` applies LayerNorm to each token vector, and `add` adds matching components. A bug makes the block compute its final vectors as `y = add(u, norm(mlp(u)))`. What does this line normalize that a correct post-norm block would handle differently?"
+    options:
+      - id: a
+        text: "It normalizes the shortcut alone. Post-norm normalizes the sum."
+        correct: false
+        feedback: "The shortcut enters the sum as the unchanged vectors `u`."
+      - id: b
+        text: "It normalizes the MLP update alone. Post-norm normalizes the sum."
+        correct: true
+        feedback: "The MLP update reaches LayerNorm before the shortcut is added."
+      - id: c
+        text: "It normalizes the MLP update alone. Post-norm normalizes the MLP input."
+        correct: false
+        feedback: "Normalizing the MLP input is the pre-norm placement."
+    solution: "The call `norm(mlp(u))` sees only the MLP update. In post-norm, add the update to the shortcut first, then send the sum to LayerNorm."

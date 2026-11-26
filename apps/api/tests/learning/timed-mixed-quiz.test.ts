@@ -275,7 +275,7 @@ test.each([false, true])(
 
     const blank = await answerQuiz(deps, {
       ...request,
-      body: { position: 1, answer: '' },
+      body: { position: 1, questionId: active.exercise.id, answer: '' },
       now: () => startedAt,
     });
     expect(blank.status).toBe(422);
@@ -312,6 +312,65 @@ test.each([false, true])(
       .from(sessionActivities)
       .where(eq(sessionActivities.sessionId, followUps.body.sessionId));
     expect(activities).toEqual([{ conceptId: 'derivatives' }]);
+  },
+);
+
+test.each([false, true])(
+  'an older quiz tab can answer by position unless the question was replaced: %s',
+  async (deleted) => {
+    const userId = await createLearner();
+    const content = await loadContent('content');
+    const exercise = content.exercisesByConcept
+      .get('vectors')
+      ?.find((item) => item.type === 'mc' && !item.multi);
+    if (exercise?.type !== 'mc') throw new Error('No vectors quiz exercise');
+    const now = new Date('2026-01-14T12:00:00.000Z');
+    const [run] = await db
+      .insert(quizRuns)
+      .values({
+        userId,
+        seed: 0,
+        difficulty: 2,
+        plannedMinutes: 5,
+        startedAt: now,
+        deadline: new Date(+now + 300_000),
+      })
+      .returning();
+    await db.insert(quizItems).values({
+      runId: run.id,
+      position: 0,
+      conceptId: exercise.concept,
+      question: {
+        exercise: deleted ? { ...exercise, id: 'deleted-timed-quiz-question' } : exercise,
+        seed: 0,
+        key: exercise.prompt.trim().replace(/\s+/g, ' '),
+      },
+    });
+    const result = await answerQuiz(
+      { db, content: async () => content, tutorProvider: null },
+      {
+        userId,
+        timeZone: 'UTC',
+        params: { id: run.id },
+        query: {},
+        body: { position: 0, answer: exercise.options[0].id },
+        repo: new LearnerRepository(db, userId),
+        tutor: null,
+        now: () => now,
+      },
+    );
+    const [saved] = await db.select().from(quizItems).where(eq(quizItems.runId, run.id));
+    if (deleted) {
+      expect(result).toMatchObject({
+        status: 409,
+        body: { error: 'Question changed. Answer the current question.' },
+      });
+      expect(saved.question.previousKeys).toHaveLength(1);
+      expect(saved.answeredAt).toBeNull();
+    } else {
+      expect(result.status).toBe(200);
+      expect(saved.answeredAt).toEqual(now);
+    }
   },
 );
 

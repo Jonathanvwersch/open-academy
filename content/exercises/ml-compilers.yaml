@@ -1084,3 +1084,27 @@ exercises:
     answer: "D/(W*t)"
     variables: { "D": { "values": [100, 500, 1000] }, "W": [1000, 5000], "t": [1.1, 10] }
     solution: "The fastest possible time is $D/W$ seconds. Divide it by the measured time to get $D/(Wt)$."
+
+  - id: mlcp-lower-row-sum-subtract
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A compiler must lower an operation that produces one number per row of a tensor. That number is the sum of the row's squared entries. Which sequence of primitives produces it?
+    options:
+      - id: a
+        text: Movement to gather the entries by row, then reduction to a sum.
+        correct: false
+        category: implementation_error
+        feedback: Rearranging the entries and summing them leaves out the squares.
+      - id: b
+        text: Reduction to a sum per row, then elementwise squaring.
+        correct: false
+        category: implementation_error
+        feedback: Squaring the total gives a different result from summing the squares.
+      - id: c
+        text: Elementwise squaring, then reduction to a sum per row.
+        correct: true
+        feedback: Squaring acts on each entry, and summing combines the entries in each row.
+    solution: Square each entry separately with an elementwise operation. Then reduce the squared entries in each row to their sum.

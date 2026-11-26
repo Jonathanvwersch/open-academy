@@ -1052,3 +1052,24 @@ exercises:
     answer: "sigma*(1-sigma)"
     variables: { sigma: [0.05, 0.95] }
     solution: "The slope is $\\sigma(z)(1-\\sigma(z))$, the output times one minus that same output."
+
+  - id: actp-centered-command
+    dimension: transfer
+    type: mc
+    role: transfer
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot steering controller uses an activation to turn a score into a steering command. A negative command turns left, a positive command turns right, and zero means straight ahead. The command must have the same sign as the score, give zero at a score of zero, and stay between $-1$ and $1$. Which activation can supply the command directly, without rescaling or shifting its output?"
+    options:
+      - id: a
+        text: "ReLU"
+        correct: false
+        feedback: "ReLU gives zero for negative scores and can exceed $1$ for positive scores."
+      - id: b
+        text: "Sigmoid"
+        correct: false
+        feedback: "Sigmoid only gives positive values and gives $0.5$ at zero."
+      - id: c
+        text: "Tanh"
+        correct: true
+    solution: "Use tanh. It crosses zero, preserves the sign of the score and stays between $-1$ and $1$."

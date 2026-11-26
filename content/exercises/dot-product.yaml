@@ -950,3 +950,24 @@ exercises:
         - 1
         - 5
     solution: "Cosine similarity divides the dot product by both lengths: $d/(uv)$."
+  - id: dot-review-wind-bearing
+    dimension: transfer
+    type: mc
+    role: transfer
+    difficulty: 3
+    est_minutes: 2
+    prompt: A sailboat crew wants to know on which of two breezy days the wind blew in a direction closer to their course. They have a vector pointing along the course and a wind vector for each day. Each wind vector points where the wind blew, and its length represents the wind speed. The speeds differ. Which comparison should they make?
+    options:
+      - id: a
+        text: Pick the day with the larger raw dot product with the course.
+        correct: false
+        feedback: A faster wind has a longer vector, which can make its raw dot product larger even at a worse angle.
+      - id: b
+        text: Pick the day with the larger cosine similarity to the course.
+        correct: true
+        feedback: Dividing by both lengths leaves a score that depends only on the angle.
+      - id: c
+        text: Pick the day with the larger wind vector length.
+        correct: false
+        feedback: Vector length measures wind speed here, so it says nothing about the angle to the course.
+    solution: Compare cosine similarities. They measure directional agreement even when the wind vectors have different lengths.

@@ -1,16 +1,19 @@
 import { Rating } from 'ts-fsrs';
+import { DimensionSchema } from '../course/schemas.js';
 import type { ContentIndex, IndexedExercise } from '../course/types.js';
 import {
   bringWeakestPrerequisiteCardDueNow,
   canBringPrerequisiteDueNow,
 } from '../lessons/prerequisite-review.js';
 import { updateActivityAndAdvance } from '../planner/activity-advance.js';
+import { reviewActivityReason } from '../planner/review-topics.js';
 import {
   adjustedMinutesForLearnerPace,
   buildReviewActivityForConcept,
   interleaveReviewExercises,
   type SchedulerState,
 } from '../planner/scheduler.js';
+import type { Attempt } from '../store/core-store.js';
 import type { FlowStore } from '../store/flow-store.js';
 import type { PlacementReviewStore } from '../store/placement-review-store.js';
 import type { Activity } from '../store/session-store.js';
@@ -48,22 +51,40 @@ export async function recordReviewRating(
   activity: Activity,
   exercise: Pick<IndexedExercise, 'concept' | 'dimension'>,
   attemptId: string,
+  savedAttempts?: Attempt[],
 ): Promise<Activity> {
   const { index, userId, timeZone, now } = context;
   const card = await store.getReviewCard(userId, exercise.concept, exercise.dimension);
-  if (!card || activity.exerciseIds.length === 0) return activity;
+  if (!card) return activity;
   const topicExerciseIds = activity.exerciseIds.filter((id) => {
     const candidate = index.exercisesById.get(id);
     return candidate?.concept === card.conceptId && candidate.dimension === card.dimension;
   });
-  const attempts = await store.listAttempts(userId, {
-    activityIds: [activity.id],
-    exerciseIds: topicExerciseIds,
-    order: 'review_chronological',
-  });
-  const exerciseAttempts = topicExerciseIds.map((id) =>
+  const recovered = reviewActivityReason(activity.reason).removedQuestions === true;
+  const attempts = (
+    savedAttempts ??
+    (await store.listAttempts(userId, {
+      activityIds: [activity.id],
+      ...(recovered ? {} : { exerciseIds: topicExerciseIds }),
+      order: 'review_chronological',
+    }))
+  ).filter(
+    (attempt) =>
+      attempt.mode === 'review' &&
+      attempt.conceptId === card.conceptId &&
+      attempt.dimension === card.dimension,
+  );
+  if (attempts.length === 0) return activity;
+  const ids = new Set(topicExerciseIds);
+  if (recovered) {
+    for (const attempt of attempts) {
+      if (!index.exercisesById.has(attempt.exerciseId)) ids.add(attempt.exerciseId);
+    }
+  }
+  const exerciseAttempts = [...ids].map((id) =>
     attempts.filter((attempt) => attempt.exerciseId === id),
   );
+  if (exerciseAttempts.length === 0) return activity;
   if (exerciseAttempts.some((items) => !items.length)) return activity;
   const existingLogs = await store.listReviewLogs(userId, {
     activityId: activity.id,
@@ -113,30 +134,75 @@ export async function recordReviewRating(
     rawDueAt: scheduled.rawDueAt,
     createdAt: now,
   });
-  const expectedReviewLogCount = new Set(
-    activity.exerciseIds.flatMap((id) => {
-      const candidate = index.exercisesById.get(id);
-      return candidate?.concept === card.conceptId ? [candidate.dimension] : [];
-    }),
-  ).size;
-  const conceptReviewLogs = (
-    await store.listReviewLogs(userId, { activityId: activity.id })
-  ).filter((log) => log.conceptId === card.conceptId);
-  if (conceptReviewLogs.length > 0 && conceptReviewLogs.length === expectedReviewLogCount) {
-    await applyImplicitRepetitions(store, {
-      learnerId: userId,
-      conceptId: card.conceptId,
-      rating: Math.min(...conceptReviewLogs.map((log) => log.rating)) as Rating,
-      index,
-      now,
-      timeZone,
-      enableFuzz: runtime.enableFsrsFuzz,
-    });
+  if (!recovered) {
+    const expectedReviewLogCount = new Set(
+      activity.exerciseIds.flatMap((id) => {
+        const candidate = index.exercisesById.get(id);
+        return candidate?.concept === card.conceptId ? [candidate.dimension] : [];
+      }),
+    ).size;
+    await applyReviewFireOnce(
+      store,
+      runtime,
+      context,
+      activity.id,
+      card.conceptId,
+      expectedReviewLogCount,
+    );
   }
   if (rating === Rating.Again && previousLog?.rating === Rating.Again) {
     return bringPrerequisiteReviewForward(store, runtime, context, activity, card.conceptId);
   }
   return activity;
+}
+
+async function applyReviewFireOnce(
+  store: PlacementReviewStore,
+  runtime: ReviewScheduler,
+  { index, userId, timeZone, now }: ReviewContext,
+  activityId: string,
+  conceptId: string,
+  expectedLogCount?: number,
+) {
+  const logs = (await store.listReviewLogs(userId, { activityId })).filter(
+    (log) => log.conceptId === conceptId,
+  );
+  if (logs.length === 0 || (expectedLogCount !== undefined && logs.length !== expectedLogCount))
+    return;
+  await store.transaction(async (tx) => {
+    while (true) {
+      const [activity] = await tx.listActivities(userId, { ids: [activityId] });
+      if (!activity) return;
+      const reason = reviewActivityReason(activity.reason);
+      if (
+        reason.fireAppliedTopicIds?.includes(conceptId) ||
+        (expectedLogCount !== undefined && reason.removedQuestions)
+      )
+        return;
+      const [claimed] = await tx.patchActivities(
+        userId,
+        { ids: [activityId] },
+        {
+          reason: {
+            ...reason,
+            fireAppliedTopicIds: [...(reason.fireAppliedTopicIds ?? []), conceptId],
+          },
+        },
+        { reason: activity.reason },
+      );
+      if (!claimed) continue;
+      await applyImplicitRepetitions(tx, {
+        learnerId: userId,
+        conceptId,
+        rating: Math.min(...logs.map((log) => log.rating)) as Rating,
+        index,
+        now,
+        timeZone,
+        enableFuzz: runtime.enableFsrsFuzz,
+      });
+      return;
+    }
+  });
 }
 
 async function bringPrerequisiteReviewForward(
@@ -340,6 +406,19 @@ export async function completeReviewActivity(
       }),
     ),
   ];
+  if (reviewActivityReason(activity.reason).removedQuestions) {
+    for (const { mode, conceptId, exerciseId } of await store.listAttempts(userId, {
+      activityIds: [activity.id],
+    })) {
+      if (
+        mode === 'review' &&
+        !index.exercisesById.has(exerciseId) &&
+        index.conceptsById.has(conceptId) &&
+        !reviewedConceptIds.includes(conceptId)
+      )
+        reviewedConceptIds.push(conceptId);
+    }
+  }
   if (reviewedConceptIds.length > 0) {
     await store.linkTimedQuizFollowUps(userId, reviewedConceptIds, activity.id);
     await store.resolveRemediationFlags(
@@ -358,17 +437,34 @@ export async function recordRecoveredReviewRatings(
 ) {
   const savedAttempts = await store.listAttempts(context.userId, {
     activityIds: [activity.id],
-    exerciseIds: activity.exerciseIds,
-    order: 'final_evidence',
+    order: 'review_chronological',
   });
   const rated = new Set<string>();
-  for (const attempt of savedAttempts) {
-    const exercise = context.index.exercisesById.get(attempt.exerciseId);
-    if (!exercise) continue;
+  const usedAttempts = savedAttempts.filter((attempt) => attempt.mode === 'review');
+  for (const attempt of [...usedAttempts].reverse()) {
+    const dimension = DimensionSchema.safeParse(attempt.dimension);
+    if (!dimension.success) continue;
+    const exercise = { concept: attempt.conceptId, dimension: dimension.data };
     const key = `${exercise.concept}/${exercise.dimension}`;
     if (rated.has(key)) continue;
     rated.add(key);
-    activity = await recordReviewRating(store, runtime, context, activity, exercise, attempt.id);
+    activity = await recordReviewRating(
+      store,
+      runtime,
+      context,
+      activity,
+      exercise,
+      attempt.id,
+      usedAttempts,
+    );
+  }
+  if (reviewActivityReason(activity.reason).removedQuestions) {
+    const attemptedIds = new Set(usedAttempts.map(({ exerciseId }) => exerciseId));
+    if (activity.exerciseIds.every((id) => attemptedIds.has(id))) {
+      for (const conceptId of new Set(usedAttempts.map((attempt) => attempt.conceptId))) {
+        await applyReviewFireOnce(store, runtime, context, activity.id, conceptId);
+      }
+    }
   }
   return activity;
 }

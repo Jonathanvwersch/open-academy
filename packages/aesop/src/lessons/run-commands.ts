@@ -20,7 +20,7 @@ import { placementGrantStates } from '../placement/grant-commands.js';
 import { conditionalPrerequisites } from '../placement/grants.js';
 import { updateActivityAndAdvance } from '../planner/activity-advance.js';
 import { localDateKey } from '../progress/xp.js';
-import type { LessonStore } from '../store/lesson-store.js';
+import type { LessonQuizEvidence, LessonStore } from '../store/lesson-store.js';
 import type { PlacementReviewStore } from '../store/placement-review-store.js';
 import type { GradeResult } from './grading/types.js';
 import { scoreLessonQuiz, selectQuizItems } from './lesson-quiz.js';
@@ -42,6 +42,24 @@ export type LessonCommand = {
 type Attachment = { activityId?: string; sessionId?: string };
 type ProblemAnswer = Attachment & { problemId: string; answer: unknown; durationMs?: number };
 type QuizAnswer = { itemId: string; answer: unknown; durationMs?: number };
+
+function lessonQuizEvidence(
+  exercise: IndexedExercise,
+  grade: LessonQuizEvidence['grade'],
+): LessonQuizEvidence {
+  const { id, concept, dimension, role, contentVersion, target_seconds } = exercise;
+  return {
+    exercise: {
+      id,
+      concept,
+      dimension,
+      role,
+      contentVersion,
+      ...(target_seconds === undefined ? {} : { target_seconds }),
+    },
+    grade,
+  };
+}
 
 type MasteryHost = { applyMastery: typeof applyMastery };
 export type LessonGrader = (
@@ -603,6 +621,7 @@ export async function startLessonQuiz(
       },
       selection.map((item) => ({
         answer: null,
+        evidence: null,
         correct: null,
         durationMs: null,
         attemptId: null,
@@ -669,6 +688,7 @@ export async function answerLessonQuiz(
     if (graded.status !== 'graded') return { kind: 'invalid' as const };
     await tx.patchLessonQuizItem(userId, run.id, item.id, {
       answer: input.answer,
+      evidence: lessonQuizEvidence(exercise, graded),
       correct: graded.correct,
       durationMs: input.durationMs ?? null,
       answeredAt: now,
@@ -707,22 +727,25 @@ export async function submitLessonQuiz(
     }
     const pendingGrades: Array<{
       item: (typeof items)[number];
-      exercise: IndexedExercise;
-      graded: Extract<GradeResult, { status: 'graded' }>;
+      evidence: LessonQuizEvidence;
     }> = [];
     for (const item of items) {
       if (item.attemptId !== null) continue;
+      if (item.evidence) {
+        pendingGrades.push({ item, evidence: item.evidence });
+        continue;
+      }
       const indexed = resolved.index.exercisesById.get(item.exerciseId);
       if (!indexed) continue;
       const exercise = resolveLessonExercise(indexed, item.seed);
       if (!exercise) return { kind: 'invalid_answer' as const };
       const graded = await host.grade(exercise, item.answer, { random: seededRandom(item.id) });
       if (graded.status !== 'graded') return { kind: 'invalid_answer' as const };
-      pendingGrades.push({ item, exercise, graded });
+      pendingGrades.push({ item, evidence: lessonQuizEvidence(exercise, graded) });
     }
     const finalItems = new Map(items.map((item) => [item.id, item]));
     for (const pending of pendingGrades) {
-      const { graded } = pending;
+      const { exercise, grade: graded } = pending.evidence;
       const attemptId = runtime.newId();
       const gradedBy = graded.graded_by ?? 'deterministic';
       const credit = calculateCredit({
@@ -735,10 +758,10 @@ export async function submitLessonQuiz(
         id: attemptId,
         sessionId: input.sessionId ?? null,
         activityId: input.activityId ?? null,
-        exerciseId: pending.exercise.id,
-        exerciseVersion: pending.exercise.contentVersion,
-        conceptId: pending.exercise.concept,
-        dimension: pending.exercise.dimension,
+        exerciseId: exercise.id,
+        exerciseVersion: exercise.contentVersion,
+        conceptId: exercise.concept,
+        dimension: exercise.dimension,
         mode: 'assessment',
         answer: pending.item.answer,
         correct: graded.correct,
@@ -753,7 +776,7 @@ export async function submitLessonQuiz(
       });
       await host.applyMastery(tx, {
         learnerId: userId,
-        exercise: pending.exercise,
+        exercise,
         attemptId,
         correct: graded.correct,
         credit,
@@ -768,6 +791,7 @@ export async function submitLessonQuiz(
         enableFuzz: runtime.enableFsrsFuzz,
       });
       const updatedItem = await tx.patchLessonQuizItem(userId, run.id, pending.item.id, {
+        evidence: pending.evidence,
         correct: graded.correct,
         attemptId,
       });
@@ -802,7 +826,8 @@ export async function submitLessonQuiz(
         if (inserted) xpAwarded = items.length;
         const itemsByDimension = new Map<Dimension, (typeof items)[number][]>();
         for (const item of submittedItems) {
-          const exercise = resolved.index.exercisesById.get(item.exerciseId);
+          const exercise =
+            item.evidence?.exercise ?? resolved.index.exercisesById.get(item.exerciseId);
           if (!exercise) continue;
           const dimensionItems = itemsByDimension.get(exercise.dimension) ?? [];
           dimensionItems.push(item);
@@ -813,7 +838,8 @@ export async function submitLessonQuiz(
         for (const [dimension, dimensionItems] of itemsByDimension) {
           const rating = reviewActivityRating(
             dimensionItems.map((item) => {
-              const exercise = resolved.index.exercisesById.get(item.exerciseId);
+              const exercise =
+                item.evidence?.exercise ?? resolved.index.exercisesById.get(item.exerciseId);
               return {
                 correct: item.correct ?? 0,
                 hintsUsed: 0,

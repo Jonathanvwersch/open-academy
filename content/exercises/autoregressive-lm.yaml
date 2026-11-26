@@ -820,3 +820,71 @@ exercises:
         correct: false
         feedback: "Later tokens do not exist yet. Causal prediction uses only the prefix already available."
     solution: "Each chosen token extends the prefix needed to predict the following token."
+  - id: alm-code-target-offset
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "`tokens` is the full training sequence as a Python list. The input list `inputs = tokens[1:-1]` drops the first and last tokens. The label list is `targets`, and `t` is the same zero-based index in both lists. Which assignment makes `targets[t]` the right next-token label for the prediction at `inputs[t]`?"
+    options:
+      - id: a
+        text: "`targets = tokens[:-2]`"
+        correct: false
+        feedback: "This starts one token before the first input, so each label looks backward."
+      - id: b
+        text: "`targets = tokens[2:]`"
+        correct: true
+        feedback: "The first input is the second token, so the first target is the third."
+      - id: c
+        text: "`targets = tokens[1:-1]`"
+        correct: false
+        feedback: "This aligns each prediction with the token it just read."
+    solution: "Each target is one position after its input. Start at index 2 and keep the final token as the target for the second-to-last input."
+  - id: alm-code-sample-boundary
+    dimension: implementation
+    type: code_read
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: "`sample` draws a next token from the list `words`. The list `probs` gives their probabilities in the same order. In the loop, `word` is the current word, `p` is its probability, and `total` is the running sum of the probabilities. The fixed draw `u` is a number from $0$ up to but excluding $1$. Which word does the call return?"
+    code: |
+      def sample(words, probs, u):
+          total = 0
+          for word, p in zip(words, probs):
+              total += p
+              if u < total:
+                  return word
+          return words[-1]
+
+      sample(["oak", "elm", "ash", "yew"], [0.25, 0.25, 0.25, 0.25], 0.5)
+    accept: ["ash", '"ash"', "'ash'"]
+    solution: "After `elm` the running total equals the draw $0.5$, so the strict comparison is false. The total first exceeds the draw at `ash`."
+  - id: alm-code-refresh-prefix
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 1
+    prompt: |
+      The list `prefix` holds the tokens so far, starting with `["we"]`. The function `predict` returns next-token probabilities, saved as `probs`. The call `sample(probs)` chooses one token, and `prefix.append(...)` adds it to the list. The loop runs twice and ignores its index `_`. Which change makes each draw use the prefix as it stands at that step?
+
+      ```python
+      probs = predict(prefix)
+      for _ in range(2):
+          prefix.append(sample(probs))
+      ```
+    options:
+      - id: a
+        text: "Move `probs = predict(prefix)` inside the loop, before sampling."
+        correct: true
+        feedback: "Each draw uses a fresh prediction from the prefix as it stands at that step."
+      - id: b
+        text: 'Move the prediction inside the loop, before sampling, and call `predict(["we"])`.'
+        correct: false
+        feedback: "Predicting from the same one-token list leaves out the first draw when the second draw is made."
+      - id: c
+        text: "Move `probs = predict(prefix)` inside the loop, after `prefix.append(...)`."
+        correct: false
+        feedback: "The first draw needs probabilities before the loop can append its chosen token."
+    solution: "Recompute the distribution from the current prefix at the start of each iteration. On the second iteration the prefix includes the first sampled token."

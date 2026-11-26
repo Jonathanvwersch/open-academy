@@ -656,3 +656,24 @@ exercises:
     answer: "a*b+c*d"
     variables: { "a": [1, 4], "b": [1, 3], "c": [-4, -1], "d": [1, 3] }
     solution: "Multiply along each route and add: $ab+cd$."
+  - id: cr-review-zero-route
+    dimension: conceptual
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: An input $x$ determines two intermediate values $u$ and $v$, which determine the output $f$. At one input value, the slope of $u$ with respect to $x$ is zero and the slope of $v$ with respect to $x$ is nonzero. Both partial derivatives of $f$, with respect to $u$ and $v$, are nonzero there. What does this tell you about the slope of $f$ with respect to $x$ at that input value?
+    options:
+      - id: a
+        text: It is zero because one route has a zero slope.
+        correct: false
+        feedback: A zero factor removes its own route's contribution. The other route still contributes.
+      - id: b
+        text: It includes both routes because both partial derivatives are nonzero.
+        correct: false
+        feedback: The partial derivative for $u$ is multiplied by the zero slope of $u$ with respect to $x$.
+      - id: c
+        text: It comes entirely from the route through $v$.
+        correct: true
+        feedback: The route through $u$ contributes zero, and the route through $v$ has two nonzero factors.
+    solution: Multiply the rates along each route and add the contributions. The route through $u$ gives zero, so only the route through $v$ affects the total.

@@ -24,8 +24,9 @@ import {
   quizSeed,
   quizTargetSeconds,
   quizXp,
+  topicQuestions,
 } from './mixed-quiz.js';
-import { quizAccommodation, quizOffer } from './quiz-offer.js';
+import { quizAccommodation, quizOffer, quizQuestionHistory } from './quiz-offer.js';
 
 type QuizContext = {
   learnerId: string;
@@ -56,11 +57,56 @@ async function sessionFor(store: FlowStore, learnerId: string, id: string) {
   return { ...session, activities: await store.listActivities(learnerId, { sessionIds: [id] }) };
 }
 
-async function retakeStatus(
+async function currentQuizItems(
+  store: FlowStore,
+  learnerId: string,
+  run: TimedQuizRun,
+  content: ContentIndex,
+  now: Date,
+) {
+  const items = await store.listTimedQuizItems(learnerId, [run.id]);
+  if (run.finalizedAt) return items;
+  const removed = items.filter(
+    ({ question, answeredAt }) =>
+      !answeredAt && !question.withdrawn && !content.exercisesById.has(question.exercise.id),
+  );
+  if (!removed.length) return items;
+  const expired = quizAnswerIsLate(now, run.deadline);
+  const usedKeys = expired
+    ? new Set<string>()
+    : (await quizQuestionHistory(store, learnerId)).usedKeys;
+  for (const { reserve } of items) if (reserve) usedKeys.add(reserve.key);
+  for (const item of removed) {
+    const [replacement] = expired
+      ? []
+      : topicQuestions({
+          content,
+          topic: item.conceptId,
+          difficulty: run.difficulty,
+          seed: run.seed,
+          count: 1,
+          usedKeys,
+        });
+    if (replacement) {
+      usedKeys.add(replacement.key);
+      item.question = {
+        ...replacement,
+        previousKeys: [...(item.question.previousKeys ?? []), item.question.key],
+      };
+    } else {
+      item.question = { ...item.question, withdrawn: true };
+    }
+    await store.patchTimedQuizItem(learnerId, run.id, item.position, { question: item.question });
+  }
+  return items;
+}
+
+async function retakePlan(
   store: FlowStore,
   learnerId: string,
   run: TimedQuizRun,
   items: TimedQuizItem[],
+  content: ContentIndex,
 ) {
   const [retake] = await store.listTimedQuizRuns(learnerId, { retakeOf: run.id });
   const eligible =
@@ -73,7 +119,29 @@ async function retakeStatus(
       })),
       Boolean(retake),
     );
-  return { eligible, id: retake?.id };
+  const seed = quizSeed(run.seed, 'retake') & 0x7fffffff;
+  if (!eligible) return { id: retake?.id, seed, questions: null };
+  const { seenKeys, usedKeys } = await quizQuestionHistory(store, learnerId);
+  for (const { reserve } of items) if (reserve) usedKeys.add(reserve.key);
+  const questions: Array<{ question: QuizQuestion }> = [];
+  for (const { reserve, conceptId } of items) {
+    const [question] =
+      reserve && content.exercisesById.has(reserve.exercise.id) && !seenKeys.has(reserve.key)
+        ? [reserve]
+        : topicQuestions({
+            content,
+            topic: conceptId,
+            difficulty: run.difficulty,
+            seed,
+            count: 1,
+            usedKeys,
+          });
+    if (!question) continue;
+    seenKeys.add(question.key);
+    usedKeys.add(question.key);
+    questions.push({ question });
+  }
+  return { id: retake?.id, seed, questions };
 }
 
 async function quizPayload(
@@ -83,13 +151,16 @@ async function quizPayload(
   content: ContentIndex,
   now: Date,
 ) {
-  const items = await store.listTimedQuizItems(learnerId, [run.id]);
+  const items = (await currentQuizItems(store, learnerId, run, content, now)).filter(
+    ({ question }) => !question.withdrawn,
+  );
   const [activity] =
     run.finalizedAt && run.activityId
       ? await store.listActivities(learnerId, { ids: [run.activityId] })
       : [];
   const next = items.find((item) => !item.answeredAt);
   const exercise = next && serializeExercise(next.question.exercise, learnerId);
+  const retake = run.finalizedAt && (await retakePlan(store, learnerId, run, items, content));
   return {
     id: run.id,
     sessionId: activity?.sessionId,
@@ -103,6 +174,7 @@ async function quizPayload(
       !run.finalizedAt && next && exercise && !quizAnswerIsLate(now, run.deadline)
         ? {
             position: next.position,
+            number: items.indexOf(next) + 1,
             exercise: {
               id: next.question.exercise.id,
               type: next.question.exercise.type,
@@ -113,7 +185,7 @@ async function quizPayload(
             },
           }
         : null,
-    result: run.finalizedAt && {
+    result: retake && {
       score: run.score,
       xpAwarded: run.xpAwarded,
       topics: items
@@ -124,7 +196,7 @@ async function quizPayload(
           missed: item.correct !== true,
           reviewed: item.followUpActivityId !== null,
         })),
-      retake: await retakeStatus(store, learnerId, run, items),
+      retake: { id: retake.id, eligible: Boolean(retake.questions?.length) },
     },
   };
 }
@@ -235,16 +307,19 @@ export async function getQuiz(
   content: () => Promise<ContentIndex>,
   now: () => Date,
 ) {
-  const run = await runFor(store, learnerId, id);
-  if (!run) return rejected('not_found', 'Quiz not found');
-  return ok(await quizPayload(store, learnerId, run, await content(), now()));
+  const index = await content();
+  return withQuizLock(store, learnerId, async (tx) => {
+    const run = await runFor(tx, learnerId, id);
+    if (!run) return rejected('not_found', 'Quiz not found');
+    return ok(await quizPayload(tx, learnerId, run, index, now()));
+  });
 }
 
 export function answerQuiz(
   store: FlowStore,
   context: QuizContext,
   id: string | undefined,
-  input: { position: number; answer: unknown },
+  input: { position: number; questionId?: string; answer: unknown },
 ) {
   const { learnerId, content, now, random } = context;
   return withQuizLock(store, learnerId, async (tx) => {
@@ -253,7 +328,18 @@ export function answerQuiz(
     if (run.finalizedAt || quizAnswerIsLate(now, run.deadline)) {
       return rejected('conflict', 'This quiz has ended');
     }
-    const items = await tx.listTimedQuizItems(learnerId, [run.id]);
+    const storedItems = await currentQuizItems(tx, learnerId, run, content, now);
+    const requested = storedItems.find(({ position }) => position === input.position);
+    if (
+      requested &&
+      (requested.question.withdrawn ||
+        (input.questionId === undefined
+          ? requested.question.previousKeys?.length
+          : requested.question.exercise.id !== input.questionId))
+    ) {
+      return rejected('conflict', 'Question changed. Answer the current question.');
+    }
+    const items = storedItems.filter(({ question }) => !question.withdrawn);
     const current = items.find((item) => !item.answeredAt);
     if (!current || current.position !== input.position) {
       return rejected('conflict', 'This is not the current quiz question');
@@ -262,7 +348,7 @@ export function answerQuiz(
     if (emptyMessage) return rejected('invalid', emptyMessage);
     const grade = await gradeExercise(current.question.exercise, input.answer, { random });
     if (grade.status !== 'graded') return rejected('invalid', grade.feedback);
-    const shownAt = items[current.position - 1]?.answeredAt ?? run.startedAt;
+    const shownAt = items[items.indexOf(current) - 1]?.answeredAt ?? run.startedAt;
     await tx.patchTimedQuizItem(learnerId, run.id, current.position, {
       answeredAt: now,
       latencyMs: Math.max(0, now.getTime() - shownAt.getTime()),
@@ -322,7 +408,9 @@ export function finalizeQuiz(store: FlowStore, context: QuizContext, id: string 
     const run = await runFor(tx, learnerId, id);
     if (!run) return rejected('not_found', 'Quiz not found');
     if (run.finalizedAt) return ok(await quizPayload(tx, learnerId, run, content, now));
-    const items = await tx.listTimedQuizItems(learnerId, [run.id]);
+    const items = (await currentQuizItems(tx, learnerId, run, content, now)).filter(
+      ({ question }) => !question.withdrawn,
+    );
     if (!quizAnswerIsLate(now, run.deadline) && items.some((item) => !item.answeredAt)) {
       return rejected('conflict', 'Answer the remaining quiz questions');
     }
@@ -428,24 +516,29 @@ export function startQuizRetake(store: FlowStore, context: QuizContext, id: stri
   return withQuizLock(store, learnerId, async (tx) => {
     const original = await runFor(tx, learnerId, id);
     if (!original?.finalizedAt) return rejected('not_found', 'Quiz result not found');
-    const items = await tx.listTimedQuizItems(learnerId, [original.id]);
-    const status = await retakeStatus(tx, learnerId, original, items);
-    if (status.id) {
-      const existing = await runFor(tx, learnerId, status.id);
+    const items = (await tx.listTimedQuizItems(learnerId, [original.id])).filter(
+      ({ question }) => !question.withdrawn,
+    );
+    const {
+      id: existingId,
+      questions,
+      seed,
+    } = await retakePlan(tx, learnerId, original, items, content);
+    if (existingId) {
+      const existing = await runFor(tx, learnerId, existingId);
       if (existing) return ok(await quizPayload(tx, learnerId, existing, content, now));
     }
-    if (!status.eligible) return rejected('conflict', 'Complete the follow-up reviews first');
+    if (!questions) return rejected('conflict', 'Complete the follow-up reviews first');
     const [active] = await tx.listTimedQuizRuns(learnerId, { active: true });
     if (active) return rejected('conflict', 'Finish the current quiz first');
-    const questions = items.flatMap((item) => (item.reserve ? [{ question: item.reserve }] : []));
-    if (questions.length !== items.length) {
+    if (questions.length === 0) {
       return rejected('conflict', 'Fresh retake questions are not available');
     }
     const settings = await tx.getSettings(learnerId);
     const run = await insertQuiz(tx, learnerId, {
       questions,
       now,
-      seed: quizSeed(original.seed, 'retake') & 0x7fffffff,
+      seed,
       difficulty: original.difficulty,
       retakeOf: original.id,
       accommodation: quizAccommodation(settings?.prefs),

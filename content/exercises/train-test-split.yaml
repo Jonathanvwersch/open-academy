@@ -1435,3 +1435,24 @@ exercises:
         correct: true
         feedback: "Related records share details and usually have similar prices, so they stay together."
     solution: "Keep related records in one set to protect the held-out estimate."
+  - id: tts-review-audio-final-score
+    dimension: transfer
+    type: mc
+    role: transfer
+    difficulty: 3
+    est_minutes: 2
+    prompt: A bird-call team has three separate sets of recordings called Cedar, Birch and Maple. They use Cedar to fit several models and Birch to choose one. They report the chosen model's error on all three sets. After seeing the error on Maple, they change a model setting to try to lower it. What role has Maple played for the revised model?
+    options:
+      - id: a
+        text: It became a training set.
+        correct: false
+        feedback: The team used the score to choose a setting. They used Cedar's recordings to fit the model.
+      - id: b
+        text: It remained a test set.
+        correct: false
+        feedback: Once the team uses the score to choose a setting, it can no longer provide an independent test of that choice.
+      - id: c
+        text: It became a validation set.
+        correct: true
+        feedback: A score used to tune a setting plays the role of validation.
+    solution: Maple became validation data when its score guided a change to the model. The revised model needs an independent test on unused recordings.

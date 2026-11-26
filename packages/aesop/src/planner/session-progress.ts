@@ -76,7 +76,7 @@ export async function updateSessionProgress(
         },
       };
     }
-    if (removedQuestions && activity.exerciseIds.length > 0 && activity.status !== 'completed') {
+    if (removedQuestions && activity.status !== 'completed') {
       const index = await reads.content();
       const context = { index, now, session, userId: learnerId, timeZone };
       activity = await recordRecoveredReviewRatings(

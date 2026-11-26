@@ -725,3 +725,34 @@ exercises:
     answer: "gamma^k * r"
     variables: { "gamma": [0.1, 0.95], "k": { "values": [1, 3, 5] }, "r": [-10, 10] }
     solution: "Each extra step multiplies by $\\gamma$, so the weighted amount is $\\gamma^k r$."
+  - id: mdpp-missing-transition-probability
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 0.5
+    target_seconds: 30
+    prompt: A robot at a junction can go straight or turn. For either command, the next cell is one of cells 1, 2 or 3. With the straight command, it reaches cell 1 with probability $0.2$ and cell 2 with probability $0.3$. With the turn command, it reaches cell 1 with probability $0.1$ and cell 2 with probability $0.7$. What is the probability of reaching cell 3 on the straight command? Give an exact decimal.
+    answer: 0.5
+    tolerance: { abs: 0 }
+    solution: For the straight command, the probabilities of reaching cells 1, 2 and 3 add to 1. The chance of reaching cell 3 is $1-0.2-0.3=0.5$.
+  - id: mdpp-motor-success-from-reward
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A robot tries a forward command from a fixed starting cell. Its reward is $8$ points if it reaches the goal and $-2$ points if its motor fails and it stays in place. These are the only two outcomes. The expected reward for that one command is $4$ points. What is the probability it reaches the goal on that command? Give an exact decimal.
+    answer: 0.6
+    tolerance: { abs: 0 }
+    solution: If $x$ is the probability of reaching the goal, the expected reward is $8x-2(1-x)=10x-2$. Setting it equal to $4$ gives $x=0.6$.
+  - id: mdpp-equal-penalty-weights
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: A warehouse cart receives a penalty of $-4$ points after its first command and a penalty of $-25$ points after its third command. What value of the discount factor $\gamma$ makes the weighted amounts of the two penalties equal when evaluated from just before the first command? Give an exact decimal.
+    answer: 0.4
+    tolerance: { abs: 0 }
+    solution: The first penalty has weight 1, and the third has weight $\gamma^2$ because it arrives two steps later. Solving $-25\gamma^2=-4$ with $0\le\gamma\le1$ gives $\gamma=0.4$.

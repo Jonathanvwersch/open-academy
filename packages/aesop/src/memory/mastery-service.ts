@@ -109,7 +109,7 @@ export async function applyMastery(
   store: LearnerStore,
   input: {
     learnerId: string;
-    exercise: IndexedExercise;
+    exercise: Pick<IndexedExercise, 'id' | 'concept' | 'dimension' | 'role'>;
     attemptId: string;
     correct: number;
     credit: number;

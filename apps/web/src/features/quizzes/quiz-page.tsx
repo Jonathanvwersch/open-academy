@@ -1,4 +1,4 @@
-import type { QuizPayload } from '@academy/contracts/quizzes';
+import type { QuizAnswer, QuizPayload } from '@academy/contracts/quizzes';
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
@@ -60,11 +60,10 @@ export function QuizPage() {
   const apply = (next: QuizPayload) =>
     client.setQueryData(quizQueryOptions(next.id).queryKey, next);
   const answer = useMutation({
-    mutationFn: (input: { position: number; answer: unknown }) =>
-      postQuiz<QuizPayload>(`${id}/answer`, input),
+    mutationFn: (input: QuizAnswer) => postQuiz<QuizPayload>(`${id}/answer`, input),
     onSuccess: apply,
-    onError: () => {
-      void query.refetch();
+    onError: async () => {
+      await query.refetch();
     },
   });
   const finalize = useMutation({
@@ -130,18 +129,22 @@ export function QuizPage() {
           ) : quiz.question && !expired ? (
             <>
               <p className="text-sm text-muted-foreground">
-                Question {quiz.question.position + 1} of {quiz.totalItems}
+                Question {quiz.question.number} of {quiz.totalItems}
               </p>
               <div data-testid="quiz-prompt">
                 <Markdown>{quiz.question.exercise.prompt}</Markdown>
               </div>
               <ExerciseForm
-                key={quiz.question.position}
+                key={`${quiz.question.position}:${quiz.question.exercise.id}`}
                 exercise={quiz.question.exercise}
                 loading={answer.isPending}
                 onSubmit={(value) => {
                   if (!quiz.question || answer.isPending) return;
-                  answer.mutate({ position: quiz.question.position, answer: value });
+                  answer.mutate({
+                    position: quiz.question.position,
+                    questionId: quiz.question.exercise.id,
+                    answer: value,
+                  });
                 }}
               />
             </>

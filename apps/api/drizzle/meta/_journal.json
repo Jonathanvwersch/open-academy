@@ -162,6 +162,13 @@
       "when": 1795619244902,
       "tag": "0022_tutor_messages_problem_assistant",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795652801213,
+      "tag": "0023_lesson_quiz_evidence",
+      "breakpoints": true
     }
   ]
 }

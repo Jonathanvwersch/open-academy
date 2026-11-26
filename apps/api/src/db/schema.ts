@@ -1,4 +1,5 @@
 import type { QuizQuestion } from '@academy/aesop/quizzes/mixed-quiz';
+import type { LessonQuizEvidence } from '@academy/aesop/store/lesson-store';
 import { sql } from 'drizzle-orm';
 import {
   type AnyPgColumn,
@@ -272,6 +273,7 @@ export const lessonQuizItems = pgTable(
     exerciseId: text('exercise_id').notNull(),
     seed: integer('seed'),
     answer: jsonb('answer'),
+    evidence: jsonb('evidence').$type<LessonQuizEvidence>(),
     correct: real('correct'),
     durationMs: integer('duration_ms'),
     attemptId: uuid('attempt_id').references(() => attempts.id, { onDelete: 'set null' }),

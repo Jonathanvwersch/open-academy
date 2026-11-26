@@ -1036,3 +1036,27 @@ exercises:
     answer: "max(r,c)"
     variables: { r: [0.002, 0.02], c: [0.002, 0.04] }
     solution: "The step waits for the slower of reading and arithmetic, so the estimate is $\\max(r,c)$."
+
+  - id: lsv-paging-separated-holes
+    dimension: transfer
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 1
+    prompt: A live translation service uses PagedAttention. One translation has six cached tokens, and its block table lists the memory block IDs `[5, 2]`. Each block has four token slots. A program tries to read six consecutive slots starting at block 5. How should it read the six tokens in order without moving any cache entries?
+    options:
+      - id: a
+        text: Read four slots from block 5, then two from block 6.
+        correct: false
+        category: implementation_error
+        feedback: The next block in memory is not necessarily the next block in the sequence. Use the block table to find it.
+      - id: b
+        text: Read four slots from block 5, then two from block 2.
+        correct: true
+        feedback: The first block is full. The table points to block 2 for the last two tokens.
+      - id: c
+        text: Read two slots from block 5, then four from block 2.
+        correct: false
+        category: implementation_error
+        feedback: PagedAttention does not add a second block until the first is full.
+    solution: Follow the block table rather than consecutive memory addresses. The first four tokens fill block 5, so the last two are at the start of block 2.

@@ -868,3 +868,55 @@ exercises:
     answer: "sqrt(a^2+b^2)"
     variables: { "a": [0.01, 0.1], "b": [0.01, 0.1] }
     solution: "Add squared standard errors and take the square root: $\\sqrt{a^2+b^2}$."
+  - id: ds-review-missing-mean-value
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: Four tasks took an average of 8 seconds each. Three of the times were 5, 7 and 9 seconds. How many seconds did the fourth task take?
+    answer: 11
+    tolerance: { abs: 0.001 }
+    solution: The four times total $4\times8=32$ seconds. The three known times total 21 seconds, so the fourth took 11 seconds.
+  - id: ds-review-fourfold-count
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: An experiment timed the same task on 25 independent trials. The mean task time had an estimated standard error of 0.6 seconds. The team plans a repeat and expects the same standard deviation of task times. How many independent trials should the repeat have to bring the estimated standard error of the mean down to 0.2 seconds?
+    answer: 225
+    tolerance: { abs: 0.001 }
+    solution: Cutting the standard error by a factor of 3 requires tripling the square root of the trial count. The count must therefore be $3^2\times25=225$.
+  - id: ds-review-rate-se
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: Two sorting robots each make 100 independent attempts. Robot A succeeds 50 times and robot B succeeds 20 times. Give the estimated standard error of A's success rate divided by that of B's success rate.
+    answer: 1.25
+    tolerance: { abs: 0.001 }
+    solution: The two standard errors are $\sqrt{0.5(0.5)/100}=0.05$ and $\sqrt{0.2(0.8)/100}=0.04$. Their ratio is $0.05/0.04=1.25$.
+  - id: ds-review-rate-difference-endpoint
+    dimension: math
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: In large, independent tests under comparable conditions, a robot succeeds 70% of the time before an update and 86% after it. The standard errors of these success rates are 3 percentage points before the update and 4 percentage points after it. The team wants evidence of an improvement of at least 10 percentage points. What does the approximate 95% confidence interval for the increase in success rate support? Use a multiplier of 2 on the standard error of the difference.
+    options:
+      - id: a
+        text: It supports an improvement of at least 10 percentage points.
+        correct: false
+        feedback: The observed increase is 16 points, but the interval includes increases smaller than 10.
+      - id: b
+        text: It supports an improvement, but the size could be below 10 percentage points.
+        correct: true
+        feedback: The interval excludes zero and includes increases between 6 and 10 points.
+      - id: c
+        text: It leaves open whether the success rate increased at all.
+        correct: false
+        feedback: The interval's entire range is above zero, so it supports an increase.
+    solution: The increase is 16 points, and its standard error is $\sqrt{3^2+4^2}=5$ points. The interval is 6 to 26 points, which supports an increase and leaves open whether it reaches 10 points.

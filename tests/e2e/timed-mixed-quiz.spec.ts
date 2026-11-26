@@ -8,7 +8,7 @@ import { answerFor, wrongAnswerFor } from '../../apps/api/scripts/learner-simula
 import { env } from '../../apps/api/src/config.js';
 import { loadContent } from '../../apps/api/src/content/load.js';
 import { createDb } from '../../apps/api/src/db/client.js';
-import { lessonRuns, quizItems, users, xpEvents } from '../../apps/api/src/db/schema.js';
+import { lessonRuns, quizItems, quizRuns, users, xpEvents } from '../../apps/api/src/db/schema.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const start = '2026-01-01T12:00:00.000Z';
@@ -141,7 +141,7 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
   const firstAnswer = answerFor(content, first.exercise.id, first.seed);
   const firstResponse = await page.request.post(`/api/quizzes/${quizId}/answer`, {
     headers: headers(),
-    data: { position: 0, answer: firstAnswer },
+    data: { position: 0, questionId: first.exercise.id, answer: firstAnswer },
   });
   expect(firstResponse.ok()).toBe(true);
   now = new Date(Date.parse(start) + 12_000).toISOString();
@@ -156,7 +156,11 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
   const second = items[1].question;
   const late = await page.request.post(`/api/quizzes/${quizId}/answer`, {
     headers: headers(),
-    data: { position: 1, answer: answerFor(content, second.exercise.id, second.seed) },
+    data: {
+      position: 1,
+      questionId: second.exercise.id,
+      answer: answerFor(content, second.exercise.id, second.seed),
+    },
   });
   expect(late.status()).toBe(409);
   await page.reload();
@@ -254,4 +258,83 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
   await page.screenshot({ path: testInfo.outputPath('completed-retake-desktop.png') });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: testInfo.outputPath('completed-retake-mobile.png') });
+});
+
+test('a stale answer shows the changed question and keeps the quiz usable', async ({
+  page,
+}, testInfo) => {
+  const content = await loadContent('content');
+  const exercise = content.exercisesById.get('vecp-entry');
+  if (exercise?.type !== 'numeric') throw new Error('Missing timed quiz fixture');
+  await db.delete(users);
+  const [user] = await db
+    .insert(users)
+    .values({
+      displayName: 'Timed quiz learner',
+      timezone: 'UTC',
+      startDate: '2026-01-01',
+    })
+    .returning();
+  const deadline = new Date(Date.parse(start) + 120_000);
+  const [run] = await db
+    .insert(quizRuns)
+    .values({
+      userId: user.id,
+      startedAt: new Date(start),
+      deadline,
+      plannedMinutes: 2,
+      seed: 0,
+      difficulty: 2,
+    })
+    .returning();
+  const question = { key: exercise.prompt.trim().replace(/\s+/g, ' '), exercise, seed: 0 };
+  await db.insert(quizItems).values({
+    runId: run.id,
+    position: 0,
+    conceptId: exercise.concept,
+    question,
+  });
+  await page.goto(`/quizzes/${run.id}`);
+  const text = page.getByTestId('quiz-prompt');
+  await expect(text).not.toBeEmpty();
+  const original = (await text.textContent()) ?? '';
+  await db
+    .update(quizItems)
+    .set({
+      question: { ...question, exercise: { ...exercise, id: 'deleted-e2e-quiz-question' } },
+    })
+    .where(eq(quizItems.runId, run.id));
+  await page.getByLabel('Your answer').fill('999');
+  const stale = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/quizzes/${run.id}/answer`) && response.status() === 409,
+  );
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await stale;
+  await expect(page.getByRole('alert')).toHaveText(
+    'Question changed. Answer the current question.',
+  );
+  await expect(text).not.toHaveText(original);
+  await expect(page.getByText('Question 1 of 1')).toBeVisible();
+  const [replaced] = await db.select().from(quizItems).where(eq(quizItems.runId, run.id));
+  expect(replaced.answeredAt).toBeNull();
+  expect(replaced.question.exercise.concept).toBe(exercise.concept);
+  expect((await db.select().from(quizRuns).where(eq(quizRuns.id, run.id)))[0].deadline).toEqual(
+    deadline,
+  );
+  await page.screenshot({ path: testInfo.outputPath('timed-quiz-question-changed.png') });
+  const replacement = replaced.question.exercise;
+  if (replacement.type === 'mc') {
+    await page
+      .getByRole(replacement.multi ? 'checkbox' : 'radio')
+      .first()
+      .click();
+  } else {
+    await expect(page.getByLabel('Your answer')).toHaveValue('');
+    await page
+      .getByLabel('Your answer')
+      .fill(String(answerFor(content, replacement.id, replaced.question.seed)));
+  }
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByRole('heading', { name: 'Quiz results' })).toBeVisible();
 });

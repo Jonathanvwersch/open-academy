@@ -5,6 +5,14 @@ export interface ReviewTopic {
   title: string;
 }
 
+export function reviewActivityReason(reason: unknown) {
+  return (reason ?? {}) as Record<string, unknown> & {
+    topicIds?: string[];
+    removedQuestions?: boolean;
+    fireAppliedTopicIds?: string[];
+  };
+}
+
 export function attemptedExerciseIdsByActivity(
   attempts: readonly { activityId: string | null; exerciseId: string }[],
 ): Map<string, Set<string>> {

@@ -11,6 +11,8 @@ const DEFAULT_TARGET_SECONDS = 90;
 
 export type QuizExercise = IndexedExercise & { type: 'mc' | 'numeric' | 'expression' };
 export interface QuizQuestion {
+  withdrawn?: true;
+  previousKeys?: string[];
   exercise: QuizExercise;
   seed: number;
   key: string;
@@ -92,7 +94,7 @@ function quizExercise(exercise: IndexedExercise): exercise is QuizExercise {
   );
 }
 
-function topicQuestions(input: {
+export function topicQuestions(input: {
   content: ContentIndex;
   topic: string;
   seed: number;
@@ -100,6 +102,7 @@ function topicQuestions(input: {
   usedKeys: ReadonlySet<string>;
   count: number;
 }): QuizQuestion[] {
+  if (input.content.conceptsById.get(input.topic)?.status !== 'authored') return [];
   const authored = (input.content.exercisesByConcept.get(input.topic) ?? [])
     .filter(quizExercise)
     .sort(

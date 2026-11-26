@@ -3191,6 +3191,7 @@ async function processTimedQuiz(
         : wrongAnswerFor(content, exercise.id, item.question.seed);
       current = await api.require<QuizPayload>('POST', `${path}/answer`, answeredAt, {
         position: item.position,
+        questionId: exercise.id,
         answer,
       });
       recordOutcome(runtime, exercise.concept, day, Number(correct));
@@ -3205,6 +3206,7 @@ async function processTimedQuiz(
       lateStatus = (
         await api.call('POST', `${path}/answer`, received, {
           position: item.position,
+          questionId: item.question.exercise.id,
           answer: answerFor(content, item.question.exercise.id, item.question.seed),
         })
       ).status;
