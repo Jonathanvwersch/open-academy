@@ -156,7 +156,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: >-
-      A corridor has cells 1 to 4. A robot starts in cell 1, and a wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode; other steps give $-1$. With policy parameter $\theta$, the robot chooses right with probability $p=e^\theta/(e^\theta+1)$ in every cell and left otherwise. At $\theta=0$, what is the probability of exactly left, right, right, right?
+      A corridor has cells 1 to 4 from left to right. A robot starts in cell 1; moving left into the wall leaves it there. Reaching cell 4 gives $+10$ and ends the episode; other steps give $-1$. With policy parameter $\theta$, the robot chooses right with probability $p=e^\theta/(e^\theta+1)$ in every cell and left otherwise. At $\theta=0$, what is the probability of exactly left, right, right, right?
     solution:
       Both choices have chance $0.5$. The left hits the wall and three rights finish, so the probability
       is $0.5^4=0.0625$.
