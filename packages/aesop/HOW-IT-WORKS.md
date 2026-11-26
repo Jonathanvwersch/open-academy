@@ -287,6 +287,17 @@ Starting placement locks the learner row. Answering a placement question locks t
 
 ## 13. How we check the engine
 
-The simulator runs 7 simulated learners for 120 days each, through the real app. The learners follow fixed rules and use a fixed random seed. A fake grader marks written answers. No AI is used.
+The simulator runs 12 simulated learners for 120 days each. Seven learners study courses. Five learners follow scripts, for example a learner who is placed too high or a learner who takes a timed quiz again. The learners follow fixed rules and use a fixed random seed. A fake grader marks written answers. No AI is used.
 
-After every activity, the simulator checks 19 rules (P1–P19). Examples: no topic opens before its prerequisite chain is complete, every due review is planned or covered, and no session goes over its budget. Two runs of the same code must give the same result.
+The simulator has two drivers:
+
+- **Direct (the default).** The simulator calls the engine directly. Each learner gets a new in-memory store. This driver does not use the app, a database or API keys, so it is fast and it runs in the unit tests.
+- **HTTP.** The simulator sends requests to the real app, and the app keeps its data in PostgreSQL. This driver checks that the app does the same thing as the engine.
+
+Choose a driver with `--driver direct` or `--driver http`. Both drivers use the same simulated clock. Each request gets its own random numbers. The seed comes from the learner, the day, the request and how many times that same request came before on that day. The direct driver gives these random numbers to the engine. It does not change the global random function.
+
+The in-memory store copies two PostgreSQL details, so that both drivers see the same values. Decimal numbers that PostgreSQL keeps with single precision are rounded in the same way. JSON values have their keys in the order that PostgreSQL gives them. The direct driver makes IDs that look like the IDs that PostgreSQL makes.
+
+When you change the engine, run both drivers on the same code. Remove `generatedAt` and `runtimeMs` from both reports. The two reports must then be the same, byte for byte.
+
+After every activity, the simulator checks 28 rules (P1–P28). Examples: no topic opens before its prerequisite chain is complete, every due review is planned or covered, and no session goes over its budget. Two runs of the same code must give the same result.
