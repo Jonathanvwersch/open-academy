@@ -666,7 +666,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: "An attention function mixes values from two sources. The first source's value has one component, $2$, and the second source's value has one component, $10$. The output's single component is $8$. What attention weight did the second source receive?"
+    prompt: "A scaled dot-product attention function mixes values from two sources with weights that sum to $1$. The first source's value has one component, $2$, and the second source's value has one component, $10$. The output's single component is $8$. What attention weight did the second source receive?"
     answer: 0.75
     tolerance: { abs: 0 }
     solution: "The two weights add to $1$. If the second weight is $w$, the output is $2(1-w)+10w=2+8w$, so $w=0.75$."
