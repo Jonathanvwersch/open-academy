@@ -31,7 +31,7 @@ knowledge_points:
 
       Three learned matrices transform each embedding. The **query** from $W_Q$ says what to look for, the **key** from $W_K$ says what matches, and the **value** from $W_V$ carries the information to pass along.
 
-      Say cat's embedding is $(1,0)$. Multiplying by a matrix takes one copy of its first row and zero of its second. Here the first rows of $W_Q$, $W_K$ and $W_V$ give cat its query $(2,0,0,0)$, key $(0,1,0,0)$ and value $(0,2)$.
+      Put cat's embedding $(1,0)$ on the left of each matrix as a row. This takes one copy of the first row and none of the second. The first rows of $W_Q$, $W_K$ and $W_V$ give cat its query $(2,0,0,0)$, key $(0,1,0,0)$ and value $(0,2)$.
 
       ### Compare the query with every key
 
