@@ -258,7 +258,7 @@ knowledge_points:
 
       Here $c$ is the clip range. The `clip` function leaves ratios between $1-c$ and $1+c$ unchanged. It sets smaller ratios to $1-c$ and larger ones to $1+c$.
 
-      Average the clipped terms per reply, then average the replies, so long and short replies count equally. The KL penalty uses a frozen copy of the starting policy as the reference. For each sampled token, divide its reference probability by its current probability given the same preceding text. If that ratio is $u$, the token's penalty estimate is $u-\ln u-1$.
+      Average the clipped terms per reply, then average the replies, so long and short replies count equally. For each sampled token, let $u$ be its probability under the frozen starting policy divided by its current probability, given the same preceding text. Its penalty is $u-\ln u-1$, which estimates KL when tokens come from the current policy.
 
       GRPO averages these penalties the same way and subtracts $\beta$ times their average from the objective. Gradient ascent increases this objective. The checker reward stays $0$ or $1$.
 
