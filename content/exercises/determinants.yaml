@@ -913,7 +913,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 1
-    prompt: A print shop uses a matrix to move every point of a flat stencil. Which matrix reverses the orientation of the stencil and keeps its area the same?
+    prompt: A print shop moves every point of a flat stencil by multiplying its coordinate vector by a $2\times2$ matrix. Which matrix reverses the orientation of the stencil and keeps its area the same?
     options:
       - id: same-orientation
         text: '$\begin{bmatrix}2&1\\1&1\end{bmatrix}$'

@@ -926,7 +926,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: The projection of $x=(8,y)$ onto the line through the origin and $(2,4)$ is $(2,4)$. What is $y$?
+    prompt: A vector $x=(8,y)$ has an unknown second entry $y$. Its projection onto the line through the origin and the point $(2,4)$ is the vector $(2,4)$. What is $y$?
     answer: 1
     tolerance: { abs: 0 }
     common_wrong:
@@ -935,5 +935,5 @@ exercises:
         feedback: The input and its projection can have different second entries. Their difference must be perpendicular to the line.
       - answer: -4
         category: incorrect_reasoning
-        feedback: Making $x$ perpendicular to the line would give a zero projection. The leftover after subtracting $(2,4)$ is the vector that must be perpendicular.
-    solution: The leftover $(6,y-4)$ must have dot product zero with $(2,4)$. Solving $2\times6+4(y-4)=0$ gives $y=1$.
+        feedback: Making $x$ perpendicular to the line would give a zero projection. The vector left after subtracting the projection $(2,4)$ must be perpendicular.
+    solution: The leftover vector $(6,y-4)$ must have dot product zero with the line's direction vector $(2,4)$. Solving $2\times6+4(y-4)=0$ gives $y=1$.
