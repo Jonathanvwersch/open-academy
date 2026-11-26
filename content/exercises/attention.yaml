@@ -731,23 +731,23 @@ exercises:
     dimension: implementation
     type: mc
     role: review
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
-    prompt: "For one query, `weights[j]` is the attention weight for source `j`. The `keys`, `queries`, and `values` lists contain the corresponding vectors. Which Python expression computes the first component of the attention output?"
+    prompt: "An attention function processes two tokens. In its weight grid, $a_{tj}$ is the weight that position $t$ gives source $j$. The first components of source $j$'s key and value are $k_{j1}$ and $v_{j1}$. Which expression should the function use to compute the first output component at position 2?"
     options:
       - id: a
-        text: "`sum(weights[j] * keys[j][0] for j in range(len(weights)))`"
+        text: "$a_{21}k_{11}+a_{22}k_{21}$"
         correct: false
         feedback: "Keys are used to find scores. The output carries the source values."
       - id: b
-        text: "`sum(weights[j] * values[j][0] for j in range(len(weights)))`"
+        text: "$a_{21}v_{11}+a_{22}v_{21}$"
         correct: true
         feedback: "This adds the first value components after weighting each by its source weight."
       - id: c
-        text: "`sum(weights[j] * queries[j][0] for j in range(len(weights)))`"
+        text: "$a_{12}v_{11}+a_{22}v_{21}$"
         correct: false
-        feedback: "Queries describe what each token looks for. They do not supply the content to mix."
-    solution: "Apply each source's weight to its value's first component and sum those contributions."
+        feedback: "This takes both weights from source column 2, mixing weights from different queries."
+    solution: "Use the weights from row 2, one per source. Multiply each by the first component of its source's value and add."
   - id: attn-code-output-width
     dimension: implementation
     type: mc
