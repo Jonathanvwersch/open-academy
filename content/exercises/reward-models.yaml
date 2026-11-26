@@ -364,7 +364,11 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'Out of 100 people who compared response A with response B, 73 preferred A. Under the Bradley–Terry model, $P(A\text{ over }B)=\sigma(r_A-r_B)$, with $\sigma(z)=1/(1+e^{-z})$. Which reward difference $r_A-r_B$ matches this best?'
+    prompt:
+      Out of 100 people who compared responses A and B, 73 preferred A. The Bradley–Terry model
+      gives the preference probability $P(A\text{ over }B)=\sigma(r_A-r_B)$, using the responses' rewards
+      $r_A,r_B$ and the sigmoid $\sigma(z)=1/(1+e^{-z})$. Which reward difference $r_A-r_B$ matches this
+      best?
     options:
       - { id: a, text: "$1$", correct: true, feedback: "$\\sigma(1)=1/(1+e^{-1})\\approx0.73$." }
       - {
@@ -532,7 +536,11 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: 'A reward model already gives a chosen response a reward 3 above the rejected one, so $p=\sigma(3)\approx0.95$. It is trained with $L=-\ln\sigma(r_w-r_l)$. What does one more training step do to these two rewards?'
+    prompt:
+      A reward model gives the chosen response reward $r_w$ and the rejected response reward $r_l$.
+      The chosen response is 3 points ahead, so the sigmoid gives a preference probability
+      $p=\sigma(3)\approx0.95$ for it. The loss is $L=-\ln\sigma(r_w-r_l)$. What does one more
+      gradient-descent step do to the two rewards?
     options:
       - {
           id: a,
@@ -586,7 +594,12 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: 'A person compared two ways a robot folded a towel and chose the first. Treat the two rewards themselves as the numbers being trained, starting at $r_w=0$ and $r_l=0$. The loss is $L=-\ln\sigma(r_w-r_l)$, with $\sigma(z)=1/(1+e^{-z})$, $p=\sigma(r_w-r_l)$. After one gradient descent step on both rewards with learning rate $\eta=1$, what is the new $p$? Give two decimal places.'
+    prompt:
+      A person compared two ways a robot folded a towel and chose the first. Train the chosen and
+      rejected folds' rewards $r_w$ and $r_l$ directly, starting both at zero. The probability of
+      preferring the chosen fold is $p=\sigma(r_w-r_l)$, where $\sigma(z)=1/(1+e^{-z})$. The loss is
+      $L=-\ln p$. After one gradient-descent step on both rewards with learning rate $\eta=1$, what is the
+      new $p$? Give two decimal places.
     answer: 0.7310585786
     tolerance: { abs: 0.005 }
     common_wrong:

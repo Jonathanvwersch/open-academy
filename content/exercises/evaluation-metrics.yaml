@@ -311,8 +311,8 @@ exercises:
     difficulty: 2
     est_minutes: 1
     prompt:
-      A camera has TP = 8, FP = 2 and FN = 12. A learner reports recall as 8 / (8 + 2) = 0.8. What
-      went wrong?
+      A camera detects faulty parts. It records 8 true positives, 2 false positives and 12 false
+      negatives. A learner reports recall as $8/(8+2)=0.8$. What went wrong?
     options:
       - id: a
         text: They should include true negatives in the starting group.
@@ -537,7 +537,10 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 4
-    prompt: "A factory camera has $94\\%$ test accuracy with TP $=6$, FP $=2$, FN $=4$ and TN $=88$. Calculate and interpret precision, calculate and interpret recall, and explain why the accuracy can be misleading when missed faults are dangerous."
+    prompt:
+      A factory camera has $94\%$ test accuracy, with 6 true positives, 2 false positives, 4 false
+      negatives and 88 true negatives. Calculate and interpret precision, calculate and interpret recall,
+      and explain why the accuracy can be misleading when missed faults are dangerous.
     rubric:
       - id: scores
         criterion: Calculate precision as $6/8=0.75$, the genuine share of flagged parts.

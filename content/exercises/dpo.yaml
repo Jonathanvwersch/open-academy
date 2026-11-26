@@ -6,7 +6,10 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: For one prompt, RLHF's goal is the average reward of the policy's replies minus $\beta$ times the KL divergence from the reference model. What does the best policy for this goal do to each reply's reference probability?
+    prompt:
+      For one prompt, each reply earns reward $r$. RLHF's goal is the average reward of the policy's
+      replies minus the KL divergence from the reference model multiplied by the penalty coefficient
+      $\beta$. What does the best policy for this goal do to each reply's reference probability?
     options:
       - id: a
         text: Multiplies it by $e^{r/\beta}$, then rescales so the probabilities add up to 1.
@@ -63,7 +66,10 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: For RLHF's goal, the best policy gives each reply its reference probability times $e^{r/\beta}$, divided by the total over all replies. What happens to the best policy as $\beta$ gets very large?
+    prompt:
+      For RLHF's goal, the best policy gives a reply with reward $r$ its reference probability times
+      $e^{r/\beta}$, divided by the sum of those weighted probabilities over all replies. What happens to
+      the best policy as the KL penalty coefficient $\beta$ gets very large?
     options:
       - id: a
         text: It gets close to the reference model.
@@ -156,7 +162,11 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A prompt has two replies with rewards $2$ and $1$. The reference model gives each probability $0.5$, and $\beta=1$. A policy gives the first reply $0.8$ and the second $0.2$. What is $J=\text{average reward}-\beta\,\mathrm{KL}(\pi\Vert\pi_{\text{ref}})$ for this policy, in nats? Give three decimals.
+    prompt:
+      A prompt has two replies with rewards $2$ and $1$. The reference policy $\pi_{\text{ref}}$
+      gives each probability $0.5$. The policy $\pi$ gives the first reply $0.8$ and the second $0.2$.
+      With KL penalty coefficient $\beta=1$, what is $J=\text{average
+      reward}-\beta\,\mathrm{KL}(\pi\Vert\pi_{\text{ref}})$ for this policy, in nats? Give three decimals.
     answer: 1.607
     tolerance:
       abs: 0.002
@@ -174,7 +184,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A robot arm's reference policy picks grasp 1 with probability $0.6$ and grasp 2 with probability $0.4$. Grasp 1 has reward $0$ and grasp 2 has reward $1$, and $\beta=0.5$. For the goal of a high average reward with a KL penalty against the reference, what probability does the best policy give grasp 2? Give two decimals.
+    prompt: A robot arm's reference policy picks grasp 1 with probability $0.6$ and grasp 2 with
+      probability $0.4$. Grasp 1 has reward $0$ and grasp 2 has reward $1$. The goal is to maximize
+      average reward minus a KL penalty against the reference with coefficient $\beta=0.5$. What
+      probability does the best policy give grasp 2? Give two decimals.
     answer: 0.83
     tolerance:
       abs: 0.006
@@ -380,7 +393,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: For a preference pair, the policy gives the chosen reply log-probability $-30$ and the rejected reply $-20$. The reference model gives them $-33$ and $-19$, and $\beta=0.1$. A learner says the policy ranks this pair the wrong way round, so its DPO loss is above $\ln2$. What is right?
+    prompt: For a preference pair, the policy gives the chosen reply log-probability $-30$ and the
+      rejected reply $-20$. The reference model gives them $-33$ and $-19$, respectively. The DPO
+      coefficient on the policy-to-reference log ratios is $\beta=0.1$. A learner says the policy ranks
+      this pair the wrong way round, so its DPO loss is above $\ln2$. What is right?
     options:
       - id: a
         text: The loss is below $\ln2$, because the gap is $z=0.1\times(3-(-1))=0.4$.
@@ -408,7 +424,11 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: After DPO training with $\beta=0.25$, a policy gives reply A log-probability $-5$ and reply B $-10$ for a prompt. The reference model gives A $-9$ and B $-6$. Using the policy's implicit rewards in the Bradley–Terry model, what is the probability that A is preferred to B? Give two decimals.
+    prompt:
+      A DPO-trained policy gives reply A log-probability $-5$ and reply B $-10$ for a prompt. The
+      reference model gives A $-9$ and B $-6$. Use $\beta=0.25$ as the coefficient on the
+      policy-to-reference log ratios. Using the policy's implicit rewards in the Bradley–Terry model, what
+      is the probability that A is preferred to B? Give two decimals.
     answer: 0.88
     tolerance:
       abs: 0.006
@@ -426,7 +446,11 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot arm's policy is trained with DPO on people's choices between pairs of grasp motions. For one pair, the policy's log-probability of the chosen motion minus the reference's is $3$, and for the rejected motion it is $-2$. With $\beta=0.1$, what is the DPO loss? Round only at the end and give three decimals.
+    prompt:
+      A robot arm's policy is trained with DPO on people's choices between pairs of grasp motions.
+      For one pair, the policy's log-probability of the chosen motion minus the reference's is $3$, and
+      for the rejected motion it is $-2$. With coefficient $\beta=0.1$ on these log ratios, what is the
+      DPO loss? Round only at the end and give three decimals.
     answer: 0.474
     tolerance:
       abs: 0.002
@@ -636,7 +660,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: During DPO training with $\beta=0.5$, a preference pair's chosen-reply log ratio (policy minus reference) goes from $0$ to $-2$, and its rejected-reply log ratio goes from $0$ to $-4$. What happened?
+    prompt: During DPO training, the coefficient on the policy-to-reference log ratios stays at
+      $\beta=0.5$. For one preference pair, the chosen reply's log ratio goes from $0$ to $-2$ and the
+      rejected reply's goes from $0$ to $-4$. What happened?
     options:
       - id: a
         text: The loss fell, and the chosen reply is now less likely than under the reference.
@@ -664,7 +690,9 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: During DPO training with $\beta=0.1$, pair P has gap $z=-1$ and pair Q has gap $z=3$, where $z$ is $\beta$ times the chosen reply's log ratio minus the rejected reply's. Which pair's chosen reply gets the bigger push from gradient descent?
+    prompt: During DPO training, pair P has gap $z=-1$ and pair Q has gap $z=3$. Here $z$ is the
+      difference between the chosen and rejected replies' policy-to-reference log ratios, scaled by the
+      coefficient $\beta=0.1$. Which pair's chosen reply gets the bigger push from gradient descent?
     options:
       - id: a
         text: P, by about 15 times, because P is ranked the wrong way round.
@@ -692,7 +720,11 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A robot arm's grasp policy is trained with DPO and $\beta=0.2$. For one pair of grasp motions, the chosen motion's log ratio (policy minus reference) is $1$ and the rejected motion's is $-4$. What is the slope of the DPO loss with respect to the policy's log-probability of the rejected motion? Give three decimals.
+    prompt:
+      A robot arm's grasp policy is trained with DPO. For one pair of grasp motions, the chosen
+      motion's log ratio (policy minus reference) is $1$ and the rejected motion's is $-4$. With
+      coefficient $\beta=0.2$ on these log ratios, what is the slope of the DPO loss with respect to the
+      policy's log-probability of the rejected motion? Give three decimals.
     answer: 0.054
     tolerance:
       abs: 0.001

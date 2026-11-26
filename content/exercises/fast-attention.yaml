@@ -584,7 +584,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A kernel adds up softmax one block of keys at a time with running totals $\ell$ and $u$, then outputs $u/\ell$. How does its output compare with three-kernel attention on the same inputs?
+    prompt:
+      A kernel processes one block of attention keys at a time. It keeps a running total $\ell$ of
+      unnormalized softmax weights and a running weighted sum $u$ of the value vectors, then outputs
+      $u/\ell$. How does its output compare with three-kernel attention on the same inputs?
     options:
       - {
           id: a,
@@ -829,7 +832,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A kernel keeps a running largest score. When a new block raises it, the kernel rescales its running sum $\ell$ but forgets to rescale its running weighted total $u$. What happens to the output $u/\ell$?
+    prompt:
+      An attention kernel keeps a running largest score. When a new block raises that maximum, the
+      kernel rescales the running sum $\ell$ of unnormalized weights but forgets to rescale the running
+      weighted sum $u$ of the value vectors. What happens to the output $u/\ell$?
     options:
       - {
           id: a,

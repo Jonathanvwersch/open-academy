@@ -495,7 +495,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A layer with embedding width $d=12$ and $h=3$ heads computes every head's queries at once as $Q=XW_Q$, a $T\times12$ matrix, and then cuts it into heads in order. Which columns of $Q$ hold head 2's queries?
+    prompt:
+      A layer with embedding width $d=12$ and $h=3$ heads computes every head's queries at once as
+      $Q=XW_Q$, the product of the token embedding matrix $X$ and query weight matrix $W_Q$. It splits
+      the 12 columns of $Q$ into equal groups in head order. Which columns hold head 2's queries?
     options:
       - id: a
         text: Columns 5 to 8, since each head has $d_k=4$ columns and head 1 has columns 1 to 4.

@@ -555,7 +555,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A target has probabilities $(0.5, 0.3, 0.2)$ for A, B, C. The draft has $(0.2, 0.5, 0.3)$. After a speculative rejection, what is the probability that the replacement is A?
+    prompt:
+      For the next token, the target model assigns probabilities $(0.5,0.3,0.2)$ and the draft model
+      assigns probabilities $(0.2,0.5,0.3)$, both in token order A, B, C. After a speculative rejection,
+      what is the probability that the replacement is A?
     answer: 1
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -576,7 +579,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A developer accepts drafts with $\min(1,p/q)$, but samples every rejection directly from $p$. What goes wrong?
+    prompt: Let $p$ be the target model's next-token distribution, $q$ the draft model's next-token
+      distribution, and $x$ the proposed token. A developer accepts $x$ with probability
+      $\min(1,p(x)/q(x))$ but samples a replacement directly from $p$ after every rejection. What goes
+      wrong?
     options:
       - {
           id: a,

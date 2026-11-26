@@ -137,7 +137,10 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: A residual layer computes $y=x+f(x)$, where $f$ is identically zero for every input. What happens to the input and its slope through this layer?
+    prompt:
+      A residual layer takes input $x$, adds the sublayer output $f(x)$ and returns $y=x+f(x)$. The
+      sublayer output is identically zero for every input. What happens to the input and its slope through
+      this layer?
     options:
       - { id: a, text: "The input passes unchanged and the slope factor is one.", correct: true }
       - {
@@ -161,7 +164,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A learner says a residual shortcut saves computation because the sublayer is skipped on each forward pass. Which account describes $y=x+f(x)$?
+    prompt:
+      A learner says a residual shortcut saves computation because the sublayer is skipped on each
+      forward pass. Which account describes the residual output $y=x+f(x)$, where $x$ is the input and
+      $f(x)$ is the sublayer's output?
     options:
       - { id: a, text: "Both paths run, and their outputs are added together.", correct: true }
       - {
@@ -185,7 +191,11 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot policy's sensor token starts at $(3,-4)$ and passes through two residual sublayers in a row. The first sublayer returns $(2,1)$ and the second returns $(-1,5)$. What is the token's second entry after both residual sublayers?
+    prompt:
+      A robot policy starts with a sensor token vector $(3,-4)$ and passes it through two residual
+      sublayers in a row. The first sublayer returns a vector $(2,1)$ before the residual sum. The second
+      returns $(-1,5)$ before its residual sum. What is the token vector's second entry after both
+      residual sums?
     answer: 2
     tolerance: { abs: 0.000001 }
     common_wrong:
@@ -305,7 +315,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: 'A token has $u=(3,-2)$. Its MLP has zero biases, $W_1=((1,0),(0,1))$ and $W_2=((2,0),(0,3))$ (tuples give rows), with ReLU between them. What is the first entry of $y=u+W_2\text{ReLU}(W_1u)$?'
+    prompt:
+      The token vector entering an MLP sublayer is $u=(3,-2)$. The MLP has zero biases and weight
+      matrices $W_1=((1,0),(0,1))$ and $W_2=((2,0),(0,3))$ (tuples give rows), with ReLU between them.
+      What is the first entry of the residual output $y=u+W_2\text{ReLU}(W_1u)$?
     answer: 9
     tolerance: { abs: 0.000001 }
     solution: ReLU turns $W_1u=(3,-2)$ into $(3,0)$, so the MLP returns $(6,0)$. Adding $u$ gives $(9,-2)$.
@@ -463,7 +476,9 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "In pre-norm attention, $x=(-4,2,4,10)$ has normalized copy $(-1.4,-0.2,0.2,1.4)$ with gain $1$ and shift $0$. Attention on normalized tokens returns $(2,-1,3,-2)$ for this token. What is the first entry of the residual sum $u$?"
+    prompt: In pre-norm attention, the input token vector $x=(-4,2,4,10)$ has normalized copy
+      $(-1.4,-0.2,0.2,1.4)$ with gain $1$ and shift $0$. Attention on normalized tokens returns
+      $(2,-1,3,-2)$ for this token. What is the first entry of the residual sum $u$?
     answer: -2
     tolerance: { abs: 0.000001 }
     solution: Pre-norm adds attention's output to the original $x$, giving first entry $-4+2=-2$.

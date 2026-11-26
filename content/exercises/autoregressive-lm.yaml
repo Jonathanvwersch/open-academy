@@ -97,7 +97,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A model gives $p(\text{sat}\mid\text{the cat})=0.4$. What does this say?
+    prompt:
+      A language model reports the conditional probability $p(\text{sat}\mid\text{the cat})=0.4$.
+      What does this say about the text it might generate?
     options:
       - id: a
         text: When the text so far is "the cat", the model gives sat a 40% chance of being the next word.
@@ -161,7 +163,11 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A model gives $p(\text{cat}\mid\text{the})=0.5$, $p(\text{sat}\mid\text{the cat})=0.4$ and $p(\text{on}\mid\text{the cat sat})=0.5$. What chance does it give to "cat sat on" coming next after "the"?
+    prompt: >-
+      A model gives the following conditional probabilities for the next token given the text so far:
+      $p(\text{cat}\mid\text{the})=0.5$, $p(\text{sat}\mid\text{the cat})=0.4$ and
+      $p(\text{on}\mid\text{the cat sat})=0.5$. What chance does it give to "cat sat on" coming next after
+      "the"?
     answer: 0.1
     tolerance:
       abs: 0.001
@@ -454,7 +460,9 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: After "the cat sat on the", a model gives mat $0.5$, cat $0.2$, the $0.1$, sat $0.1$ and on $0.1$. Which word does greedy decoding choose?
+    prompt:
+      After "the cat sat on the", a model gives next-word probabilities of $0.5$ for mat, $0.2$ for
+      cat, and $0.1$ each for the, sat and on. Which word does greedy decoding choose?
     options:
       - id: a
         text: mat
@@ -482,7 +490,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A model gives the $0.1$, cat $0.3$, sat $0.4$, on $0.1$ and mat $0.1$, laid end to end in that order. Sampling draws $u=0.45$. Which word is chosen?
+    prompt:
+      A model assigns probabilities of $0.1$ to the, $0.3$ to cat, $0.4$ to sat, $0.1$ to on and
+      $0.1$ to mat. In that order, lay out adjacent intervals of those lengths starting at zero. Sampling
+      draws $u=0.45$. Which word is chosen?
     options:
       - id: a
         text: sat
