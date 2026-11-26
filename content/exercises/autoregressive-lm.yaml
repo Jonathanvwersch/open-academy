@@ -826,21 +826,21 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "`tokens` is the full training sequence as a Python list, and `inputs = tokens[:-1]`. Which assignment makes `targets[t]` the right label for the prediction at `inputs[t]`?"
+    prompt: "`tokens` is the full training sequence as a Python list. A training run uses `inputs = tokens[1:-1]`, dropping the first and last tokens. Which assignment makes `targets[t]` the right next-token label for the prediction at `inputs[t]`?"
     options:
       - id: a
-        text: "`targets = tokens[:-1]`"
+        text: "`targets = tokens[:-2]`"
+        correct: false
+        feedback: "This starts one token before the first input, so each label looks backward."
+      - id: b
+        text: "`targets = tokens[2:]`"
+        correct: true
+        feedback: "The first input is the second token, so the first target is the third."
+      - id: c
+        text: "`targets = tokens[1:-1]`"
         correct: false
         feedback: "This aligns each prediction with the token it just read."
-      - id: b
-        text: "`targets = tokens[1:]`"
-        correct: true
-        feedback: "Dropping the first token shifts each label one position ahead."
-      - id: c
-        text: "`targets = tokens[2:]`"
-        correct: false
-        feedback: "This shifts labels two positions ahead and leaves the final input without a label."
-    solution: "Keep every token after the first as a target. At each index the target is the token immediately after the matching input."
+    solution: "Each target is one position after its input. Start at index 2 and keep the final token as the target for the second-to-last input."
   - id: alm-code-sample-boundary
     dimension: implementation
     type: code_read
