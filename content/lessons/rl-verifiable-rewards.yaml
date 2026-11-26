@@ -70,7 +70,7 @@ knowledge_points:
     worked: |
       Let's score the four replies in the picture by hand, as the checker would. The reference answer is 12.
 
-      1. **Find each final answer.** We look for the last line that starts with `Answer:` and keep what comes after it. Step 2 explains why we use the last one. Reply 4 has no such line, so it has no final answer.
+      1. **Find each final answer.** We look for the last line that starts with `Answer:` and keep what comes after it, since earlier answer lines may be drafts. Reply 4 has no such line, so it has no final answer.
          - Reply 1: `12`
          - Reply 2: `7`
          - Reply 3: `12.` (with a full stop)
