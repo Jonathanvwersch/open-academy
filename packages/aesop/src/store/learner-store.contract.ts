@@ -7,14 +7,15 @@ import { initialMastery, type MasteryRecord } from '../memory/types.js';
 import { activeSessionForDate } from '../planner/session-state.js';
 import type { QuizExercise } from '../quizzes/mixed-quiz.js';
 import type { Attempt, CoreStore, Enrollment, NewRow, XpEvent } from './core-store.js';
-import type { FlowStore, TimedQuizItem, TimedQuizRun } from './flow-store.js';
+import type { CourseStore } from './course-store.js';
+import type { TimedQuizItem, TimedQuizRun } from './flow-store.js';
 import type { NewReviewCard } from './learner-store.js';
 import type { LessonProblem, LessonQuizItem, LessonRun, RemediationFlag } from './lesson-store.js';
 import type { DiagnosticRun, PlacementGrant } from './placement-review-store.js';
 import type { Activity, Session, SessionStore } from './session-store.js';
 
 type StoreFixture = {
-  store: FlowStore;
+  store: CourseStore;
   learnerId: string;
   otherLearnerId: string;
   activityId: string;
@@ -186,15 +187,110 @@ const flag: NewRow<RemediationFlag> = {
 
 export function describeLearnerStoreContract(
   name: string,
-  makeStore: (options?: { persistHintActivity?: boolean }) => Promise<StoreFixture>,
+  makeStore: (options?: {
+    persistHintActivity?: boolean;
+    seedCourseProgress?: boolean;
+  }) => Promise<StoreFixture>,
 ) {
   describe(name, () => {
+    it('reads due review topics before the cutoff, excluding suspended and foreign cards', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      const card = cardFor('vectors');
+      await store.insertReviewCard(learnerId, { ...card, dueAt: date });
+      await store.insertReviewCard(learnerId, { ...card, conceptId: 'algebra', dueAt: date });
+      await store.insertReviewCard(learnerId, { ...card, conceptId: 'suspended', dueAt: date });
+      await store.insertReviewCard(learnerId, { ...card, conceptId: 'not-yet', dueAt: later });
+      await store.insertReviewCard(otherLearnerId, { ...card, conceptId: 'foreign', dueAt: date });
+      await store.setReviewCardSuspension(learnerId, ['suspended'], date);
+      expect(await store.listDueReviewConcepts(learnerId, later)).toEqual(['algebra', 'vectors']);
+    });
+
+    it('reads owned project and paper progress in content key order', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore({ seedCourseProgress: true });
+      expect(await store.listProjectProgress(learnerId)).toEqual([
+        { projectId: 'a', status: 'completed' },
+        { projectId: 'z', status: 'in_progress' },
+      ]);
+      expect(await store.listPaperProgress(learnerId)).toEqual([
+        { paperId: 'a', completedAt: date },
+        { paperId: 'z', completedAt: null },
+      ]);
+      expect(await store.listProjectProgress(otherLearnerId)).toEqual([]);
+      expect(await store.listPaperProgress(otherLearnerId)).toEqual([]);
+    });
+
+    it('orders tied course activity and lesson evidence by semantic keys', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      for (const [owner, topic] of [
+        [learnerId, 'vectors'],
+        [otherLearnerId, 'foreign'],
+        [learnerId, 'algebra'],
+      ]) {
+        const session = await store.insertSession(owner, sessionRow(date));
+        await store.insertActivities(owner, session.id, [
+          activityRow(1, { status: 'completed', completedAt: date, conceptId: topic }),
+          activityRow(0, { status: 'completed', completedAt: date, conceptId: topic }),
+          activityRow(2, { status: 'in_progress', conceptId: topic }),
+        ]);
+      }
+      expect(
+        (await store.listCompletedActivities(learnerId)).map(({ conceptId, idx }) => [
+          conceptId,
+          idx,
+        ]),
+      ).toEqual([
+        ['algebra', 0],
+        ['vectors', 0],
+        ['algebra', 1],
+        ['vectors', 1],
+      ]);
+
+      const own = await store.insertLessonRunIfAbsent(learnerId, lessonRun('vectors'));
+      const foreign = await store.insertLessonRunIfAbsent(otherLearnerId, lessonRun('foreign'));
+      if (!own || !foreign) throw new Error('Expected lesson runs');
+      await store.insertLessonProblem(otherLearnerId, foreign.id, lessonProblem);
+      const last = await store.insertLessonProblem(learnerId, own.id, {
+        ...lessonProblem,
+        position: 2,
+      });
+      const first = await store.insertLessonProblem(learnerId, own.id, lessonProblem);
+      expect(await store.listCourseLessonProblems(learnerId, [foreign.id, own.id])).toEqual([
+        first,
+        last,
+      ]);
+      expect(await store.listCourseLessonProblems(learnerId, [])).toEqual([]);
+
+      for (const [owner, dimension, toState] of [
+        [learnerId, 'math', 'independent'],
+        [otherLearnerId, 'math', 'assisted'],
+        [learnerId, 'math', 'assisted'],
+      ] as const) {
+        await store.addMasteryEvent(owner, {
+          conceptId: 'vectors',
+          dimension,
+          fromState: 'not_assessed',
+          toState,
+          createdAt: date,
+          rule: 'test',
+          attemptId: null,
+        });
+      }
+      expect(
+        (await store.listCourseMasteryEvents(learnerId, ['vectors'])).map(({ toState }) => toState),
+      ).toEqual(['assisted', 'independent']);
+      expect(await store.listCourseMasteryEvents(learnerId, [])).toEqual([]);
+    });
+
     it('filters timed quiz runs by ownership and sorts originals by finalize, start and seed', async () => {
       const { store, learnerId, otherLearnerId, activityId } = await makeStore({
         persistHintActivity: true,
       });
       const row = timedQuizRow();
-      const last = await store.insertTimedQuiz(learnerId, { ...row, finalizedAt: later }, []);
+      const last = await store.insertTimedQuiz(
+        learnerId,
+        { ...row, activityId, finalizedAt: later },
+        [],
+      );
       const third = await store.insertTimedQuiz(learnerId, { ...row, finalizedAt: date }, []);
       const second = await store.insertTimedQuiz(
         learnerId,
@@ -228,6 +324,10 @@ export function describeLearnerStoreContract(
         await store.listTimedQuizRuns(learnerId, { original: true, finalizedThrough: date }),
       ).toEqual([first, second, third]);
       expect(await store.listTimedQuizRuns(learnerId, { active: true })).toEqual([active]);
+      expect(
+        await store.listTimedQuizRuns(learnerId, { activityIds: [activityId], original: true }),
+      ).toEqual([last]);
+      expect(await store.listTimedQuizRuns(learnerId, { activityIds: [] })).toEqual([]);
       expect(await store.listTimedQuizRuns(learnerId, { retakeOf: last.id, activityId })).toEqual([
         active,
       ]);
@@ -343,6 +443,40 @@ export function describeLearnerStoreContract(
         { followUpActivityId: null },
         { followUpActivityId: null },
       ]);
+    });
+
+    it('reads only owned quiz item keys in semantic order and identifies runs with misses', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      const item = timedQuizItem(0);
+      const reserve = { ...item.question, key: 'reserve', seed: 2 };
+      const first = await store.insertTimedQuiz(
+        learnerId,
+        { ...timedQuizRow(), finalizedAt: date },
+        [
+          { ...item, conceptId: 'vectors', reserve, correct: false },
+          { ...item, position: 1, conceptId: 'vectors', correct: true },
+        ],
+      );
+      const second = await store.insertTimedQuiz(learnerId, timedQuizRow(), [
+        { ...item, conceptId: 'angles' },
+      ]);
+      const foreign = await store.insertTimedQuiz(otherLearnerId, timedQuizRow(), [
+        { ...item, conceptId: 'angles', correct: false },
+      ]);
+      expect(
+        await store.listTimedQuizItemKeys(learnerId, [first.id, foreign.id, second.id, first.id]),
+      ).toEqual({
+        items: [
+          { runId: second.id, conceptId: 'angles', questionKey: exerciseId, reserveKey: null },
+          { runId: first.id, conceptId: 'vectors', questionKey: exerciseId, reserveKey: 'reserve' },
+          { runId: first.id, conceptId: 'vectors', questionKey: exerciseId, reserveKey: null },
+        ],
+        missedRunIds: new Set([first.id]),
+      });
+      expect(await store.listTimedQuizItemKeys(learnerId, [])).toEqual({
+        items: [],
+        missedRunIds: new Set(),
+      });
     });
 
     it('filters and locks diagnostic runs by owner, course, id and status', async () => {
@@ -1112,6 +1246,48 @@ export function describeLearnerStoreContract(
       expect(await store.listXpEvents(otherLearnerId, query)).toEqual([
         expect.objectContaining({ amount: 999 }),
       ]);
+    });
+
+    it('sums quiz-eligible XP on either side of the last quiz and excludes ineligible events', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      const session = await store.insertSession(learnerId, sessionRow(date));
+      const [lesson, review, practice] = await store.insertActivities(learnerId, session.id, [
+        activityRow(0),
+        activityRow(1, { kind: 'review' }),
+        activityRow(2, { kind: 'practice' }),
+      ]);
+      const foreign = await store.insertSession(otherLearnerId, sessionRow(date));
+      const [foreignActivity] = await store.insertActivities(otherLearnerId, foreign.id, [
+        activityRow(0),
+      ]);
+      const add = (kind: XpEvent['kind'], sourceKey: string, amount: number, earnedAt = date) =>
+        store.insertXpEventOnce(learnerId, { ...xpEvent(sourceKey, earnedAt), kind, amount });
+      await Promise.all([
+        add('knowledge_point', 'kp:first', 100),
+        add('review', 'review:later', 20, later),
+        add('review', 'review:future', 999, new Date(later.getTime() + 1)),
+        add('activity', `activity:${lesson.id}`, 10),
+        add('activity', `activity:${review.id}`, 5, later),
+        add('activity', `activity:${practice.id}`, 999),
+        add('activity', `activity:${foreignActivity.id}`, 999),
+        add('activity', 'activity:missing', 999),
+        add('quiz', 'quiz:first', 999),
+        add('mixed_quiz', 'mixed-quiz:first', 999),
+        add('project', 'project:first', 999),
+        store.insertXpEventOnce(otherLearnerId, xpEvent('kp:foreign')),
+      ]);
+      expect(await store.sumQuizEligibleXp(learnerId, later, date)).toEqual({
+        throughLastQuiz: 110,
+        sinceLastQuiz: 25,
+      });
+      expect(await store.sumQuizEligibleXp(learnerId, later)).toEqual({
+        throughLastQuiz: 0,
+        sinceLastQuiz: 135,
+      });
+      expect(await store.sumQuizEligibleXp(otherLearnerId, new Date(date.getTime() - 1))).toEqual({
+        throughLastQuiz: 0,
+        sinceLastQuiz: 0,
+      });
     });
 
     it('patches settings by learner and replaces prefs without sharing JSON or dates', async () => {

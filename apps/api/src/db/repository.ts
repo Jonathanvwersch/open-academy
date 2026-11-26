@@ -74,10 +74,6 @@ export class LearnerRepository {
     return (await this.settings())?.activeCourseId ?? null;
   }
 
-  async setActiveCourseId(courseId: string): Promise<void> {
-    await drizzleLearnerStore(this.db).patchSettings(this.userId, { activeCourseId: courseId });
-  }
-
   studyCourseIds(
     content: ContentIndex,
     now = this.sessionContent?.now ?? (() => new Date()),

@@ -3,7 +3,12 @@ import { startOfNextCalendarDay } from '../memory/fsrs.js';
 import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY, type TopicSpeedEvidence } from '../memory/speed.js';
 import type { MasteryRecord } from '../memory/types.js';
 import type { Attempt, AttemptQuery, Enrollment, Settings, XpEvent } from './core-store.js';
-import type { FlowStore, TimedQuizItem, TimedQuizRun } from './flow-store.js';
+import {
+  type CourseProjectProgress,
+  type CourseStore,
+  compareCompletedActivities,
+} from './course-store.js';
+import { collectTimedQuizItemKeys, type TimedQuizItem, type TimedQuizRun } from './flow-store.js';
 import type { MasteryEventRecord, OpenRemediationFlag, StoredReviewCard } from './learner-store.js';
 import type {
   FlagQuery,
@@ -22,7 +27,7 @@ import type {
   Session,
 } from './session-store.js';
 
-export type MemoryLearnerStore = FlowStore & {
+export type MemoryLearnerStore = CourseStore & {
   addRemediationFlag(
     learnerId: string,
     flag: { conceptId: string; targetPrereqId: string | null; createdAt?: Date },
@@ -53,14 +58,14 @@ type LearnerState = {
 };
 
 type Hint = { exerciseId: string; activityId: string | null; createdAt: Date; level: number };
+type SeededProjections = Pick<SchedulerFacts, 'lessonRuns' | 'paperProgress'> & {
+  projectProgress?: CourseProjectProgress[];
+};
 
 type MemorySeed = {
   settings?: ReadonlyMap<string, Settings>;
   hints?: ReadonlyMap<string, readonly Hint[]>;
-  schedulerProjections?: ReadonlyMap<
-    string,
-    Pick<SchedulerFacts, 'lessonRuns' | 'projectProgress' | 'paperProgress'>
-  >;
+  schedulerProjections?: ReadonlyMap<string, SeededProjections>;
 };
 
 type StoreState = {
@@ -68,10 +73,7 @@ type StoreState = {
   settings: Map<string, Settings>;
   hints: Map<string, readonly Hint[]>;
   revisions: Map<string, number>;
-  schedulerProjections: Map<
-    string,
-    Pick<SchedulerFacts, 'lessonRuns' | 'projectProgress' | 'paperProgress'>
-  >;
+  schedulerProjections: Map<string, SeededProjections>;
 };
 
 type IdCounters = {
@@ -416,6 +418,30 @@ function scopedStore(
         ),
       );
     },
+    async sumQuizEligibleXp(learnerId, through, lastQuizAt) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      const result = { throughLastQuiz: 0, sinceLastQuiz: 0 };
+      const prefix = 'activity:';
+      for (const event of state?.xpEvents.values() ?? []) {
+        if (event.earnedAt > through) continue;
+        const activity =
+          event.kind === 'activity' && event.sourceKey.startsWith(prefix)
+            ? state?.activities.get(event.sourceKey.slice(prefix.length))
+            : undefined;
+        if (
+          event.kind === 'knowledge_point' ||
+          event.kind === 'review' ||
+          ((activity?.kind === 'learn' || activity?.kind === 'review') &&
+            state?.sessions.has(activity.sessionId))
+        ) {
+          result[
+            lastQuizAt && event.earnedAt <= lastQuizAt ? 'throughLastQuiz' : 'sinceLastQuiz'
+          ] += event.amount;
+        }
+      }
+      return result;
+    },
     async insertXpEventOnce(learnerId, event) {
       assertOpen();
       const { xpEvents } = stateFor(learnerId);
@@ -619,13 +645,15 @@ function scopedStore(
     },
     async listTimedQuizRuns(
       learnerId,
-      { id, activityId, retakeOf, active, original, finalizedThrough },
+      { id, activityId, activityIds, retakeOf, active, original, finalizedThrough },
     ) {
       assertOpen();
       const rows = [...(data.learners.get(learnerId)?.timedQuizRuns.values() ?? [])].filter(
         (run) =>
           (id === undefined || run.id === id) &&
           (activityId === undefined || run.activityId === activityId) &&
+          (activityIds === undefined ||
+            (run.activityId !== null && activityIds.includes(run.activityId))) &&
           (retakeOf === undefined || run.retakeOf === retakeOf) &&
           (!active || run.finalizedAt === null) &&
           (!original || run.retakeOf === null) &&
@@ -650,6 +678,22 @@ function scopedStore(
         [...new Set(runIds)]
           .flatMap((runId) => items?.get(runId) ?? [])
           .sort((left, right) => left.position - right.position),
+      );
+    },
+    async listTimedQuizItemKeys(learnerId, runIds) {
+      assertOpen();
+      const items = data.learners.get(learnerId)?.timedQuizItems;
+      return collectTimedQuizItemKeys(
+        [...new Set(runIds)].flatMap((runId) =>
+          (items?.get(runId) ?? []).map(({ conceptId, position, question, reserve, correct }) => ({
+            runId,
+            conceptId,
+            position,
+            questionKey: question.key,
+            reserveKey: reserve?.key ?? null,
+            correct,
+          })),
+        ),
       );
     },
     async insertTimedQuiz(learnerId, run, items) {
@@ -1246,6 +1290,82 @@ function scopedStore(
           state.flags.delete(id);
       }
       markWrite(learnerId);
+    },
+    async listProjectProgress(learnerId) {
+      assertOpen();
+      return structuredClone(
+        [...(data.schedulerProjections.get(learnerId)?.projectProgress ?? [])].sort((a, b) =>
+          compare(a.projectId, b.projectId),
+        ),
+      );
+    },
+    async listPaperProgress(learnerId) {
+      assertOpen();
+      return structuredClone(
+        [...(data.schedulerProjections.get(learnerId)?.paperProgress ?? [])].sort((a, b) =>
+          compare(a.paperId, b.paperId),
+        ),
+      );
+    },
+    async listCompletedActivities(learnerId) {
+      assertOpen();
+      const sessions = data.learners.get(learnerId)?.sessions;
+      return structuredClone(
+        matchingActivities(learnerId, { statuses: ['completed'] })
+          .map((activity) => ({
+            activity,
+            sessionStartedAt: sessions?.get(activity.sessionId)?.startedAt ?? null,
+          }))
+          .sort(compareCompletedActivities)
+          .map(({ activity }) => activity),
+      );
+    },
+    async listCourseLessonProblems(learnerId, runIds) {
+      assertOpen();
+      const state = data.learners.get(learnerId);
+      if (!state || !runIds.length) return [];
+      return structuredClone(
+        [...state.lessonProblems.values()]
+          .filter(({ runId }) => runIds.includes(runId) && state.lessonRuns.has(runId))
+          .sort(
+            (a, b) =>
+              compare(
+                state.lessonRuns.get(a.runId)?.conceptId ?? '',
+                state.lessonRuns.get(b.runId)?.conceptId ?? '',
+              ) ||
+              a.servedAt.getTime() - b.servedAt.getTime() ||
+              compare(a.knowledgePointId, b.knowledgePointId) ||
+              a.round - b.round ||
+              a.position - b.position,
+          ),
+      );
+    },
+    async listCourseMasteryEvents(learnerId, conceptIds) {
+      assertOpen();
+      return structuredClone(
+        (data.learners.get(learnerId)?.events ?? [])
+          .filter(({ conceptId }) => conceptIds.includes(conceptId))
+          .map(({ conceptId, createdAt, fromState, toState }) => ({
+            conceptId,
+            createdAt,
+            fromState,
+            toState,
+          }))
+          .sort(
+            (a, b) =>
+              compare(a.conceptId, b.conceptId) ||
+              a.createdAt.getTime() - b.createdAt.getTime() ||
+              compare(a.fromState, b.fromState) ||
+              compare(a.toState, b.toState),
+          ),
+      );
+    },
+    async listDueReviewConcepts(learnerId, before) {
+      assertOpen();
+      return [...(data.learners.get(learnerId)?.cards.values() ?? [])]
+        .filter((card) => !card.suspendedAt && card.dueAt < before)
+        .sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime() || compareConceptDimension(a, b))
+        .map(({ conceptId }) => conceptId);
     },
     async readSchedulerFacts(learnerId, query) {
       assertOpen();
