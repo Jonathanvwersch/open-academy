@@ -417,10 +417,10 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt:
-      A model multiplies an $m\times d$ input matrix by a $d\times d$ weight matrix. With 2 bytes
-      per number, a learner calculates the arithmetic intensity as $I=(2md^2)/(2d^2)=m$ for every input
-      row count $m$. Each input is read once and the fresh output is written once. What does this leave
-      out?
+      A model multiplies an $m\times d$ input matrix by a $d\times d$ weight matrix, with $m$ input
+      rows and $d$ features per input row. With 2 bytes per number, a learner calculates the arithmetic
+      intensity as $I=(2md^2)/(2d^2)=m$ for every row count. Each input is read once and the fresh output
+      is written once. What does this leave out?
     options:
       - id: a
         text: The extra multiplication needed for each new output column.
