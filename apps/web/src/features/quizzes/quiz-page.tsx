@@ -99,7 +99,13 @@ export function QuizPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <h1 className="font-semibold">
-            {quiz.result ? 'Quiz results' : quiz.retake ? 'Quiz retake' : 'Timed quiz'}
+            {quiz.result
+              ? quiz.retake
+                ? 'Retake results'
+                : 'Quiz results'
+              : quiz.retake
+                ? 'Quiz retake'
+                : 'Timed quiz'}
           </h1>
           {!quiz.result && (
             <Countdown
