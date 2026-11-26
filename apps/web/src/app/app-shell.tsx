@@ -575,7 +575,6 @@ function ApplicationShell({ me, pathname }: { me: AuthPayload | undefined; pathn
   const { sidebarOpen, updateSidebarOpen } = useAppSidebarOpenState();
   const isPaperReader = pathname.startsWith('/papers/');
   const isQuiz = pathname.startsWith('/quizzes/');
-  const sidebarInsetProps = isQuiz ? { as: 'div' as const } : {};
   return (
     <TooltipProvider>
       <SidebarProvider
@@ -585,7 +584,6 @@ function ApplicationShell({ me, pathname }: { me: AuthPayload | undefined; pathn
       >
         <AppSidebar />
         <SidebarInset
-          {...sidebarInsetProps}
           className={isPaperReader ? 'h-dvh min-h-0 min-w-0 overflow-hidden' : 'min-w-0'}
         >
           <MobileAppHeader hidden={isQuiz} />
@@ -605,15 +603,9 @@ function ApplicationShell({ me, pathname }: { me: AuthPayload | undefined; pathn
                 </a>
               </div>
             ) : null}
-            {isQuiz ? (
-              <main ref={contentRef} data-page-frame className={pageFrameClassName(pathname)}>
-                <Outlet />
-              </main>
-            ) : (
-              <div ref={contentRef} data-page-frame className={pageFrameClassName(pathname)}>
-                <Outlet />
-              </div>
-            )}
+            <div ref={contentRef} data-page-frame className={pageFrameClassName(pathname)}>
+              <Outlet />
+            </div>
           </TutorContextProvider>
         </SidebarInset>
         {!isQuiz ? <AppToaster /> : null}

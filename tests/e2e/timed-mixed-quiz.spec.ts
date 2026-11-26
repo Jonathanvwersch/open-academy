@@ -204,17 +204,33 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
   await expect(mobilePage.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
   await mobilePage.getByRole('link', { name: /^Resume/ }).click();
   await expect(mobilePage).toHaveURL(`/session/${sessionId}`);
-  await mobilePage.getByRole('button', { name: 'Open quiz' }).click();
-  await expect(mobilePage).toHaveURL(new RegExp(`/quizzes/${quizId}(?:\\?.*)?$`));
-  await captureShellTransitionFrames(mobilePage, testInfo, 'mobile-enter-quiz');
-  await expect(mobilePage.getByText('Question 1 of 8')).toBeVisible();
   const mobileHeader = mobilePage.getByTestId('mobile-app-header');
   await expect(mobileHeader).toHaveCount(1);
+  await mobileHeader.evaluate((element) => {
+    element.setAttribute('data-mark', '1');
+  });
+  await mobilePage.getByRole('button', { name: 'Open quiz' }).click();
+  await expect(mobilePage).toHaveURL(new RegExp(`/quizzes/${quizId}(?:\\?.*)?$`));
+  await expect(mobilePage.getByRole('main')).toHaveCount(1);
+  await captureShellTransitionFrames(mobilePage, testInfo, 'mobile-enter-quiz');
+  await expect(mobilePage.getByText('Question 1 of 8')).toBeVisible();
+  await expect(mobileHeader).toHaveAttribute('data-mark', '1');
   await expect(mobileHeader).toHaveCSS('opacity', '0');
   await expect(mobileHeader).toHaveCSS('height', '0px');
+  const headerTransitionProperty = await mobileHeader.evaluate(
+    (element) => getComputedStyle(element).transitionProperty,
+  );
+  expect(headerTransitionProperty).toContain('height');
+  expect(headerTransitionProperty).toContain('opacity');
   await mobilePage.screenshot({ path: testInfo.outputPath('mobile-quiz-final.png') });
   await mobilePage.goBack();
   await expect(mobilePage).toHaveURL(`/session/${sessionId}`);
+  await expect(mobileHeader).toHaveAttribute('data-mark', '1');
+  const restoredHeaderTransitionProperty = await mobileHeader.evaluate(
+    (element) => getComputedStyle(element).transitionProperty,
+  );
+  expect(restoredHeaderTransitionProperty).toContain('height');
+  expect(restoredHeaderTransitionProperty).toContain('opacity');
   await captureShellTransitionFrames(mobilePage, testInfo, 'mobile-exit-quiz');
   await expect(mobileHeader).toHaveCSS('opacity', '1');
   await expect(mobileHeader).toHaveCSS('height', '56px');
