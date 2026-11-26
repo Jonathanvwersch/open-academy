@@ -242,7 +242,7 @@ exercises:
     prompt: "In the worked example, why keep the slopes as $(3,4)$ instead of adding them to get $7$?"
     options:
       - id: a
-        text: "The 3 is the x-slope and 4 is the y-slope; the order keeps each slope tied to its input."
+        text: "The $3$ is the x-slope and $4$ is the y-slope; the order keeps each slope tied to its input."
         correct: true
         feedback: "The first entry is the x-partial and the second is the y-partial; their sum loses that assignment."
       - id: b
@@ -256,7 +256,7 @@ exercises:
         category: misunderstood_definition
         feedback: "The entries are slopes for separate inputs at the same point, not repeated x-slopes."
       - id: d
-        text: "A gradient is one total slope, so adding 3 and 4 gives its rate regardless of direction."
+        text: "A gradient is one total slope, so adding $3$ and $4$ gives its rate regardless of direction."
         correct: false
         category: incorrect_reasoning
         feedback: "The slope depends on direction; the ordered vector preserves enough information to find it."
@@ -463,17 +463,17 @@ exercises:
     prompt: "At $P$, a learner computes $\\nabla f(P)\\cdot(2,0)=6$. What is the slope per unit distance along the positive x-axis?"
     options:
       - id: a
-        text: "3, dividing the change estimate by the step length."
+        text: "$3$, dividing the change estimate by the step length."
         correct: true
         category: misunderstood_definition
         feedback: "The step has length 2, so the slope per unit distance is 6/2."
       - id: b
-        text: "6, using the dot product without rescaling the step."
+        text: "$6$, using the dot product without rescaling the step."
         correct: false
         category: misunderstood_definition
         feedback: "The dot product uses a step of length 2; divide by that length."
       - id: c
-        text: "12, multiplying the change estimate by the step length."
+        text: "$12$, multiplying the change estimate by the step length."
         correct: false
         category: misunderstood_definition
         feedback: "Multiplying by the length scales the estimate up again; divide by 2."
@@ -529,7 +529,7 @@ exercises:
         correct: true
         feedback: "The dot-product formula is $D_{\\mathbf u}f=\\|\\nabla f\\|\\cos\\theta$, and here the gradient length is 5."
       - id: b
-        text: "The gradient has length 5 in every direction, so all three slopes should have magnitude 5."
+        text: "The gradient has length $5$ in every direction, so all three slopes should have magnitude $5$."
         correct: false
         category: misunderstood_definition
         feedback: "The length is the steepest slope; other directions scale it by the cosine of their angle."
@@ -558,7 +558,7 @@ exercises:
         correct: true
         feedback: "The dot-product formula makes the slope smallest when $\\cos\\theta=-1$."
       - id: b
-        text: "The cosine is 0 there, so the slope disappears."
+        text: "The cosine is $0$ there, so the slope disappears."
         correct: false
         category: recall_failure
         feedback: "The cosine is 0 at $90^\\circ$; at $180^\\circ$ it is $-1$."
@@ -582,16 +582,16 @@ exercises:
     prompt: "For $f(x,y)=x^2+2y^2$, compare $P=(1.5,1)$ and $Q=(0,1)$. Where is the steepest uphill slope larger?"
     options:
       - id: a
-        text: "At P: the steepest slopes are 5 at P and 4 at Q."
+        text: "At P: the steepest slopes are $5$ at P and $4$ at Q."
         correct: true
         feedback: "The gradient lengths are 5 at P and 4 at Q."
       - id: b
-        text: "At P: the steepest slopes are 4.25 at P and 2 at Q."
+        text: "At P: the steepest slopes are $4.25$ at P and $2$ at Q."
         correct: false
         category: misunderstood_definition
         feedback: "These are function values. Steepest slope is measured by the gradient length."
       - id: c
-        text: "They are equal: the largest partial derivative is 4 at both."
+        text: "They are equal: the largest partial derivative is $4$ at both."
         correct: false
         category: misunderstood_definition
         feedback: "Combining both partial derivatives can give a larger slope than either component."

@@ -559,7 +559,7 @@ exercises:
       [
         {
           "id": "a",
-          "text": "All advantages are 0, so the rewards give no push.",
+          "text": "All advantages are $0$, so the rewards give no push.",
           "correct": true,
           "feedback": "Each reward equals the group mean.",
         },
@@ -572,7 +572,7 @@ exercises:
         },
         {
           "id": "c",
-          "text": "All advantages are 1, so every answer is pushed up.",
+          "text": "All advantages are $1$, so every answer is pushed up.",
           "correct": false,
           "category": "incorrect_reasoning",
           "feedback": "No answer beats the group mean.",
@@ -719,14 +719,14 @@ exercises:
         },
         {
           "id": "b",
-          "text": "The ratio clips to 1.2 and the advantage becomes positive.",
+          "text": "The ratio clips to $1.2$ and the advantage becomes positive.",
           "correct": false,
           "category": "incorrect_reasoning",
           "feedback": "Clipping changes the ratio and leaves the advantage unchanged.",
         },
         {
           "id": "c",
-          "text": "The ratio stays at 0.7 and min keeps the larger term.",
+          "text": "The ratio stays at $0.7$ and min keeps the larger term.",
           "correct": false,
           "category": "incorrect_reasoning",
           "feedback": "The objective keeps the smaller of the two terms.",
@@ -823,7 +823,7 @@ exercises:
       [
         {
           "id": "a",
-          "text": "All rewards and advantages are 0; SFT can supply some passing answers.",
+          "text": "All rewards and advantages are $0$; SFT can supply some passing answers.",
           "correct": true,
           "feedback": "Mixed successes and failures provide a group learning signal.",
         },
@@ -836,7 +836,7 @@ exercises:
         },
         {
           "id": "c",
-          "text": "All rewards are 1; SFT lowers rewards to a useful range.",
+          "text": "All rewards are $1$; SFT lowers rewards to a useful range.",
           "correct": false,
           "category": "incorrect_reasoning",
           "feedback": "Failed checks give 0.",

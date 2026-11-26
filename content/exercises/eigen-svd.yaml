@@ -562,7 +562,7 @@ exercises:
         correct: true
         feedback: A length-$1$ joint movement moves the hand at most $2$ in one direction and at most $0.01$ in the other.
       - id: b
-        text: The hand moves about 2 units for every unit of joint movement, in whatever direction it goes.
+        text: The hand moves about $2$ units for every unit of joint movement, in whatever direction it goes.
         correct: false
         category: incorrect_reasoning
         feedback: $2$ is only the largest stretch. In the second output direction the hand moves just $0.01$ per unit.

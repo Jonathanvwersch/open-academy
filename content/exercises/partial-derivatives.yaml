@@ -446,7 +446,7 @@ exercises:
     options:
       - { id: a, text: "With $y$ fixed, nudging $x$ leaves $e^y$ unchanged", correct: true }
       - id: b
-        text: "Every exponential term has derivative 0"
+        text: "Every exponential term has derivative $0$"
         correct: false
         category: misapplied_technique
         feedback: "An exponential can change: with respect to $y$, the derivative of $e^y$ is $e^y$. Here it is constant only because $y$ is fixed."

@@ -175,10 +175,10 @@ exercises:
     est_minutes: 1
     prompt: "What is the derivative of ReLU at $z = 3$, and at $z = -3$?"
     options:
-      - { id: a, text: "1 and 0", correct: true }
+      - { id: a, text: "$1$ and $0$", correct: true }
       - {
           id: b,
-          text: "3 and 0",
+          text: "$3$ and $0$",
           correct: false,
           category: misunderstood_definition,
           feedback: "That is the output, not the derivative.",
@@ -626,10 +626,10 @@ exercises:
     est_minutes: 1
     prompt: "What is ReLU's slope at $z = 2.5$, and at $z = -1$?"
     options:
-      - { id: a, text: "1 and 0", correct: true }
+      - { id: a, text: "$1$ and $0$", correct: true }
       - {
           id: b,
-          text: "2.5 and 0",
+          text: "$2.5$ and $0$",
           correct: false,
           category: misunderstood_definition,
           feedback: "$2.5$ is ReLU's output at $z = 2.5$. Its slope there is $1$: each extra unit of $z$ adds one unit of output.",

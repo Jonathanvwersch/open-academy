@@ -988,7 +988,7 @@ exercises:
         correct: true
         feedback: "Each shorter step measures less of the later speeding up, so the averages $7$, $6.1$, $6.01$ close in on $6$."
       - id: b
-        text: "The 1-second step gives the wrong distance, so its average speed of 7 cannot be trusted."
+        text: "The $1$-second step gives the wrong distance, so its average speed of $7$ cannot be trusted."
         correct: false
         category: misunderstood_definition
         feedback: "The distance $16 - 9 = 7$ m is correct; it is just an average over the whole second, not the speed at $t = 3$."
@@ -1013,7 +1013,7 @@ exercises:
     prompt: "In the worked example, why is the derivative of $3x^2$ equal to $6x$ rather than $2x$?"
     options:
       - id: a
-        text: "The 3 multiplies every height by 3, so every rise and therefore every slope is three times as big."
+        text: "The $3$ multiplies every height by $3$, so every rise and therefore every slope is three times as big."
         correct: true
         feedback: "A number multiplying a function multiplies its slope: $3 \\cdot 2x = 6x$."
       - id: b
@@ -1022,12 +1022,12 @@ exercises:
         category: misapplied_technique
         feedback: "The power rule brings down the power 2. The 3 stays in front because a number multiplying a function multiplies its slope."
       - id: c
-        text: "The 3 is added to the power first, so the power becomes 5 before the rule is applied."
+        text: "The $3$ is added to the power first, so the power becomes $5$ before the rule is applied."
         correct: false
         category: misapplied_technique
         feedback: "A multiplier does not change the power. $3x^2$ is $3$ times $x^2$, and its slope is $3$ times $2x$."
       - id: d
-        text: "Constants always disappear, so the 6 comes from doubling the 3 left over in front."
+        text: "Constants always disappear, so the $6$ comes from doubling the $3$ left over in front."
         correct: false
         category: misunderstood_definition
         feedback: "Only an added constant disappears. A multiplied constant stays and multiplies the slope."
@@ -1121,7 +1121,7 @@ exercises:
     prompt: "For $f(x) = x^2$, we know $f(3) = 9$ and $f'(3) = 6$. Estimating $f(5)$ as $9 + 6 \\times 2$ gives $21$, but in fact $f(5) = 25$. Why is the estimate so far off?"
     options:
       - id: a
-        text: "The estimate assumes the slope stays 6 all the way, but the curve gets steeper, so it only works for small nudges."
+        text: "The estimate assumes the slope stays $6$ all the way, but the curve gets steeper, so it only works for small nudges."
         correct: true
         feedback: "The slope at 3 describes the curve only near 3. Over a nudge of 2 the curve bends away from its tangent."
       - id: b

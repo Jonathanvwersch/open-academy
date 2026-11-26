@@ -458,7 +458,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "It is still 2, because backward only stored a slope.",
+          text: "It is still $2$, because backward only stored a slope.",
           correct: true,
           feedback: "No update has run, so the parameter value is unchanged.",
         }
@@ -470,13 +470,13 @@ exercises:
         }
       - {
           id: c,
-          text: "It is now 3, because backward used learning rate 0.25.",
+          text: "It is now $3$, because backward used learning rate $0.25$.",
           correct: false,
           feedback: "Only the optimiser applies the learning rate and changes the value.",
         }
       - {
           id: d,
-          text: "It is now 4, because backward copied over the target.",
+          text: "It is now $4$, because backward copied over the target.",
           correct: false,
           feedback: "Backward calculates slopes; it does not copy targets into parameters.",
         }
@@ -669,7 +669,7 @@ exercises:
         }
       - {
           id: d,
-          text: "It is 0, because the optimiser step cleared the old one.",
+          text: "It is $0$, because the optimiser step cleared the old one.",
           correct: false,
           feedback: "Step changes parameters but does not clear their stored gradients.",
         }

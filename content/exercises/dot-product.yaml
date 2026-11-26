@@ -294,13 +294,13 @@ exercises:
         }
       - {
           id: b,
-          text: "An arrow's shadow on a line is always exactly as long as the arrow itself, and here that is 5.",
+          text: "An arrow's shadow on a line is always exactly as long as the arrow itself, and here that is $5$.",
           correct: false,
           feedback: "$a$ has length $\\sqrt{50}\\approx7.07$; its shadow is shorter because $a$ does not lie along $b$.",
         }
       - {
           id: c,
-          text: "The length of $b$ is 5, and the shadow on a line always matches the length of the arrow along it.",
+          text: "The length of $b$ is $5$, and the shadow on a line always matches the length of the arrow along it.",
           correct: false,
           feedback: "$b$ has length 10, and the shadow depends on where $a$ points, not only on $b$.",
         }
@@ -525,7 +525,7 @@ exercises:
         }
       - {
           id: d,
-          text: "Scores close to 1 stay the same when an arrow gets longer, but other scores change.",
+          text: "Scores close to $1$ stay the same when an arrow gets longer, but other scores change.",
           correct: false,
           feedback: "Lengthening an arrow without turning it leaves every cosine similarity unchanged, not only those near 1.",
         }

@@ -222,7 +222,7 @@ exercises:
         correct: true
         feedback: The storable values are steps of $0.01$, and $0.01$ is the nearest one to $0.006$.
       - id: b
-        text: The integer was clamped up to 1, because INT8 cannot store 0.
+        text: The integer was clamped up to $1$, because INT8 cannot store $0$.
         correct: false
         category: misunderstood_definition
         feedback: INT8 can store 0. Clamping only affects values outside $[-127,127]$, and $0.6$ is inside.
@@ -706,7 +706,7 @@ exercises:
     prompt: After INT8 quantisation, a coding assistant's held-out loss rises from $1.90$ to $1.91$. On a test of 200 coding tasks, the 16-bit model passes 150 and the quantised model passes 120. What should the team conclude?
     options:
       - id: a
-        text: Coding got clearly worse, from 75% to 60%, even though the loss barely moved, so the model needs fixing before it serves coders.
+        text: Coding got clearly worse, from $75\%$ to $60\%$, even though the loss barely moved, so the model needs fixing before it serves coders.
         correct: true
         feedback: Coding depends on a small share of tokens in ordinary text, so the average loss hides the drop. Finer scales or 16-bit sensitive layers may help.
       - id: b

@@ -50,7 +50,7 @@ exercises:
         feedback: A halved activation does not imply a halved loss; the local derivative supplies the factor.
         category: incorrect_reasoning
       - id: b
-        text: ReLU always halves every slope, so each backward step multiplies the slope by 0.5.
+        text: ReLU always halves every slope, so each backward step multiplies the slope by $0.5$.
         correct: false
         feedback: ReLU passes positive inputs unchanged; the weight supplies this factor.
         category: incorrect_reasoning
@@ -523,7 +523,7 @@ exercises:
         feedback: Those differences average to $0$, not $5$.
         category: incorrect_reasoning
       - id: b
-        text: 5 is the largest distance from the mean; dividing by that distance bounds all outputs.
+        text: $5$ is the largest distance from the mean; dividing by that distance bounds all outputs.
         correct: false
         feedback: The largest distance is 7; the standard deviation is 5.
         category: incorrect_reasoning
@@ -534,7 +534,7 @@ exercises:
           The centred values have average square $(49+1+1+49)/4=25$, so their standard deviation is
           $5$. Dividing by $5$ gives typical size $1$.
       - id: d
-        text: 5 is the factor that makes the mean 0; the subtraction only sets the typical size.
+        text: $5$ is the factor that makes the mean $0$; the subtraction only sets the typical size.
         correct: false
         feedback: Subtracting the mean already made the mean 0; division sets typical size.
         category: incorrect_reasoning
@@ -879,7 +879,7 @@ exercises:
         feedback: Even a small nonzero gap is divided by its own standard deviation.
         category: incorrect_reasoning
       - id: b
-        text: Both pairs become 0 and 0 because subtracting the mean removes their gap.
+        text: Both pairs become $0$ and $0$ because subtracting the mean removes their gap.
         correct: false
         feedback: Subtracting the mean preserves the gap; division rescales it.
         category: incorrect_reasoning

@@ -423,14 +423,14 @@ exercises:
       - { id: a, text: "It drops by $1$, because the distance weight is $-1$", correct: true }
       - {
           id: b,
-          text: "It rises by 1, because the distance went up by 1",
+          text: "It rises by $1$, because the distance went up by $1$",
           correct: false,
           category: incorrect_reasoning,
           feedback: "The change is the weight times the change in input: $-1 \\times 1 = -1$.",
         }
       - {
           id: c,
-          text: "It drops by 2, because 2 is the first weight",
+          text: "It drops by $2$, because $2$ is the first weight",
           correct: false,
           category: incorrect_reasoning,
           feedback: "The weight 2 belongs to size, which didn't change.",

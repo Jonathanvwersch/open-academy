@@ -161,7 +161,7 @@ exercises:
         category: misunderstood_definition
         feedback: The area is part of the example and stays fixed; only the weight is adjusted.
       - id: d
-        text: Keep $w$ at 4, because one sale is too few to change the rule
+        text: Keep $w$ at $4$, because one sale is too few to change the rule
         correct: false
         category: incorrect_reasoning
         feedback: Every sale the rule misses is evidence to adjust it, and this one shows the rule predicts too high.

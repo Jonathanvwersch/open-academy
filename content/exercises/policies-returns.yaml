@@ -712,7 +712,7 @@ exercises:
         correct: true
         feedback: The return starts with the reward from the action at time $t$, which counts in full.
       - id: b
-        text: "$r_t$, with weight 1"
+        text: "$r_t$, with weight $1$"
         correct: false
         feedback: Reward $r_t$ has already arrived by time $t$, so the return leaves it out.
       - id: c
