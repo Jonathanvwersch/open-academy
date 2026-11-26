@@ -1,7 +1,7 @@
 concept: simulation-for-rl
 version: 1
 objective: |
-  **Goal:** Write a loop that starts each run with reset and uses step until the task ends or time runs out. Explain why many copies run at once and why a way of choosing actions that works in simulation can fail on a real robot.
+  **Goal:** Write a loop that starts a run and applies actions until the task ends or reaches its limit on steps. Explain why many copies run at once and why a way of choosing actions that works in simulation can fail on a real robot.
 recap:
   - concept: mdp
     text: "A Markov decision process (MDP) describes states $s$, actions $a$, next-state chances $p(s'\\mid s,a)$ and rewards $r_{t+1}$. From probability basics, independent chances multiply. Add the chances of distinct sequences that give the same result."
@@ -23,6 +23,8 @@ knowledge_points:
       ### The corridor as a program
 
       Our example is a corridor of 4 cells, numbered 1 to 4. The robot starts in cell 1 and moves left or right; walls keep it in place. Reaching cell 4 gives $+10$ and ends the task. Every other step gives $-1$, so the robot does best by reaching cell 4 quickly.
+
+      One try from the start until the task ends is an **episode**. A state where it ends, like cell 4, is a **terminal state**.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Top: a corridor of four cells numbered 1 to 4, with the robot as a green dot in cell 1, the start. Cell 4 is marked plus 10, episode ends, and every other step gives minus 1. Bottom: an agent box and an environment box. A blue arrow from the agent to the environment is labelled step with an action. A blue arrow back is labelled next state, reward and whether the episode ended. A note says reset puts the robot in cell 1 and returns state 1">
@@ -53,27 +55,23 @@ knowledge_points:
       - **reset** starts a new try. It puts the robot back in cell 1 and returns that state.
       - **step** applies one action. It moves the robot, then returns the next state, the reward for that step and whether the task has ended.
 
-      ### One try is an episode
-
-      A try from reset until the task ends is an **episode**. A state where it ends, like cell 4, is a **terminal state**.
-
       A **simulation environment** holds the task's current state. Inside step it follows the MDP: it finds the next state $s'$ from $p(s'\mid s,a)$ and works out the reward $r$. In this corridor each move has one result with probability 1.
 
       ### When a move can fail
 
       Suppose the floor is slippery: a move works with probability $0.8$, otherwise the robot stays put. Step draws a random number from 0 to 1 and moves only if it is below $0.8$. A move away from a wall now has two possible next states, so identical actions can give different episodes. A computer's random numbers follow a fixed rule that starts from a **seed**. The same seed gives the same numbers and repeats a run, which helps find bugs.
 
-      Fresh random draws are independent, so multiply chances along a sequence, as in probability basics. Add chances for different sequences with the same result. If a move works with probability $p$, one slip and one success can happen in two orders:
+      Fresh random draws are independent, so multiply chances along a sequence, as in probability basics. Add chances for different sequences with the same result. If a move works with probability $u$, one slip and one success can happen in two orders:
       $$
       \begin{aligned}
-      P(\text{slip, success})&=(1-p)p &&\text{multiply the first order's chances}\\
-      P(\text{success, slip})&=p(1-p) &&\text{multiply the reverse order's chances}\\
-      P(\text{one of each})&=(1-p)p+p(1-p) &&\text{add both orders}\\
-      &=2p(1-p) &&\text{combine equal terms}
+      P(\text{slip then success})&=(1-u)u &&\text{multiply the first order's chances}\\
+      P(\text{success then slip})&=u(1-u) &&\text{multiply the reverse order's chances}\\
+      P(\text{one of each})&=(1-u)u+u(1-u) &&\text{add both orders}\\
+      &=2u(1-u) &&\text{combine equal terms}
       \end{aligned}
       $$
 
-      The same method works with more steps. One slip in three attempts gives three orders: it can come first, second or third. Each order has a slip and two successes, so each has chance $(1-p)p^2$. Adding all three gives $3(1-p)p^2$.
+      The same method works with more steps. One slip in three attempts gives three orders: it can come first, second or third. Each order has a slip and two successes, so each has chance $(1-u)u^2$. Adding all three gives $3(1-u)u^2$.
 
       After an episode ends, call reset. Calling step again may raise an error.
     worked: |
@@ -170,7 +168,7 @@ knowledge_points:
       - `self.steps += 1` adds 1 to the step count.
       - `min(self.cell + 1, 4)` and `max(self.cell - 1, 1)` keep the robot between the walls, since `min` picks the smaller number and `max` the larger.
       - `10 if terminated else -1` gives 10 when `terminated` is true and $-1$ otherwise.
-      - `and not terminated` stops both flags being true at once, so reaching cell 4 on the 5th step counts only as terminated, because the task really ended. Gymnasium, a package of ready-made environments we'll meet below, can wrap an environment in extra code that ends episodes at a step limit. Gymnasium's time-limit wrapper can set both.
+      - `and not terminated` stops both flags being true at once, so reaching cell 4 on the fifth step sets only terminated. Gymnasium, a Python library for running environments, can add a step limit with a separate piece of code. It can set truncated on the last allowed step even when the environment sets terminated on that same step.
       - `return` can hand back several values, and `a, b = ...` unpacks them into separate names.
       - `run_episode` takes the environment `env` and a policy, which is a function from a state to an action. These two policies ignore the state. `while True` repeats until a `return` leaves the function, handing back the total reward, the step count `env.steps` and whether the episode terminated. Our `step` doesn't check for a finished episode, so `run_episode` must stop.
       - `env = Corridor()` makes one corridor, and `run_episode` calls its reset.
@@ -234,11 +232,11 @@ knowledge_points:
     explain: |
       ### Why one copy is slow
 
-      Training can take millions of steps, but one simulator can leave most processor cores idle. A core is one part of a processor that runs instructions. A policy can choose among available actions by chance, so different copies can take different actions even from the same state.
+      Training can take millions of steps, but one simulator can leave most processor cores idle. A core is one part of a processor that runs instructions. A policy can pick left or right by chance. Two copies in the same cell can then take different actions.
 
       ### Many corridors side by side
 
-      A **vectorised environment** runs $N$ copies side by side. Each active copy gets one action per call. A process is a running program that the computer can schedule on a core. Gymnasium is a Python library for building and running environments. Its `AsyncVectorEnv` runs each copy in a separate process, allowing the computer to work on copies at the same time. Reset returns $N$ start states; step returns a next state, reward, terminated flag and truncated flag for each copy.
+      A **vectorised environment** runs $N$ copies side by side. Each active copy gets one action per call. A process is a running program that the computer can schedule on a core. Gymnasium's `AsyncVectorEnv` runs each copy in a separate process, allowing the computer to work on copies at the same time. Reset returns $N$ start states; step returns a next state, reward, terminated flag and truncated flag for each copy.
 
       The loop checks the ending flags for each copy. Finished copies restart while the others carry on.
 

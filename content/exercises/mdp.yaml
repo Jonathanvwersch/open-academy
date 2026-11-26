@@ -6,14 +6,14 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: Two agents face the same task, described by the same Markov decision process. Let $s$ be the current state, $a$ an action taken there, and $s'$ the next state. Which item can differ between the agents while the task stays the same?
+    prompt: Two agents face the same task, described by the same Markov decision process. Which item can differ between the agents while the task stays the same?
     options:
       - id: a
         text: The rule each agent uses to choose actions
         correct: true
         feedback: Each agent can choose its actions differently in the same task.
       - id: b
-        text: The transition probabilities $p(s' \mid s, a)$
+        text: The transition probabilities for each available action
         correct: false
         category: misunderstood_definition
         feedback: For any given state and action, the chances of each next state are the same for both agents.
@@ -34,7 +34,7 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot in state $s$ issues a move command, action $a$, and reaches next state $s'$. A faulty motor sometimes leaves it where it started. Which part of its Markov decision process would change if a repair made the command reliable?"
+    prompt: "A robot in state $s$ issues a move command, action $a$, and reaches next state $s'$. After replacing the floor, an engineer finds that the same command from the same starting spot lands the robot somewhere different. Which part of the Markov decision process should the engineer update to reflect this change?"
     options:
       - id: a
         text: "The transition probabilities $p(s' \\mid s, a)$"
@@ -55,7 +55,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "It lists the situations an agent can occupy. Transition probabilities describe how often each move leads to them."
-    solution: "Transition probabilities give the chance of each next state $s'$ after action $a$ in state $s$. When the move fails, the next state is the same as the current state."
+    solution: "Transition probabilities give the chance of each next state $s'$ after action $a$ in state $s$. The new floor changes where the same action can lead."
   - id: mdpp-state-basics
     dimension: conceptual
     type: mc
@@ -324,17 +324,17 @@ exercises:
     prompt: A robot can be in state 1 or state 2. Its model gives transition probabilities $p(1\mid1,\text{right})=0.2$ and $p(2\mid1,\text{right})=0.7$ when the robot tries to move right from state 1. What's wrong with the model for this move?
     options:
       - id: a
-        text: Each destination must have probability $0.5$ when there are two states.
+        text: The row is missing the chance of reaching state 2 with a left command.
         correct: false
-        feedback: Destinations can have unequal probabilities; their total must still be 1.
+        feedback: Each command has its own row. The chances for the right command must sum to 1 by themselves.
       - id: b
         text: The probabilities of the listed destinations add up to less than 1.
         correct: true
         feedback: The two probabilities total $0.9$, leaving $0.1$ unassigned despite listing every possible state.
       - id: c
-        text: The chance of staying in the current state must always equal zero.
+        text: The chance of reaching state 2 should include the chance of staying in state 1.
         correct: false
-        feedback: Staying in place is a valid transition, for example after a failed move.
+        feedback: Reaching state 2 and staying in state 1 are distinct outcomes. Each has its own probability.
     solution: For a fixed current state and action, the probabilities over all next states must total 1; here they total $0.9$.
   - id: mdpp-delivery-template
     dimension: math
@@ -637,16 +637,16 @@ exercises:
     knowledge_point: mdp-transitions
     difficulty: 1
     est_minutes: 0.5
-    prompt: "In a robot's Markov decision process, issuing a command either reaches the goal for a larger reward or leaves the robot in place for a smaller reward. Staying in place is more likely. How should the robot predict the mean reward per try if it repeats the command from the same state?"
+    prompt: "In a robot's Markov decision process, issuing a command either reaches the goal for a larger reward or leaves the robot in place for a smaller reward. Staying in place is more likely. How should you estimate the mean reward if the command is tried many times from the same state?"
     options:
       - id: a
-        text: "Multiply each outcome's reward by its chance and add the results"
+        text: "Average the two rewards, giving more weight to the reward for staying put"
         correct: true
         feedback: "Each reward contributes in proportion to how often it occurs."
       - id: b
-        text: "Add the chances of the two outcomes"
+        text: "Average the two rewards, giving more weight to the larger goal reward"
         correct: false
-        feedback: "The chances add up to 1 regardless of the rewards."
+        feedback: "The weights come from the chances of each outcome. Reaching the goal is less likely even though its reward is larger."
       - id: c
         text: "Give both outcomes' rewards equal weight"
         correct: false
@@ -655,7 +655,7 @@ exercises:
         text: "Use the reward of the more likely outcome"
         correct: false
         feedback: "The less likely outcome also contributes to the mean."
-    solution: "The expected next reward combines the two scores according to how often each occurs."
+    solution: "The expected next reward weights each reward by its chance. Staying put is more likely here, so its reward gets more weight."
   - id: mdpp-recall-transitions-formula
     dimension: math
     type: expression
@@ -663,7 +663,7 @@ exercises:
     knowledge_point: mdp-transitions
     difficulty: 2
     est_minutes: 0.5
-    prompt: "A robot command either moves the robot and earns a positive reward or leaves it in place and earns a negative reward. Write the command's expected next reward. In your expression, use `q` for the chance of moving, `g` for the positive reward and `c` for the reward that is already negative. Type `*` for multiplication."
+    prompt: "A robot in cell 1 issues a command that either moves it to cell 2 for a positive reward or leaves it in cell 1 for a negative reward. Write the command's expected next reward. Use `q` for the chance of reaching cell 2, `g` for the reward in that case, and `c` for the reward for staying put, where `c` is less than zero. Type `*` for multiplication."
     answer: "q*g + (1-q)*c"
     variables: { q: [0.05, 0.95], g: [1, 20], c: [-5, -0.5] }
     solution: "Weight each reward by its chance and add: $qg+(1-q)c$."

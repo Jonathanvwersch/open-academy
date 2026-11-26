@@ -144,7 +144,7 @@ exercises:
     prompt: A robot simulator has a slippery floor, so the same actions give different episodes on each run. A bug shows up only sometimes, which makes it hard to study. What makes a run repeat exactly?
     options:
       - id: a
-        text: Fix the random seed, so the code draws the same sequence of random numbers on every run.
+        text: Start each run with the same random seed.
         correct: true
         feedback: With the same seed, the same draws decide every slip, so the run repeats.
       - id: b
@@ -164,7 +164,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Reaching cell 4 ends the episode. The robot always tries to move right. Each attempt independently moves it one cell right with probability {{=p}}. Otherwise it slips and stays put. What is the probability that the episode lasts exactly 4 steps? Give your answer to 3 decimal places."
+    prompt: "A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Reaching cell 4 ends the episode. There is no time limit. The robot always tries to move right. Each attempt independently moves it one cell right with probability {{=p}}. Otherwise it slips and stays put. What is the probability that the episode lasts exactly 4 steps? Give your answer to 3 decimal places."
     params:
       p:
         min: 0.5
@@ -187,12 +187,12 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "An agent learns to answer written questions. The environment's reset returns a new question. The agent sends one complete answer to step. The call returns a terminal state and the answer's grade from 0 to 10 as the reward. Which statement about this environment is right?"
+    prompt: "An agent learns to answer written questions. Each task is to answer one question. The agent chooses its complete answer at once and cannot revise it. The grader assigns a score from 0 to 10. Which design fits this task?"
     options:
       - id: a
         text: "Each question and answer form a one-step episode."
         correct: true
-        feedback: The complete answer is one action, and step returns its grade before the next reset.
+        feedback: The complete answer is one action. After grading it, there is nothing left to do for that question.
       - id: b
         text: The grading rule chooses the agent's answer, because it decides the reward.
         correct: false
@@ -761,7 +761,7 @@ exercises:
     prompt: 'An engineer says: "Our policy earns the highest possible total reward per episode in the simulator, so it''s ready for the real robot." What is wrong with this reasoning?'
     options:
       - id: a
-        text: A top score can come from using things the simulator gets wrong, so it says little about the real robot until the policy is tested there.
+        text: A top score can come from a shortcut that only works in the simulator.
         correct: true
         feedback: Policies find shortcuts that only work in the simulator.
       - id: b

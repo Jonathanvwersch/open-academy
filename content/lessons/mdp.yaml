@@ -195,7 +195,7 @@ knowledge_points:
 
       $$\gamma^k r.$$
 
-      Here $k$ counts those extra steps. So $k=2$ means multiply by $\gamma$ twice. We use $\gamma=0.9$ for the corridor.
+      At delay $k=0$, the weight is 1. At $k=2$, multiply by $\gamma$ twice. Here $\gamma=0.9$.
 
       - With $\gamma=0$, only the next reward counts.
       - With $\gamma=0.9$, later rewards have smaller weights.

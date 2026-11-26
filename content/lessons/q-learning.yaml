@@ -314,11 +314,11 @@ knowledge_points:
 
       ### Limitations: one entry per state
 
-      A Q-table needs one entry for every state and action, and each entry only learns when that exact move is made. With 3 cells, that's only 6 entries. But a robot arm's state is its joint angles, which are real numbers, and a video game's state is the whole screen. There are far too many such states to store, and the robot would almost never see the same one twice, so nothing it learned would carry over.
+      A Q-table needs one entry for each action in each state. Cell 4 ends the episode, so it has no actions. Two actions in each of the other three cells give six entries. A robot arm whose state is its joint angles has far more to store. Even small changes in the angles give a different state. An entry only changes when the arm tries that action at those exact angles.
 
-      Deep Q-learning replaces the table with a model that predicts action values, even in new states. It learned Atari games from screen pixels (Mnih and colleagues, 2013).
+      Deep Q-learning uses a program that learns to predict action values, even in states it hasn't seen before. Researchers used this approach to play video games using the images on the screen (Mnih and colleagues, 2013).
     worked: |
-      Let's finish episode 3 from Step 3's example. The robot is in cell 2, where $Q(2,\text{left})=0$ and $Q(2,\text{right})=1.5$, and cell 3 holds $Q(3,\text{left})=0$ and $Q(3,\text{right})=7.5$. We use $\eta=0.5$ and $\gamma=0.9$.
+      Let's finish the third episode from the example of exploring the corridor. The robot is in cell 2, where $Q(2,\text{left})=0$ and $Q(2,\text{right})=1.5$, and cell 3 holds $Q(3,\text{left})=0$ and $Q(3,\text{right})=7.5$. We use $\eta=0.5$ and $\gamma=0.9$.
 
       1. **Choose in cell 2.** Right, $1.5$, beats left, $0$, so the greedy move is right. Say the robot makes it.
 

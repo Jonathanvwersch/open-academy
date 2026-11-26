@@ -701,7 +701,7 @@ exercises:
     prompt: A robot arm uses the angles reported by its joint sensors as its state. Each angle is measured in degrees to four decimal places. Why might a Q-table be a poor way to learn its action values?
     options:
       - id: a
-        text: There are far too many states, and each would almost never be seen twice.
+        text: Even similar angles get separate entries, so most entries get little practice.
         correct: true
         feedback: A table learns each entry only from its own moves, so with so many states, almost no entry gets updated.
       - id: b
@@ -801,12 +801,13 @@ exercises:
         "max_a' Q*(s',a')",
         "max_{a'} Q^*(s',a')",
         "max Q*(s',a')",
+        "max Q(s',a')",
         '\max_{a''}Q^*(s'',a'')',
         V*(s'),
         the optimal value of the next state,
         the best action value in the next state,
       ]
-    regex: "^\\s*(?:(?:\\\\?max(?:imum)?\\s*(?:_\\s*(?:\\{\\s*a\\s*['’′]\\s*\\}|a\\s*['’′])\\s*|(?:over\\s+)?a\\s*['’′]\\s+)?(?:of\\s+)?q\\s*(?:\\^\\s*(?:\\{\\s*\\*\\s*\\}|\\*)|\\*)\\s*\\(\\s*s\\s*['’′]\\s*,\\s*a\\s*['’′]\\s*\\)|v\\s*(?:\\^\\s*(?:\\{\\s*\\*\\s*\\}|\\*)|\\*)\\s*\\(\\s*s\\s*['’′]\\s*\\)|(?:the\\s+)?(?:largest|highest|maximum|best|optimal)\\s+(?:action\\s+|state\\s+|q[- ]?)?value\\s+(?:of|in|for|from|at)\\s+(?:the\\s+)?(?:next\\s+state|s\\s*['’′])))\\s*$"
+    regex: "^\\s*(?:(?:\\\\?max(?:imum)?\\s*(?:_\\s*(?:\\{\\s*a\\s*['’′]\\s*\\}|a\\s*['’′])\\s*|(?:over\\s+)?a\\s*['’′]\\s+)?(?:of\\s+)?q\\s*(?:\\^\\s*(?:\\{\\s*\\*\\s*\\}|\\*)|\\*)?\\s*\\(\\s*s\\s*['’′]\\s*,\\s*a\\s*['’′]\\s*\\)|v\\s*(?:\\^\\s*(?:\\{\\s*\\*\\s*\\}|\\*)|\\*)\\s*\\(\\s*s\\s*['’′]\\s*\\)|(?:the\\s+)?(?:largest|highest|maximum|best|optimal)\\s+(?:action\\s+|state\\s+|q[- ]?)?value\\s+(?:of|in|for|from|at)\\s+(?:the\\s+)?(?:next\\s+state|s\\s*['’′])))\\s*$"
     solution: "The missing term is $\\max_{a'} Q^*(s',a')$, the largest of the values for the available actions $a'$ in the next state $s'$. It equals $V^*(s')$, the best return achievable from that state."
   - id: ql-recall-update-rule-say
     dimension: conceptual
@@ -862,7 +863,7 @@ exercises:
     knowledge_point: ql-update-rule
     difficulty: 2
     est_minutes: 0.5
-    prompt: "The Q-table holds value $q$ for taking action $a$ in state $s$, so $Q(s,a)=q$. The move earns reward $r$, the episode goes on, and the biggest table value in the new state is $m$. With learning rate $\\eta$ and discount factor $\\gamma$, write the updated $Q(s,a)$. Type `eta` for $\\eta$, `gamma` for $\\gamma$, and `*` for multiplication."
+    prompt: "A robot takes action $a$ in state $s$. It earns reward $r$, the episode goes on, and the biggest table value in the new state is $m$. With learning rate $\\eta$ and discount factor $\\gamma$, write the updated table value $Q(s,a)$ for the action it just took. In your expression, type `q` for the old table value, `eta` for $\\eta$, `gamma` for $\\gamma$, and `*` for multiplication."
     answer: "q + eta*(r + gamma*m - q)"
     variables: { q: [-5, 5], r: [-5, 10], m: [-5, 10], eta: [0.05, 0.95], gamma: [0.1, 0.95] }
     solution: "$Q(s,a)\\leftarrow q+\\eta\\,(r+\\gamma m-q)$: move a fraction $\\eta$ of the TD error."
@@ -920,7 +921,7 @@ exercises:
     knowledge_point: ql-explore
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A robot uses an epsilon-greedy rule. One action has the highest Q-value. With exploration probability $\\varepsilon$, the robot picks uniformly from all available actions, including that one. Otherwise it takes the action with the highest Q-value. What is the probability of taking that action? Type `k` for the number of available actions, `eps` for $\\varepsilon$, and `/` for division."
+    prompt: "A robot uses an epsilon-greedy rule. One action has the highest Q-value. With exploration probability $\\varepsilon$, the robot picks at random, giving every available action the same chance, including the best action. Otherwise it picks the best action. What is the probability of taking the best action? Type `k` for the number of available actions, `eps` for $\\varepsilon$, and `/` for division."
     answer: "1 - eps + eps/k"
     variables: { "eps": [0.01, 0.5], "k": { "values": [2, 5, 10] } }
     solution: "The greedy branch gives $1-\\varepsilon$, and the random pick lands on the greedy action with probability $\\varepsilon/k$, so the total is $1-\\varepsilon+\\varepsilon/k$."
@@ -975,7 +976,7 @@ exercises:
     knowledge_point: ql-full-run
     difficulty: 2
     est_minutes: 0.5
-    prompt: "Watkins and Dayan's result about when Q-learning reaches the best values assumes a finite number of states and actions, rewards between fixed lower and upper limits, and a discount factor $\\gamma$ below 1. What does the result require from exploration and the learning rate?"
+    prompt: "For a task with finitely many states and actions, rewards between fixed lower and upper limits, and a discount factor $\\gamma$ below 1, what conditions on exploration and the learning rate guarantee that Q-learning reaches the best values?"
     options:
       - id: a
         text: "Keep trying all actions in every state and shrink the learning rate at the right speed"
