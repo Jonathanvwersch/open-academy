@@ -712,21 +712,21 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: "In a self-attention implementation, `scores[t][j]` holds the score from query position `t` to source position `j`. The function `softmax` takes a list of scores and returns their weights in order. Which Python expression supplies the scores for query position `t`?"
+    prompt: "An attention score grid uses rows for queries and columns for sources. The softmax function takes a list of scores and returns weights in that order. Which list should go into softmax to find the weights position $t$ uses to mix values?"
     options:
       - id: a
-        text: "`[scores[j][j] for j in range(len(scores))]`"
+        text: "All scores in the grid as one list."
         correct: false
-        feedback: "This takes only the scores where the query and source are the same token."
+        feedback: "This makes scores from different queries share a single total."
       - id: b
-        text: "`[scores[j][t] for j in range(len(scores))]`"
+        text: "All scores in column $t$."
         correct: false
         feedback: "This fixes the source and collects scores from different queries."
       - id: c
-        text: "`[scores[t][j] for j in range(len(scores))]`"
+        text: "All scores in row $t$."
         correct: true
         feedback: "This row contains every source score for a single query."
-    solution: "Softmax normalizes over the source scores for one query, so pass row `t`."
+    solution: "Softmax uses every source score for a single query, so pass row $t$."
   - id: attn-code-value-array
     dimension: implementation
     type: mc
