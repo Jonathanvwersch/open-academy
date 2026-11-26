@@ -153,7 +153,8 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 3
-    prompt: "Let $f(w, b) = (wx + b - y)^2$, where $x = 3$ and $y = 1$. At $w = 1$, $b = 1$, what is $\\partial f/\\partial w$?"
+    prompt: >-
+      A model uses weight $w$ and bias $b$ to predict $wx+b$ from input $x$. Its squared error against target $y$ is $f(w,b)=(wx+b-y)^2$. For input $x=3$ and target $y=1$, what is $\partial f/\partial w$ at $w=1$ and $b=1$?
     answer: 18
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -206,7 +207,8 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "A house price formula $P(s, a)$ uses size $s$ (tens of m²) and age $a$ (years). At one house, $\\frac{\\partial P}{\\partial s} = 28$ and $\\frac{\\partial P}{\\partial a} = -3$, in thousands of pounds. Explain in 2–4 sentences what each number means and why the other input must be held fixed."
+    prompt: >-
+      A house price formula $P(s,a)$ gives the price in thousands of pounds from size $s$ in tens of square metres and age $a$ in years. At one house, $\partial P/\partial s=28$ and $\partial P/\partial a=-3$. Explain in 2–4 sentences what each number means and why the other input must be held fixed.
     rubric:
       - id: r1
         criterion:
@@ -316,7 +318,8 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 1
-    prompt: "For a price formula $P(s, a)$, a house has $\\frac{\\partial P}{\\partial a} = -3$ (thousands of pounds per year). What happens to its estimated price if it is one year older and the same size?"
+    prompt: >-
+      A price formula $P(s,a)$ uses the house's size $s$ and age $a$. At one house, $\partial P/\partial a=-3$ thousand pounds per year. What happens to its estimated price if it is one year older and the same size?
     options:
       - { id: a, text: "It falls by about £3k", correct: true }
       - id: b
@@ -564,7 +567,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Let $f(w, b) = (wx + b - y)^2$ with $x = 2$ and $y = 9$. At $w = 3$, $b = 1$, what is $\\frac{\\partial f}{\\partial b}$?"
+    prompt: >-
+      A model's squared error is $f(w,b)=(wx+b-y)^2$, with weight $w$, bias $b$, input $x=2$ and target $y=9$. At $w=3$ and $b=1$, what is $\partial f/\partial b$?
     answer: -4
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -816,7 +820,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A house-price model has three weights and a bias. For a house with area $12$, $3$ bedrooms and age $20$ that sold for $330$, its loss is $L=(12w_1+3w_2+20w_3+b-330)^2$. Keep the weights at $w_1=25$, $w_2=10$, $w_3=-1$. At which bias $b$ is $\\frac{\\partial L}{\\partial b}=0$?"
+    prompt: >-
+      A house-price model has weights $w_1,w_2,w_3$ for area, bedrooms and age, respectively, and bias $b$. In the model's units, a house has area $12$, $3$ bedrooms and age $20$, and sold for $330$. Its squared-error loss is $L=(12w_1+3w_2+20w_3+b-330)^2$. Keep the weights at $w_1=25$, $w_2=10$ and $w_3=-1$. At which bias $b$ is $\partial L/\partial b=0$?
     answer: 20
     tolerance: { abs: 0.001 }
     common_wrong:

@@ -199,7 +199,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: What does $p(s'\mid s,a)$ describe in an MDP?
+    prompt: >-
+      An MDP takes action $a$ in state $s$, and $s'$ is a possible next state. What does $p(s'\mid s,a)$ describe?
     options:
       - id: a
         text: The chance of choosing action $a$ after arriving in state $s'$.
@@ -300,7 +301,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A corridor motor obeys a command with probability $0.8$ and otherwise stays in place. The robot is at the left wall in cell 1 and chooses left; a successful command into a wall also stays in place. A learner assigns $p(1\mid1,\text{left})=0.2$. What went wrong?
+    prompt: >-
+      A corridor motor obeys a command with probability $0.8$ and otherwise stays in place. The robot is at the left wall in cell 1 and chooses left; a successful command into a wall also stays in place. A learner assigns transition probability $p(1\mid1,\text{left})=0.2$ to staying in cell 1 after that command. What went wrong?
     options:
       - id: a
         text: They counted only motor failure, although motor success has the same destination.
@@ -458,7 +460,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A reward arrives after the third command from now. With $\gamma=0.9$, a learner gives it weight $0.9$ when evaluating it from before the first command. Which timing error caused this?
+    prompt: >-
+      A reward arrives after the third command from now. With discount factor $\gamma=0.9$, a learner gives it weight $0.9$ when evaluating it from before the first command. Which timing error caused this?
     options:
       - id: a
         text: They included the first command as an extra step of delay.
@@ -521,7 +524,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A charger controller receives a reward of $8$ after its third command. This task uses $\gamma=0.5$. What is the weighted amount of that reward when evaluated from before its first command?
+    prompt: >-
+      A charger controller receives a reward of $8$ after its third command. The discount factor is $\gamma=0.5$. What is the weighted amount of that reward when evaluated from before its first command?
     answer: 2
     tolerance: { abs: 0.001 }
     solution: The reward arrives two extra steps beyond the next reward, so its weighted amount is $0.5^2\times8=2$.

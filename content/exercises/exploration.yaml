@@ -83,7 +83,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A greedy agent on a two-armed slot machine has an estimate of $3.0$ for arm A, from 20 pulls, and $2.5$ for arm B, from a single pull. What does it do next, and what is the risk?
+    prompt: >-
+      A greedy agent on a two-armed slot machine estimates average payouts of $3.0$ for arm A from 20 pulls and $2.5$ for arm B from a single pull. What does it do next, and what is the risk?
     options:
       - id: a
         text: It pulls A, and may never learn whether B is really better, since B was judged on one pull.
@@ -280,7 +281,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A robot has 4 actions and uses epsilon-greedy with $\varepsilon=0.2$. Its random pick chooses among all 4 actions with equal chance. One action, turn left, is not the best-looking action. What is the probability that the robot turns left on its next choice?
+    prompt: >-
+      A robot has 4 actions and uses epsilon-greedy with exploration probability $\varepsilon=0.2$. Its random pick chooses among all 4 actions with equal chance. One action, turn left, is not the best-looking action. What is the probability that the robot turns left on its next choice?
     answer: 0.05
     tolerance:
       abs: 0.001
@@ -349,7 +351,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A news site shows each visitor one of 3 headlines for a story, and learns which one gets the most clicks. It uses epsilon-greedy with $\varepsilon=0.3$, and its random pick chooses among all 3 headlines with equal chance. What fraction of visitors see a headline other than the one that currently looks best?
+    prompt: >-
+      A news site shows each visitor one of 3 headlines for a story, and learns which one gets the most clicks. It uses epsilon-greedy with exploration probability $\varepsilon=0.3$, and its random pick chooses among all 3 headlines with equal chance. What fraction of visitors see a headline other than the one that currently looks best?
     answer: 0.2
     tolerance:
       abs: 0.001
@@ -488,7 +491,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "Two policies are compared with an entropy bonus. Policy X has expected return $5.0$ and entropy $0.06$. Policy Y has expected return $4.8$ and entropy $0.69$. What is the smallest weight $\\beta$ at which Y's objective is at least as large as X's? Give two decimal places."
+    prompt: >-
+      Two policies are compared using expected return plus an entropy bonus weighted by $\beta$. Policy X has expected return $5.0$ and entropy $0.06$. Policy Y has expected return $4.8$ and entropy $0.69$. What is the smallest bonus weight $\beta$ at which Y's objective is at least as large as X's? Give two decimal places.
     answer: 0.32
     tolerance:
       abs: 0.005

@@ -58,7 +58,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: 'A robot moves in a corridor of 4 cells. Reaching cell 4 ends the episode and gives reward $+10$; every other step gives $-1$. For any policy $\pi$, what is $V^\pi(4)$?'
+    prompt: >-
+      A robot moves in a corridor of 4 cells. Reaching cell 4 ends the episode and gives reward $+10$; every other step gives $-1$. Under any policy $\pi$, what is the state value $V^\pi(4)$ of cell 4?
     answer: 0
     tolerance:
       abs: 0.001
@@ -96,7 +97,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'In a corridor of 4 cells, where reaching cell 4 gives $+10$ and ends the episode, every other step gives $-1$ and $\gamma=0.9$, cell 1 has value $6.2$ under "always move right" and $-10$ under "always move left". What does this show?'
+    prompt: >-
+      A robot moves in a 4-cell corridor. Reaching cell 4 gives $+10$ and ends the episode; every other step gives $-1$. With discount factor $\gamma=0.9$, cell 1 has value $6.2$ under "always move right" and $-10$ under "always move left". What does this show?
     options:
       - id: a
         text: A state's value depends on the policy that is followed from that state.
@@ -119,7 +121,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'A robot in a 4-cell corridor always moves right, and every move works. From cell 2 it gets $-1$, then $+10$ on reaching cell 4. With $\gamma=0.9$, a learner writes $V^\pi(2)=0.9\times(-1)+0.81\times10=7.2$. What went wrong?'
+    prompt: >-
+      A robot in a 4-cell corridor follows the policy $\pi$ of always moving right, and every move works. From cell 2 it gets $-1$, then $+10$ on reaching cell 4. With discount factor $\gamma=0.9$, a learner writes the state value as $V^\pi(2)=0.9\times(-1)+0.81\times10=7.2$. What went wrong?
     options:
       - id: a
         text: The first reward should not be discounted, so the value is $-1+0.9\times10=8$.
@@ -142,7 +145,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: 'In a card game, an agent in state $s$ follows its policy. Half the time the episode gives reward $4$ and then reward $10$, and ends. The other half it gives $4$ and then $-2$, and ends. With $\gamma=0.5$, what is $V^\pi(s)$?'
+    prompt: >-
+      In a card game, an agent in state $s$ follows policy $\pi$. Half the time the episode gives reward $4$, then $10$, and ends. The other half it gives $4$, then $-2$, and ends. With discount factor $\gamma=0.5$, what is its state value $V^\pi(s)$?
     answer: 6
     tolerance:
       abs: 0.001
@@ -264,7 +268,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'A robot in a 4-cell corridor follows "always move left" and never reaches the goal, so $V^\pi(3)=-10$. Moving right from cell 3 reaches the goal, so $Q^\pi(3,\text{right})=10$. What does this tell us?'
+    prompt: >-
+      A robot in a 4-cell corridor follows policy $\pi$, "always move left", and never reaches the goal, so its state value at cell 3 is $V^\pi(3)=-10$. Moving right from cell 3 reaches the goal, and the value of that action is $Q^\pi(3,\text{right})=10$. What does this tell us?
     options:
       - id: a
         text: Moving right in cell 3 would collect more return than the policy does, so the policy can be improved.
@@ -287,7 +292,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'A robot in a 4-cell corridor follows "always move right". Reaching cell 4 gives $+10$ and ends the episode, every other step gives $-1$, $\gamma=0.9$, and $V^\pi(1)=6.2$. A learner says $Q^\pi(2,\text{left})=-10$, because moving left forever never reaches the goal. What went wrong?'
+    prompt: >-
+      A robot in a 4-cell corridor follows policy $\pi$, "always move right". Reaching cell 4 gives $+10$ and ends the episode; every other step gives $-1$. The discount factor is $\gamma=0.9$ and the state value of cell 1 is $V^\pi(1)=6.2$. A learner says the action value $Q^\pi(2,\text{left})$ is $-10$, because moving left forever never reaches the goal. What went wrong?
     options:
       - id: a
         text: After the first move left, the robot follows "always move right" again, so the value is $-1+0.9\times6.2=4.58$.
@@ -310,7 +316,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'A robot arm in state $s$ grasps with probability $0.5$, pushes with probability $0.3$ and waits with probability $0.2$. The action values are $Q^\pi(s,\text{grasp})=6$, $Q^\pi(s,\text{push})=2$ and $Q^\pi(s,\text{wait})=-1$. What is $V^\pi(s)$?'
+    prompt: >-
+      A robot arm in state $s$ follows policy $\pi$, grasping with probability $0.5$, pushing with probability $0.3$ and waiting with probability $0.2$. The action values are $Q^\pi(s,\text{grasp})=6$, $Q^\pi(s,\text{push})=2$ and $Q^\pi(s,\text{wait})=-1$. What is the state value $V^\pi(s)$?
     answer: 3.4
     tolerance:
       abs: 0.005
@@ -431,7 +438,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'In a 4-cell corridor where reaching cell 4 gives $+10$ and other steps give $-1$, every estimate starts at $0$. One Bellman backup for cell 2 under "always move right", with $\gamma=0.9$, gives $V(2)=-1$. The true value is $V^\pi(2)=8$. Why is the new estimate so far off?'
+    prompt: >-
+      In a 4-cell corridor, reaching cell 4 gives $+10$ and other steps give $-1$. The policy $\pi$ always moves right, and the discount factor is $\gamma=0.9$. All state-value estimates start at $0$. One Bellman backup gives the estimate $V(2)=-1$, while the true state value is $V^\pi(2)=8$. Why is the estimate so far off?
     options:
       - id: a
         text: The backup used cell 3's estimate of $0$, which hasn't learned about the $+10$ yet.
@@ -454,7 +462,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: 'A robot is in cell 3 of a slippery corridor and always moves right. With probability $0.8$ the move works: it reaches cell 4, gets $+10$ and the episode ends. Otherwise it stays in cell 3 and gets $-1$. The current estimate is $V(3)=5$ and $\gamma=0.9$. What is the new estimate of $V(3)$ after one Bellman backup?'
+    prompt: >-
+      A robot in cell 3 of a slippery corridor always moves right. With probability $0.8$ it reaches cell 4, gets $+10$ and ends the episode. Otherwise it stays in cell 3 and gets $-1$. The current state-value estimate is $V(3)=5$ and the discount factor is $\gamma=0.9$. What is the new estimate of $V(3)$ after one Bellman backup?
     answer: 8.7
     tolerance:
       abs: 0.005
@@ -475,7 +484,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'A robot in a 4-cell corridor always moves right, and every move works. Reaching cell 4 gives $+10$ and ends the episode. With $\gamma=0.9$, a learner backs up cell 3 as $V(3)\leftarrow10+0.9\times10=19$. What went wrong?'
+    prompt: >-
+      A robot in a 4-cell corridor always moves right, and every move works. Reaching cell 4 gives $+10$ and ends the episode. With discount factor $\gamma=0.9$, a learner applies a Bellman backup to the estimate for cell 3 as $V(3)\leftarrow10+0.9\times10=19$. What went wrong?
     options:
       - id: a
         text: The value of cell 4 is $0$, because the episode ends there, so the backup gives $10$.
@@ -498,7 +508,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: 'A robot arm tries to grasp a part. With probability $0.6$ it succeeds, gets reward $5$ and the episode ends. Otherwise it gets reward $0$ and is back in the same state, whose current estimate is $V(s)=4$. With $\gamma=0.5$, what is the new estimate of $V(s)$ after one Bellman backup?'
+    prompt: >-
+      A robot arm tries to grasp a part from state $s$. With probability $0.6$ it succeeds, gets reward $5$ and the episode ends. Otherwise it earns $0$ and returns to state $s$. The current state-value estimate is $V(s)=4$, and the discount factor is $\gamma=0.5$. What is the new estimate of $V(s)$ after one Bellman backup?
     answer: 3.8
     tolerance:
       abs: 0.005
@@ -616,7 +627,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'In a 4-cell corridor, reaching cell 4 gives $+10$, other steps give $-1$, and $\gamma=0.9$. Value iteration starts every estimate at $0$. After the first sweep, $V(3)=10$ but $V(1)=-1$, even though $V^*(1)=6.2$. Why?'
+    prompt: >-
+      In a 4-cell corridor, reaching cell 4 gives $+10$ and other steps give $-1$. The discount factor is $\gamma=0.9$. Value iteration starts every state-value estimate at $0$. After the first sweep, the estimates are $V(3)=10$ and $V(1)=-1$, even though the optimal state value of cell 1 is $V^*(1)=6.2$. Why?
     options:
       - id: a
         text: Each backup looks one step ahead, so the $+10$ moves back only one cell per sweep.
@@ -639,7 +651,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'A robot moves in a corridor of 4 cells. Moving into the wall left of cell 1 leaves it where it is. Reaching cell 4 gives $+20$ and ends the episode, every other step gives $-1$, and $\gamma=0.9$. The optimal values are $V^*(1)=14.3$, $V^*(2)=17$ and $V^*(3)=20$. What is $Q^*(1,\text{left})$?'
+    prompt: >-
+      A robot moves in a corridor of 4 cells. Moving into the wall left of cell 1 leaves it in cell 1. Reaching cell 4 gives $+20$ and ends the episode; other steps give $-1$. The discount factor is $\gamma=0.9$, and the optimal state values are $V^*(1)=14.3$, $V^*(2)=17$ and $V^*(3)=20$. What is the optimal action value $Q^*(1,\text{left})$?
     answer: 11.87
     tolerance:
       abs: 0.005
@@ -657,7 +670,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'In a 4-cell corridor, reaching cell 4 gives $+10$, every other step gives $-1$, and $\gamma=0.9$. A learner says that in cell 2 moving left and moving right are equally good, because both give reward $-1$. What went wrong?'
+    prompt: >-
+      In a 4-cell corridor, reaching cell 4 gives $+10$ and other steps give $-1$. With discount factor $\gamma=0.9$, a learner says moving left and right from cell 2 are equally good because each gives an immediate reward of $-1$. What went wrong?
     options:
       - id: a
         text: 'The learner ignored where each move leads; $Q^*(2,\text{right})=8$ and $Q^*(2,\text{left})=4.58$.'
@@ -680,7 +694,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'A delivery drone in state $s$ can land now, which gives reward $2$ and ends the episode, or fly on, which gives reward $0$ and always reaches a state $s''$ with $V^*(s'')=5$. With $\gamma=0.9$, what is $V^*(s)$?'
+    prompt: >-
+      A drone in state $s$ can land now for reward $2$ and end the episode, or fly on for reward $0$ and always reach state $s'$. The optimal state value of $s'$ is $V^*(s')=5$, and the discount factor is $\gamma=0.9$. What is the optimal state value $V^*(s)$?
     answer: 4.5
     tolerance:
       abs: 0.005

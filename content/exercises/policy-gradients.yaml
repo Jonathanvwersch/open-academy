@@ -42,7 +42,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 2
-    prompt: What does a policy's score $J(\theta)$ measure?
+    prompt: >-
+      A policy has adjustable parameters $\theta$. What does its objective $J(\theta)$ measure?
     solution: $J(\theta)=E[G_0]$ averages return from the start over episodes played with $\pi_\theta$.
     options:
       - id: a
@@ -98,9 +99,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt:
-      A differentiable score $J(\theta)$ has a nonzero gradient. Which is the gradient-ascent update
-      with learning rate $\eta$ that locally increases it when $\eta$ is small and positive?
+    prompt: >-
+      A differentiable score $J(\theta)$ depends on parameters $\theta$ and has a nonzero gradient. Which is the gradient-ascent update with learning rate $\eta$ that locally increases the score when $\eta$ is small and positive?
     solution:
       The gradient points toward a local increase in $J$. Adding a small positive multiple takes
       an ascent step.
@@ -155,11 +155,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt:
-      A corridor has cells 1 to 4 from left to right. A robot starts in cell 1 and chooses left or
-      right. A wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode. Every other step
-      gives $-1$, with $\gamma=0.9$. In every cell the policy chooses right with probability $p=e^\theta/(e^\theta+1)$
-      and left otherwise. At $\theta=0$, what is the probability of exactly left, right, right, right?
+    prompt: >-
+      A corridor has cells 1 to 4. A robot starts in cell 1, and a wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode; other steps give $-1$. With policy parameter $\theta$, the robot chooses right with probability $p=e^\theta/(e^\theta+1)$ in every cell and left otherwise. At $\theta=0$, what is the probability of exactly left, right, right, right?
     solution:
       Both choices have chance $0.5$. The left hits the wall and three rights finish, so the probability
       is $0.5^4=0.0625$.
@@ -216,9 +213,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt:
-      A robot can play episodes but is not told the world's transition probabilities. Why can it not
-      directly differentiate an exact formula for its expected return $J(\theta)$?
+    prompt: >-
+      A robot can play episodes but is not told the world's transition probabilities. Why can it not directly differentiate an exact formula for its expected return $J(\theta)$ with respect to its policy parameters $\theta$?
     solution:
       An exact expected return weights possible episodes by their chances. Those chances depend
       on world transitions the robot has not been given.
@@ -247,10 +243,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt:
-      A grasping robot tests two policies for 1000 episodes each. Policy A's best return is 9 and
-      its average is 4. Policy B's best is 7 and its average is 6. Which has the higher estimated $J$, and
-      why?
+    prompt: >-
+      A grasping robot tests two policies for 1000 episodes each. Policy A's best return is 9 and its average is 4. Policy B's best return is 7 and its average is 6. Which has the higher estimated policy objective $J$, and why?
     solution: $J$ is estimated by the average return. B has average $6>4$.
     options:
       - id: a
@@ -277,7 +271,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 2
-    prompt: What does the log-derivative trick say about the slope of an action's probability $\pi_\theta(a)$?
+    prompt: >-
+      Let $\pi_\theta(a)$ be the probability of action $a$ under a policy with parameters $\theta$. What does the log-derivative trick say about the gradient of that probability with respect to $\theta$?
     solution:
       The chain rule gives $\nabla_\theta\ln\pi_\theta=(\nabla_\theta\pi_\theta)/\pi_\theta$. Multiplying
       by $\pi_\theta$ gives the identity.
@@ -401,10 +396,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt:
-      A slot machine has arms A and B. Its policy pulls B with probability $p=e^\theta/(e^\theta+1)$
-      and A otherwise. A always pays 2 and B always pays 6. At $\theta=0$, what is the average one-pull
-      estimate of the slope of expected payout?
+    prompt: >-
+      A slot machine has arms A and B. A policy with parameter $\theta$ pulls B with probability $p=e^\theta/(e^\theta+1)$ and A otherwise. A always pays 2 and B always pays 6. At $\theta=0$, what is the average one-pull estimate of the expected payout's slope with respect to $\theta$?
     solution:
       Both arms have chance $0.5$ and log-probability slopes $-0.5$ and $0.5$. Their estimates average
       $0.5\times2\times(-0.5)+0.5\times6\times0.5=1$.
@@ -455,9 +448,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt:
-      Why rewrite $\nabla_\theta\pi_\theta(a)$ as $\pi_\theta(a)\nabla_\theta\ln\pi_\theta(a)$ when
-      estimating an expected-payout slope from pulls?
+    prompt: >-
+      A policy with parameters $\theta$ chooses action $a$ with probability $\pi_\theta(a)$. When estimating the slope of expected payout from sampled pulls, why rewrite $\nabla_\theta\pi_\theta(a)$ as $\pi_\theta(a)\nabla_\theta\ln\pi_\theta(a)$?
     solution:
       The probability factor turns the sum into an average over the policy choices. Observed payouts
       and log-probability slopes provide samples of that average.
@@ -488,9 +480,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt:
-      A language model samples a reply from $\pi_\theta$. A person gives it reward $R$. Which is a
-      one-sample estimate of the slope of expected reward?
+    prompt: >-
+      A language model samples a reply from policy $\pi_\theta$ with parameters $\theta$. A person gives that reply reward $R$. Which is a one-sample estimate of the gradient of expected reward with respect to $\theta$?
     solution:
       The estimate is reward times the gradient of the sampled reply log probability. Averaging
       over current-policy replies gives the expected-reward gradient.
@@ -579,9 +570,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt:
-      World transition probabilities $p(s'\mid s,a)$ do not depend on policy parameters $\theta$.
-      Why does REINFORCE not need them when taking $\nabla_\theta\ln P(\tau)$ for episode $\tau$?
+    prompt: >-
+      An episode $\tau$ has probability $P(\tau)$. The world's probability $p(s'\mid s,a)$ of reaching next state $s'$ from state $s$ after action $a$ does not depend on policy parameters $\theta$. Why does REINFORCE not need these transition probabilities when finding $\nabla_\theta\ln P(\tau)$?
     solution:
       The log episode probability splits into policy and world terms. The world terms have zero
       derivative with respect to $\theta$.
@@ -673,12 +663,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt:
-      A corridor has cells 1 to 4 from left to right. A robot starts in cell 1 and chooses left or
-      right. A wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode. Every other step
-      gives $-1$, with $\gamma=0.9$. In every cell the policy chooses right with probability $p=e^\theta/(e^\theta+1)$
-      and left otherwise. Currently $p=0.8$. The episode left, right, right, right has return $4.58$. What
-      whole-episode REINFORCE slope estimate does it give? Round to two decimal places.
+    prompt: >-
+      A corridor has cells 1 to 4. A robot starts in cell 1, and a wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode; other steps give $-1$. The discount factor is $\gamma=0.9$. With policy parameter $\theta$, the robot chooses right with probability $p=e^\theta/(e^\theta+1)$ in every cell and left otherwise. Currently $p=0.8$. The episode left, right, right, right has return $4.58$. What whole-episode REINFORCE slope estimate with respect to $\theta$ does it give? Round to two decimal places.
     solution:
       The slopes sum to $-0.8+3\times0.2=-0.2$. Multiplying by $4.58$ gives $-0.916$, which rounds
       to $-0.92$.
@@ -698,12 +684,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt:
-      A corridor has cells 1 to 4 from left to right. A robot starts in cell 1 and chooses left or
-      right. A wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode. Every other step
-      gives $-1$, with $\gamma=0.9$. In every cell the policy chooses right with probability $p=e^\theta/(e^\theta+1)$
-      and left otherwise. Now each attempted move succeeds with probability $0.8$ and otherwise leaves the
-      robot in place. These chances do not depend on $\theta$. What changes in whole-episode REINFORCE?
+    prompt: >-
+      A corridor has cells 1 to 4. A robot starts in cell 1, and a wall leaves it in place. Reaching cell 4 gives $+10$ and ends the episode; other steps give $-1$. The discount factor is $\gamma=0.9$. With policy parameter $\theta$, the robot chooses right with probability $p=e^\theta/(e^\theta+1)$ and left otherwise. Now each attempted move succeeds with probability $0.8$ and otherwise leaves the robot in place. These movement probabilities do not depend on $\theta$. What changes in whole-episode REINFORCE?
     solution:
       The transition log terms still have zero slope with respect to $\theta$. Use the same update
       with the actions and returns that actually happened.
@@ -732,11 +714,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt:
-      A walking robot uses whole-episode REINFORCE with $G_0$ weighting and no baseline. Each visited
-      state has separate policy parameters and is visited once. An episode returns $+20$ and contains one
-      clumsy action with nonzero log-probability gradient. With a small positive learning rate, what happens
-      to its probability at its state?
+    prompt: >-
+      A walking robot uses whole-episode REINFORCE weighted by the starting return $G_0$, with no baseline. Each visited state has separate policy parameters and is visited once. An episode returns $+20$ and contains one clumsy action with nonzero log-probability gradient. With a small positive learning rate, what happens to that action's probability in its state?
     solution:
       The positive episode return weights every chosen action log-probability gradient. With separate
       state parameters and a small step, the clumsy action becomes more likely too.
@@ -951,9 +930,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt:
-      Plain REINFORCE updates $\theta$ after collecting episodes. Why can it not keep using those
-      episodes as fresh samples for later updates without a correction?
+    prompt: >-
+      Plain REINFORCE updates the policy parameters $\theta$ after collecting episodes. Why can it not keep using those episodes as fresh samples for later updates without a correction?
     solution:
       The average estimate matches the slope when episodes come from the current policy. Old episodes
       came from different action probabilities.
@@ -982,10 +960,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt:
-      A slot machine has arms A and B. Its policy pulls B with probability $p=e^\theta/(e^\theta+1)$
-      and A otherwise. A always pays 4 and B always pays 10. At $\theta=0$, each arm has chance 0.5. What
-      baseline makes the one-pull REINFORCE estimate equal whichever arm is pulled?
+    prompt: >-
+      A slot machine has arms A and B. A policy with parameter $\theta$ pulls B with probability $p=e^\theta/(e^\theta+1)$ and A otherwise. A always pays 4 and B always pays 10. At $\theta=0$, each arm has chance 0.5. What baseline makes the one-pull REINFORCE estimate equal whichever arm is pulled?
     solution:
       Set B's estimate $(10-b)0.5$ equal to A's estimate $(4-b)(-0.5)$. Solving $10-b=b-4$ gives
       $b=7$.
@@ -1005,10 +981,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt:
-      A language model samples a reply with reward $R=0.6$. A fixed baseline $b=0.7$ is the average
-      reward of several other replies to the same prompt. Consider only this reply contribution $(R-b)\nabla_\theta\ln\pi_\theta$,
-      with a small positive learning rate and nonzero gradient. What happens to its probability?
+    prompt: >-
+      A language model samples a reply $y$ with reward $R=0.6$. A fixed baseline $b=0.7$ is the average reward of several other replies to that prompt. With policy parameters $\theta$ and reply probability $\pi_\theta(y)$, consider just this reply's contribution $(R-b)\nabla_\theta\ln\pi_\theta(y)$. What happens to its probability for a small positive learning rate and a nonzero gradient?
     solution:
       The weight is $0.6-0.7=-0.1$. A small step against the reply log-probability gradient lowers
       its probability.

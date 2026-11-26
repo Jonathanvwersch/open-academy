@@ -383,7 +383,8 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 2
-    prompt: "A random variable $X$ is 1, 2 or 3 with probabilities 0.5, 0.3 and 0.2. What is $E[X]$?"
+    prompt: >-
+      A random variable $X$ is 1, 2 or 3 with probabilities 0.5, 0.3 and 0.2, respectively. What is its expected value $E[X]$?
     hints: ["Multiply each value by its probability, then add."]
     solution: |
       Multiply each value by its probability:
@@ -486,7 +487,8 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 1
-    prompt: "What does $P(A\\mid B)$ mean?"
+    prompt: >-
+      For two events $A$ and $B$, with $B$ having nonzero probability, what does $P(A\mid B)$ mean?
     options:
       - id: a
         text: "The chance that $A$ and $B$ both happen, out of all outcomes"

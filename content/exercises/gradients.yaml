@@ -124,7 +124,8 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "A model's error $L$ has gradient $\\nabla L = (3, -4)$ at its current weights. Which direction vector of length 1 gives the largest estimated decrease for the same small change in the weights?"
+    prompt: >-
+      A model's error $L$ has gradient $\nabla L=(3,-4)$ with respect to its two weights, in weight order. Which unit direction in that same order gives the largest estimated decrease for the same small step size?
     options:
       - { id: a, text: "$(-0.6, 0.8)$", correct: true }
       - {
@@ -488,7 +489,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A model loss has gradient $(3,-2)$. If only the second parameter changes, what step in that parameter estimates a loss decrease of 0.1?"
+    prompt: >-
+      A model loss has gradient $(3,-2)$ with respect to its first and second parameters, in that order. If only the second parameter changes, what step in that parameter estimates a loss decrease of 0.1?
     answer: 0.05
     tolerance: { abs: 0.001 }
     common_wrong:
