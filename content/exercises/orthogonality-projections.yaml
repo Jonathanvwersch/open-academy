@@ -491,7 +491,7 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 2
-    prompt: A least-squares fit has error vector $e=b-A\hat x$. Which statement is true?
+    prompt: A least-squares fit uses a matrix $A$, a vector of measurements $b$ outside the column space of $A$, and the best-fit coefficient vector $\hat x$. The fitted vector $A\hat x$ is nonzero. Which statement is true of the error vector $e=b-A\hat x$?
     options:
       - id: a
         text: "$e$ is orthogonal to every column of $A$, so $A^\\top e=0$."
@@ -501,17 +501,17 @@ exercises:
         text: "$e$ is the zero vector, because $\\hat x$ solves $A\\hat x=b$."
         correct: false
         category: misunderstood_definition
-        feedback: Least squares is used when $Ax=b$ has no solution, so the error is usually not zero.
+        feedback: Every fitted vector lies in the column space of $A$, while $b$ lies outside it. The fitted vector cannot equal $b$, so the error is nonzero.
       - id: c
         text: "$e$ is orthogonal to $b$, so $b^\\top e=0$."
         correct: false
         category: incorrect_reasoning
-        feedback: The right angle is with the columns of $A$. $b$ itself usually lies outside the column space.
+        feedback: The error is perpendicular to the fitted vector. Since $b$ is the fitted vector plus the error, $b^\top e$ equals the squared length of the error, which is positive here.
       - id: d
         text: "$e$ has the same length as $b$, because projection keeps lengths."
         correct: false
         category: misunderstood_definition
-        feedback: Projection usually shortens vectors. Keeping lengths is a property of orthogonal matrices.
+        feedback: The fitted vector and the error are perpendicular and add up to $b$. Since the fitted vector is nonzero, the error is shorter than $b$.
     solution: The best $\hat x$ makes $A\hat x$ the closest point to $b$ in the column space, so the error $e$ is orthogonal to every column of $A$. That is $A^\top e=0$.
   - id: orthp-ata-entry
     dimension: math

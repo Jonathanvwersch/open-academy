@@ -208,14 +208,14 @@ knowledge_points:
 
       $$Q^\top Q=I.$$
 
-      To check for an inverse, ask whether a nonzero combination of columns can give zero. Suppose $Qx=0$:
+      To check for an inverse, ask whether a combination of columns of $Q$ with at least one nonzero coefficient can give the zero vector. Let $x$ be the vector of coefficients, one per column of $Q$, and suppose $Qx=0$, where $0$ is the zero vector:
       $$
       \begin{aligned}
       Q^\top Qx&=Q^\top0 &&\text{multiply by the transpose}\\
       x&=0 &&\text{use }Q^\top Q=I
       \end{aligned}
       $$
-      Only zero amounts work, so every column has a pivot after elimination. The matrix is square, so every row has a pivot too. That makes $Qx=b$ solvable for any $b$, with no free variables, so $Q$ has an inverse. Now:
+      Only zero coefficients work, so every column has a pivot after elimination. The matrix is square, so every row has a pivot too. That makes $Qx=b$ solvable for any $b$, with no free variables, so $Q$ has an inverse. Now:
       $$
       \begin{aligned}
       Q^\top QQ^{-1}&=IQ^{-1} &&\text{multiply }Q^\top Q=I\text{ by the inverse}\\
@@ -307,7 +307,7 @@ knowledge_points:
 
       ### The closest point instead
 
-      The independent columns of $A$ span a plane. Picture it as a sheet of paper with $b$ sticking out. Every $Ax$ lies in that plane. Write its closest point to $b$ as $A\hat x$, where $\hat x$ ("x hat") holds the best $c$ and $m$. Draw any line in the plane through that point. It must also be closest along the line, so the projection rule makes the error $e=b-A\hat x$ perpendicular to the line. This works in every direction in the plane, including both column directions.
+      The independent columns of $A$ span a plane that contains every $Ax$. Write the plane's closest point to $b$ as $A\hat x$, where $\hat x$ ("x hat") holds the best $c$ and $m$. Subtract $A\hat x$ from $b$ and from every point in the plane. This shifts the closest point to the origin without changing distances or directions. The origin is now the projection of the error vector $e=b-A\hat x$ onto every line through the origin in the shifted plane. So $e$ is perpendicular to both column directions.
 
       Each entry of $A^\top e$ dots a column with the error. Require these dot products to be zero:
       $$
