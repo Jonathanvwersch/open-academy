@@ -1,6 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { config } from 'dotenv';
 import { loadContent } from '../src/content/load.js';
+import { repositoryPath } from '../src/paths.js';
 import { directMemoryDriver } from './learner-simulation-direct-driver.js';
 import type { SimulatorDriverFactory } from './learner-simulation-driver.js';
 import {
@@ -10,6 +12,8 @@ import {
   simulateLearners,
   simulationProfiles,
 } from './learner-simulator.js';
+
+config({ path: repositoryPath('.env'), quiet: true });
 
 function argumentsMap(argv: string[]): Map<string, string> {
   const args = new Map<string, string>();
