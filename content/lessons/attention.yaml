@@ -14,7 +14,7 @@ where_this_fits: |
 
   Attention builds a vector for a token by mixing information from tokens in a sequence, with a weight deciding how much each token contributes.
 
-  In the phrase "the cat", looking up "cat" alone cannot tell a model that "the" came before it. Attention lets cat's new vector include information from "the", so a model predicting the next word can use both. We'll call each token that supplies information a source.
+  Looking up "cat" on its own gives the model information about that token alone. In "the cat", attention can also bring information from "the" into cat's new vector, so a model predicting the next word can use both tokens. We'll call each token that supplies information a source.
 knowledge_points:
   - id: attn-score-matches
     key_prereqs: [dot-product]
