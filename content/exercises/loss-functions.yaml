@@ -1011,15 +1011,26 @@ exercises:
     solution: The best constant under MSE is the mean, $(y_1+y_2+y_3)/3$.
   - id: loss-review-balanced-misses
     dimension: math
-    type: numeric
+    type: mc
     role: review
     difficulty: 1
     target_seconds: 30
     est_minutes: 0.5
-    prompt: Two predictions have signed errors $-3$ and $3$. What is their mean squared error?
-    answer: 9
-    tolerance: { abs: 0.001 }
-    solution: Each squared error is $9$. Their average is $9$.
+    prompt: A learner calculates mean squared error for signed errors $-3$, $0$ and $3$ by averaging them and squaring the result. They report zero. What change fixes the calculation?
+    options:
+      - id: a
+        text: Square each signed error before averaging.
+        correct: true
+        feedback: The two misses each contribute $9$, so they cannot cancel.
+      - id: b
+        text: Drop each error's sign before averaging.
+        correct: false
+        feedback: Averaging the sizes without squaring gives mean absolute error.
+      - id: c
+        text: Find the largest error and square that one.
+        correct: false
+        feedback: This reports the square of one miss. Mean squared error averages over all three predictions.
+    solution: Averaging the signed errors first allows the misses to cancel. Square the errors separately, then average $9$, $0$ and $9$.
   - id: loss-review-mean-improvement
     dimension: math
     type: numeric
@@ -1036,18 +1047,18 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 2
-    prompt: A library is comparing two models of checkout wait times. Staff want a two-minute overestimate and a two-minute underestimate to cost the same, and one four-minute miss to cost as much as two two-minute misses across the same set of checkouts. Which measure of average error fits?
+    prompt: A library compares two models on the same three checkout wait times. In minutes, model A's signed errors are $(0,4,0)$ and model B's are $(-2,2,1)$. Staff want every minute of error to cost the same, whether the prediction is early or late. Which ranking fits that policy?
     options:
       - id: a
-        text: The average squared error
-        correct: false
-        feedback: Squaring makes one four-minute miss contribute $16$ while two two-minute misses contribute $8$ together.
-      - id: b
-        text: The average signed error
-        correct: false
-        feedback: A two-minute overestimate and a two-minute underestimate have opposite signs, so they cancel when averaged.
-      - id: c
-        text: The average absolute error
+        text: A has lower error because its total absolute error is smaller.
         correct: true
-        feedback: Both two-minute errors contribute $2$, so together they cost as much as one four-minute error.
-    solution: Absolute error counts the size of each miss, so the sign makes no difference and $2+2=4$.
+        feedback: A misses by 4 minutes in total, whereas B misses by 5 minutes.
+      - id: b
+        text: B has lower error because its total squared error is smaller.
+        correct: false
+        feedback: B does have smaller squared error. Squaring makes a minute matter more when it belongs to a large miss.
+      - id: c
+        text: B has lower error because its total signed error is smaller.
+        correct: false
+        feedback: B's overestimates and underestimates partly cancel in a signed sum. The policy charges for both.
+    solution: Use mean absolute error. A's is $4/3$ minutes and B's is $5/3$ minutes, so A ranks better even though B has lower mean squared error.

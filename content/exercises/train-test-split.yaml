@@ -1441,18 +1441,18 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 2
-    prompt: A team trains several models to recognise bird calls and chooses the one with the lowest error on a held-out set of recordings. They want an error estimate for the chosen model on new recordings of the same kind. How should they get it?
+    prompt: A bird-call team has three separate groups of recordings. They use Cedar to fit each candidate model, Birch to compare the candidates and choose one, and Maple to score the chosen model for their report. A colleague proposes changing the chosen model in response to a low score in the report. Which group would no longer provide an independent final evaluation?
     options:
       - id: a
-        text: Score the chosen model on a fresh set once.
-        correct: true
-        feedback: The fresh recordings played no part in training or choosing the model.
+        text: Cedar
+        correct: false
+        feedback: Cedar already informed training, so its scores were never the independent final evaluation.
       - id: b
-        text: Score the chosen model on the selection set again.
+        text: Birch
         correct: false
-        feedback: Those recordings helped choose the model, so their error does not give an independent final check.
+        feedback: Birch already informed model selection. The report's final score came from Maple.
       - id: c
-        text: Score the chosen model on its training set again.
-        correct: false
-        feedback: The model already fit these recordings, so their error can be lower than on new ones.
-    solution: The recordings used to choose the model served as validation data. Use a fresh test set for the final score.
+        text: Maple
+        correct: true
+        feedback: Using Maple's score to change the model would make Maple part of model selection.
+    solution: Maple served as the test set. If its scores guide another model change, evaluate the resulting model on recordings that played no part in that decision.

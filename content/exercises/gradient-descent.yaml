@@ -1265,20 +1265,20 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 0.5
-    prompt: A Python training loop for linear regression stores the signed prediction error for one example in `e`. Which line computes the squared-error loss for that example?
+    prompt: A Python training loop stores one example's prediction in `y_hat`, its target in `y` and their signed difference in `e`. Which line computes the squared-error loss?
     options:
       - id: a
-        text: "`loss = 2 * e`"
+        text: "`loss = y_hat ** 2`"
         correct: false
-        feedback: This computes the slope of squared error with respect to the prediction.
+        feedback: Squaring the prediction ignores how far it is from the target.
       - id: b
         text: "`loss = e ** 2`"
         correct: true
         feedback: Squaring the signed miss gives the loss for this example.
       - id: c
-        text: "`loss = abs(e)`"
+        text: "`loss = (y_hat + y) ** 2`"
         correct: false
-        feedback: This measures the size of the error before squaring.
+        feedback: The error is the difference between prediction and target. Adding them can give a nonzero loss even for a perfect prediction.
     solution: Use `e ** 2` to turn the signed miss into a squared error.
   - id: gd-review-stale-error-code
     dimension: implementation
@@ -1287,7 +1287,7 @@ exercises:
     difficulty: 2
     est_minutes: 1
     prompt: |
-      This Python loop trains a model with weight `w` and squared-error loss. The input `x`, target `y` and learning rate `lr` stay fixed. Which edit makes the loop use the current loss slope on every pass?
+      This Python loop trains a model with weight `w` and squared-error loss. The input `x`, target `y` and learning rate `lr` stay fixed. Which edit ensures that every pass updates `w` using the loss slope at the start of that pass?
 
       ```python
       e = w * x - y

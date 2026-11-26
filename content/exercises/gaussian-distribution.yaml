@@ -799,10 +799,10 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A Gaussian model for filling a bottle has mean 500 mL and standard deviation 4 mL. About what percentage of bottles contain more than 508 mL? Give a percentage number, for example 10 for 10%.
-    answer: 2.5
-    tolerance: { abs: 0.23 }
-    solution: The cutoff is two standard deviations above the mean. About $5\%$ lies outside the central $95\%$, and symmetry puts half of that, $2.5\%$, in the upper tail.
+    prompt: A Gaussian model for filling a bottle has mean 500 mL and standard deviation 4 mL. About what percentage of bottles contain less than 504 mL? Give a percentage number, for example 10 for 10%.
+    answer: 84
+    tolerance: { abs: 0.2 }
+    solution: Half the distribution lies below the mean. The cutoff is one standard deviation above the mean, so add half of the central $68\%$ to get about $50\%+34\%=84\%$.
   - id: gauss-review-add-noise
     dimension: math
     type: numeric

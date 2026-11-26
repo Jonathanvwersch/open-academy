@@ -766,21 +766,21 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 0.5
-    prompt: A Python function for logistic regression receives one feature `x`, its weight `w` and the bias `b`. Which line computes the score that goes into the sigmoid?
+    prompt: A Python logistic regression program calculates its score as `z = (w + b) * x`, where `x` is the input, `w` is the weight and `b` is the bias. Which edit fixes how the score uses the bias?
     options:
       - id: a
-        text: "`z = w * x + b`"
+        text: Add the bias after multiplying the weight by the input.
         correct: true
-        feedback: The score adds the bias to the weighted input.
+        feedback: The bias adds a fixed amount to the weighted input.
       - id: b
-        text: "`z = w * (x + b)`"
+        text: Add the bias to the input before multiplying by the weight.
         correct: false
-        feedback: This scales the bias by the weight as well as scaling the feature.
+        feedback: The weight would scale the bias as well as the input.
       - id: c
-        text: "`z = (w + b) * x`"
+        text: Swap the weight and bias before multiplying by the input.
         correct: false
-        feedback: This scales the bias by the feature, though the bias should add a fixed amount.
-    solution: The score is `w * x + b`. Only the input is multiplied by the weight.
+        feedback: The order within the sum makes no difference. Both terms still get multiplied by the input.
+    solution: Compute the weighted input first, then add the bias once with `z = w * x + b`.
   - id: logreg-review-threshold-code
     dimension: implementation
     type: code_complete
@@ -812,47 +812,32 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A Python program has calculated the logistic regression score `z`. It has a function `exp(t)` that returns $e^t$. Which line converts the score to the probability of label 1?
+    prompt: A Python program uses `p = 1 / (1 + exp(z))` for its sigmoid, where `z` is the logistic regression score and `exp(t)` returns $e^t$. How does this output respond to a rising score compared with the intended sigmoid?
     options:
       - id: a
-        text: "`p = 1 / (1 + exp(z))`"
-        correct: false
-        feedback: This produces a probability that falls as the score rises.
-      - id: b
-        text: "`p = 1 / (1 - exp(-z))`"
-        correct: false
-        feedback: Subtracting the exponential makes the denominator zero at score zero.
-      - id: c
-        text: "`p = 1 / (1 + exp(-z))`"
+        text: This output falls, while the intended sigmoid rises.
         correct: true
-        feedback: This adds one to the exponential of the negative score and takes the reciprocal.
-    solution: The sigmoid is `1 / (1 + exp(-z))`. Its probability of label 1 rises with the score.
+        feedback: The code's denominator grows with the score, so its reciprocal falls.
+      - id: b
+        text: This output and the intended sigmoid both rise.
+        correct: false
+        feedback: The intended sigmoid rises. This code puts the score itself in the exponential, so its denominator grows.
+      - id: c
+        text: This output and the intended sigmoid both fall.
+        correct: false
+        feedback: The intended sigmoid puts the negative score in the exponential, so its denominator shrinks as the score rises.
+    solution: As `z` rises, `exp(z)` and the denominator both rise, so the output falls. The intended sigmoid should rise with the score.
   - id: logreg-review-observed-label-code
     dimension: implementation
     type: code_complete
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A Python function computes binary cross-entropy for one example. Here `p` is the model's probability of label 1, `y` is the observed label, and `log(q)` is the natural log of `q`. Fill the blank using `p` and one call to `log`.
+    prompt: A Python function is meant to compute binary cross-entropy, but it returns `-log(p)` for both labels. Here `p` is the model's probability of label 1, `y` is the observed label and `log` is the natural logarithm. At `p = 0.8`, which observed label exposes the bug? Fill the blank with the label's integer value.
     code: |
-      if y == 1:
-          loss = -log(p)
-      else:
-          loss = ____
-    accept:
-      - "-log(1 - p)"
-      - "-log(1.0 - p)"
-      - "(-log(1 - p))"
-      - "(-log(1.0 - p))"
-      - "-(log(1 - p))"
-      - "-(log(1.0 - p))"
-      - "0 - log(1 - p)"
-      - "0 - log(1.0 - p)"
-      - "-1 * log(1 - p)"
-      - "-1 * log(1.0 - p)"
-      - "log(1 - p) * -1"
-      - "log(1.0 - p) * -1"
-    solution: When `y` is zero, binary cross-entropy takes the negative log of `1 - p`.
+      loss(p=0.8, y=____)
+    accept: ["0", "(0)"]
+    solution: Use observed label 0. The function returns the negative log of $0.8$, but the observed label received probability $1-0.8=0.2$, whose negative log is larger.
   - id: logreg-review-bias-update-code
     dimension: implementation
     type: mc

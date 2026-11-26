@@ -956,7 +956,7 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 2
-    prompt: A sailboat crew wants to know on which of two breezy days the wind blew in a direction closer to their course. They have a vector pointing along the course and a wind vector for each day. The wind speeds differ. Which comparison should they make?
+    prompt: A sailboat crew wants to know on which of two breezy days the wind blew in a direction closer to their course. They have a vector pointing along the course and a wind vector for each day. Each wind vector points where the wind blew, and its length represents the wind speed. The speeds differ. Which comparison should they make?
     options:
       - id: a
         text: Pick the day with the larger raw dot product with the course.

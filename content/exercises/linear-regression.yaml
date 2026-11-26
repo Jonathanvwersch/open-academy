@@ -908,14 +908,25 @@ exercises:
     solution: The input contributes $3\times4=12$. The bias supplies the rest, $17-12=5$.
   - id: linreg-review-two-input-change
     dimension: math
-    type: numeric
+    type: mc
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A linear regression model has weights $4$ and $-3$ for its first and second inputs. The first input rises by $2$ and the second rises by $5$. What is the signed change in the prediction?
-    answer: -7
-    tolerance: { abs: 0.001 }
-    solution: The changes contribute $4\times2=8$ and $(-3)\times5=-15$. Together they change the prediction by $8-15=-7$.
+    prompt: A linear regression model has weights $4$ and $-3$ for its first and second inputs. The inputs rise by $2$ and $5$, respectively. A learner calculates the change in prediction as $4\times2-(-3)\times5=23$. What is the mistake?
+    options:
+      - id: a
+        text: The learner left out the bias from the change.
+        correct: false
+        feedback: The same bias appears in both predictions and drops out when they are subtracted.
+      - id: b
+        text: The learner used the weights in the wrong order.
+        correct: false
+        feedback: Each input change is paired with its own weight.
+      - id: c
+        text: The learner subtracted the second input's contribution.
+        correct: true
+        feedback: The second contribution is already negative because its weight is negative. The two signed contributions are added.
+    solution: Add the signed contributions. The second contributes $(-3)\times5=-15$, so the change is $8+(-15)=-7$.
   - id: linreg-review-batch-row
     dimension: math
     type: numeric

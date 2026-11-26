@@ -885,27 +885,38 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: An experiment increases from 25 to 100 independent trials. The sample standard deviation stays the same. The original mean had a standard error of 0.6 seconds. What is the new mean's standard error, in seconds?
-    answer: 0.3
+    prompt: An experiment with 25 independent trials gave a mean with a standard error of 0.6 seconds. The team plans a repeat and expects the same standard deviation. How many independent trials should the repeat have to bring the estimated standard error down to 0.2 seconds?
+    answer: 225
     tolerance: { abs: 0.001 }
-    solution: The standard error divides the standard deviation by the square root of the trial count. That divisor doubles from 5 to 10, so the new standard error is 0.3 seconds.
+    solution: Cutting the standard error by a factor of 3 requires tripling the square root of the trial count. The count must therefore be $3^2\times25=225$.
   - id: ds-review-rate-se
     dimension: math
     type: numeric
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A sorting robot succeeds on 300 out of 400 independent trials. What is the estimated standard error of the success rate? Give it as a proportion to three decimal places. Round only at the end.
-    answer: 0.022
-    tolerance: { abs: 0.0005 }
-    solution: The observed rate is $300/400=0.75$. Its estimated standard error is $\sqrt{0.75(1-0.75)/400}\approx0.022$.
+    prompt: Two sorting robots each make 100 independent attempts. Robot A succeeds 50 times and robot B succeeds 20 times. Give the estimated standard error of A's success rate divided by that of B's success rate.
+    answer: 1.25
+    tolerance: { abs: 0.001 }
+    solution: The two standard errors are $\sqrt{0.5(0.5)/100}=0.05$ and $\sqrt{0.2(0.8)/100}=0.04$. Their ratio is $0.05/0.04=1.25$.
   - id: ds-review-rate-difference-endpoint
     dimension: math
-    type: numeric
+    type: mc
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: In large, independent tests under comparable conditions, a robot succeeds 70% of the time before an update and 86% after it. The estimated standard errors are 3 percentage points before the update and 4 after it. What is the lower endpoint of the approximate 95% confidence interval for the change in success rate (after minus before)? Use a multiplier of 2 and give a number in percentage points.
-    answer: 6
-    tolerance: { abs: 0.001 }
-    solution: The observed increase is $86-70=16$ percentage points, and the standard error of the difference is $\sqrt{3^2+4^2}=5$ points. The lower endpoint is $16-2\times5=6$ percentage points.
+    prompt: In large, independent tests under comparable conditions, a robot succeeds 70% of the time before an update and 86% after it. The estimated standard errors are 3 percentage points before the update and 4 after it. The team wants evidence of an improvement of at least 10 percentage points. What does the approximate 95% confidence interval for the change support? Use a multiplier of 2.
+    options:
+      - id: a
+        text: It supports an improvement of at least 10 percentage points.
+        correct: false
+        feedback: The observed increase is 16 points, but the interval includes increases smaller than 10.
+      - id: b
+        text: It supports an improvement, but the size could be below 10 percentage points.
+        correct: true
+        feedback: The interval excludes zero and includes increases between 6 and 10 points.
+      - id: c
+        text: It leaves open whether the success rate increased at all.
+        correct: false
+        feedback: The interval's entire range is above zero, so it supports an increase.
+    solution: The increase is 16 points, and its standard error is $\sqrt{3^2+4^2}=5$ points. The interval is 6 to 26 points, which supports an increase and leaves open whether it reaches 10 points.
