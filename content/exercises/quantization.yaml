@@ -1081,7 +1081,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A matrix was quantised with a separate scale for each row. In the reconstruction loop, `i` is the row index, `j` is the column index, `q` holds the stored integers and `scales` lists the scales in row order. Which line reconstructs the entry at row `i`, column `j`?
+    prompt: A matrix was quantised one row at a time with a separate scale for each row. A program now reads only column `j`. Its loop walks through the rows using index `i`. In each loop iteration, which line reconstructs the entry from the stored integers `q` and the list of scales `scales`?
     options:
       - id: a
         text: "`x[i][j] = q[i][j] * scales[j]`"
