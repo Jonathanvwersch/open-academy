@@ -1251,11 +1251,11 @@ exercises:
         correct: true
         feedback: Either factor can give small updates because the learning rate multiplies the slope for each weight and the bias.
       - id: b
-        text: Training has already reached the lowest point.
+        text: Weights that are close to zero or a bias that is close to zero.
         correct: false
-        feedback: The loss is still falling. At the lowest point the loss cannot fall any further.
+        feedback: Weights and bias affect the prediction. Their values alone do not tell us how far the update moves them.
       - id: c
-        text: A high starting loss or a high current loss.
+        text: A high loss at the start of training or a high loss at the current step.
         correct: false
         feedback: The update uses the slope of the loss for each parameter. The loss value alone does not set the size of the update.
     solution: Gradient descent multiplies the slope for each weight and the bias by the learning rate, then subtracts the result from that weight or bias. Either a small learning rate or shallow slopes can give small updates even when the loss is high.
