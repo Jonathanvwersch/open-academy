@@ -228,6 +228,14 @@ function mixedNumberFormatting(text: string): string | null {
   return null;
 }
 
+function plainNegativeNumber(text: string): string | null {
+  const withoutMathOrCode = text.replace(/\$\$[\s\S]*?\$\$|\$[^$]*\$|(`+)[\s\S]*?\1/g, (segment) =>
+    ' '.repeat(segment.length),
+  );
+  const match = /(?<![\w.)\]])-\d+(?:\.\d+)?/.exec(withoutMathOrCode);
+  return match ? text.slice(match.index, match.index + match[0].length) : null;
+}
+
 function addIssue(issues: ContentIssue[], file: string, id: string, message: string) {
   issues.push({ file, id: id || '<file>', message });
 }
@@ -1235,6 +1243,15 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
             file,
             exercise.id,
             `option "${option.id}" mixes plain and maths numbers (${JSON.stringify(mixedNumbers)}); write them all in maths, e.g. "$3$ and $-2$"`,
+          );
+        }
+        const plainNegative = plainNegativeNumber(option.text);
+        if (plainNegative) {
+          addIssue(
+            issues,
+            file,
+            exercise.id,
+            `option "${option.id}" writes a negative number in plain text (${JSON.stringify(plainNegative)}); write it in maths, e.g. "$-1$"`,
           );
         }
       }

@@ -185,10 +185,10 @@ exercises:
         }
       - {
           id: c,
-          text: "1 and -1",
+          text: "$1$ and $-1$",
           correct: false,
           category: recall_failure,
-          feedback: "ReLU is flat for negative inputs, so its slope there is not -1. Check the two linear regions on either side of zero.",
+          feedback: "ReLU is flat for negative inputs, so its slope there is not $-1$. Check the two linear regions on either side of zero.",
         }
     solution: "ReLU has slope $1$ for $z>0$ and slope $0$ for $z<0$."
   - id: act-explain

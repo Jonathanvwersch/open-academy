@@ -565,7 +565,7 @@ exercises:
         },
         {
           "id": "b",
-          "text": "All advantages are -1, so every answer is pushed down.",
+          "text": "All advantages are $-1$, so every answer is pushed down.",
           "correct": false,
           "category": "incorrect_reasoning",
           "feedback": "There is no distance from the group mean.",
@@ -713,9 +713,9 @@ exercises:
       [
         {
           "id": "a",
-          "text": "The ratio clips to 0.8 and min keeps -0.8 over -0.7.",
+          "text": "The ratio clips to $0.8$ and min keeps $-0.8$ over $-0.7$.",
           "correct": true,
-          "feedback": "Multiplying by advantage -1 makes the clipped term smaller.",
+          "feedback": "Multiplying by advantage $-1$ makes the clipped term smaller.",
         },
         {
           "id": "b",
@@ -739,7 +739,7 @@ exercises:
           "feedback": "The term multiplies a ratio by the advantage.",
         },
       ]
-    solution: "The ratio 0.7 clips to 0.8. With advantage -1, the minimum of -0.7 and -0.8 is -0.8."
+    solution: "The ratio $0.7$ clips to $0.8$. With advantage $-1$, the minimum of $-0.7$ and $-0.8$ is $-0.8$."
     lesson_only: true
     target_seconds: 30
   - id: "rlvr4-token-advantage"
@@ -829,7 +829,7 @@ exercises:
         },
         {
           "id": "b",
-          "text": "All advantages are -1; SFT makes every advantage positive.",
+          "text": "All advantages are $-1$; SFT makes every advantage positive.",
           "correct": false,
           "category": "incorrect_reasoning",
           "feedback": "Equal rewards give zero advantages.",

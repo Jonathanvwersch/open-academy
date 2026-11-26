@@ -464,7 +464,7 @@ exercises:
         }
       - {
           id: b,
-          text: "It is now -4, because backward replaced it with its slope.",
+          text: "It is now $-4$, because backward replaced it with its slope.",
           correct: false,
           feedback: "The slope is stored separately in `.grad`, not in the parameter value.",
         }
@@ -651,19 +651,19 @@ exercises:
     options:
       - {
           id: a,
-          text: "It is -6, because the new gradient is added to the old one.",
+          text: "It is $-6$, because the new gradient is added to the old one.",
           correct: true,
-          feedback: "Backward accumulates: -4 plus -2 gives -6.",
+          feedback: "Backward accumulates: $-4$ plus $-2$ gives $-6$.",
         }
       - {
           id: b,
-          text: "It is -2, because the new gradient replaces the old one.",
+          text: "It is $-2$, because the new gradient replaces the old one.",
           correct: false,
           feedback: "Replacement requires clearing first; backward adds rather than replaces.",
         }
       - {
           id: c,
-          text: "It is -4, because the first gradient remains unchanged.",
+          text: "It is $-4$, because the first gradient remains unchanged.",
           correct: false,
           feedback: "The second backward call adds its new contribution.",
         }
@@ -678,7 +678,7 @@ exercises:
 
       $$-4+(-2)=-6.$$
 
-      That is not the current model's slope -2.
+      That is not the current model's slope $-2$.
   - id: ptb-loop-read
     dimension: implementation
     type: code_read

@@ -478,7 +478,7 @@ exercises:
         category: misunderstood_definition
         feedback: "Multiplying by the length scales the estimate up again; divide by 2."
       - id: d
-        text: "-3, reversing the sign when normalising the step."
+        text: "$-3$, reversing the sign when normalising the step."
         correct: false
         category: math_error
         feedback: "Normalising preserves the positive x direction, so the sign stays positive."
@@ -534,7 +534,7 @@ exercises:
         category: misunderstood_definition
         feedback: "The length is the steepest slope; other directions scale it by the cosine of their angle."
       - id: c
-        text: "The opposite vector has length -1 and the perpendicular vector length 0, scaling the gradient."
+        text: "The opposite vector has length $-1$ and the perpendicular vector length $0$, scaling the gradient."
         correct: false
         category: incorrect_reasoning
         feedback: "All three directions are unit length; the sign and zero come from their angles, not their lengths."
@@ -543,7 +543,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: "The dot product depends on the angle between the vectors, not just the coordinate signs."
-    solution: "For a unit direction, the slope is $\\|\\nabla f\\|\\cos\\theta=5\\cos\\theta$. The directions along, opposite, and perpendicular to the gradient have cosines 1, -1, and 0, giving slopes 5, -5, and 0."
+    solution: "For a unit direction, the slope is $\\|\\nabla f\\|\\cos\\theta=5\\cos\\theta$. The directions along, opposite, and perpendicular to the gradient have cosines $1$, $-1$, and $0$, giving slopes $5$, $-5$, and $0$."
   - id: gradp-why-180
     dimension: conceptual
     type: mc
@@ -554,14 +554,14 @@ exercises:
     prompt: "For equal-length unit directions, why is the slope most negative at an angle of $180^\\circ$ to the gradient?"
     options:
       - id: a
-        text: "The cosine is -1 there, the smallest possible value."
+        text: "The cosine is $-1$ there, the smallest possible value."
         correct: true
         feedback: "The dot-product formula makes the slope smallest when $\\cos\\theta=-1$."
       - id: b
         text: "The cosine is 0 there, so the slope disappears."
         correct: false
         category: recall_failure
-        feedback: "The cosine is 0 at $90^\\circ$; at $180^\\circ$ it is -1."
+        feedback: "The cosine is 0 at $90^\\circ$; at $180^\\circ$ it is $-1$."
       - id: c
         text: "The opposite direction has a greater length than the others."
         correct: false
@@ -572,7 +572,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "Gradient components can have either sign; the angle explains the decrease."
-    solution: "For unit directions the slope is $\\|\\nabla f\\|\\cos\\theta$. The cosine is smallest, at -1, when the direction is opposite the gradient."
+    solution: "For unit directions the slope is $\\|\\nabla f\\|\\cos\\theta$. The cosine is smallest, at $-1$, when the direction is opposite the gradient."
   - id: gradp-length
     dimension: conceptual
     type: mc
