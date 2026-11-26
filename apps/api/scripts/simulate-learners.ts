@@ -1,9 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { env } from '../src/config.js';
 import { loadContent } from '../src/content/load.js';
-import { createDb } from '../src/db/client.js';
-import { httpPostgresDriver } from './learner-simulation-http-driver.js';
+import { directMemoryDriver } from './learner-simulation-direct-driver.js';
+import type { SimulatorDriverFactory } from './learner-simulation-driver.js';
 import {
   renderMarkdownReport,
   type SimulationProfile,
@@ -40,6 +39,23 @@ function parseProfiles(value: string | undefined): SimulationProfile[] {
   return requested as SimulationProfile[];
 }
 
+/** The HTTP driver loads the app and database only when it is chosen. */
+async function driverFor(
+  value: string | undefined,
+): Promise<{ driver: SimulatorDriverFactory; close: () => Promise<void> }> {
+  if (value === undefined || value === 'http') {
+    const [{ env }, { createDb }, { httpPostgresDriver }] = await Promise.all([
+      import('../src/config.js'),
+      import('../src/db/client.js'),
+      import('./learner-simulation-http-driver.js'),
+    ]);
+    const db = createDb(env.TEST_DATABASE_URL);
+    return { driver: httpPostgresDriver(db), close: () => db.$client.end() };
+  }
+  if (value === 'direct') return { driver: directMemoryDriver, close: async () => {} };
+  throw new Error(`Unknown driver ${value}; expected direct or http`);
+}
+
 function parsePositiveInteger(value: string | undefined, fallback: number): number {
   if (value === undefined) return fallback;
   const parsed = Number(value);
@@ -58,7 +74,7 @@ async function main() {
     .get('courses')
     ?.split(',')
     .map((courseId) => courseId.trim());
-  const db = createDb(env.TEST_DATABASE_URL);
+  const { driver, close } = await driverFor(args.get('driver'));
   try {
     const content = await loadContent();
     const scenarioContent = profiles.some((profile) =>
@@ -66,7 +82,7 @@ async function main() {
     )
       ? await loadContent('tests/fixtures/content')
       : undefined;
-    const report = await simulateLearners(httpPostgresDriver(db), content, {
+    const report = await simulateLearners(driver, content, {
       profiles,
       days,
       ...(courseIds ? { courseIds } : {}),
@@ -87,7 +103,7 @@ async function main() {
     console.log(`Wrote ${resolve(out, 'report.md')}`);
     console.log(`Simulation runtime: ${(report.runtimeMs / 1_000).toFixed(1)}s`);
   } finally {
-    await db.$client.end();
+    await close();
   }
 }
 

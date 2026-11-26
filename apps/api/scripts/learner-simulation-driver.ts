@@ -214,6 +214,10 @@ export function decisionSeed(...parts: Array<string | number>): number {
 }
 
 /** Gives each operation a stable key, so repeated runs draw the same random numbers. */
+/** Row ids the in-memory store assigns; the HTTP app only uses UUIDs. */
+const MEMORY_ID =
+  /(?<![\w-])(?:card|timed-quiz|diagnostic|grant|review-log|session|activity|lesson-run|lesson-problem|lesson-quiz|lesson-quiz-item|flag)-\d+(?![\w-])/g;
+
 export class RequestRandomness {
   private readonly ordinals = new Map<string, number>();
 
@@ -223,10 +227,9 @@ export class RequestRandomness {
   ) {}
 
   next(request: SimulatorHttpRequest, now: Date): () => number {
-    const stablePath = request.path.replace(
-      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
-      '<id>',
-    );
+    const stablePath = request.path
+      .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<id>')
+      .replace(MEMORY_ID, '<id>');
     const stableBody = JSON.stringify(request.body, (key, value: unknown) =>
       ['activityId', 'sessionId', 'problemId', 'itemId', 'placementId'].includes(key)
         ? `<${key}>`
