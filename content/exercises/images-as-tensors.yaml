@@ -586,3 +586,58 @@ exercises:
     answer: "(x-m_c)/s_c"
     variables: { "x": [0, 1], "m_c": [0.1, 0.9], "s_c": [0.05, 0.5] }
     solution: "Subtract the channel mean and divide by its standard deviation to get $(x-m_c)/s_c$."
+
+  - id: iat-grid-row-from-index
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A grayscale image has two rows of brightness values: $(14,38,72)$ and $(101,53,26)$, in that order. What is the brightness at row $1$, column $0$ in the image array?"
+    answer: 101
+    tolerance: { abs: 0 }
+    solution: "The array counts from zero, so row $1$ is the second row and column $0$ is its first entry: $101$."
+
+  - id: iat-rgba-channel-axis
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A colour image has HWC shape $(6,9,4)$ because it includes a channel for transparency. It is transposed to CHW. What is the size of the first axis of the result?"
+    answer: 4
+    tolerance: { abs: 0 }
+    solution: "In CHW the channel axis comes first. Transposing changes where the axis goes, so its size is still $4$."
+
+  - id: iat-batch-pixels-from-shape
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "An RGB image batch in NCHW layout has shape $(5,3,2,7)$. How many pixels are there across the whole batch, counting each pixel once?"
+    answer: 70
+    tolerance: { abs: 0 }
+    solution: "Each of the $5$ images has $2\\times7$ pixel positions. The $3$ channels describe the same pixels, so the batch has $5\\cdot2\\cdot7=70$ pixels."
+
+  - id: iat-blue-plane-read
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "An RGB image in HWC layout has two rows of pixels. Row $0$ contains $(15,20,25)$ and $(30,35,40)$. Row $1$ contains $(45,50,55)$ and $(60,65,70)$. After transposing the image to CHW, what value is at index $(2,0,1)$? All indices start at zero."
+    answer: 40
+    tolerance: { abs: 0 }
+    solution: "In CHW, index $2$ selects the blue channel. Row $0$, column $1$ is the pixel $(30,35,40)$, whose blue value is $40$."
+
+  - id: iat-standardise-from-uint8
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A uint8 RGB pixel has values $(51,204,102)$ in red, green and blue order. A model expects values rescaled to $[0,1]$ and then standardised. In that same colour order, its means are $(0.5,0.7,0.3)$ and its standard deviations are $(0.1,0.25,0.2)$. What green value should go to the model?"
+    answer: 0.4
+    tolerance: { abs: 0.0001 }
+    solution: "Green rescales to $204/255=0.8$. Using the green mean and standard deviation gives $(0.8-0.7)/0.25=0.4$."

@@ -668,3 +668,56 @@ exercises:
     answer: "1+o"
     variables: { "o": { "values": [1, 4, 12] } }
     solution: "One recording pass serves all the outputs. Add $o$ backward passes, one per output."
+
+  - id: ad-record-squared-input
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "An autodiff routine records the operation $L=e^2$. Which value should it save so the backward step can apply the local slope rule for squaring directly?"
+    options:
+      - id: a
+        text: "The operation's output $L$"
+        correct: false
+        feedback: "The squared value loses the sign of $e$, which the local slope needs."
+      - id: b
+        text: "The operation's input $e$"
+        correct: true
+      - id: c
+        text: "The adjustable weight $w$ used earlier in the graph"
+        correct: false
+        feedback: "The derivative of the square uses its own input. The weight alone does not give that input."
+    solution: "The local slope of squaring is $2e$. Save $e$ as it was during the forward calculation."
+
+  - id: ad-rebuild-before-backward
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A PyTorch program computes `loss`, calls `loss.backward()` and clears the weight's `.grad`. It now needs another backward pass without changing the weight or the loss formula. What should it do first?"
+    options:
+      - id: a
+        text: "Call `loss.backward()` again on the old loss."
+        correct: false
+        feedback: "Clearing `.grad` does not restore the old graph."
+      - id: b
+        text: "Read the old loss with `loss.item()`."
+        correct: false
+        feedback: "Reading its number does not record any operations for backward."
+      - id: c
+        text: "Recompute `loss` from the unchanged weight."
+        correct: true
+    solution: "Run the forward calculation again to get a new `loss`. The first backward call used the graph record and PyTorch discards it afterward."
+
+  - id: ad-mode-count-with-recording
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A calculation has three adjustable inputs and three scalar outputs. An implementation can either run ordinary forward-mode passes or use reverse mode. It counts the recording pass as one pass if needed. How many more passes does reverse mode take to find every input-output slope?"
+    answer: 1
+    tolerance: { abs: 0 }
+    solution: "Forward mode takes $3$ passes, one per input. Reverse mode takes one recording pass plus $3$ backward passes, so it takes one more pass."

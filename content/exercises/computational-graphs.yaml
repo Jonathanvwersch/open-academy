@@ -678,3 +678,36 @@ exercises:
     answer: "x+2*y+z"
     variables: { x: [-3, 5], y: [-3, 5], z: [-3, 5] }
     solution: "The path through $a$ contributes $b$, and the path through $b$ contributes $a$. Their sum is $(y+z)+(x+y)$."
+
+  - id: cg-local-target-slope
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A graph computes $e=p-t$ and then $L=e^2$. At $p=4$ and $t=7$, what is the local derivative $\\partial e/\\partial t$?"
+    answer: -1
+    tolerance: { abs: 0 }
+    solution: "With $p$ fixed, each unit increase in $t$ decreases $e$ by one, so the local derivative is $-1$."
+
+  - id: cg-intermediate-slope
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A graph computes $p=wx$, $e=p-t$ and $L=e^2$. At $w=3$, $x=2$ and $t=8$, what is $\\partial L/\\partial p$?"
+    answer: -4
+    tolerance: { abs: 0 }
+    solution: "The error is $6-8=-2$. From $p$ to $L$, the local slopes are $1$ and $2e=-4$, giving $-4$."
+
+  - id: cg-two-squared-paths
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A graph uses $x$ in two operations, $a=x-2$ and $b=2x$, then gives the output $g=a^2+b^2$. At $x=1$, what is $\\partial g/\\partial x$?"
+    answer: 6
+    tolerance: { abs: 0 }
+    solution: "The path through $a$ gives $2(-1)\\cdot1=-2$ and the path through $b$ gives $2(2)\\cdot2=8$. Add them to get $6$."

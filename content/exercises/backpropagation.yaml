@@ -886,3 +886,162 @@ exercises:
     answer: "(Lp-Lm)/(2*eps)"
     variables: { Lp: [0, 10], Lm: [0, 10], eps: [0.001, 0.2] }
     solution: "Subtract the lower-weight loss from the higher-weight loss and divide by $2\\varepsilon$, the gap between the two weights."
+
+  - id: bp-backward-add-slopes
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A backward routine has stored a loss slope of $8$ at a node. A second branch that uses that same node sends it a slope contribution of $-3$. What number should the routine now store at the node?"
+    answer: 5
+    tolerance: { abs: 0 }
+    solution: "Each branch contributes to the same node's slope. Add the contributions to get $8-3=5$."
+
+  - id: bp-relu-backward-mask
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A layer uses ReLU. Two neurons have saved scores $-3$ and $4$, and the arriving loss slopes for their outputs are $7$ and $-2$, respectively. Which backward instruction gives the correct slopes for the scores?"
+    options:
+      - id: a
+        text: "Multiply each arriving slope by its saved score."
+        correct: false
+        feedback: "The score's sign selects a local slope of $0$ or $1$. The score itself is not the multiplier."
+      - id: b
+        text: "Keep positive arriving slopes and zero negative arriving slopes."
+        correct: false
+        feedback: "The mask tests the saved forward scores. An arriving slope can be negative and still pass through."
+      - id: c
+        text: "Keep arriving slopes for positive saved scores and zero the others."
+        correct: true
+    solution: "The negative score has local slope $0$ and the positive one has local slope $1$. Multiplying the arriving slopes by this mask keeps the second slope unchanged and sets the first to zero."
+
+  - id: bp-weight-slope-product
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A backward routine for a layer with scores $Z=XW$ has batch input matrix $X$ and loss-slope matrix $G$ for the scores. Each row of both matrices is one example. Which expression should the routine use for the slopes of the weights in $W$?"
+    options:
+      - id: a
+        text: "$XG^\\top$"
+        correct: false
+        feedback: "This pairs rows of examples, rather than collecting input and score-slope pairs across examples."
+      - id: b
+        text: "$X^\\top G$"
+        correct: true
+      - id: c
+        text: "$G^\\top X$"
+        correct: false
+        feedback: "This swaps the input and neuron axes, giving the transpose of the required weight slopes."
+    solution: "Use $X^\\top G$. Each entry pairs one input column of $X$ with one score-slope column of $G$ across all examples."
+
+  - id: bp-check-isolate-bias
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A gradient-check routine has a function `loss(w, b)` for fixed training data. To check the bias $b$, it calculates `hi = loss(w + d, b + d)` and `lo = loss(w - d, b - d)`, then computes `(hi - lo) / (2 * d)`. Here `d` is a small positive nudge. Which change fixes what the routine measures?"
+    options:
+      - id: a
+        text: "Keep the bias fixed in both loss calls."
+        correct: false
+        feedback: "That would isolate the weight slope."
+      - id: b
+        text: "Nudge the weight in the opposite direction to the bias."
+        correct: false
+        feedback: "This still changes both parameters, so the loss difference includes the weight's effect."
+      - id: c
+        text: "Keep the weight fixed in both loss calls."
+        correct: true
+    solution: "Leave $w$ fixed in both calls and nudge $b$ alone. That isolates the bias's effect on the loss."
+
+  - id: bp-steering-prediction-unchanged
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A steering model predicts an angle larger than the target. The training program runs only the backward pass, then predicts again for the same input. How does this prediction compare with the first one?"
+    options:
+      - id: a
+        text: "It moves closer to the target."
+        correct: false
+        feedback: "A backward pass provides slopes for an update. It does not take that update."
+      - id: b
+        text: "It matches the first prediction."
+        correct: true
+      - id: c
+        text: "It matches the target exactly."
+        correct: false
+        feedback: "Sending slopes backward does not set the model's output to the target."
+    solution: "Backpropagation computes the loss slopes while leaving the parameters fixed. With the same input and parameters, the model gives the same prediction."
+
+  - id: bp-valve-relu-path
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A valve controller uses one ReLU neuron to pass a sensor signal on to its prediction. The neuron's score is $-2$ on a training example. The slope of the loss with respect to the neuron's output is $5$. What slope does this example give for a weight used only in that neuron's score?"
+    answer: 0
+    tolerance: { abs: 0 }
+    solution: "The local slope of ReLU at $-2$ is zero. The weight only affects the loss through that neuron, so its slope is zero as well."
+
+  - id: bp-thermostat-shared-bias
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A thermostat model adds the same bias to every prediction in a batch. It makes three predictions: $18$, $23$ and $22$, and their targets are $20$, $20$ and $24$, respectively. The loss is the mean squared error. What is the loss slope with respect to the shared bias? Give an exact fraction or round to four decimal places."
+    answer: -0.6666666666666666
+    tolerance: { abs: 0.0001 }
+    solution: "The signed errors are $-2$, $3$ and $-2$. The bias contributes equally to all three predictions, so its slope is $2(-2+3-2)/3=-2/3$."
+
+  - id: bp-pump-check-reuse
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "An engineer checks a pump model's backpropagation slope for one weight. The numerical and backpropagation slopes agree at that weight's starting value. Later in training, another weight gives a surprising slope. Which action tests whether that slope is right?"
+    options:
+      - id: a
+        text: "Repeat the check for the original weight at its current value."
+        correct: false
+        feedback: "That checks a different weight, so it cannot verify the suspect slope."
+      - id: b
+        text: "Check the suspect weight with the current parameter values."
+        correct: true
+      - id: c
+        text: "Check the suspect weight with the starting parameter values."
+        correct: false
+        feedback: "That compares slopes at the start, whereas the reported problem occurs at the current values."
+    solution: "The first check covers the parameter and values tested then. A new check should nudge the suspect weight around its current value and compare the slopes there."
+
+  - id: bp-camera-check-corner
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A camera controller uses ReLU. One gradient check compares a backward slope at a positive ReLU score with a numerical slope from two nudges. The upward nudge leaves the score positive, but the downward nudge makes it negative. What is the best next check at the same parameter values?"
+    options:
+      - id: a
+        text: "Shrink the nudge until both scores stay positive."
+        correct: true
+      - id: b
+        text: "Grow the nudge until both scores are farther from zero."
+        correct: false
+        feedback: "The nudges would still straddle the point where the slope jumps."
+      - id: c
+        text: "Switch to another training example with a larger positive score."
+        correct: false
+        feedback: "That would test a different loss calculation, rather than the one giving the surprising comparison."
+    solution: "The two nudges span ReLU's corner, so the estimate combines parts with different slopes. Use smaller nudges that keep both scores on the positive side."
