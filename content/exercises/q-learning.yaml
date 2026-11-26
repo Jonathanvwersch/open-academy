@@ -1022,10 +1022,10 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: |
-      A robot in a warehouse can wait or advance. After taking action `a` in state `s`, it receives reward `r` and reaches a nonterminal state `s2`. The code below chooses the action the robot will take next, then uses the Q-table and discount factor `gamma` to build a target for updating `Q[(s, a)]`.
+      A robot in a warehouse can wait or advance. After taking action `a` in state `s`, it receives reward `r` and reaches a nonterminal state `s2`. The robot's epsilon-greedy policy has chosen to wait in `s2` while exploring. The code below uses the Q-table and discount factor `gamma` to build a target for updating `Q[(s, a)]`.
 
       ```python
-      next_action = epsilon_greedy(s2)
+      next_action = "wait"
       best_next = Q[(s2, next_action)]
       target = r + gamma * best_next
       ```

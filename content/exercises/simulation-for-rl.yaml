@@ -1129,22 +1129,22 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: |
-      A vectorised warehouse simulator runs several copies and uses next-step resets. A logger decides whether to save each copy's transition after every call to step. For each copy it keeps two pairs of flags:
+      A vectorised warehouse simulator runs several copies and uses next-step resets. An episode ends only when the robot reaches its goal. After every call to step, the training code decides which copies produced transitions to save. For each copy it has two flags:
 
-      - `terminated_before` and `truncated_before` from the previous call
-      - `terminated_now` and `truncated_now` from the call it is logging
+      - `terminated_before` from the previous call
+      - `terminated_now` from the current call
 
-      Which condition should make the logger skip saving a transition for that copy?
+      Which condition should make the code skip saving a transition for that copy?
     options:
       - id: a
-        text: "`terminated_now or truncated_now`"
+        text: "`terminated_now`"
         correct: false
         feedback: The action that finished the episode still produced a transition to save.
       - id: b
-        text: "`terminated_before or truncated_before`"
+        text: "`terminated_before`"
         correct: true
       - id: c
-        text: "`terminated_before and truncated_before`"
+        text: "`terminated_before or terminated_now`"
         correct: false
-        feedback: Either kind of ending is enough for that copy to reset on the next call.
+        feedback: This also skips the transition that reaches the goal on the current call. The reset happens on the following call.
     solution: In next-step reset mode, a copy that finished on the previous call only resets on the current one. Its action is ignored, so that copy produces no transition on this call.
