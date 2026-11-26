@@ -103,7 +103,7 @@ knowledge_points:
 
       In the last step, we scored four replies to the apples prompt by hand. Now we write that checker as a Python function, called the **reward function**. It takes the reply and the reference answer, and it gives back the reward.
 
-      The function does two jobs. First it finds the final answer. It strips whitespace from both ends of the reply, then reads the remaining lines from the bottom up and stops at a line that begins with `Answer:`. It keeps the text after `Answer:` and removes spaces at either end and every full stop or space left at the end. If no line starts that way, it returns `None`, Python's value for "nothing here".
+      The function does two jobs. First it finds the final answer. It removes whitespace, such as spaces and line breaks, from the ends of the whole reply. Then it searches upward from the last line for one beginning with `Answer:`. It takes just the text after that label, trims both ends of that answer text, and removes any full stops or spaces still at its end. If no line matches, it returns `None`, Python's value for "nothing here".
 
       ### Comparing with the reference
 
@@ -124,7 +124,7 @@ knowledge_points:
 
       1. **Split the reply into lines.** `text.strip()` removes spaces and line breaks from both ends of the text, and `.splitlines()` turns it into a list with one item per line. `reversed(...)` goes through that list from the last line to the first.
 
-      2. **Find the answer line.** `line.startswith("Answer:")` is `True` when the line begins with those characters. The earlier `text.strip()` can remove indentation before `Answer:` on the first line. Indentation on a later line stays in place, so that line won't match. The slice `line[len("Answer:"):]` keeps the characters after `"Answer:"`. Then `.strip()` removes spaces from both ends, and `.rstrip(". ")` removes every full stop and space at the right-hand end, so `12 .` becomes `12`.
+      2. **Find the answer line.** `line.startswith("Answer:")` is `True` when the line begins with those characters. If a reply starts with `  Answer: 12`, `text.strip()` removes the two leading spaces. If that same line follows some working, the spaces are inside the reply and stay, so the line won't match. The slice `line[len("Answer:"):]` skips the label by counting its characters and keeps the rest of the line. Then `.strip()` trims that answer text, and `.rstrip(". ")` removes trailing full stops and spaces, so `12 .` becomes `12`.
 
       3. **Compare and return the reward.** The reward function compares the result with the reference and returns `1.0` or `0.0`.
 
@@ -169,14 +169,14 @@ knowledge_points:
     title: "Compare several answers to one prompt"
     tldr: |
       - The policy writes several answers to one prompt, and the checker scores each one.
-      - An answer's advantage is its reward minus the group's mean, divided by the group's standard deviation.
-      - Answers that beat the group get a positive advantage, and if every answer gets the same reward, every advantage is 0.
+      - An answer's advantage is its reward minus the group's mean, scaled by how spread out the rewards are.
+      - Rewards above the group mean give positive advantages. If all rewards are equal, every advantage is 0.
     explain: |
       ### A baseline from the group
 
       The policy-gradient update needs to know whether an answer did better or worse than usual. We previously subtracted a baseline $b$ from each return. PPO in RLHF gets its baseline from a critic, a second network trained to estimate values.
 
-      **GRPO**, group relative policy optimisation, uses the group's mean reward as its baseline. For each prompt, the policy writes a **group** of $G$ answers, and the checker scores them. Here $G$ is the group size. This differs from the return $G$ in policy gradients. Suppose the policy wrote our four apples replies as one group for the apples prompt. Their rewards are $1,0,1,0$, with mean $0.5$.
+      **GRPO**, group relative policy optimisation, uses the group's mean reward as its baseline. For each prompt, the policy writes a **group** of $m$ answers, and the checker scores them. This mean includes the answer we're scoring, so it can depend on that answer, unlike the action-independent baseline in the recap. For our four apples replies, the rewards $1,0,1,0$ give a mean of $0.5$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 270" aria-label="Rewards for four replies, 1, 0, 1 and 0. The orange dashed line marks the mean 0.5. Green bars for replies 1 and 3 rise from 0.5 to 1, a distance of 0.5. Red bars for replies 2 and 4 fall from 0.5 to 0, a distance of minus 0.5. The labels show reward minus mean, before dividing by the standard deviation.">
@@ -202,27 +202,27 @@ knowledge_points:
 
       ### The group-relative advantage
 
-      Write $r_i$ for the checker reward of answer $i$, and $r=(r_1,\dots,r_G)$ for the list of the group's rewards. The **group-relative advantage** of answer $i$ is its reward minus the group's mean, divided by the group's standard deviation:
+      Write $r_i$ for the checker reward of answer $i$, and $r=(r_1,\dots,r_m)$ for the list of the group's rewards. When rewards differ, the **group-relative advantage** of answer $i$ is its reward minus the group's mean, divided by the group's standard deviation:
 
       $$A_i=\frac{r_i-\operatorname{mean}(r)}{\operatorname{std}(r)}.$$
 
-      To find $\operatorname{std}(r)$, average the squared distances from the mean and take the square root. Dividing by $G$ gives the **population standard deviation**, used throughout this lesson. Some implementations divide by $G-1$, giving the **sample standard deviation**. If one task's rewards run from 0 to 10 and another's from 0 to 1, dividing by the standard deviation keeps both tasks' advantages on a similar scale. Individual advantages can still differ, as the next examples show.
+      To find $\operatorname{std}(r)$, average the squared distances from the mean and take the square root. Dividing by $m$ gives the **population standard deviation**, used throughout this lesson. Some implementations divide by $m-1$, giving the **sample standard deviation**. If one task's rewards run from 0 to 10 and another's from 0 to 1, dividing by the standard deviation keeps both tasks' advantages on a similar scale. Individual advantages can still differ, as the next examples show.
 
       ### Three groups side by side
 
       - Rewards $1,0,1,0$ have mean $0.5$ and standard deviation $0.5$, so the advantages are $1,-1,1,-1$.
       - Rewards $1,0,0,0,0$ have mean $0.2$ and standard deviation $0.4$. The correct answer gets $(1-0.2)/0.4=2$. Each wrong one gets $(0-0.2)/0.4=-0.5$. The rare correct answer gets a larger positive advantage than in the first group.
-      - Rewards $1,1,1,1$ have mean $1$ and standard deviation $0$. Every advantage is $0$, so the rewards give no push. Implementations add a small constant to the denominator to avoid division by $0$.
+      - Rewards $1,1,1,1$ have mean $1$ and standard deviation $0$. The formula above would divide $0$ by $0$. In practice, adding a small positive constant to the denominator avoids that. Each answer is exactly at the mean, so its numerator is zero and the rewards give no push.
     worked: |
-      Let's compute the group-relative advantages for the four replies to the apples prompt, whose rewards are $r=(1,0,1,0)$, so $G=4$.
+      Let's compute the group-relative advantages for the four replies to the apples prompt, whose rewards are $r=(1,0,1,0)$, so $m=4$.
 
-      1. **Find the mean.** Add the rewards and divide by $G$.
+      1. **Find the mean.** Add the rewards and divide by $m$.
          $$\operatorname{mean}(r)=\frac{1+0+1+0}{4}=0.5$$
 
       2. **Find each distance from the mean.** Subtract the mean from each reward.
          $$0.5,\qquad-0.5,\qquad0.5,\qquad-0.5$$
 
-      3. **Find the standard deviation.** Each squared distance is $0.25$. We average them over all $G=4$ answers and take the square root.
+      3. **Find the standard deviation.** Each squared distance is $0.25$. We average them over all $m=4$ answers and take the square root.
          $$\operatorname{std}(r)=\sqrt{\frac{4\times0.25}{4}}=\sqrt{0.25}=0.5$$
 
       4. **Divide each distance by the standard deviation.** This gives the advantages.
@@ -248,7 +248,7 @@ knowledge_points:
     explain: |
       ### One advantage for every token
 
-      Each token of a reply is an action. When only the finished answer is scored, as our checker does, GRPO gives every token of answer $i$ the same advantage $A_i$. A token's term pushes its probability up when $A_i$ is positive and down when $A_i$ is negative. The update sums these pushes over the batch with the KL term, so pushes from different answers can cancel.
+      Each token is an action, but the checker gives no reward for any part on its own. GRPO gives every token the reply's advantage $A_i$. Even reply 4's correct working gets a negative advantage because the reply fails the format check.
 
       ### Using PPO's clipped objective
 
@@ -258,7 +258,9 @@ knowledge_points:
 
       Here $c$ is the clip range. The `clip` function leaves ratios between $1-c$ and $1+c$ unchanged. It sets smaller ratios to $1-c$ and larger ones to $1+c$.
 
-      GRPO averages the clipped terms over tokens and answers. It estimates the KL divergence from the reference model using the policy's and reference model's probabilities of the sampled tokens. GRPO subtracts $\beta$ times the KL divergence from its objective as a separate term. The checker reward stays $0$ or $1$. Gradient ascent increases this objective. The group mean replaces the critic, and because the checker supplies the reward, there is no reward model to run.
+      Average the clipped terms per reply, then average the replies, so long and short replies count equally. The KL penalty uses a frozen copy of the starting policy as the reference. For each sampled token, divide its reference probability by its current probability given the same preceding text. If that ratio is $u$, the token's penalty estimate is $u-\ln u-1$.
+
+      GRPO averages these penalties the same way and subtracts $\beta$ times their average from the objective. Gradient ascent increases this objective. The checker reward stays $0$ or $1$.
 
       ### Starting from an SFT model
 
@@ -296,7 +298,7 @@ final: rlvr-explain-training
 summary: |
   - A verifiable reward comes from a program, the checker, that compares a reply's final answer with a reference answer or runs code on tests. It gives $1$ when the check passes and $0$ when it fails, so no learned reward model is needed.
   - A reward function finds the final answer, tidies harmless differences such as spaces and a full stop, and compares it with the reference. Each of its rules decides which replies earn reward.
-  - The policy writes a group of $G$ answers to each prompt. GRPO gives answer $i$ the advantage $A_i=\frac{r_i-\operatorname{mean}(r)}{\operatorname{std}(r)}$. The standard deviation averages squared distances from the mean over all $G$ answers before taking the square root. Equal rewards give zero advantages and no push from the rewards.
+  - The policy writes a group of $m$ answers to each prompt. When rewards differ, GRPO gives answer $i$ the advantage $A_i=\frac{r_i-\operatorname{mean}(r)}{\operatorname{std}(r)}$. The standard deviation averages squared distances from the mean over all $m$ answers before taking the square root. Equal rewards give zero advantages and no push from the rewards.
   - When only the finished answer is scored, every token of answer $i$ gets $A_i$ in PPO's clipped objective, with a KL penalty towards the reference model. GRPO needs no critic, and training often starts from an SFT model so that some answers pass.
 
   **Next:** The reward hacking lesson shows how a policy can exploit flaws in a reward, whether it comes from a reward model or a checker.
