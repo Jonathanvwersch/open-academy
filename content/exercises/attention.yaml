@@ -707,21 +707,27 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: "An attention function stores a score for each query and source pair. It now needs the weights to mix values for the output at token position $t$. Which scores should it pass together to softmax?"
+    prompt: |
+      An attention function processes three tokens in order: oak, pine, elm. The table shows scores for two query tokens (row labels) against all three source tokens (column labels). Which scores should the function pass together to softmax to build the output at the second token position?
+
+      | Query / source | oak | pine | elm |
+      | --- | --- | --- | --- |
+      | oak | $0$ | $3$ | $-1$ |
+      | pine | $2$ | $-2$ | $1$ |
     options:
       - id: a
-        text: "The scores for all query and source pairs."
+        text: "$0$, $3$, $-1$, $2$, $-2$, and $1$"
         correct: false
         feedback: "This makes scores from different queries share a single total."
       - id: b
-        text: "The scores that every query gives source $t$."
+        text: "$3$ and $-2$"
         correct: false
         feedback: "This fixes the source and collects scores from different queries."
       - id: c
-        text: "The scores that query $t$ gives every source."
+        text: "$2$, $-2$, and $1$"
         correct: true
         feedback: "This puts all source scores for one output position in the same softmax."
-    solution: "The sources compete for a share of the output at position $t$. Apply softmax to all the scores from that position's query."
+    solution: "The second token is pine. Use the scores from pine's query against the three source keys: $2$, $-2$, and $1$."
   - id: attn-code-value-array
     dimension: implementation
     type: mc
