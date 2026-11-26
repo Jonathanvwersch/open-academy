@@ -1177,3 +1177,25 @@ exercises:
     answer: "exp(m-mnew)"
     variables: { m: [-3, 2], mnew: [2.1, 8] }
     solution: "Replacing $s_j-m$ with $s_j-m_{\\text{new}}$ adds $m-m_{\\text{new}}$ to the exponent. The factor is $e^{m-m_{\\text{new}}}$."
+
+  - id: fa-score-traffic-share
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A standard three-kernel attention pass handles one head for a prompt of 48 tokens. Each query, key or value vector has 16 numbers. Assume each kernel reads each input from the GPU's main memory (HBM) once and writes its output there once. All numbers are 16-bit. What percentage of the bytes moved comes from the score table alone? Give a number from 0 to 100, without the percent sign.
+    answer: 37.5
+    tolerance: { abs: 0 }
+    solution: The score table is written and read, moving $2\times48^2$ numbers. Dividing by the total of $4\times48\times16+4\times48^2$ numbers gives 37.5%.
+
+  - id: fa-unchanged-max-total
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: Online softmax has processed one block for a query. The largest score it has seen is 3. The running sum is 1.5. To get that sum, it subtracts the largest score from each score, raises Euler's number $e$ to each result, and adds the powers. The next block has one key with score 2. What is the running sum after this block? Round to two decimal places.
+    answer: 1.87
+    tolerance: { abs: 0.005 }
+    solution: The running maximum stays at 3, so the old sum stays on the same scale. The new key adds $e^{2-3}$, giving $1.5+e^{-1}\approx1.87$.

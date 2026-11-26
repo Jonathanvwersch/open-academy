@@ -1012,3 +1012,136 @@ exercises:
     answer: "exp(L)"
     variables: { L: [0.1, 5] }
     solution: "Perplexity is $e^L$, the exponential of the average loss."
+
+  - id: qzp-scale-storage-change
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: A matrix with 2,048 INT8 weights is quantised in groups of 128 weights, with 16-bit scales. An engineer cuts the group size to 32 weights per group. How many extra bytes do the scales take? Count scale storage only.
+    answer: 96
+    tolerance: { abs: 0 }
+    solution: There are 64 scales with groups of 32 and 16 with groups of 128. The 48 extra scales take 2 bytes each, for 96 extra bytes.
+
+  - id: qzp-clipped-activation
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A model uses symmetric INT8 quantisation for its activations, with a scale of 0.02 chosen during calibration. As the model runs, it produces an activation of $-3.2$. What value does it get back after quantising and dequantising that activation? Give the signed value to two decimal places.
+    answer: -2.54
+    tolerance: { abs: 0 }
+    solution: Dividing by 0.02 gives $-160$, which clamps to $-127$. Dequantising gives $-127\times0.02=-2.54$.
+
+  - id: qzp-decode-required-bandwidth
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 1
+    prompt: A language model with 12 billion weights stored in INT4 serves one request at a time. During decode it aims to generate 400 output tokens per second for that request. Counting only the weight reads, what is the minimum memory bandwidth it would need in TB/s? Ignore reads of the scales and use 1 TB = one trillion bytes.
+    answer: 2.4
+    tolerance: { abs: 0 }
+    solution: The weights take 6 GB at half a byte each. Reading them 400 times a second requires 2,400 GB/s, or 2.4 TB/s.
+
+  - id: qzp-signed-scale-input
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: |
+      This Python function is meant to choose the scale for symmetric INT8 quantisation. The list `weights` contains real-valued weights, at least one of which is nonzero. In the options, `w` is one weight from that list.
+
+      ```python
+      def scale(weights):
+          return max(weights) / 127
+      ```
+
+      What should the function pass to `max` so it works for every such list?
+    options:
+      - id: a
+        text: "`[-w for w in weights]`"
+        correct: false
+        feedback: Flipping the sign makes a large positive weight negative, so a smaller weight can set the scale.
+      - id: b
+        text: "`[w * w for w in weights]`"
+        correct: false
+        feedback: Squaring finds which weight has the largest magnitude, but gives the square of that magnitude for the scale calculation.
+      - id: c
+        text: "`[abs(w) for w in weights]`"
+        correct: true
+    solution: The weight with the largest magnitude sets the scale, whether its sign is positive or negative.
+
+  - id: qzp-row-scale-lookup
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A program quantises a weight matrix one row at a time from top to bottom. It appends each row's scale to the list `scales` and stores the quantised integers in matrix `q` with the original layout. It now wants to dequantise just column `j` into matrix `x`, which has the same layout. For each row index `i`, which line should it run?
+    options:
+      - id: a
+        text: "`x[i][j] = q[i][j] * scales[j]`"
+        correct: false
+        feedback: This looks up a scale by column, even though the scale was chosen for the whole row.
+      - id: b
+        text: "`x[i][j] = q[i][j] * scales[i]`"
+        correct: true
+      - id: c
+        text: "`x[i][j] = q[i][j] / scales[i]`"
+        correct: false
+        feedback: Dividing by the scale is part of quantising. Dequantising reverses that step.
+    solution: Multiply the stored integer by the scale used to quantise it. All entries in row `i` use `scales[i]`.
+
+  - id: qzp-weight-only-trace
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A GPU program uses weight-only INT8 quantisation for a model with FP16 (16-bit floating-point) activations. Which sequence does it use for a matrix multiply?
+    options:
+      - id: a
+        text: Read INT8 weights from main memory, apply their scales in on-chip memory to get FP16 weights, then multiply by the FP16 activations.
+        correct: true
+      - id: b
+        text: Read INT8 weights from main memory, convert them to FP16 in on-chip memory without using their scales, then multiply by the FP16 activations.
+        correct: false
+        feedback: Changing the number format preserves the integer values. Dequantising also multiplies by their scales to recover approximate weights.
+      - id: c
+        text: Read INT8 weights from main memory, convert the activations to INT8 in on-chip memory, then multiply the INT8 weights and activations.
+        correct: false
+        feedback: Changing the activation format as well would make this weight-and-activation quantisation.
+    solution: The GPU reads the INT8 weights and multiplies each stored integer by its scale in on-chip memory to get an approximate FP16 weight. It then multiplies those weights by the FP16 activations.
+
+  - id: qzp-eval-prompt-wiring
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 1
+    prompt: |
+      A team compares its original model, `original`, with its quantised version, `quantised`. It has two sets of prompts for one task, `set_a` and `set_b`. They share no prompts, and neither set was used to train the model. The team used `set_a` to choose the activation scales. The helper `evaluate(model, prompts)` gives the model's score on those prompts, using the same sampling settings for both models.
+
+      ```python
+      original_score = evaluate(original, set_b)
+      quantised_score = evaluate(quantised, set_a)
+      ```
+
+      Which change gives a fair comparison on held-out prompts?
+    options:
+      - id: a
+        text: Pass `set_a` to both calls.
+        correct: false
+        feedback: The prompts would match, but they helped set the activation scales.
+      - id: b
+        text: Swap the prompt lists used by the two calls.
+        correct: false
+        feedback: The model scores would still be measured on different prompts.
+      - id: c
+        text: Pass `set_b` to both calls.
+        correct: true
+    solution: Both models should see the same prompts. Use `set_b` because those prompts were kept out of training and played no part in choosing the scales.
