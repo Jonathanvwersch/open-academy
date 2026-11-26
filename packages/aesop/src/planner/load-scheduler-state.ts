@@ -42,6 +42,7 @@ export async function loadSchedulerState(
   const {
     cards,
     recentAttempts,
+    exerciseLastSeen,
     flags,
     paperProgress: paperRows,
     learnMinutes: recentLearnActivities,
@@ -107,6 +108,9 @@ export async function loadSchedulerState(
       itemRole: 'core',
       createdAt: attempt.createdAt.toISOString(),
     })),
+    exerciseLastSeen: new Map(
+      exerciseLastSeen.map(({ exerciseId, lastAt }) => [exerciseId, lastAt.getTime()]),
+    ),
     recallAttempts: recallAttemptRows.map((attempt) => ({
       exerciseId: attempt.exerciseId,
       correct: attempt.correct,

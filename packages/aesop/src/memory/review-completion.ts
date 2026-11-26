@@ -276,6 +276,7 @@ async function bringPrerequisiteReviewForward(
     now,
     weakest.conceptId,
     dueCards,
+    { preferBasics: true },
   );
   const extension = await store.transaction(async (tx) => {
     await tx.patchReviewCard(userId, weakest.id, { dueAt: weakest.dueAt, fsrs: weakest.fsrs });

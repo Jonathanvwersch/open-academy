@@ -18,6 +18,7 @@ import {
   auditP11DescendantCard,
   auditP15Trace,
   auditP24Offer,
+  compressionPlanEvidence,
   type InvariantId,
   newActivitiesForReplan,
   p5HasNoWorkWindow,
@@ -710,6 +711,62 @@ test('replan includes a newly inserted in-progress prerequisite review once', ()
     newActivitiesForReplan(activities, new Set(['preserved', 'completed'])).map(({ id }) => id),
   ).toEqual(['inserted-prerequisite', 'new-planned']);
 });
+
+test.each([
+  { status: 'in_progress', redundant: [] },
+  { status: 'planned', redundant: [['matrices', 'rank-span']] },
+] as const)(
+  'P12 checks a $status prerequisite review only if the replan picked it',
+  async ({ status, redundant }) => {
+    const now = new Date('2026-01-01T15:00:00.000Z');
+    const card = p15Card('matrix-card', 'matrices', now.toISOString());
+    const state: SchedulerState = {
+      activeCourseId: 'maths-for-ml',
+      studyCourseIds: ['maths-for-ml'],
+      recentLearnMinutesByConcept: {},
+      mastery: [],
+      cards: [
+        { conceptId: 'matrices', dimension: 'math', dueAt: now.toISOString(), fsrs: card.fsrs },
+      ],
+      reviewedTodayConceptIds: [],
+      recentAttempts: [],
+      exerciseLastSeen: new Map(),
+      remediationFlags: [],
+      projectProgress: [],
+      completedPaperIds: [],
+      startDate: '2026-01-01',
+    };
+    const activities = [
+      {
+        id: 'prerequisite',
+        kind: 'review',
+        conceptId: 'matrices',
+        exerciseIds: ['mat-product-entry'],
+        status,
+      },
+      {
+        id: 'covering-review',
+        kind: 'review',
+        conceptId: 'rank-span',
+        exerciseIds: ['rspp-rank-fixed'],
+        status: 'planned',
+      },
+    ] as const;
+    const execution = newActivitiesForReplan(
+      activities.map((activity) => ({ ...activity, exerciseIds: [...activity.exerciseIds] })),
+      new Set(['original-lesson']),
+    );
+    expect(execution.map(({ id }) => id)).toEqual(['prerequisite', 'covering-review']);
+    const content = await loadContent();
+    const result = compressionPlanEvidence(state, content, now, execution, 'replan');
+    expect([...result.redundantReviews]).toEqual(redundant);
+    expect(result.coveredSkips).toBe(0);
+    const withoutPrerequisite = execution.filter(({ id }) => id !== 'prerequisite');
+    expect(
+      compressionPlanEvidence(state, content, now, withoutPrerequisite, 'replan').coveredSkips,
+    ).toBe(1);
+  },
+);
 
 test('scripted scenarios are skipped and reported when their fixture course is filtered out', () => {
   expect(

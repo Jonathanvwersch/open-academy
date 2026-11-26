@@ -180,6 +180,7 @@ export const attempts = pgTable(
   },
   (table) => [
     index('attempts_user_concept_created_idx').on(table.userId, table.conceptId, table.createdAt),
+    index('attempts_user_exercise_created_idx').on(table.userId, table.exerciseId, table.createdAt),
     index('attempts_activity_exercise_idx').on(table.activityId, table.exerciseId, table.attemptNo),
   ],
 );

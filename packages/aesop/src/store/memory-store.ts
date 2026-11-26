@@ -1411,7 +1411,13 @@ function scopedStore(
       ];
       const cards = await this.listReviewCards(learnerId);
       const cardConcepts = new Map(cards.map(({ id, conceptId }) => [id, conceptId]));
-      const activityIds = new Map(state?.attempts.map(({ id, activityId }) => [id, activityId]));
+      const activityIds = new Map<string, string | null>();
+      const exerciseLastSeen = new Map<string, Date>();
+      for (const { id, activityId, exerciseId, createdAt } of state?.attempts ?? []) {
+        activityIds.set(id, activityId);
+        const previous = exerciseLastSeen.get(exerciseId);
+        if (!previous || createdAt > previous) exerciseLastSeen.set(exerciseId, createdAt);
+      }
       const learnMinutes = new Map<string | null, number>();
       const learnSince = new Date(query.now.getTime() - 7 * 86_400_000);
       for (const activity of state?.activities.values() ?? []) {
@@ -1483,6 +1489,9 @@ function scopedStore(
         cards: cards.filter(({ suspendedAt }) => !suspendedAt),
         topicSpeeds: await this.listTopicSpeedEvidence(learnerId),
         recentAttempts: await this.listAttempts(learnerId, { order: 'scheduler', limit: 100 }),
+        exerciseLastSeen: [...exerciseLastSeen]
+          .sort(([left], [right]) => compare(left, right))
+          .map(([exerciseId, lastAt]) => ({ exerciseId, lastAt })),
         flags: matchingFlags(learnerId, { status: 'open' }).sort(
           (left, right) =>
             compare(left.conceptId, right.conceptId) ||

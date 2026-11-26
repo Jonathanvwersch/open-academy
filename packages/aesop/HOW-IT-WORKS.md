@@ -85,6 +85,9 @@ The engine uses the FSRS algorithm (the `ts-fsrs` library) for spaced repetition
 - A review activity gives one rating for each topic. The rating is Good if every answer is correct, with no hint and in time. It is Hard if at least 2 of 3 answers are correct. Otherwise it is Again.
 - FSRS uses the rating to set the next due date.
 - Every dimension of an authored topic needs at least five review questions. Count questions with role `review`, `core`, `practice`, `transfer` or `basics`. Skip lesson-only questions and templates. **[Ours]**
+- The planner tracks the last answer to each question across all of the learner's attempts. Answers from lesson steps count too. For a spaced review, the planner uses one pool for each dimension. It includes review, core, practice, transfer, and basics questions. Lesson-only questions and templates stay out of the pool. The planner first looks for questions the learner has not answered in the last 7 days. It picks unseen questions first, then the ones the learner answered longest ago. If two questions tie, it checks roles in this order: review, core, practice, transfer, basics. For an independent learner in that dimension, transfer comes first. If the questions still tie, the lower question ID wins. **[Ours]**
+- Recall questions follow their own order based on past results, so the seven-day rule applies only to the other review questions. **[Ours]**
+- Reviews that help the learner retry a lesson or revisit a hard prerequisite give basics questions first choice among fresh questions. If all questions are recent, basics questions again get first choice. **[Ours]**
 - When a review card gets Again twice in a row, the engine brings the weakest eligible hard prerequisite card due now. If cards tie, choose the alphabetically first topic ID, then the alphabetically first dimension. **[Ours]**
 
 ### Learning speed (`memory/speed.ts`)
@@ -262,7 +265,7 @@ The engine does not use a database, HTTP or an AI model. The host app does these
 
 The engine reads and writes mastery and review state through `LearnerStore`. `CoreStore` adds attempts, hint evidence, XP events, settings and course enrollments.
 
-`SessionStore` adds sessions, activities and the facts the planner needs. The store limits the reads to recent attempts, recent completions and recent review logs. It reads the last answer for each recall question. The engine builds the planner state and selects the active session for the learner's local day.
+`SessionStore` adds sessions, activities and the facts the planner needs. It reads recent attempts, completions and review logs. It also reads the last answer time for each question and the last answer for each recall question. The engine builds the planner state and selects the active session for the learner's local day.
 
 `LessonStore` adds lesson runs, problems, quiz attempts, quiz items and flags for required reviews. The engine runs lessons and repairs saved questions that no longer exist. The host gives the engine the grade, the clock, random numbers and new IDs.
 

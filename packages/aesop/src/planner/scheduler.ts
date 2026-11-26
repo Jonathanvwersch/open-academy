@@ -60,6 +60,8 @@ export const SCHEDULER_CONFIG = {
 } as const;
 
 const RETRY_OVERDUE_DAYS = 2;
+const REVIEW_ROLES = ['review', 'core', 'practice', 'transfer', 'basics'] as const;
+const INDEPENDENT_REVIEW_ROLES = ['transfer', 'review', 'core', 'practice', 'basics'] as const;
 
 export interface PriorityTerms {
   goal: number;
@@ -114,6 +116,7 @@ export interface SchedulerState {
     itemRole: string;
     createdAt: string;
   }>;
+  exerciseLastSeen: ReadonlyMap<string, number>;
   recallAttempts?: Array<{
     exerciseId: string;
     correct: number;
@@ -1810,11 +1813,7 @@ function generateCandidates(
     state.lessonRuns ?? [],
     content,
   );
-  const recentIds = new Set(
-    state.recentAttempts
-      .filter((attempt) => daysSince(attempt.createdAt, now) < SCHEDULER_CONFIG.repeatWindowDays)
-      .map((attempt) => attempt.exerciseId),
-  );
+  const recentIds = recentlySeenExerciseIds(state, now);
   for (const concept of courseContexts.length ? content.concepts : []) {
     if (concept.status === 'stub') {
       continue;
@@ -1880,19 +1879,14 @@ function generateCandidates(
       });
       const exercise = hasKnowledgePointLesson
         ? content.exercisesById.get(content.lessonsByConcept.get(concept.id)?.final ?? '')
-        : chooseExercise(
-            state,
-            content,
-            concept,
-            dimension,
-            ['core', 'check'],
-            (exercise) =>
+        : chooseExercise(state, content, concept, dimension, recentIds, {
+            roles: ['core', 'check'],
+            eligible: (exercise) =>
               (exercise.role === 'core' || exercise.role === 'check') &&
               !exercise.lesson_only &&
               !isTemplate(exercise),
-            now,
-            recentIds,
-          );
+            strict: true,
+          });
       if (exercise) {
         candidates.push(
           makeCandidate(
@@ -2015,6 +2009,7 @@ function buildReviewCandidateForConcept(
   recentIds: Set<string>,
   candidates: Candidate[],
   reviewSelectionTrace?: ReviewSelectionTrace,
+  preferBasics = false,
 ): Candidate | undefined {
   const concept = content.conceptsById.get(conceptId);
   if (!concept) return undefined;
@@ -2091,9 +2086,10 @@ function buildReviewCandidateForConcept(
   for (const card of dueCards) {
     const record = masteryByKey.get(masteryKey(card.conceptId, card.dimension));
     const isIndependent = record && masteryRank(record.state) >= masteryRank('independent');
-    const reviewRoles = isIndependent
-      ? ['transfer', 'review', 'core', 'practice', 'basics']
-      : ['review', 'core', 'practice', 'transfer', 'basics'];
+    const reviewRoles = isIndependent ? INDEPENDENT_REVIEW_ROLES : REVIEW_ROLES;
+    const roles = preferBasics
+      ? ['basics', ...reviewRoles.filter((role) => role !== 'basics')]
+      : reviewRoles;
     const exercises: IndexedExercise[] = [];
     while (exercises.length < perDimension) {
       const exercise = chooseExercise(
@@ -2101,10 +2097,12 @@ function buildReviewCandidateForConcept(
         content,
         concept,
         card.dimension,
-        reviewRoles,
-        isReviewPoolExercise,
-        now,
         recentIds,
+        {
+          roles,
+          eligible: isReviewPoolExercise,
+          strict: preferBasics,
+        },
       );
       if (!exercise) break;
       usedExerciseIds.add(exercise.id);
@@ -2221,6 +2219,7 @@ export function buildReviewActivityForConcept(
   now: Date,
   conceptId: string,
   dueCardsOverride?: SchedulerState['cards'],
+  { preferBasics = false }: { preferBasics?: boolean } = {},
 ): PlannedActivity | undefined {
   const dueCardState = dueCardsOverride ? { ...state, cards: dueCardsOverride } : state;
   const courseContexts = schedulerCourseContexts(state, content);
@@ -2233,11 +2232,7 @@ export function buildReviewActivityForConcept(
   const masteryByKey = new Map(
     state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
   );
-  const recentIds = new Set(
-    state.recentAttempts
-      .filter((attempt) => daysSince(attempt.createdAt, now) < SCHEDULER_CONFIG.repeatWindowDays)
-      .map((attempt) => attempt.exerciseId),
-  );
+  const recentIds = recentlySeenExerciseIds(state, now);
   const dueCards = collectDueReviewCards(
     dueCardState,
     content,
@@ -2256,6 +2251,8 @@ export function buildReviewActivityForConcept(
     masteryByKey,
     recentIds,
     [],
+    undefined,
+    preferBasics,
   )?.activity;
 }
 
@@ -2278,6 +2275,7 @@ export function buildRemedialReviewActivityForConcept(
     now,
     conceptId,
     dueCards,
+    { preferBasics: true },
   );
 }
 
@@ -2378,40 +2376,35 @@ function chooseExercise(
   content: ContentIndex,
   concept: IndexedConcept,
   dimension: string | undefined,
-  preferredRoles: string[],
-  isEligible: (exercise: IndexedExercise) => boolean,
-  now: Date,
-  recentIds?: Set<string>,
+  recent: Set<string>,
+  {
+    roles,
+    eligible,
+    strict,
+  }: {
+    roles: readonly string[];
+    eligible: (exercise: IndexedExercise) => boolean;
+    strict: boolean;
+  },
 ): IndexedExercise | undefined {
   const used = new Set(state.usedExerciseIds ?? []);
-  const recent =
-    recentIds ??
-    new Set(
-      state.recentAttempts
-        .filter((attempt) => daysSince(attempt.createdAt, now) < SCHEDULER_CONFIG.repeatWindowDays)
-        .map((attempt) => attempt.exerciseId),
-    );
   const pool = (content.exercisesByConcept.get(concept.id) ?? []).filter(
     (exercise) =>
       (!dimension || exercise.dimension === dimension) &&
       !used.has(exercise.id) &&
-      isEligible(exercise),
+      eligible(exercise),
   );
-  const leastRecentlySeen = (exercises: IndexedExercise[]) =>
-    exercises.sort((left, right) => lastSeen(left.id, state) - lastSeen(right.id, state))[0];
-  for (const role of preferredRoles) {
-    const fresh = pool.filter((exercise) => exercise.role === role && !recent.has(exercise.id));
-    if (fresh.length > 0) return leastRecentlySeen(fresh);
-  }
-  const otherFresh = pool.filter(
-    (exercise) => !recent.has(exercise.id) && !preferredRoles.includes(exercise.role),
-  );
-  if (otherFresh.length > 0) return leastRecentlySeen(otherFresh);
-  for (const role of preferredRoles) {
-    const matching = pool.filter((exercise) => exercise.role === role);
-    if (matching.length > 0) return leastRecentlySeen(matching);
-  }
-  return leastRecentlySeen(pool);
+  const lastSeen = (id: string) => state.exerciseLastSeen.get(id) ?? Number.MIN_SAFE_INTEGER;
+  return pool.sort((left, right) => {
+    const roleOrder = roles.indexOf(left.role) - roles.indexOf(right.role);
+    return (
+      Number(recent.has(left.id)) - Number(recent.has(right.id)) ||
+      (strict ? roleOrder : 0) ||
+      lastSeen(left.id) - lastSeen(right.id) ||
+      roleOrder ||
+      (left.id === right.id ? 0 : left.id < right.id ? -1 : 1)
+    );
+  })[0];
 }
 
 function optionalProjectAndPaperActivities(
@@ -2560,11 +2553,9 @@ function goalWeightedUnlocks(conceptId: string, content: ContentIndex): number {
   return [...unlocked].filter((id) => (content.conceptsById.get(id)?.goal_weight ?? 0) > 0).length;
 }
 
-function lastSeen(exerciseId: string, state: SchedulerState): number {
-  const attempt = state.recentAttempts.find((entry) => entry.exerciseId === exerciseId);
-  return attempt ? Date.parse(attempt.createdAt) : 0;
-}
-
-function daysSince(iso: string, now: Date): number {
-  return (now.getTime() - Date.parse(iso)) / 86_400_000;
+function recentlySeenExerciseIds(state: SchedulerState, now: Date): Set<string> {
+  const cutoff = now.getTime() - SCHEDULER_CONFIG.repeatWindowDays * 86_400_000;
+  return new Set(
+    [...state.exerciseLastSeen].filter(([, lastAt]) => lastAt > cutoff).map(([id]) => id),
+  );
 }

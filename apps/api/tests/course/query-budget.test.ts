@@ -5,6 +5,7 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
+import { drizzleLearnerStore } from '../../src/db/learner-store.js';
 import * as schema from '../../src/db/schema.js';
 
 // Match the single-connection production pool: redundant reads cannot hide behind concurrency.
@@ -130,4 +131,15 @@ test('resuming Home uses the existing session instead of rebuilding the schedule
   expect((await response.json()).activeSessionId).toBe(session.id);
   expect(statements.length).toBeLessThanOrEqual(12); // Membership and recent-learn data stay within baseline.
   expect(statements.join('\n')).not.toMatch(/"review_cards"|"attempts"|"remediation_flags"/);
+});
+
+test('planner facts read full exercise recency in one grouped query', async () => {
+  const store = drizzleLearnerStore(db, { schedulerTimezone: 'UTC' });
+  statements = [];
+  await store.readSchedulerFacts(userId, { now: new Date('2026-01-01'), recallExerciseIds: [] });
+  expect(statements).toHaveLength(12);
+  const attemptReads = statements.filter((query) => query.includes('from "attempts"'));
+  expect(attemptReads).toHaveLength(2);
+  expect(attemptReads[0]).toMatch(/limit/);
+  expect(attemptReads[1]).toMatch(/max\("created_at"\).*group by "attempts"\."exercise_id"/);
 });

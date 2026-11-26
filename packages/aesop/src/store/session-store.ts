@@ -68,6 +68,7 @@ export type SchedulerFacts = {
   cards: StoredReviewCard[];
   topicSpeeds: TopicSpeedEvidence[];
   recentAttempts: Attempt[];
+  exerciseLastSeen: Array<{ exerciseId: string; lastAt: Date }>;
   flags: RemediationFlag[];
   paperProgress: { paperId: Id; completedAt: Date | null }[];
   learnMinutes: { conceptId: Id | null; plannedMinutes: number }[];
