@@ -1184,7 +1184,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A three-kernel attention pass handles one head of width 16 and a prompt of 48 tokens. All numbers are 16-bit. What percentage of its HBM traffic comes from the score table alone? Count reads and writes of the queries, keys, values, scores, weights and output. Give a number from 0 to 100.
+    prompt: A standard three-kernel attention pass handles one head of width 16 and a prompt of 48 tokens. Assume each kernel reads each input from HBM once and writes its output to HBM once. All numbers are 16-bit. What percentage of this traffic comes from the score table alone? Give a number from 0 to 100, without the percent sign.
     answer: 37.5
     tolerance: { abs: 0 }
     solution: The score table is written and read, moving $2\times48^2$ numbers. Dividing by the total of $4\times48\times16+4\times48^2$ numbers gives 37.5%.
