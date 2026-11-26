@@ -345,7 +345,7 @@ knowledge_points:
       Take a tall, narrow $m\times k$ matrix $F$ and a short, wide $k\times n$ matrix $G$, where $k$ is much smaller than $m$ and $n$. Follow one column of the product:
 
       1. Multiplying $F$ by one column of $G$ makes the matching column of $FG$.
-      2. As in step 3, that multiplication combines the $k$ columns of $F$, so the result lies in their span.
+      2. As in the lesson's third step, that multiplication combines the $k$ columns of $F$, so the result lies in their span.
       3. Pick any $k+1$ columns of $FG$. The columns at those positions in $G$ have only $k$ rows, so eliminating on those columns leaves at least one without a pivot. In the original columns of $G$, the skipped column minus its combination of earlier pivot columns gives zero, with coefficient 1 on the skipped column.
       4. Multiply that zero combination by $F$. The coefficients stay the same, but now they multiply the matching columns of $FG$. The result is still zero, so the chosen product columns are dependent:
 
