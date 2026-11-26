@@ -1,10 +1,8 @@
-import { getCourse } from '@academy/aesop/course/course-reads';
 import type { ContentIndex } from '@academy/aesop/course/types';
 import type { EngineResult } from '@academy/aesop/engine/create-engine';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
-import { drizzleLearnerStore } from '../../db/learner-store.js';
 import type { LearnerRepository } from '../../db/repository.js';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
 import { restartTopic, updateLearningFocus } from './service.js';
@@ -23,21 +21,6 @@ export function registerLearnCourseRoutes(
     learner: ApiServices['learner'];
   },
 ) {
-  async function courseUseCase(context: RouteContext, content: ContentIndex) {
-    const timeZone = context.get('timeZone');
-    return {
-      store: drizzleLearnerStore(deps.db, { schedulerTimezone: timeZone }),
-      input: {
-        userId: context.get('userId'),
-        content,
-        timeZone,
-        settings: (await deps.withRepo(context).settings()) ?? null,
-        now: () => deps.requestNow(context),
-        enableFsrsFuzz: process.env.NODE_ENV !== 'test',
-      },
-    };
-  }
-
   api.get('/learn', async (context) => {
     return send(context, await deps.learner(context).learn());
   });
@@ -77,8 +60,10 @@ export function registerLearnCourseRoutes(
   });
 
   api.get('/course', async (context) => {
-    const { store, input } = await courseUseCase(context, await deps.content());
-    return context.json(await getCourse(store, input, context.req.query('course')));
+    return send(
+      context,
+      await deps.learner(context).course({ course: context.req.query('course') }),
+    );
   });
 
   api.put('/course/active', async (context) => {

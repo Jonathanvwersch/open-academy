@@ -26,7 +26,13 @@ export function httpRequestFor(operation: SimulatorOperation): SimulatorHttpRequ
     case 'courseCatalog':
       return { method: 'GET', path: '/courses' };
     case 'course':
-      return { method: 'GET', path: `/courses/${encodeURIComponent(operation.courseId)}` };
+      return {
+        method: 'GET',
+        path:
+          operation.courseId === undefined
+            ? `/course${operation.course === undefined ? '' : `?course=${encodeURIComponent(operation.course)}`}`
+            : `/courses/${encodeURIComponent(operation.courseId)}`,
+      };
     case 'setActiveCourse':
       return { method: 'PUT', path: '/course/active', body: operation.body };
     case 'startCourse':

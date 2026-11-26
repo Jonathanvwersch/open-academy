@@ -13,7 +13,7 @@ export type EngineOperation =
   | { kind: 'today' }
   | { kind: 'learn' }
   | { kind: 'courseCatalog' }
-  | { kind: 'course'; courseId: string }
+  | { kind: 'course'; courseId?: string; course?: string }
   | { kind: 'setActiveCourse'; body: unknown }
   | { kind: 'startCourse'; courseId?: string; body: unknown }
   | { kind: 'createSession'; body: unknown }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  getCourse,
   getCourseCatalog,
   getCourseDetail,
   setActiveCourse,
@@ -59,6 +60,9 @@ export async function runEngineOperation(
     case 'courseCatalog':
       return respond(await getCourseCatalog(store, await courseInput(request)));
     case 'course': {
+      if (operation.courseId === undefined) {
+        return respond(await getCourse(store, await courseInput(request), operation.course));
+      }
       if (!content.coursesById.has(operation.courseId)) {
         return respond({ error: 'Course not found' }, 404);
       }
