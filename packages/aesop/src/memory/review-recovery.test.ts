@@ -89,9 +89,10 @@ async function reviewFixture() {
     addReview: async (
       exerciseIds: string[],
       overrides: Pick<NonNullable<Parameters<typeof activityRow>[1]>, 'conceptId' | 'reason'>,
+      idx = 0,
     ) => {
       const [review] = await store.insertActivities(userId, savedSession.id, [
-        activityRow(0, { kind: 'review', status: 'in_progress', exerciseIds, ...overrides }),
+        activityRow(idx, { kind: 'review', status: 'in_progress', exerciseIds, ...overrides }),
       ]);
       return review;
     },
@@ -370,4 +371,32 @@ test('a legacy review does not repeat FIRe already earned before a question was 
   fixture.remove([answered]);
   expect((await fixture.answer(review.id, pending)).activityCompleted).toBe(true);
   expect(await fixture.store.getReviewCard(userId, 'vectors', 'math')).toEqual(credited);
+});
+
+test('review recovery reserves a later review’s original topic before filling spare slots', async () => {
+  const fixture = await reviewFixture();
+  const index = await content;
+  const earlyTopic = 'supervised-learning';
+  const laterTopic = 'vectors';
+  await fixture.addCard(earlyTopic, 'conceptual');
+  await fixture.addCard(laterTopic, 'math');
+  const earlyQuestions = (index.exercisesByConcept.get(earlyTopic) ?? []).map(({ id }) => id);
+  const [survivor, ...removed] = earlyQuestions;
+  const laterQuestion = 'vectors-dot-product';
+  await fixture.addReview([survivor, removed[0]], {
+    conceptId: null,
+    reason: { topicIds: [earlyTopic] },
+  });
+  await fixture.addReview(
+    [laterQuestion],
+    { conceptId: null, reason: { topicIds: [laterTopic] } },
+    1,
+  );
+  const revised = fixture.remove([...removed, laterQuestion]);
+  const {
+    activities: [first, second],
+  } = await fixture.session();
+  expect(first.exerciseIds).toEqual([survivor]);
+  expect(second.exerciseIds).toHaveLength(1);
+  expect(revised.exercisesById.get(second.exerciseIds[0])?.concept).toBe(laterTopic);
 });

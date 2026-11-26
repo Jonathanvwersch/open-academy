@@ -105,12 +105,22 @@ export async function recoverReviewActivities(
     if (survivors.length === 0 || (mixed && (reason.topicIds || missingTopics.length > 0))) {
       state ??= filterSchedulerStateForContent(content, await schedulerState());
       const current = state;
-      const usedExerciseIds = activities
-        .filter((other) => other.id !== activity.id)
-        .flatMap((other) => other.exerciseIds);
+      const otherActivities = activities.filter((other) => other.id !== activity.id);
+      const usedExerciseIds = otherActivities.flatMap((other) => other.exerciseIds);
       const reservedTopics = new Set(
         usedExerciseIds.map((id) => content.exercisesById.get(id)?.concept),
       );
+      for (const other of otherActivities) {
+        if (
+          other.kind !== 'review' ||
+          (other.status !== 'planned' && other.status !== 'in_progress')
+        )
+          continue;
+        const topics = reviewActivityReason(other.reason).topicIds;
+        for (const topic of topics ?? (other.conceptId ? [other.conceptId] : [])) {
+          reservedTopics.add(topic);
+        }
+      }
       const slots = activity.exerciseIds.length;
       const select = (topic: string, used: string[]) => {
         const reselect = current.remediationFlags.some(
