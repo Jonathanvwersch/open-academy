@@ -546,7 +546,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: "A top-2 router assigns probabilities $0.2$, $0.3$ and $0.5$ to three experts. Their one-component outputs would be $20$, $8$ and $4$, respectively. The router rescales the selected weights to sum to $1$. What is the layer's output?"
+    prompt: "A top-2 router assigns probabilities $0.2$, $0.3$ and $0.5$ to three experts. Their one-component outputs would be $20$, $8$ and $4$, respectively. The router rescales the selected weights to sum to $1$. What is the single component of the layer's output?"
     answer: 5.5
     tolerance: { abs: 0 }
     solution: "Experts 2 and 3 are selected. Their probabilities total $0.8$, so the output is $(0.3\\times8+0.5\\times4)/0.8=5.5$."
