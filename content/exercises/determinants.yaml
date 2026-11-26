@@ -34,7 +34,7 @@ exercises:
       - id: one-swap
         text: It slides the picture while keeping its area and orientation.
         correct: true
-        feedback: The slide keeps the base and perpendicular height, so the area stays the same. The order of the edges also stays the same.
+        feedback: On a unit square with its left edge on the vertical axis, that edge is the fixed base. The right edge slides vertically, keeping its perpendicular distance from the base. The slide preserves area without reversing orientation.
       - id: two-additions
         text: It changes entries below the diagonal, which never affect the determinant.
         correct: false
