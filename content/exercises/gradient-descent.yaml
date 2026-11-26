@@ -1251,11 +1251,11 @@ exercises:
         correct: true
         feedback: The learning rate multiplies each slope of the loss with respect to a weight or the bias. A small factor in that product can make the parameter move very little.
       - id: b
-        text: The learning rate is so large that each update overshoots the bottom of the loss curve.
+        text: A small learning rate gives the same small change on every update, whatever the slopes.
         correct: false
-        feedback: When the learning rate is large enough to send the model farther past the bottom each time, the loss rises.
+        feedback: Even at a fixed learning rate, the amount each weight and bias moves changes with the corresponding slope.
       - id: c
-        text: Training has finished because each update lowers the loss by such a small amount.
+        text: Training has finished because a tiny drop in loss always means the model has converged.
         correct: false
         feedback: A tiny drop can be a stopping signal after the loss has already fallen substantially. Here the loss has stayed high, so check why the weights and bias are barely moving.
     solution: Gradient descent multiplies each slope of the loss with respect to a weight or the bias by the learning rate. A small learning rate or shallow slopes can make the weights and bias move very little even while the loss is high.
