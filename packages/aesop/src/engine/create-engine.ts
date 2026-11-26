@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import type { ContentIndex } from '../course/types.js';
 import { gradeExercise } from '../lessons/grading/index.js';
 import type { CourseStore } from '../store/course-store.js';
@@ -29,7 +28,7 @@ export type EngineLearnerOptions = {
 };
 
 export function createEngine(options: CreateEngineOptions) {
-  const newId = options.newId ?? (() => randomUUID());
+  const newId = options.newId ?? (() => crypto.randomUUID());
   const grade: EngineGrade =
     options.grade ??
     ((exercise, answer, { random }) => gradeExercise(exercise, answer, { random }));
