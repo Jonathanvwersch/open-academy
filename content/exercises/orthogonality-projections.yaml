@@ -709,7 +709,7 @@ exercises:
     difficulty: 2
     est_minutes: 4
     prompt: >-
-      A system $Ax=b$ has coefficient matrix $A$, unknown vector $x$ and target vector $b$, but no exact solution. Explain why the best least-squares estimate $\hat x$ leaves an error $b-A\hat x$ orthogonal to every column of $A$, how that gives the normal equations, and what $\hat x$ makes as small as possible.
+      A system $Ax=b$ has coefficient matrix $A$, unknown vector $x$ and target vector $b$, but no exact solution. Explain why the best approximate solution $\hat x$ leaves an error $b-A\hat x$ orthogonal to every column of $A$, how that gives the normal equations, and what $\hat x$ makes as small as possible.
     rubric:
       - id: r1
         criterion: Explain that $A\hat x$ is the point in the column space of $A$ closest to $b$, so the error $b-A\hat x$ is orthogonal to every column, just as a projection onto a line leaves a leftover orthogonal to the line.
