@@ -194,7 +194,10 @@ export class DirectMemoryDriver implements SimulatorDriver {
 /** Builds one in-memory driver per simulated learner. */
 export const directMemoryDriver: SimulatorDriverFactory = (input) => new DirectMemoryDriver(input);
 
-/** The value PostgreSQL `jsonb` returns: plain JSON with keys ordered by length, then bytes. */
+/**
+ * The value a Drizzle `jsonb` column returns: plain JSON with keys ordered by length, then bytes.
+ * Drizzle parses a top-level string once more, so the stored string "0" reads back as 0.
+ */
 function jsonb(value: unknown): unknown {
   const order = (entry: unknown): unknown => {
     if (Array.isArray(entry)) return entry.map(order);
@@ -208,7 +211,14 @@ function jsonb(value: unknown): unknown {
       keys.map((key) => [key, order((entry as Record<string, unknown>)[key])]),
     );
   };
-  return value === undefined ? null : order(JSON.parse(JSON.stringify(value)));
+  if (value === undefined) return null;
+  const json: unknown = JSON.parse(JSON.stringify(value));
+  if (typeof json !== 'string') return order(json);
+  try {
+    return order(JSON.parse(json));
+  } catch {
+    return json;
+  }
 }
 
 const date = (value: Date | string | null | undefined) =>
