@@ -604,10 +604,10 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A colour image is $6$ pixels high and $9$ pixels wide, with $4$ channels including transparency. Its HWC shape is $(6,9,4)$. After transposing it to CHW, what is the size of the first axis?"
-    answer: 4
+    prompt: "A colour image has shape $(6,9,4)$ in HWC (height, width, channels) layout. Transparency is the last channel. You transpose it to CHW (channels, height, width), then make a list by reading the channel grids in order, one grid at a time, from left to right and top to bottom. How many values come before the first transparency value in the list?"
+    answer: 162
     tolerance: { abs: 0 }
-    solution: "In CHW the channel axis comes first. Transposing changes where the axis goes, so its size is still $4$."
+    solution: "CHW puts the three colour grids before the transparency grid. Each grid has $6$ rows of $9$ values, so $3\\cdot6\\cdot9=162$ values come first."
 
   - id: iat-batch-pixels-from-shape
     dimension: math
@@ -615,10 +615,10 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "A batch of RGB images is stored as a tensor in NCHW layout. The tensor's shape is $(5,3,2,7)$. How many pixels are there across all images, counting each pixel once?"
-    answer: 70
+    prompt: "Two batches of red, green and blue (RGB) images use different tensor layouts. The first batch has shape $(5,3,2,7)$ in NCHW (number of images, channels, height, width). The second batch has shape $(4,2,8,3)$ in NHWC (number of images, height, width, channels). How many more pixel positions are there across the images in the first batch than in the second?"
+    answer: 6
     tolerance: { abs: 0 }
-    solution: "Each of the $5$ images has $2\\times7$ pixel positions. The $3$ channels describe the same pixels, so the batch has $5\\cdot2\\cdot7=70$ pixels."
+    solution: "The first batch has $5\\cdot2\\cdot7=70$ pixel positions and the second has $4\\cdot2\\cdot8=64$. The channels store values at the same positions, so the difference is $70-64=6$."
 
   - id: iat-blue-plane-read
     dimension: math
@@ -626,10 +626,10 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "An image in HWC layout has two rows of pixels, each written as a red, green and blue triple. From left to right, row $0$ has pixels $(15,20,25)$ and $(30,35,40)$, and row $1$ has $(45,50,55)$ and $(60,65,70)$. After transposing to CHW, what value is at the CHW index $(2,0,1)$? All indices start at zero."
-    answer: 40
+    prompt: "An image in HWC (height, width, channels) layout has two rows of pixels. Each pixel triple lists its red, green and blue values. From left to right, row $0$ has pixels $(15,20,25)$ and $(30,37,42)$, and row $1$ has pixels $(45,51,55)$ and $(60,65,70)$. Transpose the image to CHW (channels, height, width). In channel $2$, take the value at row $1$, column $0$ and subtract the value at row $0$, column $1$. What is the result? All indices start at zero."
+    answer: 13
     tolerance: { abs: 0 }
-    solution: "In CHW, index $2$ selects the blue channel. Row $0$, column $1$ is the pixel $(30,35,40)$, whose blue value is $40$."
+    solution: "The transpose keeps each pixel at the same row and column. Channel $2$ selects the blue values: $55$ at row $1$, column $0$ and $42$ at row $0$, column $1$. The difference is $55-42=13$."
 
   - id: iat-standardise-from-uint8
     dimension: math
