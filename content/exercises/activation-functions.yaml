@@ -162,12 +162,11 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 3
-    prompt: "Ten sigmoids are applied one after another, each to the previous one's output. A small change at the start is multiplied by each sigmoid's slope as it passes through. What is the largest factor the change can end up multiplied by? (Scientific notation is fine, e.g. `9.5e-7`.)"
+    prompt: "Ten sigmoid functions are applied in sequence, with each function after the first taking the previous function's output as its input. Use $0.25$, the maximum slope of a sigmoid, for each of the ten slopes. What upper bound does this give for the slope of the final output with respect to the initial input? You may answer in scientific notation."
     answer: 9.5367e-7
-    tolerance: { rel: 0.01 }
-    hints:
-      ["Each factor is at most the sigmoid's largest slope, at $z = 0$, where its output is 0.5."]
-    solution: "The sigmoid's largest slope is $0.5(1-0.5) = 0.25$, at $z = 0$. Each of the ten factors is at most that, so the total is at most $0.25^{10} \\approx 9.5\\times10^{-7}$. Even in the best case the change almost disappears."
+    tolerance: { abs: 0, rel: 0.01 }
+    hints: ["Each sigmoid scales a small change in its input by its slope."]
+    solution: "The overall slope is the product of the ten local slopes. Each slope is at most $0.25$, so multiplying the ten bounds gives $0.25^{10} \\approx 9.5367\\times10^{-7}$."
   - id: act-review-deriv
     dimension: math
     type: mc
