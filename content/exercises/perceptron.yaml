@@ -420,7 +420,7 @@ exercises:
       $x_2$ its distance to the station in kilometres. A house moves 1 km farther from the station with
       everything else fixed. What happens to its score?
     options:
-      - { id: a, text: "It drops by 1, because the distance weight is $-1$", correct: true }
+      - { id: a, text: "It drops by $1$, because the distance weight is $-1$", correct: true }
       - {
           id: b,
           text: "It rises by 1, because the distance went up by 1",
@@ -482,7 +482,7 @@ exercises:
     est_minutes: 1
     prompt: "A robot gripper closes when a neuron outputs 1. The neuron's score is $z = 3p - 2d - 1$, where $p$ is the pressure reading on the fingers and $d$ is the gap between them in cm. Which numbers are the neuron's weights?"
     options:
-      - { id: a, text: "3 and $-2$", correct: true }
+      - { id: a, text: "$3$ and $-2$", correct: true }
       - {
           id: b,
           text: "$p$ and $d$",
@@ -499,7 +499,7 @@ exercises:
         }
       - {
           id: d,
-          text: "3, $-2$ and $-1$",
+          text: "$3$, $-2$ and $-1$",
           correct: false,
           category: misunderstood_definition,
           feedback: "$-1$ isn't multiplied by an input, so it's the bias rather than a weight.",
@@ -513,7 +513,7 @@ exercises:
     est_minutes: 1
     prompt: "What is a perceptron's decision boundary?"
     options:
-      - { id: a, text: "The inputs whose score $w \\cdot x + b$ is exactly 0", correct: true }
+      - { id: a, text: "The inputs whose score $w \\cdot x + b$ is exactly $0$", correct: true }
       - {
           id: b,
           text: "The inputs for which the perceptron outputs 1",

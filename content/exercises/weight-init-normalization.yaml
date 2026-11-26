@@ -57,7 +57,7 @@ exercises:
       - id: c
         text:
           Each layer computes $h_k=0.5h_{k-1}$, so backpropagation multiplies by its local derivative,
-          0.5.
+          $0.5$.
         correct: true
         feedback:
           Each layer multiplies its input by 0.5, giving a local derivative of 0.5. Backpropagation

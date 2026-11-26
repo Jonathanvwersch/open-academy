@@ -89,7 +89,7 @@ exercises:
     common_wrong:
       - answer: 1
         category: math_error
-        feedback: Equal scores give equal shares of a total of 1, so each token gets $1/5$.
+        feedback: Equal scores give equal shares of a total of $1$, so each token gets $1/5$.
     solution: Equal scores give equal $e$-powers, so each token gets the same share, $1/5=0.2$.
   - id: alm-next-meaning
     dimension: conceptual

@@ -128,7 +128,7 @@ exercises:
     answer: -7
     tolerance:
       abs: 1.0e-06
-    solution: The weighted input is 6, so the bias must be $-1-6=-7$ to give the stated score.
+    solution: The weighted input is $6$, so the bias must be $-1-6=-7$ to give the stated score.
   - id: lr-sigmoid-basics
     dimension: conceptual
     type: mc
@@ -280,7 +280,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "The house sold, so $y=1$, and the model gave label 1 probability 0.119.",
+          text: "The house sold, so $y=1$, and the model gave label 1 probability $0.119$.",
           correct: true,
           feedback: "Choose the term for the observed label.",
         }
@@ -374,7 +374,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "Its loss, $-\\ln0.01\\approx4.6$, keeps growing, but squared error stays below 1.",
+          text: "Its loss, $-\\ln0.01\\approx4.6$, keeps growing, but squared error stays below $1$.",
           correct: true,
           feedback: "Cross-entropy climbs without limit as the probability of the true label shrinks.",
         }
@@ -390,7 +390,7 @@ exercises:
           correct: false,
           feedback: "The label chooses whether the loss uses $p$ or $1-p$.",
         }
-    solution: "Squared error is $(0.01-1)^2\\approx0.98$, close to its largest possible value of 1, while cross-entropy is $-\\ln0.01\\approx4.61$ and keeps rising as $p$ falls further."
+    solution: "Squared error is $(0.01-1)^2\\approx0.98$, close to its largest possible value of $1$, while cross-entropy is $-\\ln0.01\\approx4.61$ and keeps rising as $p$ falls further."
   - id: lr-gradient-basics
     dimension: conceptual
     type: mc
@@ -525,7 +525,7 @@ exercises:
       for this example?
     answer: 1.25
     tolerance: { abs: 0.000001 }
-    solution: Initially $p=1/2$, so the weight slope is 1 and the bias slope is $-1/2$. The new parameters are $w=-1/2$, $b=1/4$, giving score $(-1/2)(-2)+1/4=5/4$.
+    solution: Initially $p=1/2$, so the weight slope is $1$ and the bias slope is $-1/2$. The new parameters are $w=-1/2$, $b=1/4$, giving score $(-1/2)(-2)+1/4=5/4$.
   - id: lr-explain-logistic-regression
     dimension: conceptual
     type: explain

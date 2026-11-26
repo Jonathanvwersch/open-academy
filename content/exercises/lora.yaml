@@ -444,7 +444,7 @@ exercises:
         category: math_error
         feedback: The rank is already inside $65{,}536=8\times8192$. The 64 counts matrices.
       - id: c
-        text: Each matrix is $4096\times4096$, and 64 is the square root of 4096.
+        text: Each matrix is $4096\times4096$, and $64$ is the square root of 4096.
         correct: false
         category: incorrect_reasoning
         feedback: The size of each matrix is already in $65{,}536$. The 64 is the number of matrices.
@@ -732,7 +732,7 @@ exercises:
       times the number $Ax$. If both $B$ and $A$ start as all zeros, what happens during training?
     options:
       - id: a
-        text: Neither ever moves, because every gradient for $B$ contains $Ax=0$ and every gradient for $A$ is built from the $b_i$, which are all 0.
+        text: Neither ever moves, because every gradient for $B$ contains $Ax=0$ and every gradient for $A$ is built from the $b_i$, which are all $0$.
         correct: true
         feedback: With all gradients zero, gradient descent subtracts nothing, so both stay at zero for ever.
       - id: b

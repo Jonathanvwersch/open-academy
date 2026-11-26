@@ -33,7 +33,7 @@ exercises:
     prompt: In the worked example for heads, heads, tails, why do we set the derivative $L'(p)$ to 0?
     options:
       - id: a
-        text: The slope is 0 at the top of a smooth hill, so the best guess has $L'(p)=0$.
+        text: The slope is $0$ at the top of a smooth hill, so the best guess has $L'(p)=0$.
         correct: true
         feedback: The best guess is the top of the likelihood curve, where it is flat.
       - id: b
@@ -101,7 +101,7 @@ exercises:
       A coin lands heads, heads, tails. The likelihood of those flips for a guessed heads probability of $2/3$ is $L(2/3)\approx0.148$. A friend says this means there is a 14.8% chance that the coin's true heads probability is $2/3$. What is wrong?
     options:
       - id: a
-        text: 0.148 is the chance of these flips if $p$ were $2/3$, not the chance that $p$ is $2/3$.
+        text: $0.148$ is the chance of these flips if $p$ were $2/3$, not the chance that $p$ is $2/3$.
         correct: true
         feedback: The likelihood fixes the guess and asks how probable the data are.
       - id: b
@@ -281,7 +281,7 @@ exercises:
       exactly 0 for every guess. What went wrong?
     options:
       - id: a
-        text: The true product, about $10^{-10000}$, is too small to store, so it rounds to 0.
+        text: The true product, about $10^{-10000}$, is too small to store, so it rounds to $0$.
         correct: true
         feedback: Adding the logs instead gives about $-23{,}000$, which a computer handles easily.
       - id: b
@@ -420,7 +420,7 @@ exercises:
         correct: true
         feedback: A common factor scales every score by the same amount, so the ranking is unchanged.
       - id: b
-        text: $w$ is so small that it is effectively 0, so it can be left out.
+        text: $w$ is so small that it is effectively $0$, so it can be left out.
         correct: false
         feedback: If $w$ were 0, every chance would be 0 and no guess would win.
       - id: c
@@ -506,7 +506,7 @@ exercises:
         correct: true
         feedback: $c$ depends only on $\sigma$, not on the predictions.
       - id: b
-        text: The number $c$ is always 0, so the term $4c$ adds nothing.
+        text: The number $c$ is always $0$, so the term $4c$ adds nothing.
         correct: false
         feedback: With $\sigma=1$, $c=\ln(1/\sqrt{2\pi})\approx-0.92$, which is not 0.
       - id: c

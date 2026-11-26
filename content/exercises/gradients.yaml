@@ -246,7 +246,7 @@ exercises:
         correct: true
         feedback: "The first entry is the x-partial and the second is the y-partial; their sum loses that assignment."
       - id: b
-        text: "The 3 and 4 are the coordinates of $P$; adding them gives the bowl's height there."
+        text: "The $3$ and $4$ are the coordinates of $P$; adding them gives the bowl's height there."
         correct: false
         category: misunderstood_definition
         feedback: "Coordinates locate $P$; the gradient contains the slopes, which are 3 along x and 4 along y."
@@ -525,7 +525,7 @@ exercises:
     prompt: "In the worked example, why does the gradient direction give slope 5, the opposite direction slope -5, and a perpendicular direction slope 0?"
     options:
       - id: a
-        text: "For unit $\\mathbf u$, the slope is $5\\cos\\theta$: the cosines are 1 along, -1 opposite, and 0 perpendicular."
+        text: "For unit $\\mathbf u$, the slope is $5\\cos\\theta$: the cosines are $1$ along, $-1$ opposite, and $0$ perpendicular."
         correct: true
         feedback: "The dot-product formula is $D_{\\mathbf u}f=\\|\\nabla f\\|\\cos\\theta$, and here the gradient length is 5."
       - id: b
@@ -596,7 +596,7 @@ exercises:
         category: misunderstood_definition
         feedback: "Combining both partial derivatives can give a larger slope than either component."
       - id: d
-        text: "At Q: its slope is 4, while P has slope $5/\\sqrt{3.25}$."
+        text: "At Q: its slope is $4$, while P has slope $5/\\sqrt{3.25}$."
         correct: false
         category: math_error
         feedback: "The position vector length does not normalise a slope; compare the gradient lengths directly."

@@ -276,7 +276,7 @@ exercises:
     prompt: A causal mask adds $-\infty$ to the score of each blocked position before the softmax. Why does it use $-\infty$?
     options:
       - id: a
-        text: Because $e^{-\infty}=0$, so the blocked position gets a weight of exactly 0.
+        text: Because $e^{-\infty}=0$, so the blocked position gets a weight of exactly $0$.
         correct: true
         feedback: The softmax raises $e$ to each score, and only $-\infty$ gives exactly 0.
       - id: b
@@ -330,7 +330,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: In a sentence of 3 tokens, position 1 has score 0 for itself. A buggy mask sets the scores of positions 2 and 3 to $0$ instead of $-\infty$. What weight does position 1 now give itself after the softmax? Round to 2 decimals.
+    prompt: In a sentence of 3 tokens, position 1 has score $0$ for itself. A buggy mask sets the scores of positions 2 and 3 to $0$ instead of $-\infty$. What weight does position 1 now give itself after the softmax? Round to 2 decimals.
     answer: 0.33
     tolerance:
       abs: 0.01

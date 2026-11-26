@@ -62,7 +62,7 @@ exercises:
         text: $(0.3,0.4,0.1,0.2)$
         correct: false
         feedback: That reads the bottom row first.
-    solution: The first row contributes 0.1 and 0.2. Then the second row contributes 0.3 and 0.4, giving $(0.1,0.2,0.3,0.4)$.
+    solution: The first row contributes $0.1$ and $0.2$. Then the second row contributes $0.3$ and $0.4$, giving $(0.1,0.2,0.3,0.4)$.
   - id: aep-encode-template
     dimension: math
     type: numeric
@@ -552,7 +552,7 @@ exercises:
         feedback: That gives squared distance; take the square root for distance.
     solution:
       Straight-line distance uses the square root of the sum of squared coordinate differences.
-      Here the differences are -0.3 and 0.4, giving $\sqrt{0.09+0.16}=0.5$.
+      Here the differences are $-0.3$ and $0.4$, giving $\sqrt{0.09+0.16}=0.5$.
   - id: aep-distance-template
     dimension: math
     type: numeric

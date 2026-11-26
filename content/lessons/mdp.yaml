@@ -118,7 +118,7 @@ knowledge_points:
 
       $$p(s'\mid s,a).$$
 
-      Read this as "the probability of next state $s'$ given state $s$ and action $a$". The prime on $s'$ means the next state. For the upper branch, $p(4\mid3,\text{right})=0.8$. For the lower branch, $p(3\mid3,\text{right})=0.2$. Here cells 1 and 2 have probability 0. All next-state probabilities must add to 1 for each given state and action.
+      Read this as "the probability of next state $s'$ given state $s$ and action $a$". The prime on $s'$ means the next state. For the upper branch, $p(4\mid3,\text{right})=0.8$. For the lower branch, $p(3\mid3,\text{right})=0.2$. Here cells 1 and 2 have probability $0$. All next-state probabilities must add to $1$ for each given state and action.
 
       A **deterministic transition** has one certain next state, as in the original reliable corridor. A **stochastic transition** has several possible next states. At the left wall, a left command stays at 1 whether the motor works or fails. Random motor behaviour can therefore produce a certain next state, with $p(1\mid1,\text{left})=1$.
 
@@ -172,7 +172,7 @@ knowledge_points:
 
       An expected next reward averages the outcomes of one command. **Discounting** gives later rewards smaller weights when we prefer progress sooner. In the reliable corridor, three right moves from cell 1 reach cell 4. The goal reward $+10$ arrives on the third move.
 
-      At time $t$, we are about to take an action. A reward's **weight** is the number we multiply it by when evaluating it from that time. The next reward, after the first command, has weight 1. The goal reward has two extra steps of delay beyond that next reward.
+      At time $t$, we are about to take an action. A reward's **weight** is the number we multiply it by when evaluating it from that time. The next reward, after the first command, has weight $1$. The goal reward has two extra steps of delay beyond that next reward.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 180" aria-label="Three right moves from cell 1 through 2 and 3 to terminal cell 4. Rewards minus 1, minus 1 and plus 10 arrive with 0, 1 and 2 extra steps of delay beyond the first reward.">
@@ -199,7 +199,7 @@ knowledge_points:
 
       - With $\gamma=0$, only the next reward counts.
       - With $\gamma=0.9$, later rewards have smaller weights.
-      - With $\gamma=1$, every reward has weight 1.
+      - With $\gamma=1$, every reward has weight $1$.
 
       Be careful: discounting also makes delayed penalties count less strongly, which can encourage delaying costs. A very small discount factor can almost ignore a distant goal. Discounting changes only the weight we give a reward when we evaluate it.
 
@@ -209,7 +209,7 @@ knowledge_points:
 
       - $S$ contains every possible state $s$. Here $S=\{1,2,3,4\}$: the braces list the members of the set.
       - $A$ lists available actions. Here we allow left and right until the episode ends.
-      - $p$ gives next-state probabilities. In this reliable version, the movement rule selects one next cell with probability 1. Every other cell has probability 0.
+      - $p$ gives next-state probabilities. In this reliable version, the movement rule selects one next cell with probability $1$. Every other cell has probability $0$.
       - $R$ is the rule producing each reward $r$; here $10$ on entry to 4 and $-1$ otherwise.
       - $\gamma$ weights rewards by delay; here it is $0.9$.
 
@@ -242,7 +242,7 @@ summary: |
   - An MDP describes states, available actions, transition probabilities, a reward rule and a discount factor, written $(S,A,p,R,\gamma)$.
   - A state has the Markov property when the current state and action suffice to predict the next state and reward probabilities without earlier history.
   - Transition probabilities $p(s'\mid s,a)$ add to 1 over next states for each fixed state and action; expected next reward weights each possible reward by its probability.
-  - The next reward has weight 1. The discount factor $\gamma$ gives a later reward weight $\gamma^k$ for $k\ge1$ extra steps of delay.
+  - The next reward has weight $1$. The discount factor $\gamma$ gives a later reward weight $\gamma^k$ for $k\ge1$ extra steps of delay.
 
   The MDP defines which runs can occur and how their rewards are weighted.
 

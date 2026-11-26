@@ -19,7 +19,7 @@ knowledge_points:
     explain: |
       ### A robot's two moves
 
-      A delivery robot leaves its dock, drives 1 metre east and 3 north, then 2 east and 1 north.
+      A delivery robot leaves its dock, drives $1$ metre east and $3$ north, then $2$ east and $1$ north.
 
       On the map, the dock is at $(0,0)$, with east to the right and north up. The first move is $a=(1,3)$, the blue arrow. The second, $b=(2,1)$, is the green arrow, starting where the blue one ends. Each arrow joins the start and end of a move. The orange arrow joins the dock to the end.
 
@@ -65,7 +65,7 @@ knowledge_points:
 
       A vector can be a move, which only says how far to go each way, so its arrow can start anywhere. It can also be a point. We write a point as the move that reaches it from a fixed start, the **origin**, and call its components **coordinates**.
 
-      Order matters. $(2,5)$, 2 metres east and 5 north, is a different place from $(5,2)$.
+      Order matters. $(2,5)$, $2$ metres east and $5$ north, is a different place from $(5,2)$.
 
       ### Adding two moves
 
@@ -77,7 +77,7 @@ knowledge_points:
 
       ### Lists of measurements
 
-      Components don't have to be distances. $(120,3,15)$ can describe a house with 120 square metres, 3 bedrooms and an age of 15 years. A list of measurements of one thing is a **feature vector**, and it's how a model receives an example. Just as $(3,4)$ is a point on a map with two directions, east and north, the house is a point in a space with three directions, one per measurement. Similar houses sit close together.
+      Components don't have to be distances. $(120,3,15)$ can describe a house with $120$ square metres, 3 bedrooms and an age of $15$ years. A list of measurements of one thing is a **feature vector**, and it's how a model receives an example. Just as $(3,4)$ is a point on a map with two directions, east and north, the house is a point in a space with three directions, one per measurement. Similar houses sit close together.
 
       We write a vector with $n$ components as $x=(x_1,x_2,\ldots,x_n)$, where $x_i$ is component number $i$. For the house, $n=3$ and $x_2=3$. Later lessons write $x\in\mathbb{R}^n$, read "x is in R n", to say $x$ is a list of $n$ numbers. Here $\mathbb{R}$ means all the numbers on the number line, and the $n$ above it counts the components.
     worked: |
@@ -92,7 +92,7 @@ knowledge_points:
       3. **Write the totals in the same order.** East comes first and north second, just as in $a$ and $b$.
          $$a+b=(1+2,\;3+1)=(3,4)$$
 
-      So the robot ends up 3 metres east and 4 metres north of the dock, at the tip of the orange arrow.
+      So the robot ends up $3$ metres east and $4$ metres north of the dock, at the tip of the orange arrow.
     problems:
       - vec-points-moves-basics
       - vecp-add-self-explain
@@ -115,7 +115,7 @@ knowledge_points:
 
       We can now put moves together, but what if the robot needs the same move twice as far, or back the way it came? Let's draw arrows from the origin, starting with $b=(2,1)$ from the first step.
 
-      The green arrow is $b$. The orange arrow, $(4,2)$, has both components doubled, so it lies along the same dashed line and is twice as long. The red arrow, $(-2,-1)$, has both signs flipped, so it's the same length as $b$ but points the opposite way. The grey dot, $(3,2)$, is what we get by adding 1 to each component instead, and it sits off the line.
+      The green arrow is $b$. The orange arrow, $(4,2)$, has both components doubled, so it lies along the same dashed line and is twice as long. The red arrow, $(-2,-1)$, has both signs flipped, so it's the same length as $b$ but points the opposite way. The grey dot, $(3,2)$, is what we get by adding $1$ to each component instead, and it sits off the line.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 350" aria-label="Arrows from the origin. The green arrow b = (2,1). The orange arrow 2b = (4,2) lies on the same dashed line and is twice as long. The red arrow minus b = (−2,−1) is the same length and points the opposite way. The grey dot (3,2), made by adding 1 to each component of b, lies off the line">
@@ -161,7 +161,7 @@ knowledge_points:
       $$
       The last result is the **zero vector**, which has no direction.
 
-      Be careful not to think that adding the same number to each component stretches the vector too. $b=(2,1)$ goes 2 metres east for every 1 north, but $(3,2)$ goes 3 east for every 2 north, so it points a different way. Multiplying by a positive number keeps the 2-to-1 balance, so the vector keeps its direction. A negative number keeps the line but flips the vector along it.
+      Be careful not to think that adding the same number to each component stretches the vector too. $b=(2,1)$ goes $2$ metres east for every $1$ north, but $(3,2)$ goes $3$ east for every $2$ north, so it points a different way. Multiplying by a positive number keeps the $2$-to-$1$ balance, so the vector keeps its direction. A negative number keeps the line but flips the vector along it.
 
       ### Subtracting vectors
 
@@ -173,7 +173,7 @@ knowledge_points:
       &=(-1,2) &&\text{work out each difference}
       \end{aligned}
       $$
-      That's 1 metre west and 2 north, shown by the orange arrow below.
+      That's $1$ metre west and $2$ north, shown by the orange arrow below.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Two arrows from the origin, the blue a = (1,3) and the green b = (2,1). The orange arrow a minus b = (−1,2) runs from the tip of b to the tip of a">
@@ -205,7 +205,7 @@ knowledge_points:
     worked: |
       Let's scale, reverse and subtract the robot's moves $a=(1,3)$ and $b=(2,1)$, then check what the subtraction gave us.
 
-      1. **Double $b$.** Scaling by 2 multiplies each component by 2.
+      1. **Double $b$.** Scaling by $2$ multiplies each component by $2$.
          $$2b=(2\times2,\;2\times1)=(4,2)$$
 
       2. **Reverse $b$.** Reversing is scaling by $-1$, which flips both signs.
@@ -241,7 +241,7 @@ knowledge_points:
 
       Along the grid, $(3,4)$ is $3+4=7$ metres away. But how far is it from the dock in a straight line?
 
-      On the left of the picture, the orange arrow $(3,4)$ is the longest side of a triangle whose other two sides, 3 east and 4 north, meet at a square corner, called a right angle. **Pythagoras' rule** says the squares of the two shorter sides add up to the square of the longest. Here $3^2$, read "3 squared", means $3\times3$. So:
+      On the left of the picture, the orange arrow $(3,4)$ is the longest side of a triangle whose other two sides, $3$ east and $4$ north, meet at a square corner, called a right angle. **Pythagoras' rule** says the squares of the two shorter sides add up to the square of the longest. Here $3^2$, read "$3$ squared", means $3\times3$. So:
       $$
       \begin{aligned}
       \text{length}^2&=3^2+4^2 &&\text{apply Pythagoras' rule}\\
@@ -249,7 +249,7 @@ knowledge_points:
       &=25 &&\text{add the squares}
       \end{aligned}
       $$
-      The **square root** of 25, written $\sqrt{25}$, is the positive number whose square is 25. Taking it gives the length:
+      The **square root** of $25$, written $\sqrt{25}$, is the positive number whose square is $25$. Taking it gives the length:
       $$
       \begin{aligned}
       \text{length}&=\sqrt{25} &&\text{take the square root}\\
@@ -296,13 +296,13 @@ knowledge_points:
 
       ### The length of any vector
 
-      For any vector, we square each component, add the squares and take the square root. Beyond two components, we take this recipe as the definition of length. This length is the **L2 norm**, written $\|x\|_2$. The double bars mean "the length of", and the 2 is for the squaring.
+      For any vector, we square each component, add the squares and take the square root. Beyond two components, we take this recipe as the definition of length. This length is the **L2 norm**, written $\|x\|_2$. The double bars mean "the length of", and the $2$ is for the squaring.
 
       $$\|x\|_2=\sqrt{x_1^2+x_2^2+\cdots+x_n^2}=\sqrt{\sum_{i=1}^{n}x_i^2}.$$
 
-      The symbol $\sum_{i=1}^{n}$, read "the sum from $i=1$ to $n$", means we add up the term after it for every $i$ from 1 to $n$. The square root undoes the squaring, so for the robot the answer is in metres.
+      The symbol $\sum_{i=1}^{n}$, read "the sum from $i=1$ to $n$", means we add up the term after it for every $i$ from $1$ to $n$. The square root undoes the squaring, so for the robot the answer is in metres.
 
-      Be careful not to add the components instead. For $(3,4)$, that gives the 7-metre route along the grid.
+      Be careful not to add the components instead. For $(3,4)$, that gives the $7$-metre route along the grid.
 
       ### The distance between two points
 
@@ -318,7 +318,7 @@ knowledge_points:
 
       ### Limitations
 
-      Suppose two houses differ by 50 square metres and 2 bedrooms. Their contributions to the squared distance are:
+      Suppose two houses differ by $50$ square metres and $2$ bedrooms. Their contributions to the squared distance are:
       $$
       \begin{aligned}
       \text{area contribution}&=50^2 &&\text{square the area difference}\\
@@ -327,7 +327,7 @@ knowledge_points:
       &=4 &&\text{work out the square}
       \end{aligned}
       $$
-      Area dominates, even though 2 bedrooms is a big difference. People usually first divide each measurement by a typical size, such as 100 square metres for area, so none swamps the others.
+      Area dominates, even though $2$ bedrooms is a big difference. People usually first divide each measurement by a typical size, such as $100$ square metres for area, so none swamps the others.
     worked: |
       Let's find how far the robot at $(3,4)$ is from the dock, and then the distance between the robot at $p=(1,1)$ and the parcel at $q=(4,5)$.
 
@@ -346,7 +346,7 @@ knowledge_points:
       5. **Measure that move.** It's the same move as before, so it has the same length.
          $$\|q-p\|_2=\sqrt{3^2+4^2}=5$$
 
-      So the robot is 5 metres from the dock, and the parcel is 5 metres from $p$.
+      So the robot is $5$ metres from the dock, and the parcel is $5$ metres from $p$.
     problems:
       - vec-length-distance-basics
       - vecp-distance-self-explain

@@ -249,7 +249,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "In the worked example, the quiz contributions were 18, 0 and $-2$. Why can they be added into one score?"
+    prompt: "In the worked example, the quiz contributions were $18$, $0$ and $-2$. Why can they be added into one score?"
     solution: "Each count was multiplied by points per answer, so every contribution is measured in points, and points can be added into one score of 16."
     options:
       - {
@@ -288,7 +288,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "The drop from $(3,4)$ to $a$'s tip meets $b$'s line at a right angle, and $(3,4)$ is 5 from the origin.",
+          text: "The drop from $(3,4)$ to $a$'s tip meets $b$'s line at a right angle, and $(3,4)$ is $5$ from the origin.",
           correct: true,
           feedback: "A right-angle drop marks where the shadow ends.",
         }
@@ -507,7 +507,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "The dot product and $a$'s length both doubled, so the factor of 2 cancels in the fraction.",
+          text: "The dot product and $a$'s length both doubled, so the factor of $2$ cancels in the fraction.",
           correct: true,
           feedback: "Top and bottom grow together, leaving the score unchanged.",
         }

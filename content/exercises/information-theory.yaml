@@ -455,7 +455,7 @@ exercises:
       statement is correct?
     options:
       - id: a
-        text: $\mathrm{KL}(a\Vert b)$ is 1 bit, while $\mathrm{KL}(b\Vert a)$ is infinite.
+        text: $\mathrm{KL}(a\Vert b)$ is $1$ bit, while $\mathrm{KL}(b\Vert a)$ is infinite.
         correct: true
         feedback: Here a and b name fixed distributions. When b is actual and a is the forecast, the second outcome can occur but receives forecast probability zero.
       - id: b
@@ -463,7 +463,7 @@ exercises:
         correct: false
         feedback: Changing direction changes which outcomes can occur and how they are scored.
       - id: c
-        text: $\mathrm{KL}(a\Vert b)$ is infinite, while $\mathrm{KL}(b\Vert a)$ is 1 bit.
+        text: $\mathrm{KL}(a\Vert b)$ is infinite, while $\mathrm{KL}(b\Vert a)$ is $1$ bit.
         correct: false
         feedback: The infinite direction is the one whose prediction rules out a possible outcome.
     solution:

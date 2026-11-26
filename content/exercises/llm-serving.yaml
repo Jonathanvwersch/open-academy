@@ -622,7 +622,7 @@ exercises:
     lesson_only: true
     options:
       - id: a
-        text: Each prompt token costs $1.6\times10^{10}$ FLOPs, and 10 ms allows $10^{13}$ FLOPs.
+        text: Each prompt token costs $1.6\times10^{10}$ FLOPs, and $10$ ms allows $10^{13}$ FLOPs.
         correct: true
         feedback: Dividing the available FLOPs by the cost per token gives 625 tokens.
       - id: b

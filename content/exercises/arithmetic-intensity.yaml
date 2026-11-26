@@ -101,7 +101,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt:
-      For a fresh product of two $2\times2$ matrices with 2 bytes per number, a learner reports
+      For a fresh product of two $2\times2$ matrices with $2$ bytes per number, a learner reports
       intensity $16/(8+8)=1$ FLOP per byte. Each input is read once and the output is written once. What
       caused the error?
     options:
@@ -418,7 +418,7 @@ exercises:
     est_minutes: 2
     prompt:
       A model multiplies an $m\times d$ input matrix by a $d\times d$ weight matrix, with $m$ input
-      rows and $d$ features per input row. With 2 bytes per number, a learner calculates the arithmetic
+      rows and $d$ features per input row. With $2$ bytes per number, a learner calculates the arithmetic
       intensity as $I=(2md^2)/(2d^2)=m$ for every row count. Each input is read once and the fresh output
       is written once. What does this leave out?
     options:
@@ -469,7 +469,7 @@ exercises:
       What is this product's roofline ceiling in FLOP/s, rounded to two decimal places?
     answer: 106.67
     tolerance: { abs: 0.05 }
-    solution: 'Intensity is $16\times64/(64+2\times16)=32/3$ FLOPs per byte. Memory supports $(32/3)\times10\approx106.67$ FLOP/s, below the compute ceiling of 160 FLOP/s.'
+    solution: 'Intensity is $16\times64/(64+2\times16)=32/3$ FLOPs per byte. Memory supports $(32/3)\times10\approx106.67$ FLOP/s, below the compute ceiling of $160$ FLOP/s.'
   - id: aip-explain-serving
     dimension: conceptual
     type: explain

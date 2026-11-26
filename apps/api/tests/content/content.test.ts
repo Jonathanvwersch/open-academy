@@ -2315,6 +2315,44 @@ test('lesson review dimensions require a non-template schedulable exercise', asy
   );
 });
 
+test('multiple-choice options do not mix plain and maths numbers', async () => {
+  const optionIssues = async (text: string) => {
+    const data = await notationFixture();
+    const exercise = required(
+      data.exercises.find(({ value }) => value.type === 'mc'),
+      'multiple-choice fixture',
+    );
+    if (exercise.value.type !== 'mc') throw new Error('Expected multiple-choice fixture');
+    const option = required(exercise.value.options[0], 'multiple-choice option');
+    option.text = text;
+    return validateContent(data).filter(
+      ({ id, message }) =>
+        id === exercise.value.id && message.includes('mixes plain and maths numbers'),
+    );
+  };
+
+  for (const [text, mixedNumbers] of [
+    ['3 and $-2$', '3 and $-2$'],
+    ['3, $-2$ and $-1$', '3, $-2$'],
+    ['$-1$ or 4', '$-1$ or 4'],
+  ]) {
+    expect(await optionIssues(text)).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining(`(${JSON.stringify(mixedNumbers)})`),
+      }),
+    ]);
+  }
+
+  for (const text of [
+    '$3$ and $-2$',
+    '3 and 4',
+    '$p$ and $d$',
+    '$W$ is $8 \\times 5$ and $b$ has 1 entry',
+  ]) {
+    expect(await optionIssues(text)).toEqual([]);
+  }
+});
+
 test('every authored dimension needs five eligible review pool questions', async () => {
   const data = await notationFixture();
   expect(validateContent(data)).toEqual([]);

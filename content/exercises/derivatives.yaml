@@ -328,15 +328,15 @@ exercises:
     prompt: "A function has $f'(4) = 3$. What does this tell you?"
     options:
       - id: a
-        text: "Near $x = 4$, the output rises about 3 for each unit the input rises"
+        text: "Near $x = 4$, the output rises about $3$ for each unit the input rises"
         correct: true
       - id: b
-        text: "The output at $x = 4$ is 3"
+        text: "The output at $x = 4$ is $3$"
         correct: false
         category: misunderstood_definition
         feedback: "That would be $f(4) = 3$. The derivative is a rate of change, not the value."
       - id: c
-        text: "The output rises by 3 in total between $x = 0$ and $x = 4$"
+        text: "The output rises by $3$ in total between $x = 0$ and $x = 4$"
         correct: false
         category: misunderstood_definition
         feedback: "That describes an average over a long stretch. The derivative is the rate at the single point $x = 4$."
@@ -345,7 +345,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "A derivative compares a change in output with a change in input, not the output with the input."
-    solution: "$f'(4)$ is the slope of the tangent at $x = 4$: a small nudge to the input changes the output by about 3 times that nudge."
+    solution: "$f'(4)$ is the slope of the tangent at $x = 4$: a small nudge to the input changes the output by about $3$ times that nudge."
   - id: derp-average-speed
     dimension: math
     type: numeric
@@ -358,7 +358,7 @@ exercises:
         "Average speed = distance gained ÷ time taken.",
         "Compute $d({{=a+0.1}}) - d({{=a}})$, then divide by 0.1.",
       ]
-    solution: "The car gains ${{=(a+0.1)^2}} - {{=a^2}} = {{=(a+0.1)^2-a^2}}$ m in 0.1 s, so its average speed is ${{=(a+0.1)^2-a^2}} \\div 0.1 = {{=2*a+0.1}}$ m/s. That is close to the instant speed $2 \\times {{=a}} = {{=2*a}}$ m/s, because the window is short."
+    solution: "The car gains ${{=(a+0.1)^2}} - {{=a^2}} = {{=(a+0.1)^2-a^2}}$ m in $0.1$ s, so its average speed is ${{=(a+0.1)^2-a^2}} \\div 0.1 = {{=2*a+0.1}}$ m/s. That is close to the instant speed $2 \\times {{=a}} = {{=2*a}}$ m/s, because the window is short."
     answer_expr: "((a+0.1)^2 - a^2) / 0.1"
     params:
       a: { min: 1, max: 8, step: 1 }
@@ -498,7 +498,7 @@ exercises:
       - {
           answer: "12*x^2 - 10*x",
           category: math_error,
-          feedback: "The derivative of $2x$ is 2, not 0. Only the lone constant $-7$ disappears.",
+          feedback: "The derivative of $2x$ is $2$, not $0$. Only the lone constant $-7$ disappears.",
         }
       - {
           answer: "12*x^2 - 10*x + 2 - 7",
@@ -563,7 +563,7 @@ exercises:
         correct: false
         category: misapplied_technique
         feedback: "The power goes down by one, not up."
-    solution: "Power rule: bring the 3 down and lower the power to 2, so $(x^3)' = 3x^2$."
+    solution: "Power rule: bring the $3$ down and lower the power to $2$, so $(x^3)' = 3x^2$."
   - id: derp-constant-term
     dimension: conceptual
     type: expression
@@ -576,10 +576,10 @@ exercises:
     common_wrong:
       - answer: "2*x + 10"
         category: misunderstood_definition
-        feedback: "Differentiation measures how the output changes with $x$. The added 10 stays fixed, so it contributes 0."
+        feedback: "Differentiation measures how the output changes with $x$. The added $10$ stays fixed, so it contributes $0$."
       - answer: "2*x + 1"
         category: misapplied_technique
-        feedback: "The constant 10 is not $10x$ or $x$. It doesn't change with $x$, so its derivative is 0."
+        feedback: "The constant $10$ is not $10x$ or $x$. It doesn't change with $x$, so its derivative is $0$."
       - answer: "20*x"
         category: misunderstood_definition
         feedback: "The expression adds 10. It does not multiply $x^2$ by 10. Each term is differentiated separately."
@@ -660,7 +660,7 @@ exercises:
     prompt: "Why is the slope of $f(x) = e^x$ at any point equal to the function's value there?"
     options:
       - id: a
-        text: "Base $e$ makes the slope at 0 exactly 1, and near any $x$ the curve is that piece stretched by $e^x$"
+        text: "Base $e$ makes the slope at $0$ exactly $1$, and near any $x$ the curve is that piece stretched by $e^x$"
         correct: true
         feedback: "Since $e^{x+h} = e^x e^h$, the slope at $x$ is $e^x$ times the slope at 0, which is 1."
       - id: b
@@ -704,7 +704,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "A logarithm undoes a power, not a multiplication."
-    solution: "$\\ln 20$ is the power of $e$ that gives 20, so $e^3 \\approx 20$ (in fact $e^3 \\approx 20.09$)."
+    solution: "$\\ln 20$ is the power of $e$ that gives $20$, so $e^3 \\approx 20$ (in fact $e^3 \\approx 20.09$)."
   - id: derp-tank-level
     dimension: math
     type: expression
@@ -718,9 +718,9 @@ exercises:
       - {
           answer: "10 - 2/t",
           category: misunderstood_definition,
-          feedback: "The constant 10 never changes, so its derivative is 0.",
+          feedback: "The constant $10$ never changes, so its derivative is $0$.",
         }
-    solution: "The 10 contributes 0 and $-2\\ln t \\to -\\frac2t$, so $L'(t) = -\\frac2t$. The level falls, and more slowly as time goes on."
+    solution: "The $10$ contributes $0$ and $-2\\ln t \\to -\\frac2t$, so $L'(t) = -\\frac2t$. The level falls, and more slowly as time goes on."
   - id: derp-product-expr
     dimension: math
     type: expression
@@ -831,7 +831,7 @@ exercises:
         text: "$5x^3$"
         correct: false
         category: misapplied_technique
-        feedback: "The 5 is a constant, so the constant-multiple rule is enough: $15x^2$."
+        feedback: "The $5$ is a constant, so the constant-multiple rule is enough: $15x^2$."
       - id: c
         text: "$x^3 + e^x$"
         correct: false
@@ -958,7 +958,7 @@ exercises:
           feedback: "That is where $\\ln w = 0$. Set the derivative $L'(w) = 1 - 4/w$ to zero instead.",
         }
     hints:
-      - "The derivative of $w$ is 1 and the derivative of $\\ln w$ is $1/w$."
+      - "The derivative of $w$ is $1$ and the derivative of $\\ln w$ is $1/w$."
       - "Set $1 - 4/w = 0$ and solve for $w$."
     solution: |
       Differentiate each term:
@@ -981,12 +981,12 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "In this step, why do we work out the car's average speed over 1, 0.1 and 0.01 seconds instead of stopping at the 1-second average?"
+    prompt: "In this step, why do we work out the car's average speed over $1$, $0.1$ and $0.01$ seconds instead of stopping at the $1$-second average?"
     options:
       - id: a
-        text: "The 1-second average also counts how the speed changed later; shorter steps get closer to the speed at exactly $t = 3$."
+        text: "The $1$-second average also counts how the speed changed later; shorter steps get closer to the speed at exactly $t = 3$."
         correct: true
-        feedback: "Each shorter step measures less of the later speeding up, so the averages 7, 6.1, 6.01 close in on 6."
+        feedback: "Each shorter step measures less of the later speeding up, so the averages $7$, $6.1$, $6.01$ close in on $6$."
       - id: b
         text: "The 1-second step gives the wrong distance, so its average speed of 7 cannot be trusted."
         correct: false
@@ -1002,7 +1002,7 @@ exercises:
         correct: false
         category: misapplied_technique
         feedback: "The steps are not averaged together; the answer is the value the average slope approaches as the step shrinks."
-    solution: "The average over a long step mixes in the speed at later times. As the step shrinks, the average speed (7, 6.1, 6.01) approaches the speed at the instant $t = 3$, which is 6 m/s."
+    solution: "The average over a long step mixes in the speed at later times. As the step shrinks, the average speed ($7$, $6.1$, $6.01$) approaches the speed at the instant $t = 3$, which is $6$ m/s."
   - id: derp-why-keep-constant
     lesson_only: true
     dimension: conceptual
@@ -1017,7 +1017,7 @@ exercises:
         correct: true
         feedback: "A number multiplying a function multiplies its slope: $3 \\cdot 2x = 6x$."
       - id: b
-        text: "The power rule brings down the 3 in front instead of the power 2, giving $3 \\cdot 2x$."
+        text: "The power rule brings down the $3$ in front instead of the power $2$, giving $3 \\cdot 2x$."
         correct: false
         category: misapplied_technique
         feedback: "The power rule brings down the power 2. The 3 stays in front because a number multiplying a function multiplies its slope."
@@ -1025,13 +1025,13 @@ exercises:
         text: "The 3 is added to the power first, so the power becomes 5 before the rule is applied."
         correct: false
         category: misapplied_technique
-        feedback: "A multiplier does not change the power. $3x^2$ is 3 times $x^2$, and its slope is 3 times $2x$."
+        feedback: "A multiplier does not change the power. $3x^2$ is $3$ times $x^2$, and its slope is $3$ times $2x$."
       - id: d
         text: "Constants always disappear, so the 6 comes from doubling the 3 left over in front."
         correct: false
         category: misunderstood_definition
         feedback: "Only an added constant disappears. A multiplied constant stays and multiplies the slope."
-    solution: "$3x^2$ is 3 times $x^2$. Tripling every height triples every slope, so $(3x^2)' = 3 \\cdot 2x = 6x$."
+    solution: "$3x^2$ is $3$ times $x^2$. Tripling every height triples every slope, so $(3x^2)' = 3 \\cdot 2x = 6x$."
   - id: derp-why-six-over-x
     lesson_only: true
     dimension: conceptual
@@ -1042,21 +1042,21 @@ exercises:
     prompt: "In the worked example, why is the slope of $6\\ln x$ at $x = 2$ equal to 3?"
     options:
       - id: a
-        text: "The slope of $\\ln x$ is $\\frac1x$, which is $\\frac12$ at $x = 2$, and the 6 in front multiplies it."
+        text: "The slope of $\\ln x$ is $\\frac1x$, which is $\\frac12$ at $x = 2$, and the $6$ in front multiplies it."
         correct: true
         feedback: "Numbers multiply slopes, so $6 \\cdot \\frac12 = 3$."
       - id: b
-        text: "The power rule on $\\ln x$ brings down a 1, so the slope is $6 \\div 2$ from the input alone."
+        text: "The power rule on $\\ln x$ brings down a $1$, so the slope is $6 \\div 2$ from the input alone."
         correct: false
         category: misapplied_technique
-        feedback: "$\\ln x$ is not a power of $x$. Its own rule gives slope $\\frac1x$, and the 6 multiplies that."
+        feedback: "$\\ln x$ is not a power of $x$. Its own rule gives slope $\\frac1x$, and the $6$ multiplies that."
       - id: c
-        text: "The value $\\ln 2$ is about 0.69, and six times that rounds to the slope 3."
+        text: "The value $\\ln 2$ is about $0.69$, and $6$ times that rounds to the slope $3$."
         correct: false
         category: misunderstood_definition
         feedback: "$6\\ln 2 \\approx 4.16$ is the height of the term at $x = 2$, not its slope."
       - id: d
-        text: "The slope of $\\ln x$ equals its input, so at $x = 2$ it is 2 and the term adds 1."
+        text: "The slope of $\\ln x$ equals its input, so at $x = 2$ it is $2$ and the term adds $1$."
         correct: false
         category: recall_failure
         feedback: "The slope of $\\ln x$ is $\\frac1x$, which shrinks as $x$ grows, so at $x = 2$ it is $\\frac12$."
@@ -1079,7 +1079,7 @@ exercises:
       - {
           answer: -2,
           category: recall_failure,
-          feedback: "The slope of $3e^x$ is $3e^x$, which is 3 at $x = 0$, not 0.",
+          feedback: "The slope of $3e^x$ is $3e^x$, which is $3$ at $x = 0$, not $0$.",
         }
     hints: ["$(e^x)' = e^x$, and $e^0 = 1$."]
     solution: "$f'(x) = 3e^x - 2$, so $f'(0) = 3 \\cdot 1 - 2 = 1$."
@@ -1093,14 +1093,14 @@ exercises:
     prompt: "In the worked example, why is $f'(1)$ the sum of two parts, $2$ and $6$?"
     options:
       - id: a
-        text: "Both parts change with $x$; 2 is the change from $u$ times $v$, and 6 is $u$ times the change from $v$."
+        text: "Both parts change with $x$; $2$ is the change from $u$ times $v$, and $6$ is $u$ times the change from $v$."
         correct: true
         feedback: "Those are the two strips of the rectangle: $u'v = 2 \\cdot 1$ and $uv' = 2 \\cdot 3$."
       - id: b
         text: "The two parts are the slopes of $u$ and $v$ at $x = 1$, which are added together."
         correct: false
         category: misunderstood_definition
-        feedback: "The slopes are $u' = 2$ and $v' = 3$, which add to 5, not 8. Each term of the rule mixes one slope with the other part's value."
+        feedback: "The slopes are $u' = 2$ and $v' = 3$, which add to $5$, not $8$. Each term of the rule mixes one slope with the other part's value."
       - id: c
         text: "The two parts are the values of $u$ and $v$ at $x = 1$, which are added together."
         correct: false
@@ -1118,28 +1118,28 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "For $f(x) = x^2$, we know $f(3) = 9$ and $f'(3) = 6$. Estimating $f(5)$ as $9 + 6 \\times 2$ gives 21, but in fact $f(5) = 25$. Why is the estimate so far off?"
+    prompt: "For $f(x) = x^2$, we know $f(3) = 9$ and $f'(3) = 6$. Estimating $f(5)$ as $9 + 6 \\times 2$ gives $21$, but in fact $f(5) = 25$. Why is the estimate so far off?"
     options:
       - id: a
         text: "The estimate assumes the slope stays 6 all the way, but the curve gets steeper, so it only works for small nudges."
         correct: true
         feedback: "The slope at 3 describes the curve only near 3. Over a nudge of 2 the curve bends away from its tangent."
       - id: b
-        text: "The slope at $x = 3$ is really 8, so the estimate used the wrong derivative from the very start."
+        text: "The slope at $x = 3$ is really $8$, so the estimate used the wrong derivative from the very start."
         correct: false
         category: recall_failure
-        feedback: "The slope of $x^2$ is $2x$, which is 6 at $x = 3$. The derivative is right; the nudge is too big."
+        feedback: "The slope of $x^2$ is $2x$, which is $6$ at $x = 3$. The derivative is right; the nudge is too big."
       - id: c
         text: "The estimate should subtract the slope times the nudge, because the output always falls as we move."
         correct: false
         category: incorrect_reasoning
         feedback: "A positive slope means the output rises as the input rises, so adding is right. Subtracting gives 3, even further off."
       - id: d
-        text: "The estimate should use the slope at $x = 5$, which is 10, because that is where we want the answer."
+        text: "The estimate should use the slope at $x = 5$, which is $10$, because that is where we want the answer."
         correct: false
         category: misapplied_technique
         feedback: "That gives $9 + 10 \\times 2 = 29$, which is off the other way. No single slope is right over such a big nudge."
-    solution: "The estimate $f(a + h) \\approx f(a) + f'(a)\\,h$ treats the curve as its tangent line. For $x^2$ the slope grows from 6 to 10 between 3 and 5, so over a nudge of 2 the tangent falls 4 short. For small nudges, like 0.1, the estimate is close."
+    solution: "The estimate $f(a + h) \\approx f(a) + f'(a)\\,h$ treats the curve as its tangent line. For $x^2$ the slope grows from $6$ to $10$ between $3$ and $5$, so over a nudge of $2$ the tangent falls $4$ short. For small nudges, like $0.1$, the estimate is close."
   - id: der-recall-instant-say
     dimension: conceptual
     type: explain

@@ -218,7 +218,7 @@ exercises:
     prompt: In the worked example, why does the weight $0.006$ come back as $0.01$?
     options:
       - id: a
-        text: $0.006/0.01=0.6$ rounds to the integer 1, and dequantising gives $1\times0.01=0.01$.
+        text: $0.006/0.01=0.6$ rounds to the integer $1$, and dequantising gives $1\times0.01=0.01$.
         correct: true
         feedback: The storable values are steps of $0.01$, and $0.01$ is the nearest one to $0.006$.
       - id: b
@@ -715,7 +715,7 @@ exercises:
         category: incorrect_reasoning
         feedback: The loss is an average over ordinary text. The coding test measures the skill these users need, and it fell sharply.
       - id: c
-        text: A loss rise of $0.01$ multiplies the perplexity by 10, which explains the drop in coding.
+        text: A loss rise of $0.01$ multiplies the perplexity by $10$, which explains the drop in coding.
         correct: false
         category: math_error
         feedback: Perplexity grows by a factor of $e^{0.01}\approx1.01$, about 1%.
