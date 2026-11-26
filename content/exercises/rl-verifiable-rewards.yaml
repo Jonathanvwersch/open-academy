@@ -1312,7 +1312,7 @@ exercises:
   - id: rlvr2-test-text-match
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 1
     est_minutes: 1
     prompt: 'A reward checker extracts the final `Answer:` line and removes spaces around the answer and trailing periods. A colleague proposes converting the extracted text to an integer before comparing it with the reference `"9"`. Which pair of replies would get different rewards from each other with exact text comparison, but the same reward as each other with integer comparison?'

@@ -823,7 +823,7 @@ exercises:
   - id: alm-code-target-offset
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 1
     est_minutes: 1
     prompt: "`tokens` is the full training sequence as a Python list, and `inputs = tokens[:-1]`. Which assignment makes `targets[t]` the right label for the prediction at `inputs[t]`?"
@@ -844,7 +844,7 @@ exercises:
   - id: alm-code-sample-boundary
     dimension: implementation
     type: code_read
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 1
     prompt: "The code samples the next token using a fixed draw `u`. Which word does `sample` return?"
@@ -863,7 +863,7 @@ exercises:
   - id: alm-code-refresh-prefix
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 3
     est_minutes: 1
     prompt: |

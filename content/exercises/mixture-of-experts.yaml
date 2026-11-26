@@ -533,7 +533,7 @@ exercises:
   - id: moe-route-excluded-weight
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 1
     est_minutes: 1
     prompt: "A top-2 router assigns four experts probabilities $0.1$, $0.3$, $0.4$ and $0.2$, in order. What weight does expert 4 have in the final mixture?"
@@ -543,7 +543,7 @@ exercises:
   - id: moe-route-rescaled-output
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 1
     prompt: "A top-2 router assigns probabilities $0.2$, $0.3$ and $0.5$ to three experts. Their one-component outputs would be $20$, $8$ and $4$, respectively. The router rescales the selected weights to sum to $1$. What is the layer's output?"
@@ -553,7 +553,7 @@ exercises:
   - id: moe-count-infer-top-k
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 3
     est_minutes: 1
     prompt: "An expert layer has five experts of 12 parameters each. Its bias-free router reads a width-2 vector and scores all five experts. For one token, the layer uses 46 active parameters, including the router. How many experts run for the token?"
@@ -563,7 +563,7 @@ exercises:
   - id: moe-balance-mixed-batch
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 3
     est_minutes: 1
     prompt: "A top-1 layer has two experts and a batch of four tokens. For the first three tokens the router gives expert 1 probability $0.75$; for the fourth it gives expert 1 probability $0.25$. Each token's remaining probability goes to expert 2. What is the batch's load-balancing loss $L_{\\text{aux}}$?"

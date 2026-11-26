@@ -663,7 +663,7 @@ exercises:
   - id: attn-recover-weight
     dimension: math
     type: numeric
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 1
     prompt: "Two sources have one-component values $2$ and $10$. Their attention output is $8$. What attention weight did the source with value $10$ receive?"
@@ -673,7 +673,7 @@ exercises:
   - id: attn-code-scale-width
     dimension: implementation
     type: code_read
-    role: practice
+    role: review
     difficulty: 1
     est_minutes: 1
     prompt: "What numeric divisor belongs in place of `scale` to compute a scaled attention score for these inputs?"
@@ -688,7 +688,7 @@ exercises:
   - id: attn-code-query-pair
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 1
     prompt: "`queries` and `keys` hold the query and key vectors by token position. The code fills `scores[t][j]` for output position `t` and source position `j`. The function `dot` computes a dot product, and `scale` holds the square root of the key width. Which line assigns the scaled attention score?"
@@ -709,7 +709,7 @@ exercises:
   - id: attn-code-softmax-axis
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 1
     prompt: "In a self-attention implementation, `scores[t][j]` holds the score from query position `t` to source position `j`. The function `softmax` takes a list of scores and returns their weights in order. Which Python expression supplies the scores for query position `t`?"
@@ -730,7 +730,7 @@ exercises:
   - id: attn-code-value-array
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 1
     est_minutes: 1
     prompt: "For one query, `weights[j]` is the attention weight for source `j`. The `keys`, `queries`, and `values` lists contain the corresponding vectors. Which Python expression computes the first component of the attention output?"
@@ -751,7 +751,7 @@ exercises:
   - id: attn-code-output-width
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 3
     est_minutes: 1
     prompt: "An attention function creates the output with `out = [0] * len(query)`. It then loops over the components of each value vector and adds each weighted component to the matching entry in `out`. Which input will make the function try to write beyond the end of `out`?"

@@ -607,7 +607,7 @@ exercises:
   - id: cm-code-block-predicate
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 1
     prompt: "A loop visits row `t` and column `j` of an attention score grid. The row is the token making the prediction, and the column is the token it might read. Both indices start at zero. Which Python condition should trigger replacement of the score by negative infinity for a causal mask?"
@@ -628,7 +628,7 @@ exercises:
   - id: cm-code-score-overwrite
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 1
     prompt: "This code builds a new causal score row with `[s if j <= t else 0 for j, s in enumerate(scores)]` and then applies softmax to it. `enumerate(scores)` pairs each source's zero-based index `j` with its original score `s`. Which replacement for the `0` keeps the allowed weights normalized and gives later sources zero weight?"
@@ -649,7 +649,7 @@ exercises:
   - id: cm-code-output-invariance
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 3
     est_minutes: 1
     prompt: "You are testing one causal attention layer on a four-token input. In a second run you change only the value vector at source position 3 (positions start at 1). All scores and other value vectors stay fixed. Which test checks the full set of output positions that must stay unchanged because position 3 is hidden from them?"

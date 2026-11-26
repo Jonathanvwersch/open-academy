@@ -1006,7 +1006,7 @@ exercises:
   - id: tbp-code-mlp-input
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 1
     est_minutes: 1
     prompt: "A transformer block without LayerNorm has just computed `u = add(x, attn(x))`. Here `add` adds token vectors component by component, and `mlp` applies the MLP separately to each token. Which Python line should finish the block?"
@@ -1027,7 +1027,7 @@ exercises:
   - id: tbp-code-prenorm-shortcut
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 1
     prompt: "In a pre-norm block, `x` holds the input token vectors and `z = norm(x)` holds their LayerNorm copies. `attn` produces an update for each token, and `add` adds matching components. Which line should compute the vectors just after the attention shortcut?"
@@ -1048,7 +1048,7 @@ exercises:
   - id: tbp-code-stack-flow
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 2
     est_minutes: 1
     prompt: "In a pre-norm model, `first` and `second` are two transformer blocks in that order, each with its own LayerNorms. The model also has a final LayerNorm called `norm` and a function `score` that maps token vectors to next-token scores. Which Python expression computes the scores from input vectors `x`?"
@@ -1069,7 +1069,7 @@ exercises:
   - id: tbp-code-postnorm-placement
     dimension: implementation
     type: mc
-    role: practice
+    role: review
     difficulty: 3
     est_minutes: 1
     prompt: "You are changing the MLP half of a transformer block from pre-norm to post-norm. The attention half already produced `u`. Here `norm` is LayerNorm, `mlp` works on each token separately, and `add` adds matching components. Which replacement implements the MLP half of a post-norm block?"
