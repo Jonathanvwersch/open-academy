@@ -141,7 +141,7 @@ knowledge_points:
 
       Scan columns from left to right. Use a nonzero entry as a **pivot** to clear the entries below it. After each pivot, look only in the rows below it. Skip a column if all those rows have zero there. Swap rows if needed to bring the pivot to the first unused row.
 
-      A column without a pivot is a linear combination of earlier pivot columns. Its entries below those pivots are zero. Match its remaining entries from the lowest pivot upwards, fixing one multiplier per row. Undoing elimination keeps the same combination in the original matrix.
+      A column without a pivot is a linear combination of earlier pivot columns. After elimination it's zero below the last earlier pivot, or entirely zero if none precedes it. Match its entries from that pivot upwards, one multiplier per row. Undoing elimination preserves the combination.
 
       In the example below, columns 1 and 2 have pivots. To make zero with those columns, row 2 forces the multiplier of column 2 to be zero, then row 1 forces the other multiplier to be zero. So the pivot columns are independent, while column 3 is their sum.
 
