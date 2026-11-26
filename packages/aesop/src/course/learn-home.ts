@@ -391,10 +391,7 @@ export async function getLearnHome(store: CourseStore, input: CourseReadInput) {
     .map((activity) => activity.id);
   const attemptedExerciseIdsByActivity = inProgressReviewActivityIds.length
     ? groupAttemptedExerciseIdsByActivity(
-        await store.listAttempts(userId, {
-          activityIds: inProgressReviewActivityIds,
-          order: 'unordered',
-        }),
+        await store.listActivityAttemptKeys(userId, inProgressReviewActivityIds),
       )
     : new Map<string, Set<string>>();
   const activeSessionId =

@@ -13,7 +13,7 @@ import {
 } from '@academy/aesop/planner/session-state';
 import type { Enrollment } from '@academy/aesop/store/core-store';
 import type { Session } from '@academy/aesop/store/session-store';
-import { and, asc, desc, eq, inArray, isNull, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, lt } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Database } from './client.js';
 import { drizzleLearnerStore } from './learner-store.js';
@@ -181,11 +181,7 @@ export class LearnerRepository {
   }
 
   async attemptedExerciseIdsByActivity(activityIds: readonly string[]) {
-    if (activityIds.length === 0) return new Map<string, Set<string>>();
-    const rows = await this.db
-      .select({ activityId: attempts.activityId, exerciseId: attempts.exerciseId })
-      .from(attempts)
-      .where(and(eq(attempts.userId, this.userId), inArray(attempts.activityId, activityIds)));
+    const rows = await drizzleLearnerStore(this.db).listActivityAttemptKeys(this.userId, activityIds);
     return groupAttemptedExerciseIdsByActivity(rows);
   }
 

@@ -379,6 +379,14 @@ function scopedStore(
       rows.sort((left, right) => compareAttempts(query.order, left, right));
       return structuredClone(query.limit === undefined ? rows : rows.slice(0, query.limit));
     },
+    async listActivityAttemptKeys(learnerId, activityIds) {
+      assertOpen();
+      if (!activityIds.length) return [];
+      const ids = new Set(activityIds);
+      return (data.learners.get(learnerId)?.attempts ?? [])
+        .filter(({ activityId }) => activityId !== null && ids.has(activityId))
+        .map(({ activityId, exerciseId }) => ({ activityId, exerciseId }));
+    },
     async insertAttempt(learnerId, attempt) {
       assertOpen();
       if (

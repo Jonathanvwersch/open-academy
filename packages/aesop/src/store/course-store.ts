@@ -18,6 +18,10 @@ export interface CourseStore extends FlowStore {
   listProjectProgress(learnerId: Id): Promise<CourseProjectProgress[]>;
   listPaperProgress(learnerId: Id): Promise<CoursePaperProgress[]>;
   listCompletedActivities(learnerId: Id): Promise<Activity[]>;
+  listActivityAttemptKeys(
+    learnerId: Id,
+    activityIds: readonly Id[],
+  ): Promise<Array<{ activityId: Id | null; exerciseId: Id }>>;
   listCourseLessonProblems(learnerId: Id, runIds: readonly Id[]): Promise<LessonProblem[]>;
   listCourseMasteryEvents(learnerId: Id, conceptIds: readonly Id[]): Promise<CourseMasteryEvent[]>;
   listDueReviewConcepts(learnerId: Id, before: Date): Promise<Id[]>;

@@ -1118,6 +1118,10 @@ export function describeLearnerStoreContract(
         await store.listAttempts(learnerId, { ...query, since: later, through: undefined }),
       ).toEqual([]);
       expect(await store.listAttempts(learnerId, { ...query, exerciseIds: ['other'] })).toEqual([]);
+      expect(await store.listActivityAttemptKeys(learnerId, [activityId])).toEqual([
+        { activityId, exerciseId },
+      ]);
+      expect(await store.listActivityAttemptKeys(learnerId, [])).toEqual([]);
     });
 
     it('uses each historical attempt order', async () => {

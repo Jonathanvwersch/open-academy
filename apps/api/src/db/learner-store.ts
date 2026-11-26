@@ -272,6 +272,13 @@ export function drizzleLearnerStore(
         .orderBy(...attemptOrder(query.order));
       return query.limit === undefined ? rows : rows.limit(query.limit);
     },
+    async listActivityAttemptKeys(learnerId, activityIds) {
+      if (!activityIds.length) return [];
+      return db
+        .select({ activityId: attempts.activityId, exerciseId: attempts.exerciseId })
+        .from(attempts)
+        .where(and(eq(attempts.userId, learnerId), inArray(attempts.activityId, activityIds)));
+    },
     async insertAttempt(learnerId, attempt) {
       const [row] = await db
         .insert(attempts)
