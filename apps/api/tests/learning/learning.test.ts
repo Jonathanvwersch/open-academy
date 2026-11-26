@@ -2724,6 +2724,50 @@ test('due reviews use the last attempt even after 120 answers on other exercises
   expect(review(await state())?.exerciseIds).toEqual([c.id, a.id, b.id]);
 });
 
+test('spaced reviews cycle through review and practice questions with eight-day gaps', () => {
+  const example = required(content.exercisesById.get('vectors-magnitude'), 'vectors exercise');
+  const exercises = [
+    { ...example, id: 'vectors-review-a', role: 'review' as const },
+    { ...example, id: 'vectors-review-b', role: 'review' as const },
+    { ...example, id: 'vectors-practice-a', role: 'practice' as const },
+    { ...example, id: 'vectors-practice-b', role: 'practice' as const },
+    { ...example, id: 'vectors-practice-c', role: 'practice' as const },
+  ];
+  const reviewContent: ContentIndex = {
+    ...content,
+    exercisesByConcept: new Map(content.exercisesByConcept).set(
+      'vectors',
+      [...exercises].reverse(),
+    ),
+    exercisesById: new Map([
+      ...content.exercisesById,
+      ...exercises.map((item) => [item.id, item] as const),
+    ]),
+  };
+  const state = emptyState();
+  const lastSeen = new Map<string, number>();
+  state.exerciseLastSeen = lastSeen;
+  const selected = Array.from({ length: 6 }, (_, n) => {
+    const date = new Date(now.getTime() + n * 8 * 86_400_000);
+    const review = buildReviewActivityForConcept(
+      state,
+      reviewContent,
+      date,
+      'vectors',
+      ['math', 'conceptual', 'transfer'].map((dimension) => ({
+        conceptId: 'vectors',
+        dimension,
+        dueAt: date.toISOString(),
+      })),
+    );
+    expect(review?.exerciseIds).toHaveLength(1);
+    const id = required(review?.exerciseIds[0], 'selected review question');
+    lastSeen.set(id, date.getTime());
+    return id;
+  });
+  expect(selected).toEqual([...exercises.map(({ id }) => id), exercises[0]?.id]);
+});
+
 test('due reviews can select a basics exercise', () => {
   const basics = required(
     (content.exercisesByConcept.get('vectors') ?? []).find(

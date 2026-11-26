@@ -59,6 +59,8 @@ export const SCHEDULER_CONFIG = {
 } as const;
 
 const RETRY_OVERDUE_DAYS = 2;
+const REVIEW_ROLES = ['review', 'core', 'practice', 'transfer', 'basics'] as const;
+const INDEPENDENT_REVIEW_ROLES = ['transfer', 'review', 'core', 'practice', 'basics'] as const;
 
 export interface PriorityTerms {
   goal: number;
@@ -1872,7 +1874,14 @@ function generateCandidates(
       });
       const exercise = hasKnowledgePointLesson
         ? content.exercisesById.get(content.lessonsByConcept.get(concept.id)?.final ?? '')
-        : chooseExercise(state, content, concept, dimension, ['core', 'check'], recentIds);
+        : chooseExercise(state, content, concept, dimension, recentIds, {
+            roles: ['core', 'check'],
+            eligible: (exercise) =>
+              (exercise.role === 'core' || exercise.role === 'check') &&
+              !exercise.lesson_only &&
+              !isTemplate(exercise),
+            strict: true,
+          });
       if (exercise) {
         candidates.push(
           makeCandidate(
@@ -1995,6 +2004,7 @@ function buildReviewCandidateForConcept(
   recentIds: Set<string>,
   candidates: Candidate[],
   reviewSelectionTrace?: ReviewSelectionTrace,
+  preferBasics = false,
 ): Candidate | undefined {
   const concept = content.conceptsById.get(conceptId);
   if (!concept) return undefined;
@@ -2071,9 +2081,10 @@ function buildReviewCandidateForConcept(
   for (const card of dueCards) {
     const record = masteryByKey.get(masteryKey(card.conceptId, card.dimension));
     const isIndependent = record && masteryRank(record.state) >= masteryRank('independent');
-    const reviewRoles = isIndependent
-      ? ['transfer', 'review', 'core', 'practice', 'basics']
-      : ['review', 'core', 'practice', 'transfer', 'basics'];
+    const reviewRoles = isIndependent ? INDEPENDENT_REVIEW_ROLES : REVIEW_ROLES;
+    const roles = preferBasics
+      ? ['basics', ...reviewRoles.filter((role) => role !== 'basics')]
+      : reviewRoles;
     const exercises: IndexedExercise[] = [];
     while (exercises.length < perDimension) {
       const exercise = chooseExercise(
@@ -2081,8 +2092,12 @@ function buildReviewCandidateForConcept(
         content,
         concept,
         card.dimension,
-        reviewRoles,
         recentIds,
+        {
+          roles,
+          eligible: isReviewPoolExercise,
+          strict: preferBasics,
+        },
       );
       if (!exercise) break;
       usedExerciseIds.add(exercise.id);
@@ -2198,6 +2213,7 @@ export function buildReviewActivityForConcept(
   now: Date,
   conceptId: string,
   dueCardsOverride?: SchedulerState['cards'],
+  { preferBasics = false }: { preferBasics?: boolean } = {},
 ): PlannedActivity | undefined {
   const dueCardState = dueCardsOverride ? { ...state, cards: dueCardsOverride } : state;
   const courseContexts = schedulerCourseContexts(state, content);
@@ -2229,6 +2245,8 @@ export function buildReviewActivityForConcept(
     masteryByKey,
     recentIds,
     [],
+    undefined,
+    preferBasics,
   )?.activity;
 }
 
@@ -2251,6 +2269,7 @@ export function buildRemedialReviewActivityForConcept(
     now,
     conceptId,
     dueCards,
+    { preferBasics: true },
   );
 }
 
@@ -2346,38 +2365,48 @@ function candidateSummary(
     : `${kind === 'learn' ? 'Learn' : 'Practice'} ${concept.title}.`;
 }
 
+function isReviewPoolExercise(exercise: IndexedExercise): boolean {
+  return (
+    REVIEW_ROLES.some((role) => role === exercise.role) &&
+    !exercise.lesson_only &&
+    !isTemplate(exercise)
+  );
+}
+
 function chooseExercise(
   state: SchedulerState,
   content: ContentIndex,
   concept: IndexedConcept,
   dimension: string | undefined,
-  preferredRoles: string[],
   recent: Set<string>,
+  {
+    roles,
+    eligible,
+    strict,
+  }: {
+    roles: readonly string[];
+    eligible: (exercise: IndexedExercise) => boolean;
+    strict: boolean;
+  },
 ): IndexedExercise | undefined {
   const used = new Set(state.usedExerciseIds ?? []);
   const pool = (content.exercisesByConcept.get(concept.id) ?? []).filter(
     (exercise) =>
       (!dimension || exercise.dimension === dimension) &&
       !used.has(exercise.id) &&
-      !isTemplate(exercise) &&
-      !exercise.lesson_only,
+      eligible(exercise),
   );
   const lastSeen = (id: string) => state.exerciseLastSeen.get(id) ?? Number.MIN_SAFE_INTEGER;
-  const leastRecentlySeen = (exercises: IndexedExercise[]) =>
-    exercises.sort(
-      (left, right) =>
-        lastSeen(left.id) - lastSeen(right.id) ||
-        (left.id === right.id ? 0 : left.id < right.id ? -1 : 1),
-    )[0];
-  for (const role of preferredRoles) {
-    const fresh = pool.filter((exercise) => exercise.role === role && !recent.has(exercise.id));
-    if (fresh.length > 0) return leastRecentlySeen(fresh);
-  }
-  for (const role of preferredRoles) {
-    const matching = pool.filter((exercise) => exercise.role === role);
-    if (matching.length > 0) return leastRecentlySeen(matching);
-  }
-  return undefined;
+  return pool.sort((left, right) => {
+    const roleOrder = roles.indexOf(left.role) - roles.indexOf(right.role);
+    return (
+      Number(recent.has(left.id)) - Number(recent.has(right.id)) ||
+      (strict ? roleOrder : 0) ||
+      lastSeen(left.id) - lastSeen(right.id) ||
+      roleOrder ||
+      (left.id === right.id ? 0 : left.id < right.id ? -1 : 1)
+    );
+  })[0];
 }
 
 function optionalProjectAndPaperActivities(

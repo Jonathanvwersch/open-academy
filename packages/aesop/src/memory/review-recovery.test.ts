@@ -58,6 +58,7 @@ async function reviewFixture() {
       )
       .map((log) => log.conceptId),
     recentAttempts: [],
+    exerciseLastSeen: new Map(),
     remediationFlags: [],
     projectProgress: [],
     completedPaperIds: [],
