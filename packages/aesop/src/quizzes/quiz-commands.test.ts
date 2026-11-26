@@ -5,7 +5,7 @@ import { loadContentFromDirectory } from '../course/load.js';
 import { activityRow, sessionRow } from '../store/learner-store.contract.js';
 import { memoryStore } from '../store/memory-store.js';
 import type { QuizQuestion } from './mixed-quiz.js';
-import { answerQuiz, finalizeQuiz, startQuiz, startQuizRetake } from './quiz-commands.js';
+import { answerQuiz, finalizeQuiz, getQuiz, startQuiz, startQuizRetake } from './quiz-commands.js';
 import { quizOffer } from './quiz-offer.js';
 
 const learnerId = 'learner';
@@ -252,5 +252,132 @@ test.each([false, true])(
     });
     expect(replay).toEqual({ ...started, kind: 'ok' });
     expect(await store.listTimedQuizRuns(learnerId, { retakeOf: run.id })).toHaveLength(1);
+  },
+);
+
+test.each(['current item', 'stale submission', 'expiry', 'retake reserve'] as const)(
+  'does not use a deleted timed quiz question (%s)',
+  async (deleted) => {
+    const context = await runtime();
+    const store = memoryStore();
+    const [item, reserve, replacement] = ['vecp-entry', 'vecp-missing-move', 'vecp-subtract'].map(
+      (id): QuizQuestion => {
+        const exercise = context.content.exercisesById.get(id);
+        if (exercise?.type !== 'numeric') throw new Error(`Missing quiz fixture: ${id}`);
+        return { key: exercise.prompt, seed: 0, exercise };
+      },
+    );
+    const run = await store.insertTimedQuiz(
+      learnerId,
+      {
+        seed: 1,
+        difficulty: 2,
+        plannedMinutes: 1,
+        activityId: null,
+        retakeOf: null,
+        startedAt,
+        deadline,
+        finalizedAt: null,
+        score: null,
+        xpAwarded: null,
+      },
+      [
+        {
+          position: 0,
+          conceptId: item.exercise.concept,
+          question: item,
+          reserve,
+          answeredAt: null,
+          latencyMs: null,
+          submission: null,
+          correct: null,
+          followUp: false,
+          followUpActivityId: null,
+        },
+      ],
+    );
+    const before = await getQuiz(
+      store,
+      learnerId,
+      run.id,
+      async () => context.content,
+      () => startedAt,
+    );
+    expect(before).toMatchObject({
+      kind: 'ok',
+      body: { question: { exercise: { id: item.exercise.id } } },
+    });
+
+    const removed = deleted === 'retake reserve' ? reserve.exercise.id : item.exercise.id;
+    const keep = ({ id }: { id: string }) => id !== removed;
+    const revised = {
+      ...context.content,
+      exercisesById: new Map(
+        [...context.content.exercisesById].filter(([, exercise]) => keep(exercise)),
+      ),
+      exercisesByConcept: new Map(
+        [...context.content.exercisesByConcept].map(([id, exercises]) => [
+          id,
+          exercises.filter(keep),
+        ]),
+      ),
+      exercisesByRole: new Map(
+        [...context.content.exercisesByRole].map(([role, exercises]) => [
+          role,
+          exercises.filter(keep),
+        ]),
+      ),
+    };
+    expect(revised.exercisesById.has(replacement.exercise.id)).toBe(true);
+    if (deleted === 'current item') {
+      const recovered = await getQuiz(
+        store,
+        learnerId,
+        run.id,
+        async () => revised,
+        () => startedAt,
+      );
+      expect(recovered).toMatchObject({
+        kind: 'ok',
+        body: {
+          deadline: deadline.toISOString(),
+          question: { exercise: { id: expect.not.stringMatching(new RegExp(`^${removed}$`)) } },
+        },
+      });
+    } else if (deleted === 'stale submission') {
+      expect(
+        await answerQuiz(store, { ...context, content: revised }, run.id, {
+          position: 0,
+          answer: 0,
+        }),
+      ).toMatchObject({ kind: 'conflict' });
+      expect(await store.listTimedQuizItems(learnerId, [run.id])).toMatchObject([
+        { answeredAt: null, submission: null },
+      ]);
+    } else if (deleted === 'expiry') {
+      expect(
+        await finalizeQuiz(store, { ...context, content: revised, now: deadline }, run.id),
+      ).toMatchObject({ kind: 'ok', body: { result: { topics: [] } } });
+      expect(await store.listReviewLogs(learnerId, {})).toEqual([]);
+    } else {
+      expect(await finalizeQuiz(store, { ...context, now: deadline }, run.id)).toMatchObject({
+        kind: 'ok',
+        body: { result: { score: 0, retake: { eligible: false } } },
+      });
+      const session = await store.insertSession(learnerId, sessionRow(deadline));
+      const [review] = await store.insertActivities(learnerId, session.id, [
+        activityRow(0, { kind: 'review', status: 'completed' }),
+      ]);
+      await store.linkTimedQuizFollowUps(learnerId, [item.exercise.concept], review.id);
+      expect(
+        await startQuizRetake(store, { ...context, content: revised, now: deadline }, run.id),
+      ).toMatchObject({
+        kind: 'created',
+        body: {
+          retake: true,
+          question: { exercise: { id: expect.not.stringMatching(new RegExp(`^${removed}$`)) } },
+        },
+      });
+    }
   },
 );

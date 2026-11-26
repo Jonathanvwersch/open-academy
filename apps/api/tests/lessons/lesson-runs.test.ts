@@ -227,6 +227,25 @@ test('an entirely deleted quiz is restarted without recording a failed attempt',
   expect((await restarted.json()).run.quiz.current.items.length).toBeGreaterThan(0);
 });
 
+test('an answer graded before its lesson quiz question is deleted still records assessment evidence on submit', async () => {
+  await finishLessonSteps();
+  const { run } = await (await startQuiz()).json();
+  const [answered] = await answerQuizAttempt(run.quiz);
+  if (!answered) throw new Error('Expected an answered quiz item');
+  removeExercises([answered.exerciseId]);
+
+  const result = await submitQuiz();
+  expect(result.status).toBe(200);
+  expect((await result.json()).run.quiz.last).toMatchObject({ passed: true, score: 1 });
+  const evidence = await db
+    .select()
+    .from(attempts)
+    .where(and(eq(attempts.userId, userId), eq(attempts.mode, 'assessment')));
+  expect(evidence.filter((attempt) => attempt.exerciseId === answered.exerciseId)).toMatchObject([
+    { correct: 1, conceptId, answer: correctAnswer(answered.exerciseId, answered.seed) },
+  ]);
+});
+
 test('continuing a recovered review finalizes the surviving answers exactly once', async () => {
   const now = new Date(headers['X-Now']);
   const dueAt = new Date(now.getTime() - 86_400_000);
