@@ -77,7 +77,7 @@ knowledge_points:
 
       ### Lists of measurements
 
-      Components don't have to be distances. $(120,3,15)$ can describe a house with $120$ square metres, 3 bedrooms and an age of $15$ years. A list of measurements of one thing is a **feature vector**, and it's how a model receives an example. Just as $(3,4)$ is a point on a map with two directions, east and north, the house is a point in a space with three directions, one per measurement. Similar houses sit close together.
+      Components don't have to be distances. $(120,3,15)$ can describe a house with $120$ square metres, $3$ bedrooms and an age of $15$ years. A list of measurements of one thing is a **feature vector**, and it's how a model receives an example. Just as $(3,4)$ is a point on a map with two directions, east and north, the house is a point in a space with three directions, one per measurement. Similar houses sit close together.
 
       We write a vector with $n$ components as $x=(x_1,x_2,\ldots,x_n)$, where $x_i$ is component number $i$. For the house, $n=3$ and $x_2=3$. Later lessons write $x\in\mathbb{R}^n$, read "x is in R n", to say $x$ is a list of $n$ numbers. Here $\mathbb{R}$ means all the numbers on the number line, and the $n$ above it counts the components.
     worked: |
