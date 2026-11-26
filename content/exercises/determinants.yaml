@@ -29,21 +29,21 @@ exercises:
     lesson_only: true
     difficulty: 2
     est_minutes: 2
-    prompt: The worked example clears entries using row additions. In a two-dimensional map, subtracting twice the first row from the second sends an output point with coordinates $(x,y)$ to one with coordinates $(x,y-2x)$. Why does this row addition leave the determinant unchanged?
+    prompt: In the worked example with the $2\times2$ matrix $B=\begin{bmatrix}2&1\\4&5\end{bmatrix}$, twice row 1 is subtracted from row 2. The map for that row addition takes a point with input coordinates $(x,y)$ to a point with output coordinates $(x,y-2x)$. Apply this map to the unit square whose bottom-left corner is at the origin and whose sides follow the coordinate axes. What happens to the length and spacing of its vertical sides, and to the square's orientation?
     options:
       - id: one-swap
-        text: It slides the picture while keeping its area and orientation.
+        text: Same length, same spacing, same orientation.
         correct: true
-        feedback: On a unit square with its left edge on the vertical axis, that edge is the fixed base. The right edge slides vertically, keeping its perpendicular distance from the base. The slide preserves area without reversing orientation.
+        feedback: The left edge stays fixed. Both endpoints of the right edge move down by 2, so its length stays the same. The horizontal spacing stays at 1, and the slide does not reverse orientation.
       - id: two-additions
-        text: It changes entries below the diagonal, which never affect the determinant.
+        text: Same length, same spacing, reversed orientation.
         correct: false
-        feedback: A row addition can change any entry in that row. Entries below the diagonal can affect the determinant too.
+        feedback: Subtracting twice the horizontal coordinate is not the same as negating the vertical coordinate. The top endpoint on each side stays above the bottom endpoint, and the right side stays to the right of the left side.
       - id: initial-zero
-        text: It keeps each row's sum fixed, which keeps the determinant unchanged.
+        text: Same length, wider spacing, same orientation.
         correct: false
-        feedback: Subtracting twice the first row generally changes the second row's sum. Row sums do not determine the determinant.
-    solution: Moving points vertically by an amount that depends on their horizontal coordinate slides the picture without changing its area or reversing its orientation. The signed area scale, which is the determinant in two dimensions, stays the same.
+        feedback: The endpoints of the top and bottom edges do get farther apart, but that is not the spacing between the vertical sides. Their horizontal coordinates are still 0 and 1.
+    solution: The vertical sides stay one unit long and one unit apart, so the resulting parallelogram has area 1. The right side moves down, not across the left side, and both sides still point up when read from bottom to top. The orientation stays the same, so the row addition preserves signed area and leaves the determinant unchanged.
   - id: det-pivots-triangular-template
     dimension: math
     type: numeric
