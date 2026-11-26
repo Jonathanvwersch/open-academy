@@ -27,6 +27,17 @@ import type {
   Session,
 } from './session-store.js';
 
+/** PostgreSQL `real` keeps single precision and reads back as the shortest decimal for it. */
+function postgresReal(value: number): number {
+  const single = Math.fround(value);
+  if (!Number.isFinite(single)) return single;
+  for (let digits = 1; digits <= 9; digits += 1) {
+    const candidate = Number(single.toPrecision(digits));
+    if (Math.fround(candidate) === single) return candidate;
+  }
+  return single;
+}
+
 export type MemoryLearnerStore = CourseStore & {
   addRemediationFlag(
     learnerId: string,
@@ -578,7 +589,12 @@ function scopedStore(
       const concepts = conceptIds && new Set(conceptIds);
       const records = [...(data.learners.get(learnerId)?.topicSpeed.values() ?? [])]
         .filter((record) => !concepts || concepts.has(record.conceptId))
-        .sort((left, right) => compare(left.conceptId, right.conceptId));
+        .sort((left, right) => compare(left.conceptId, right.conceptId))
+        .map((record) => ({
+          ...record,
+          successes: postgresReal(record.successes),
+          trials: postgresReal(record.trials),
+        }));
       return structuredClone(records);
     },
     async saveTopicSpeedEvidence(learnerId, record) {
@@ -922,7 +938,7 @@ function scopedStore(
           cardId,
           conceptId: card.conceptId,
           attemptId: log.attemptId ?? null,
-          speed: log.speed === undefined ? undefined : Math.fround(log.speed),
+          speed: log.speed === undefined ? undefined : postgresReal(log.speed),
         }),
       );
       markWrite(learnerId);

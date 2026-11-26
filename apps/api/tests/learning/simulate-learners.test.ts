@@ -5,6 +5,7 @@ import type { SchedulerState } from '@academy/aesop/planner/scheduler';
 import { eq } from 'drizzle-orm';
 import { type Card, Rating, State } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';
+import { directMemoryDriver } from '../../scripts/learner-simulation-direct-driver.js';
 import { httpPostgresDriver } from '../../scripts/learner-simulation-http-driver.js';
 import {
   lessonRunConceptsAtWithdrawal,
@@ -1382,7 +1383,7 @@ test('a simulated API 5xx retains the originating request and response', () => {
   expect(failure.message).toContain('request={"budgetMinutes":20}');
 });
 
-test('two profiles produce byte-identical 15-day simulation reports from the same seed', async () => {
+test('the HTTP driver and a second HTTP run match the direct driver over 15 days', async () => {
   const content = await loadContent();
   const options = {
     profiles: ['average', 'struggling'] as SimulationProfile[],
@@ -1391,6 +1392,7 @@ test('two profiles produce byte-identical 15-day simulation reports from the sam
   };
   const first = await simulateLearners(httpPostgresDriver(db), content, options);
   const second = await simulateLearners(httpPostgresDriver(db), content, options);
+  const direct = await simulateLearners(directMemoryDriver, content, options);
 
   for (const profile of first.profiles) {
     expect(
@@ -1410,7 +1412,10 @@ test('two profiles produce byte-identical 15-day simulation reports from the sam
   expect(JSON.stringify(stripWallClockFields(second))).toBe(
     JSON.stringify(stripWallClockFields(first)),
   );
-}, 120_000);
+  expect(JSON.stringify(stripWallClockFields(direct))).toBe(
+    JSON.stringify(stripWallClockFields(first)),
+  );
+}, 180_000);
 
 test('same-timestamp review logs exclude logs created by the lesson quiz', () => {
   const timestamp = new Date('2026-01-14T12:00:00.000Z');
