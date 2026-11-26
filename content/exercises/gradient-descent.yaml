@@ -1244,7 +1244,7 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 0.5
-    prompt: A model trains with gradient descent. Its loss stays high and falls only a little on each pass. Its weights and bias also change only a little. What could explain this?
+    prompt: A model trains with gradient descent. Its loss stays high and falls only a little on each update step. Its weights and bias also change only a little. What could explain this?
     options:
       - id: a
         text: A small learning rate or shallow slopes of the loss with respect to the weights and bias.
