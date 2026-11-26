@@ -20,7 +20,7 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: vectors }]
-    encompassings: [{ id: vectors, weight: 0.19 }]
+    encompassings: [{ id: vectors, weight: 0.17 }]
     objectives:
       - { text: "Compute a dot product and cosine similarity", dimension: math }
       - { text: "Explain a dot product as a similarity score", dimension: conceptual }
@@ -207,7 +207,7 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math]
     prereqs: [{ id: derivatives }, { id: partial-derivatives }]
-    encompassings: [{ id: derivatives, weight: 0.16 }, { id: partial-derivatives, weight: 0.16 }]
+    encompassings: [{ id: derivatives, weight: 0.15 }, { id: partial-derivatives, weight: 0.08 }]
     objectives:
       - { text: "Differentiate compositions with the chain rule", dimension: math }
       - { text: "Explain the chain rule as multiplying local sensitivities", dimension: conceptual }
@@ -233,7 +233,7 @@ concepts:
     dimensions: [conceptual, math]
     prereqs: [{ id: probability-basics }, { id: descriptive-statistics }]
     encompassings:
-      [{ id: probability-basics, weight: 0.1 }, { id: descriptive-statistics, weight: 0.07 }]
+      [{ id: probability-basics, weight: 0.07 }, { id: descriptive-statistics, weight: 0.08 }]
     objectives:
       - { text: "Relate mean and variance to the normal density", dimension: math }
     projects: [gaussian-mle]
@@ -279,7 +279,7 @@ concepts:
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: probability-basics }]
-    encompassings: [{ id: probability-basics, weight: 0.07 }]
+    encompassings: [{ id: probability-basics, weight: 0.05 }]
     objectives:
       - { text: "Compute the standard error of a mean or a success rate", dimension: math }
       - {
