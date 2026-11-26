@@ -246,7 +246,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: An autoencoder with a latent vector of $1$ number keeps the average of all four pixels and rebuilds every pixel as that average. What is $E$ for the stripe image $x=(0.9,0.9,0.1,0.1)$?
+    prompt:
+      An autoencoder with a one-number latent vector keeps the average of four pixels and rebuilds
+      every pixel as that average. For flattened pixel values $x=(0.9,0.9,0.1,0.1)$, what is the
+      reconstruction error $E$, the sum of squared pixel differences?
     answer: 0.64
     tolerance: { abs: 0.0001 }
     common_wrong:
@@ -310,7 +313,9 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: An autoencoder trained on a warehouse robot's ordinary camera frames usually gets a small $E$. One frame suddenly gets a large $E$. What's the best reading?
+    prompt:
+      An autoencoder trained on a warehouse robot's ordinary camera frames usually gets a small
+      reconstruction error $E$. One frame suddenly gets a large $E$. What's the best reading?
     options:
       - id: a
         text: The frame is unlike the training frames, so something unusual may be in view
@@ -330,7 +335,7 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: What does an autoencoder's compression factor $n/k$ tell us?
+    prompt: What does an autoencoder's compression factor tell us?
     options:
       - id: a
         text: How many input numbers there are for each latent number

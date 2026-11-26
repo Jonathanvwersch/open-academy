@@ -455,7 +455,9 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: A multiply is $y=Wx$, with $W=\begin{bmatrix}2&1\\0&3\end{bmatrix}$ and $x=(1,2)$. The rows are split over two GPUs, and GPU 2 holds the second row. What number does GPU 2 compute?
+    prompt: A layer computes the output vector $y=Wx$, with weight matrix
+      $W=\begin{bmatrix}2&1\\0&3\end{bmatrix}$ and input vector $x=(1,2)$. The weight rows are split over
+      two GPUs, and GPU 2 holds the second row. What number does GPU 2 compute?
     answer: 6
     tolerance:
       abs: 0.001

@@ -329,7 +329,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "With observed label 1, both $p=3/4$ and $p=1/2$ predict label 1 at threshold $1/2$. How do their losses compare?"
+    prompt: An example has observed label 1. Two classifiers give label 1 probabilities $p=3/4$ and
+      $p=1/2$, respectively. Both predict label 1 at threshold $1/2$. How do their binary cross-entropy
+      losses compare?
     options:
       - {
           id: a,
@@ -366,7 +368,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "A house sold ($y=1$), but the model gave it $p=0.01$. Why does binary cross-entropy punish this more than squared error would?"
+    prompt:
+      A house sold (observed label $y=1$), but the model gave it sale probability $p=0.01$. Why does
+      binary cross-entropy punish this more than squared error would?
     options:
       - {
           id: a,
@@ -448,9 +452,9 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt:
-      A house with $x=4$ viewings sold ($y=1$), and the model gave it $p=1/2$. The loss slope with respect to
-      the score is $-1/2$. What is the loss slope with respect to the weight $w$?
+    prompt: A house with $x=4$ viewings sold (label $y=1$), and the model gave it sale probability
+      $p=1/2$. The loss slope with respect to the score is $-1/2$. What is the loss slope with respect to
+      the weight $w$ on viewings?
     answer: -2
     tolerance:
       abs: 1.0e-06
@@ -486,7 +490,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "If $x=0$ and $p-y$ is nonzero, which gradients does this example produce?"
+    prompt:
+      On one logistic regression example, the input is $x=0$ and the predicted probability $p$ for
+      label 1 differs from the observed label $y$. Which loss gradients does this example produce?
     options:
       - {
           id: a,
@@ -513,7 +519,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot starts with $w=0$, $b=0$, input $x=-2$, observed label $y=1$, and learning rate $1/2$. After one simultaneous weight-and-bias update, what is its new score for this example?"
+    prompt:
+      A robot's logistic model starts with weight $w=0$, bias $b=0$, input $x=-2$, observed label
+      $y=1$ and learning rate $1/2$. After one simultaneous weight-and-bias update, what is its new score
+      for this example?
     answer: 1.25
     tolerance: { abs: 0.000001 }
     solution: Initially $p=1/2$, so the weight slope is 1 and the bias slope is $-1/2$. The new parameters are $w=-1/2$, $b=1/4$, giving score $(-1/2)(-2)+1/4=5/4$.

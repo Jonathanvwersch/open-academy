@@ -533,7 +533,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Two rules with ReLU between them: $u = x - 2$, then $y = 3\\,\\text{ReLU}(u) + 1$. What is $y$ when $x = 0$?"
+    prompt:
+      The first layer takes input $x$ and produces $u=x-2$. Apply ReLU to $u$, then the second layer
+      outputs $y=3\,\text{ReLU}(u)+1$. What is $y$ when $x=0$?
     answer: 1
     tolerance: { abs: 0.001 }
     common_wrong:

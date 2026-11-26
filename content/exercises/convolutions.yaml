@@ -217,7 +217,9 @@ exercises:
     role: "practice"
     difficulty: 2
     est_minutes: 2
-    prompt: "For a 9×9 image, k=3, p=0 and s=2, how many rows are in the output?"
+    prompt:
+      A convolution uses a $3\times3$ filter on a $9\times9$ image, with no padding and a stride of
+      2 pixels. How many rows are in the output?
     answer: 4
     solution: "Starts 0, 2, 4 and 6 fit, giving four output rows."
   - id: conv-padding-trap
@@ -226,7 +228,9 @@ exercises:
     role: "practice"
     difficulty: 2
     est_minutes: 2
-    prompt: "With padding p=2, what height does an image of height H have before convolution?"
+    prompt:
+      An image has height $H$ pixels. You pad it by 2 pixels on each edge. What is its height before
+      convolution?
     options:
       [
         {
@@ -409,7 +413,10 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 2
-    prompt: "A robot receives CHW input (3,12,18). It uses 4 filters with k=3, p=1, s=2. What is the output shape?"
+    prompt:
+      A robot receives an image array of shape $(3,12,18)$ in channels, height, width order. Its
+      convolution uses 4 filters of size $3\times3$, padding of 1 pixel on each side and a stride of 2
+      pixels. What is the output shape in the same axis order?
     options:
       [
         {
@@ -438,7 +445,10 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 2
-    prompt: "An RGB input has shape (3,10,14). Six filters use k=3, p=0, s=1. Which output shape is correct?"
+    prompt:
+      An RGB input has shape $(3,10,14)$ in channels, height, width order. The convolution uses six
+      $3\times3$ filters, no padding and a stride of 1 pixel. Which output shape is correct in the same
+      axis order?
     options:
       [
         {

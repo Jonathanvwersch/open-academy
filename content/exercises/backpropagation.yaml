@@ -69,7 +69,10 @@ exercises:
     role: "practice"
     difficulty: 1
     est_minutes: 3
-    prompt: "The model $\\hat y=2w+b$ has target $y=0$. The saved prediction is 3, and the shared slope at the prediction is $2(3-0)=6$. Complete the backward step: what is $\\partial L/\\partial w$?"
+    prompt: >-
+      A model predicts $\hat y=2w+b$ with weight $w$ and bias $b$. Its target is $y=0$ and its saved
+      prediction is 3. The slope of the loss $L$ with respect to the prediction is $2(3-0)=6$. Complete
+      the backward step: what is $\partial L/\partial w$?
     answer: 12
     tolerance: { "abs": 0.001 }
     solution: "Multiply the shared slope 6 by the weight’s local derivative 2, giving 12."
@@ -298,7 +301,10 @@ exercises:
     role: "practice"
     difficulty: 1
     est_minutes: 3
-    prompt: "For $\\hat y=wx+b$ on a batch of two examples, the prediction slopes are 2 and 4, already including the MSE’s division. Complete the bias step: what is $\\partial L/\\partial b$?"
+    prompt: >-
+      A model predicts $\hat y=wx+b$ from input $x$, weight $w$ and bias $b$. On a batch of two examples,
+      the loss slopes with respect to the predictions are 2 and 4, already including the division in the
+      mean squared error loss $L$. Complete the bias step: what is $\partial L/\partial b$?
     answer: 6
     tolerance: { "abs": 0.001 }
     solution: "The bias has local derivative 1 in each example, so its slope is $2+4=6$."
@@ -319,7 +325,10 @@ exercises:
     role: "practice"
     difficulty: 2
     est_minutes: 2
-    prompt: "With examples in rows, $X$ has shape $4\\times3$ and $G$ has shape $4\\times2$. What shape do the weight slopes $X^\\top G$ have?"
+    prompt:
+      The input matrix $X$ has shape $4\times3$ and the matrix $G$ of loss slopes for the layer's
+      scores has shape $4\times2$. Both matrices have examples in rows. What shape does the
+      weight-gradient matrix $X^\top G$ have?
     options:
       [
         {
@@ -423,7 +432,8 @@ exercises:
     role: "practice"
     difficulty: 1
     est_minutes: 3
-    prompt: "A gradient check measures $L(w+0.1)=10.24$ and $L(w-0.1)=7.84$. What derivative does the central difference estimate?"
+    prompt: A gradient check at weight $w$ measures loss $L(w+0.1)=10.24$ and $L(w-0.1)=7.84$. What
+      derivative does the central difference estimate?
     answer: 12
     tolerance: { "abs": 0.001 }
     common_wrong:
@@ -482,7 +492,10 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot’s calibration loss is $L(w)=(3w-1)^2$. At $w=1$, use nudge 0.1: $L(1.1)=5.29$ and $L(0.9)=2.89$. What central estimate should the backward derivative match?"
+    prompt: >-
+      A robot's calibration loss depends on weight $w$ as $L(w)=(3w-1)^2$. To check the derivative at
+      $w=1$, nudge the weight by 0.1 in each direction: $L(1.1)=5.29$ and $L(0.9)=2.89$. What central
+      estimate should the backward derivative match?
     answer: 12
     tolerance: { "abs": 0.001 }
     solution: "The estimate is $(5.29-2.89)/0.2=12$, agreeing with $2(3w-1)\\cdot3$ at $w=1$."

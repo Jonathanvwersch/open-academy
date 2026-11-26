@@ -283,7 +283,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot compares two object keys. One query gives scaled scores $(1,0)$; another gives $(0,2)$. Which pair lists the weight on the first object for the first query, then for the second query?"
+    prompt:
+      A robot compares two object keys. In first-object, second-object order, one query gives scaled
+      scores $(1,0)$ and another gives $(0,2)$. Which pair lists the weight on the first object for the
+      first query, then for the second query?
     options:
       - {
           id: a,
@@ -429,7 +432,11 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 4
-    prompt: "Let $q=(2,0,0,0)$, $k_1=(2,0,0,0)$, $k_2=(0,1,0,0)$, $v_1=(4,0,0,0)$ and $v_2=(0,4,0,0)$. Compute the first component of the attention output using scaled scores with $d_k=4$, then softmax and a weighted sum. Round only the final answer to two decimals."
+    prompt:
+      An attention query is $q=(2,0,0,0)$. The first source has key $k_1=(2,0,0,0)$ and value vector
+      $v_1=(4,0,0,0)$; the second has key $k_2=(0,1,0,0)$ and value vector $v_2=(0,4,0,0)$. Compute the
+      first component of the attention output using scaled scores with key width $d_k=4$, then softmax and
+      a weighted sum. Round only the final answer to two decimals.
     answer: 3.52
     tolerance: { abs: 0.006 }
     solution: The dot products are 4 and 0, giving scaled scores 2 and 0. The first output component is $4e^2/(e^2+1)\approx3.52$, keeping full precision until the final rounding.
@@ -660,3 +667,124 @@ exercises:
     answer: "w*x+(1-w)*y"
     variables: { "w": [0.05, 0.95], "x": [-5, 5], "y": [-5, 5] }
     solution: "Multiply each value entry by its weight and add, giving $wx+(1-w)y$."
+  - id: attn-recover-weight
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A scaled dot-product attention function applies softmax to one query's scores for two sources. The first source's value has one component, $2$, and the second source's value has one component, $10$. The output's single component is $8$. What attention weight did the second source receive?"
+    answer: 0.75
+    tolerance: { abs: 0 }
+    solution: "Softmax makes the two weights add to $1$. If the second weight is $w$, the output is $2(1-w)+10w=2+8w$, so $w=0.75$."
+  - id: attn-code-scale-width
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A scaled dot-product attention function processes $6$ tokens. Each query and key has width $9$, and each value has width $4$. The function computes a query–key dot product called `dot`. Which line turns `dot` into the scaled score?"
+    options:
+      - id: a
+        text: "`score = dot / 6`"
+        correct: false
+        feedback: "This divides by the number of tokens. The key width determines the scale."
+      - id: b
+        text: "`score = dot / 3`"
+        correct: true
+        feedback: "The divisor is the square root of the key width."
+      - id: c
+        text: "`score = dot / 4`"
+        correct: false
+        feedback: "This divides by the value width. Values contribute to the output after the scores become weights."
+    solution: 'Use the square root of the key width. The divisor is $\sqrt{9}=3$.'
+  - id: attn-code-query-pair
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: "`queries` and `keys` hold the query and key vectors by token position. The entry `scores[t][j]` is the scaled attention score for output position `t` and source position `j`. The function `dot` computes a dot product, and `scale` holds the square root of the key width. Which line assigns the correct score for every pair of positions?"
+    options:
+      - id: a
+        text: "`scores[t][j] = dot(queries[j], keys[t]) / scale`"
+        correct: false
+        feedback: "This scores the source's query against the output position's key. Their roles are swapped."
+      - id: b
+        text: "`scores[t][j] = dot(queries[t], keys[j]) / scale`"
+        correct: true
+        feedback: "Each entry compares the output position's query to the source's key."
+      - id: c
+        text: "`scores[t][j] = dot(queries[t], keys[t]) / scale`"
+        correct: false
+        feedback: "This uses the output position's own key for every source."
+    solution: "Use the query at position `t` and the key at source `j`. Divide their dot product by `scale`."
+  - id: attn-code-softmax-axis
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: |
+      An attention function processes three tokens in order: oak, pine, elm. The table shows scores for two query tokens (row labels) against all three source tokens (column labels). Which scores should the function pass together to softmax to build the output at the second token position?
+
+      | Query / source | oak | pine | elm |
+      | --- | --- | --- | --- |
+      | oak | $0$ | $3$ | $-1$ |
+      | pine | $2$ | $-2$ | $1$ |
+    options:
+      - id: a
+        text: "$0$, $3$, $-1$, $2$, $-2$, and $1$"
+        correct: false
+        feedback: "This makes scores from different queries share a single total."
+      - id: b
+        text: "$3$ and $-2$"
+        correct: false
+        feedback: "This fixes the source and collects scores from different queries."
+      - id: c
+        text: "$2$, $-2$, and $1$"
+        correct: true
+        feedback: "This puts all source scores for one output position in the same softmax."
+    solution: "The second token is pine. Use the scores from pine's query against the three source keys: $2$, $-2$, and $1$."
+  - id: attn-code-value-array
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 1
+    prompt: "An attention function processes two tokens. Token positions and vector components are numbered from $1$. In the weight grid, $a_{tj}$ is the weight that position $t$ gives source $j$. The first components of source $j$'s key and value are $k_{j1}$ and $v_{j1}$. Which expression should the function use to compute the first output component at position $2$?"
+    options:
+      - id: a
+        text: "$a_{21}k_{11}+a_{22}k_{21}$"
+        correct: false
+        feedback: "Keys are used to find scores. The output carries the source values."
+      - id: b
+        text: "$a_{21}v_{11}+a_{22}v_{21}$"
+        correct: true
+        feedback: "This adds the first value components after weighting each by its source weight."
+      - id: c
+        text: "$a_{12}v_{11}+a_{22}v_{21}$"
+        correct: false
+        feedback: "This takes both weights from source column 2, mixing weights from different queries."
+    solution: "Use the weights from row 2, one per source. Multiply each by the first component of its source's value and add."
+  - id: attn-code-output-width
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: "An attention function mixes the source values for one query. It needs to allocate a vector `out` for the result. The query width, number of sources and value width are different. How many components should `out` have?"
+    options:
+      - id: a
+        text: "The number of components in the query."
+        correct: false
+        feedback: "The query width matters for the dot products used to find the scores."
+      - id: b
+        text: "The number of source value vectors."
+        correct: false
+        feedback: "This counts how many vectors go into the mixture."
+      - id: c
+        text: "The number of components in one value vector."
+        correct: true
+        feedback: "A weighted sum of value vectors keeps their width."
+    solution: "Each component of `out` adds the matching weighted components from the source values. Allocate one entry per component of a value vector."

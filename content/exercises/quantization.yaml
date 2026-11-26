@@ -289,7 +289,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: A group of weights has largest size $2.54$. One weight in it is $x=0.777$. After INT8 quantisation and dequantisation, how big is the error $|x-\hat x|$?
+    prompt:
+      A group of weights has maximum absolute value $2.54$. One weight is $x=0.777$. After symmetric
+      INT8 quantisation and dequantisation, its reconstructed value is $\hat x$. How large is the absolute
+      error $|x-\hat x|$?
     answer: 0.003
     tolerance:
       abs: 0.0001

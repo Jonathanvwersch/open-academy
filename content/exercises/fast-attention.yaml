@@ -584,7 +584,11 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: For one query, a kernel computes attention one block of keys at a time. It sums the score exponentials in $\ell$ and the value vectors multiplied by their score exponentials in $u$, then outputs $u/\ell$. How does this compare with applying softmax to all scores for that query at once and mixing the values?
+    prompt:
+      For one query, a kernel processes one block of attention keys at a time. It keeps a running total
+      $\ell$ of the unnormalized weights (score exponentials) and a running sum $u$ of the value vectors
+      multiplied by those weights, then outputs $u/\ell$. How does its output compare with applying
+      softmax to all scores for the same query at once and mixing the values, as in three-kernel attention?
     options:
       - {
           id: a,
@@ -829,7 +833,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A kernel keeps a running largest score. When a new block raises it, the kernel rescales its running sum $\ell$ but forgets to rescale its running weighted total $u$. What happens to the output $u/\ell$?
+    prompt:
+      An attention kernel keeps a running largest score. When a new block raises that maximum, the
+      kernel rescales the running sum $\ell$ of unnormalized weights but forgets to rescale the running
+      weighted sum $u$ of the value vectors. What happens to the output $u/\ell$?
     options:
       - {
           id: a,
