@@ -6,7 +6,7 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: Two robots face the same task. Each can move left or right along a corridor and earns points as it moves. Which item can differ between the robots while the task stays the same?
+    prompt: Two identical robots face the same task on the same corridor floor. Each can move left or right and earns points as it moves. Which item can differ between the robots while the task stays the same?
     options:
       - id: a
         text: The rule each agent uses to choose actions

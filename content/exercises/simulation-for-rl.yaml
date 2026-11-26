@@ -187,7 +187,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "An agent submits an answer to a written question and receives a grade from 0 to 10. Its next try uses a different question. Which design for `reset` and `step` handles the question, grade and episode ending correctly?"
+    prompt: "Each episode covers exactly one written question. The agent submits a final answer, which earns a grade from 0 to 10. Which design for `reset` and `step` handles the question, grade and episode ending correctly?"
     options:
       - id: a
         text: "`reset` returns a question. `step` returns the answer's grade and reports that the episode ended."
