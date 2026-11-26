@@ -827,7 +827,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A KV cache already holds 20 processed tokens. A decode call takes one token as input and predicts another. The model has three layers, two key-value heads per layer and head size 8. Each cached number takes 2 bytes. How many bytes of stored keys and values does this call add? Ignore allocation overhead.
+    prompt: A KV cache already holds 20 processed tokens. A decode call takes one token as input and predicts another. The model has three layers, two key-value heads per layer and head size 8. Each cached number takes 2 bytes. How many bytes of keys and values does this call add? Count only the numbers stored in the new keys and values.
     answer: 192
     tolerance: { abs: 0 }
     solution: The call adds entries for its one input token. With one key and one value at each head in each layer, it adds $2\times3\times2\times8\times2=192$ bytes.
