@@ -1251,9 +1251,9 @@ exercises:
         correct: true
         feedback: Either factor can give small updates because the learning rate multiplies the slope for each weight and the bias.
       - id: b
-        text: Weights that are close to zero or a bias that is close to zero.
+        text: A large learning rate paired with steep slopes of the loss for the weights and bias.
         correct: false
-        feedback: Weights and bias affect the prediction. Their values alone do not tell us how far the update moves them.
+        feedback: The learning rate multiplies each slope. A large rate and steep slopes together would make the updates large.
       - id: c
         text: A high loss at the start of training or a high loss at the current step.
         correct: false
