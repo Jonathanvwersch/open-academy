@@ -383,9 +383,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 1
-    prompt:
-      A perceptron's step activation fires only for strictly positive scores. It scores a house at
-      exactly $z=0$. What does it output?
+    prompt: A house has perceptron score $z=0$, exactly on the decision boundary. Under the strict
+      step-activation convention, what does the perceptron output?
     options:
       - { id: a, text: "0, because the step needs a positive score", correct: true }
       - {
