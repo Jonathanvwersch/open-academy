@@ -83,6 +83,7 @@ The engine uses the FSRS algorithm (the `ts-fsrs` library) for spaced repetition
   - **Good**: correct, first try, no hint, in time.
 - A review activity gives one rating for each topic. The rating is Good if every answer is correct, with no hint and in time. It is Hard if at least 2 of 3 answers are correct. Otherwise it is Again.
 - FSRS uses the rating to set the next due date.
+- Every dimension of an authored topic needs at least five review questions. Count questions with role `review`, `core`, `practice`, `transfer` or `basics`. Skip lesson-only questions and templates. **[Ours]**
 - When a review card gets Again twice in a row, the engine brings the weakest eligible hard prerequisite card due now. If cards tie, choose the alphabetically first topic ID, then the alphabetically first dimension. **[Ours]**
 
 ### Learning speed (`memory/speed.ts`)
