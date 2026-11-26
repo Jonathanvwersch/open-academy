@@ -234,6 +234,16 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
   await captureShellTransitionFrames(mobilePage, testInfo, 'mobile-exit-quiz');
   await expect(mobileHeader).toHaveCSS('opacity', '1');
   await expect(mobileHeader).toHaveCSS('height', '56px');
+  await mobileHeader.getByRole('button', { name: 'Open navigation' }).click();
+  const mobileNavigation = mobilePage.getByRole('navigation', { name: 'Main navigation' });
+  await expect(mobileNavigation).toBeVisible();
+  await expect(mobileNavigation).toHaveAttribute('data-mobile', 'true');
+  await mobilePage.goForward();
+  await expect(mobilePage).toHaveURL(new RegExp(`/quizzes/${quizId}(?:\\?.*)?$`));
+  await expect(mobileNavigation).toBeHidden();
+  await expect(mobileHeader).toHaveAttribute('data-mark', '1');
+  await mobilePage.goBack();
+  await expect(mobilePage).toHaveURL(`/session/${sessionId}`);
   await mobileHeader.getByRole('link', { name: 'Open Academy home' }).click();
   await expect(mobilePage.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
   await mobilePage.screenshot({ path: testInfo.outputPath('mobile-home-after-quiz-final.png') });

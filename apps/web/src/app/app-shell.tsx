@@ -156,6 +156,9 @@ function AppSidebarView({
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { isMobile, state, setOpenMobile } = useSidebar();
   const isQuiz = pathname.startsWith('/quizzes/');
+  useEffect(() => {
+    if (isQuiz) setOpenMobile(false);
+  }, [isQuiz, setOpenMobile]);
   const showCourseSection = state !== 'collapsed' || isMobile;
   const activeCourseGroups =
     courses?.subjects
