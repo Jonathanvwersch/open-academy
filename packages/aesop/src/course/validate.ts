@@ -194,6 +194,48 @@ function containsPlainTextMath(value: unknown, key?: string): boolean {
   return false;
 }
 
+function mixedNumberFormatting(text: string): string | null {
+  const numberTokens: Array<{
+    kind: 'math' | 'plain';
+    start: number;
+    end: number;
+  }> = [];
+  const mathSegments = [...text.matchAll(/\$[^$]*\$/g)];
+
+  for (const match of mathSegments) {
+    const segment = match[0];
+    if (!/^\$\s*[+\-\u2212]?\s*\d+(?:\.\d+)?\s*\$$/.test(segment)) continue;
+    const start = match.index ?? 0;
+    numberTokens.push({ kind: 'math', start, end: start + segment.length });
+  }
+
+  const withoutMath = text.replace(/\$[^$]*\$/g, (segment) => ' '.repeat(segment.length));
+  for (const match of withoutMath.matchAll(/(?<![\w.])[+-]?\d+(?:\.\d+)?(?![\w]|\.\d)/g)) {
+    const start = match.index ?? 0;
+    numberTokens.push({ kind: 'plain', start, end: start + match[0].length });
+  }
+
+  numberTokens.sort((left, right) => left.start - right.start);
+  for (let index = 0; index < numberTokens.length - 1; index += 1) {
+    const left = numberTokens[index];
+    const right = numberTokens[index + 1];
+    if (!left || !right || left.kind === right.kind) continue;
+    const joiner = text.slice(left.end, right.start);
+    if (/^\s*(?:,\s*(?:and|or)\s+|,|\s+and\s+|\s+or\s+)\s*$/i.test(joiner)) {
+      return text.slice(left.start, right.end);
+    }
+  }
+  return null;
+}
+
+function plainNegativeNumber(text: string): string | null {
+  const withoutMathOrCode = text.replace(/\$\$[\s\S]*?\$\$|\$[^$]*\$|(`+)[\s\S]*?\1/g, (segment) =>
+    ' '.repeat(segment.length),
+  );
+  const match = /(?<![\w.)\]])[-\u2212]\d+(?:\.\d+)?/.exec(withoutMathOrCode);
+  return match ? text.slice(match.index, match.index + match[0].length) : null;
+}
+
 function addIssue(issues: ContentIssue[], file: string, id: string, message: string) {
   issues.push({ file, id: id || '<file>', message });
 }
@@ -1191,6 +1233,28 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
     }
     if (containsPlainTextMath(exercise)) {
       addIssue(issues, file, exercise.id, 'plain-text maths; wrap in $…$');
+    }
+    if (exercise.type === 'mc') {
+      for (const option of exercise.options) {
+        const mixedNumbers = mixedNumberFormatting(option.text);
+        if (mixedNumbers) {
+          addIssue(
+            issues,
+            file,
+            exercise.id,
+            `option "${option.id}" mixes plain and maths numbers (${JSON.stringify(mixedNumbers)}); write them all in maths, e.g. "$3$ and $-2$"`,
+          );
+        }
+        const plainNegative = plainNegativeNumber(option.text);
+        if (plainNegative) {
+          addIssue(
+            issues,
+            file,
+            exercise.id,
+            `option "${option.id}" writes a negative number in plain text (${JSON.stringify(plainNegative)}); write it in maths, e.g. "$-1$"`,
+          );
+        }
+      }
     }
     for (const text of stringValues(exercise)) {
       validateSvgText(text, file, exercise.id, issues);

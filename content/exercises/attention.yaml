@@ -82,7 +82,7 @@ exercises:
       - answer: 1.5
         category: misunderstood_definition
         feedback: That divides by the key width, 4. The divisor is its square root, 2.
-    solution: The key width is 4, so the divisor is $\sqrt4=2$. The scaled score is $6/2=3$.
+    solution: The key width is $4$, so the divisor is $\sqrt4=2$. The scaled score is $6/2=3$.
   - id: attn-score-template
     dimension: math
     type: numeric
@@ -206,7 +206,7 @@ exercises:
         }
       - {
           id: c,
-          text: 'The divisor $\sqrt{d_k}$ adds 1 to every zero score.',
+          text: 'The divisor $\sqrt{d_k}$ adds $1$ to every zero score.',
           correct: false,
           feedback: Scaling divides the dot product; the positive numerator comes from exponentiation.,
         }
@@ -439,7 +439,7 @@ exercises:
       a weighted sum. Round only the final answer to two decimals.
     answer: 3.52
     tolerance: { abs: 0.006 }
-    solution: The dot products are 4 and 0, giving scaled scores 2 and 0. The first output component is $4e^2/(e^2+1)\approx3.52$, keeping full precision until the final rounding.
+    solution: The dot products are $4$ and $0$, giving scaled scores $2$ and $0$. The first output component is $4e^2/(e^2+1)\approx3.52$, keeping full precision until the final rounding.
   - id: attn-mix-transfer
     dimension: transfer
     type: numeric
@@ -494,7 +494,7 @@ exercises:
           answer: 8.808,
           tolerance: { abs: 0.02 },
           category: misunderstood_definition,
-          feedback: "That is the result without the $1/\\sqrt{d_k}$ scaling (softmax of scores 2 and 0).",
+          feedback: "That is the result without the $1/\\sqrt{d_k}$ scaling (softmax of scores $2$ and $0$).",
         }
       - {
           answer: 10,
@@ -564,7 +564,7 @@ exercises:
     prompt: "Write the scaled attention score for query $(a,b)$ and key $(c,d)$. Type `sqrt(...)` for square root."
     answer: "(a*c+b*d)/sqrt(2)"
     variables: { "a": [-4, 4], "b": [-4, 4], "c": [-4, 4], "d": [-4, 4] }
-    solution: "The dot product is $ac+bd$, and the key width is 2, giving $(ac+bd)/\\sqrt2$."
+    solution: "The dot product is $ac+bd$, and the key width is $2$, giving $(ac+bd)/\\sqrt2$."
   - id: attn-recall-weights-say
     dimension: conceptual
     type: explain

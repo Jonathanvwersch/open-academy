@@ -30,7 +30,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: A matrix has singular values $12$, $6$ and $2$. For its closest rank-2 approximation, what is the largest output error over all length-1 input vectors?
+    prompt: A matrix has singular values $12$, $6$ and $2$. For its closest rank-2 approximation, what is the largest output error over all length-$1$ input vectors?
     answer: 2
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -40,7 +40,7 @@ exercises:
       - answer: 12
         category: incorrect_reasoning
         feedback: The largest singular value describes the biggest stretch in the original matrix. Its piece is kept.
-    solution: The rank-2 approximation keeps the pieces with singular values $12$ and $6$. The first dropped singular value is $2$, which is the largest output error over length-1 inputs.
+    solution: The rank-2 approximation keeps the pieces with singular values $12$ and $6$. The first dropped singular value is $2$, which is the largest output error over length-$1$ inputs.
   - id: eig-stretch-directions-basics
     dimension: conceptual
     type: mc
@@ -440,12 +440,12 @@ exercises:
         correct: true
         feedback: Each output entry is one row dotted with $v_1$, so the entries are $1$ and $0$.
       - id: b
-        text: $V^\top$ stretches $v_1$ by $s_1=10$ and then divides by $10$, which leaves a length-1 arrow along the first axis.
+        text: $V^\top$ stretches $v_1$ by $s_1=10$ and then divides by $10$, which leaves a length-$1$ arrow along the first axis.
         correct: false
         category: misunderstood_definition
         feedback: The stretch is $S$; $V^\top$ is a turn and keeps lengths, which is why the length stays $1$.
       - id: c
-        text: $V^\top$ turns every vector of length $1$ onto the first axis, so any length-1 input comes out as $(1,0)$.
+        text: $V^\top$ turns every vector of length $1$ onto the first axis, so any length-$1$ input comes out as $(1,0)$.
         correct: false
         category: incorrect_reasoning
         feedback: A turn sends different arrows to different places; $v_2$ comes out as $(0,1)$.
@@ -470,7 +470,7 @@ exercises:
         category: misunderstood_definition
         feedback: A flip goes into $U$ or $V$, which keep lengths and may flip arrows over like a mirror, so the stretch stays a length.
       - id: b
-        text: No. Each singular value is the length of an output for a length-1 input, and lengths aren't negative.
+        text: No. Each singular value is the length of an output for a length-$1$ input, and lengths aren't negative.
         correct: true
         feedback: $Av_i=s_iu_i$ with $u_i$ of length $1$, so $s_i$ is the length of $Av_i$.
       - id: c
@@ -533,11 +533,11 @@ exercises:
         text: It has no SVD either.
         correct: false
         category: misunderstood_definition
-        feedback: Every matrix has an SVD; for $\begin{bmatrix}4&-3\\6&8\end{bmatrix}$ the greatest and least output lengths over all length-1 inputs are $10$ and $5$.
+        feedback: Every matrix has an SVD; for $\begin{bmatrix}4&-3\\6&8\end{bmatrix}$ the greatest and least output lengths over all length-$1$ inputs are $10$ and $5$.
       - id: b
         text: It still has an SVD, because every matrix does.
         correct: true
-        feedback: Any $2\times2$ matrix that doesn't squash everything onto a line sends the set of all length-1 input vectors to an ellipse; the singular values are its longest and shortest output lengths.
+        feedback: Any $2\times2$ matrix that doesn't squash everything onto a line sends the set of all length-$1$ input vectors to an ellipse; the singular values are its longest and shortest output lengths.
       - id: c
         text: Its singular values are all zero.
         correct: false
@@ -548,7 +548,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: Every matrix, of any shape, has an SVD.
-    solution: Every matrix has an SVD. Applying it to all length-1 input vectors gives an ellipse; the longest and shortest output lengths are the singular values.
+    solution: Every matrix has an SVD. Applying it to all length-$1$ input vectors gives an ellipse; the longest and shortest output lengths are the singular values.
   - id: eigp-robot-arm
     dimension: conceptual
     type: mc
@@ -558,11 +558,11 @@ exercises:
     prompt: A $2\times2$ matrix turns small joint movements of a robot arm into movements of its hand. Its singular values are $2$ and $0.01$. What does that say about the hand?
     options:
       - id: a
-        text: Across all length-1 joint movements, the hand's output length ranges from $0.01$ to $2$.
+        text: Across all length-$1$ joint movements, the hand's output length ranges from $0.01$ to $2$.
         correct: true
-        feedback: A length-1 joint movement moves the hand at most $2$ in one direction and at most $0.01$ in the other.
+        feedback: A length-$1$ joint movement moves the hand at most $2$ in one direction and at most $0.01$ in the other.
       - id: b
-        text: The hand moves about 2 units for every unit of joint movement, in whatever direction it goes.
+        text: The hand moves about $2$ units for every unit of joint movement, in whatever direction it goes.
         correct: false
         category: incorrect_reasoning
         feedback: $2$ is only the largest stretch. In the second output direction the hand moves just $0.01$ per unit.
@@ -575,8 +575,8 @@ exercises:
         text: Nothing yet, because only the eigenvalues of the matrix describe how far it moves things.
         correct: false
         category: misunderstood_definition
-        feedback: The singular values are exactly the longest and shortest output lengths for length-1 inputs.
-    solution: Across all length-1 joint movements, the hand's output length ranges from $0.01$ to $2$. These shortest and longest lengths are the singular values, so some movements barely shift the hand while others move it much farther.
+        feedback: The singular values are exactly the longest and shortest output lengths for length-$1$ inputs.
+    solution: Across all length-$1$ joint movements, the hand's output length ranges from $0.01$ to $2$. These shortest and longest lengths are the singular values, so some movements barely shift the hand while others move it much farther.
   - id: eig-low-rank-basics
     dimension: conceptual
     type: mc
@@ -589,7 +589,7 @@ exercises:
       - id: a
         text: Keep only the piece $s_1u_1v_1^\top$ with the largest singular value.
         correct: true
-        feedback: That keeps the biggest stretch, and the output is off by at most $s_2$ for any length-1 input.
+        feedback: That keeps the biggest stretch, and the output is off by at most $s_2$ for any length-$1$ input.
       - id: b
         text: Keep only the piece with the smallest singular value.
         correct: false
@@ -625,7 +625,7 @@ exercises:
         category: incorrect_reasoning
         feedback: The zero row only makes the first entry $0$; the second entry is $0$ because $6\times(-0.8)+8\times0.6=0$.
       - id: c
-        text: $v_2$ has length $1$, and $B_1$ sends every length-1 input it is given to $(0,0)$.
+        text: $v_2$ has length $1$, and $B_1$ sends every length-$1$ input it is given to $(0,0)$.
         correct: false
         category: incorrect_reasoning
         feedback: $v_1$ also has length $1$, and $B_1v_1=(0,10)$.
@@ -690,7 +690,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A matrix has singular values $9$, $4$ and $0.5$. You keep the two biggest pieces of its SVD. For a length-1 input, what is the most the copy's output can be off by?
+    prompt: A matrix has singular values $9$, $4$ and $0.5$. You keep the two biggest pieces of its SVD. For a length-$1$ input, what is the most the copy's output can be off by?
     answer: 0.5
     tolerance:
       abs: 0.001
@@ -755,7 +755,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A grayscale image is a $600\times800$ matrix of brightness values. You store its rank-20 approximation as 20 columns of length $600$ and 20 rows of length $800$. How many numbers is that, as a percentage of the full image? Give the percentage to two decimal places, without the % sign.
+    prompt: A grayscale image is a $600\times800$ matrix of brightness values. You store its rank-20 approximation as $20$ columns of length $600$ and $20$ rows of length $800$. How many numbers is that, as a percentage of the full image? Give the percentage to two decimal places, without the % sign.
     answer: 5.833333333
     tolerance:
       abs: 0.01
@@ -999,7 +999,7 @@ exercises:
         criterion: Explain that the worst output error for unit-length inputs is the first singular value dropped.
         weight: 1
         required: true
-    exemplar: Keep the pieces for the $k$ largest nonzero singular values. The largest output error on length-1 inputs equals the first singular value dropped.
+    exemplar: Keep the pieces for the $k$ largest nonzero singular values. The largest output error on length-$1$ inputs equals the first singular value dropped.
   - id: eig-recall-low-rank-contrast
     dimension: conceptual
     type: mc

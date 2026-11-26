@@ -708,11 +708,11 @@ exercises:
     prompt: "Which reward is the first term of the return $G_t$, and what weight does it get?"
     options:
       - id: a
-        text: "$r_{t+1}$, with weight 1"
+        text: "$r_{t+1}$, with weight $1$"
         correct: true
         feedback: The return starts with the reward from the action at time $t$, which counts in full.
       - id: b
-        text: "$r_t$, with weight 1"
+        text: "$r_t$, with weight $1$"
         correct: false
         feedback: Reward $r_t$ has already arrived by time $t$, so the return leaves it out.
       - id: c
@@ -723,7 +723,7 @@ exercises:
         text: "$r_1$, with weight $\\gamma^t$"
         correct: false
         feedback: That counts from the start of the episode. $G_t$ scores only the rewards still to come after time $t$.
-    solution: "$G_t=r_{t+1}+\\gamma r_{t+2}+\\gamma^2r_{t+3}+\\dots$, so the first term is $r_{t+1}$ with weight 1."
+    solution: "$G_t=r_{t+1}+\\gamma r_{t+2}+\\gamma^2r_{t+3}+\\dots$, so the first term is $r_{t+1}$ with weight $1$."
   - id: pr-recall-add-rewards-formula
     dimension: math
     type: expression

@@ -311,7 +311,7 @@ exercises:
         correct: true
         feedback: Each reward has the same $\beta\ln Z(x)$, so it drops out of the difference.
       - id: b
-        text: $Z(x)$ is always equal to 1 for a language model.
+        text: $Z(x)$ is always equal to $1$ for a language model.
         correct: false
         category: incorrect_reasoning
         feedback: $Z(x)$ is the total of the boosted numbers, which isn't 1 in general. It cancels.

@@ -622,7 +622,7 @@ exercises:
     lesson_only: true
     options:
       - id: a
-        text: Each prompt token costs $1.6\times10^{10}$ FLOPs, and 10 ms allows $10^{13}$ FLOPs.
+        text: Each prompt token costs $1.6\times10^{10}$ FLOPs, and $10$ ms allows $10^{13}$ FLOPs.
         correct: true
         feedback: Dividing the available FLOPs by the cost per token gives 625 tokens.
       - id: b
@@ -631,7 +631,7 @@ exercises:
         feedback: Four equal chunks of 2,000 tokens contain 500 tokens each.
         category: incorrect_reasoning
       - id: c
-        text: The GPU's memory bandwidth allows exactly 625 KV-cache tokens to be read in 10 ms.
+        text: The GPU's memory bandwidth allows exactly 625 KV-cache tokens to be read in $10$ ms.
         correct: false
         feedback: The estimate uses prefill maths speed, not KV-cache memory bandwidth.
         category: incorrect_reasoning

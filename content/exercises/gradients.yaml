@@ -242,11 +242,11 @@ exercises:
     prompt: "In the worked example, why keep the slopes as $(3,4)$ instead of adding them to get $7$?"
     options:
       - id: a
-        text: "The 3 is the x-slope and 4 is the y-slope; the order keeps each slope tied to its input."
+        text: "The $3$ is the x-slope and $4$ is the y-slope; the order keeps each slope tied to its input."
         correct: true
         feedback: "The first entry is the x-partial and the second is the y-partial; their sum loses that assignment."
       - id: b
-        text: "The 3 and 4 are the coordinates of $P$; adding them gives the bowl's height there."
+        text: "The $3$ and $4$ are the coordinates of $P$; adding them gives the bowl's height there."
         correct: false
         category: misunderstood_definition
         feedback: "Coordinates locate $P$; the gradient contains the slopes, which are 3 along x and 4 along y."
@@ -256,7 +256,7 @@ exercises:
         category: misunderstood_definition
         feedback: "The entries are slopes for separate inputs at the same point, not repeated x-slopes."
       - id: d
-        text: "A gradient is one total slope, so adding 3 and 4 gives its rate regardless of direction."
+        text: "A gradient is one total slope, so adding $3$ and $4$ gives its rate regardless of direction."
         correct: false
         category: incorrect_reasoning
         feedback: "The slope depends on direction; the ordered vector preserves enough information to find it."
@@ -463,22 +463,22 @@ exercises:
     prompt: "At $P$, a learner computes $\\nabla f(P)\\cdot(2,0)=6$. What is the slope per unit distance along the positive x-axis?"
     options:
       - id: a
-        text: "3, dividing the change estimate by the step length."
+        text: "$3$, dividing the change estimate by the step length."
         correct: true
         category: misunderstood_definition
         feedback: "The step has length 2, so the slope per unit distance is 6/2."
       - id: b
-        text: "6, using the dot product without rescaling the step."
+        text: "$6$, using the dot product without rescaling the step."
         correct: false
         category: misunderstood_definition
         feedback: "The dot product uses a step of length 2; divide by that length."
       - id: c
-        text: "12, multiplying the change estimate by the step length."
+        text: "$12$, multiplying the change estimate by the step length."
         correct: false
         category: misunderstood_definition
         feedback: "Multiplying by the length scales the estimate up again; divide by 2."
       - id: d
-        text: "-3, reversing the sign when normalising the step."
+        text: "$-3$, reversing the sign when normalising the step."
         correct: false
         category: math_error
         feedback: "Normalising preserves the positive x direction, so the sign stays positive."
@@ -525,16 +525,16 @@ exercises:
     prompt: "In the worked example, why does the gradient direction give slope 5, the opposite direction slope -5, and a perpendicular direction slope 0?"
     options:
       - id: a
-        text: "For unit $\\mathbf u$, the slope is $5\\cos\\theta$: the cosines are 1 along, -1 opposite, and 0 perpendicular."
+        text: "For unit $\\mathbf u$, the slope is $5\\cos\\theta$: the cosines are $1$ along, $-1$ opposite, and $0$ perpendicular."
         correct: true
         feedback: "The dot-product formula is $D_{\\mathbf u}f=\\|\\nabla f\\|\\cos\\theta$, and here the gradient length is 5."
       - id: b
-        text: "The gradient has length 5 in every direction, so all three slopes should have magnitude 5."
+        text: "The gradient has length $5$ in every direction, so all three slopes should have magnitude $5$."
         correct: false
         category: misunderstood_definition
         feedback: "The length is the steepest slope; other directions scale it by the cosine of their angle."
       - id: c
-        text: "The opposite vector has length -1 and the perpendicular vector length 0, scaling the gradient."
+        text: "The opposite vector has length $-1$ and the perpendicular vector length $0$, scaling the gradient."
         correct: false
         category: incorrect_reasoning
         feedback: "All three directions are unit length; the sign and zero come from their angles, not their lengths."
@@ -543,7 +543,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: "The dot product depends on the angle between the vectors, not just the coordinate signs."
-    solution: "For a unit direction, the slope is $\\|\\nabla f\\|\\cos\\theta=5\\cos\\theta$. The directions along, opposite, and perpendicular to the gradient have cosines 1, -1, and 0, giving slopes 5, -5, and 0."
+    solution: "For a unit direction, the slope is $\\|\\nabla f\\|\\cos\\theta=5\\cos\\theta$. The directions along, opposite, and perpendicular to the gradient have cosines $1$, $-1$, and $0$, giving slopes $5$, $-5$, and $0$."
   - id: gradp-why-180
     dimension: conceptual
     type: mc
@@ -554,14 +554,14 @@ exercises:
     prompt: "For equal-length unit directions, why is the slope most negative at an angle of $180^\\circ$ to the gradient?"
     options:
       - id: a
-        text: "The cosine is -1 there, the smallest possible value."
+        text: "The cosine is $-1$ there, the smallest possible value."
         correct: true
         feedback: "The dot-product formula makes the slope smallest when $\\cos\\theta=-1$."
       - id: b
-        text: "The cosine is 0 there, so the slope disappears."
+        text: "The cosine is $0$ there, so the slope disappears."
         correct: false
         category: recall_failure
-        feedback: "The cosine is 0 at $90^\\circ$; at $180^\\circ$ it is -1."
+        feedback: "The cosine is 0 at $90^\\circ$; at $180^\\circ$ it is $-1$."
       - id: c
         text: "The opposite direction has a greater length than the others."
         correct: false
@@ -572,7 +572,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "Gradient components can have either sign; the angle explains the decrease."
-    solution: "For unit directions the slope is $\\|\\nabla f\\|\\cos\\theta$. The cosine is smallest, at -1, when the direction is opposite the gradient."
+    solution: "For unit directions the slope is $\\|\\nabla f\\|\\cos\\theta$. The cosine is smallest, at $-1$, when the direction is opposite the gradient."
   - id: gradp-length
     dimension: conceptual
     type: mc
@@ -582,21 +582,21 @@ exercises:
     prompt: "For $f(x,y)=x^2+2y^2$, compare $P=(1.5,1)$ and $Q=(0,1)$. Where is the steepest uphill slope larger?"
     options:
       - id: a
-        text: "At P: the steepest slopes are 5 at P and 4 at Q."
+        text: "At P: the steepest slopes are $5$ at P and $4$ at Q."
         correct: true
         feedback: "The gradient lengths are 5 at P and 4 at Q."
       - id: b
-        text: "At P: the steepest slopes are 4.25 at P and 2 at Q."
+        text: "At P: the steepest slopes are $4.25$ at P and $2$ at Q."
         correct: false
         category: misunderstood_definition
         feedback: "These are function values. Steepest slope is measured by the gradient length."
       - id: c
-        text: "They are equal: the largest partial derivative is 4 at both."
+        text: "They are equal: the largest partial derivative is $4$ at both."
         correct: false
         category: misunderstood_definition
         feedback: "Combining both partial derivatives can give a larger slope than either component."
       - id: d
-        text: "At Q: its slope is 4, while P has slope $5/\\sqrt{3.25}$."
+        text: "At Q: its slope is $4$, while P has slope $5/\\sqrt{3.25}$."
         correct: false
         category: math_error
         feedback: "The position vector length does not normalise a slope; compare the gradient lengths directly."
