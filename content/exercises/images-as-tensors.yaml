@@ -637,7 +637,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: "A uint8 RGB pixel has values $(51,204,102)$ in red, green and blue order. A model expects values rescaled to $[0,1]$ and then standardised. In that same colour order, its means are $(0.5,0.7,0.3)$ and its standard deviations are $(0.1,0.25,0.2)$. What green value should go to the model?"
+    prompt: "A uint8 RGB pixel has values $(51,204,102)$ in red, green and blue order. A model expects values rescaled to lie between $0$ and $1$ and then standardised. In that same colour order, its means are $(0.5,0.7,0.3)$ and its standard deviations are $(0.1,0.25,0.2)$. What green value should go to the model?"
     answer: 0.4
     tolerance: { abs: 0.0001 }
     solution: "Green rescales to $204/255=0.8$. Using the green mean and standard deviation gives $(0.8-0.7)/0.25=0.4$."

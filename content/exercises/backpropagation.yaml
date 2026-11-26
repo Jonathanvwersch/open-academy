@@ -913,11 +913,11 @@ exercises:
       - id: b
         text: "Keep positive arriving slopes and zero negative arriving slopes."
         correct: false
-        feedback: "The mask tests the saved forward scores. An arriving slope can be negative and still pass through."
+        feedback: "The indicator tests the saved forward scores. An arriving slope can be negative and still pass through."
       - id: c
         text: "Keep arriving slopes for positive saved scores and zero the others."
         correct: true
-    solution: "The negative score has local slope $0$ and the positive one has local slope $1$. Multiplying the arriving slopes by this mask keeps the second slope unchanged and sets the first to zero."
+    solution: "The indicator is $0$ for the negative score and $1$ for the positive score. Multiplying by it sets the first arriving slope to zero and keeps the second unchanged."
 
   - id: bp-weight-slope-product
     dimension: implementation
@@ -930,14 +930,14 @@ exercises:
       - id: a
         text: "$XG^\\top$"
         correct: false
-        feedback: "This pairs rows of examples, rather than collecting input and score-slope pairs across examples."
+        feedback: "This product only works if the numbers of inputs and neurons match. Even then, its rows and columns both index examples."
       - id: b
         text: "$X^\\top G$"
         correct: true
       - id: c
         text: "$G^\\top X$"
         correct: false
-        feedback: "This swaps the input and neuron axes, giving the transpose of the required weight slopes."
+        feedback: "This gives the transpose of the required weight slopes, with a row per neuron instead of a row per input."
     solution: "Use $X^\\top G$. Each entry pairs one input column of $X$ with one score-slope column of $G$ across all examples."
 
   - id: bp-check-isolate-bias
@@ -1010,7 +1010,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "An engineer checks a pump model's backpropagation slope for one weight. The numerical and backpropagation slopes agree at that weight's starting value. Later in training, another weight gives a surprising slope. Which action tests whether that slope is right?"
+    prompt: "An engineer checks a pump model's backpropagation slope for one weight. The finite-difference estimate agrees with backpropagation at that weight's starting value. Later in training, another weight gives a surprising slope. Which action tests whether that slope is right?"
     options:
       - id: a
         text: "Repeat the check for the original weight at its current value."
@@ -1031,7 +1031,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: "A camera controller uses ReLU. One gradient check compares a backward slope at a positive ReLU score with a numerical slope from two nudges. The upward nudge leaves the score positive, but the downward nudge makes it negative. What is the best next check at the same parameter values?"
+    prompt: "A camera controller uses ReLU. One gradient check compares a backward slope at a positive ReLU score with the slope measured from two nudges. The upward nudge leaves the score positive, but the downward nudge makes it negative. What is the best next check at the same parameter values?"
     options:
       - id: a
         text: "Shrink the nudge until both scores stay positive."

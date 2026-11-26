@@ -1077,7 +1077,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A hidden layer has four neurons with ReLU. A batch puts seven examples through that layer. How many numbers are in the batch's hidden activation array?"
+    prompt: "A hidden layer has four neurons with ReLU. A batch puts seven examples through that layer. How many hidden values does the layer produce for the whole batch?"
     answer: 28
     tolerance: { abs: 0 }
     solution: "The array has one row per example and one column per hidden neuron, so it contains $7\\times4=28$ numbers."
@@ -1088,7 +1088,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: "Two examples give hidden activation rows $(1,3)$ and $(4,3)$ in a network. The linear output layer uses the same weights $w_1,w_2$ and bias $b$ for both rows. Its predictions are $5$ and $11$, respectively. What is $w_1$, the weight on the first hidden activation?"
-    answer: 2
+    prompt: "A batch has input rows $(2,1)$ and $(0,3)$. The hidden layer's weight matrix has rows $(2,-1)$ and $(-2,1)$. The layer uses bias $(0,1)$ and ReLU. The linear output layer has weights $(3,1)$ and bias $-2$. What is the first input row's prediction minus the second input row's prediction?"
+    answer: 5
     tolerance: { abs: 0 }
-    solution: "The second activation and the bias contribute equally to both predictions. The first activation increases by $3$ and the prediction increases by $6$, so $w_1=6/3=2$."
+    solution: "The hidden scores are $(3,-2)$ and $(-3,4)$, so ReLU gives hidden values $(3,0)$ and $(0,4)$. The output layer gives $3\\cdot3+0-2=7$ and $0+4-2=2$, so the difference is $5$."
