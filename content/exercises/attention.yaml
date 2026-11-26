@@ -666,7 +666,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: "Two sources have one-component values $2$ and $10$. Their attention output is $8$. What attention weight did the source with value $10$ receive?"
+    prompt: "An attention function mixes values from two sources. The first source's value has one component, $2$, and the second source's value has one component, $10$. The output's single component is $8$. What attention weight did the second source receive?"
     answer: 0.75
     tolerance: { abs: 0 }
     solution: "The two weights add to $1$. If the second weight is $w$, the output is $2(1-w)+10w=2+8w$, so $w=0.75$."
@@ -686,7 +686,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: "`queries` and `keys` hold the query and key vectors by token position. The code fills `scores[t][j]` for output position `t` and source position `j`. The function `dot` computes a dot product, and `scale` holds the square root of the key width. Which line assigns the scaled attention score?"
+    prompt: "`queries` and `keys` hold the query and key vectors by token position. The entry `scores[t][j]` is the scaled attention score for output position `t` and source position `j`. The function `dot` computes a dot product, and `scale` holds the square root of the key width. Which line assigns this score?"
     options:
       - id: a
         text: "`scores[t][j] = dot(queries[j], keys[t]) / scale`"
@@ -707,7 +707,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: "An attention score grid uses rows for queries and columns for sources. The softmax function takes a list of scores and returns weights in that order. Which list should go into softmax to find the weights position $t$ uses to mix values?"
+    prompt: "An attention score grid uses rows for queries and columns for sources. The softmax function takes a list of scores and returns weights in that order. Which list should go into softmax to find the weights the query at token position $t$ uses to mix values?"
     options:
       - id: a
         text: "All scores in the grid as one list."

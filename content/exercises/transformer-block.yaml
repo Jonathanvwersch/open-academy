@@ -1009,7 +1009,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A transformer block without LayerNorm has just computed `u = add(x, attn(x))`. Here `add` adds token vectors component by component, and `mlp` applies the MLP separately to each token. Which Python line should finish the block?"
+    prompt: "A transformer block without LayerNorm takes input token vectors `x`. The attention function `attn` returns one update per token. The function `add` adds corresponding vector components, so `u = add(x, attn(x))` gives the vectors after the attention shortcut. The function `mlp` applies the MLP to each token separately. Which line computes the block's final vectors `y`?"
     options:
       - id: a
         text: "`y = add(x, mlp(u))`"
@@ -1030,7 +1030,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: "In a pre-norm block, `x` holds the input token vectors and `z = norm(x)` holds their LayerNorm copies. `attn` produces an update for each token, and `add` adds matching components. Which line should compute the vectors just after the attention shortcut?"
+    prompt: "In a pre-norm block, `x` holds the input token vectors. The call `norm(x)` applies LayerNorm to each vector, and `z` holds the normalized copies. The function `attn` produces an update for each token, and `add` adds matching components. Which line computes the vectors `u` just after the attention shortcut?"
     options:
       - id: a
         text: "`u = add(z, attn(x))`"
@@ -1072,7 +1072,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 1
-    prompt: "You are changing the MLP half of a transformer block from pre-norm to post-norm. The attention half already produced `u`. Here `norm` is LayerNorm, `mlp` works on each token separately, and `add` adds matching components. Which replacement implements the MLP half of a post-norm block?"
+    prompt: "You are changing the MLP half of a transformer block from pre-norm to post-norm. The vectors `u` are the output of the attention half. The function `norm` applies LayerNorm, `mlp` works on each token separately, and `add` adds matching components. Which line computes the final vectors `y` using the MLP half of a post-norm block?"
     options:
       - id: a
         text: "`y = add(norm(u), mlp(u))`"

@@ -826,7 +826,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "`tokens` is the full training sequence as a Python list. A training run uses `inputs = tokens[1:-1]`, dropping the first and last tokens. Which assignment makes `targets[t]` the right next-token label for the prediction at `inputs[t]`?"
+    prompt: "`tokens` is the full training sequence as a Python list. The input list `inputs = tokens[1:-1]` drops the first and last tokens. The label list is `targets`, and `t` is the same zero-based index in both lists. Which assignment makes `targets[t]` the right next-token label for the prediction at `inputs[t]`?"
     options:
       - id: a
         text: "`targets = tokens[:-2]`"
@@ -847,7 +847,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: "The code samples the next token using a fixed draw `u`. Which word does `sample` return?"
+    prompt: "`sample` draws a next token from the list `words`. The list `probs` gives their probabilities in the same order. In the loop, `word` is the current word, `p` is its probability, and `total` is the running sum of the probabilities. The fixed draw `u` is a number from $0$ up to but excluding $1$. Which word does the call return?"
     code: |
       def sample(words, probs, u):
           total = 0
@@ -867,7 +867,7 @@ exercises:
     difficulty: 3
     est_minutes: 1
     prompt: |
-      `predict(prefix)` gives the next-token probabilities. `sample(probs)` chooses one token, and `prefix.append(...)` adds it to the end of the list. The loop starts with `prefix = ["we"]` and runs twice. Which change makes each draw use the prefix as it stands at that step?
+      The list `prefix` holds the tokens so far, starting with `["we"]`. The function `predict` returns next-token probabilities, saved as `probs`. The call `sample(probs)` chooses one token, and `prefix.append(...)` adds it to the list. The loop runs twice and ignores its index `_`. Which change makes each draw use the prefix as it stands at that step?
 
       ```python
       probs = predict(prefix)

@@ -536,7 +536,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A top-2 router assigns four experts probabilities $0.1$, $0.3$, $0.4$ and $0.2$, in order. What weight does expert 4 have in the final mixture?"
+    prompt: "A top-2 router gives experts 1 through 4 probabilities $0.1$, $0.3$, $0.4$ and $0.2$, respectively. What weight does expert 4 have in the final mixture?"
     answer: 0
     tolerance: { abs: 0 }
     solution: "The two largest probabilities belong to experts 3 and 2. Expert 4 is outside the selected pair and contributes zero weight."
@@ -566,7 +566,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 1
-    prompt: "A top-1 layer has two experts and a batch of four tokens. For the first three tokens the router gives expert 1 probability $0.75$; for the fourth it gives expert 1 probability $0.25$. Each token's remaining probability goes to expert 2. What is the batch's load-balancing loss $L_{\\text{aux}}$?"
+    prompt: "A top-1 layer has two experts and a batch of four tokens. Before selecting an expert, the router gives expert 1 probability $0.75$ for each of the first three tokens and $0.25$ for the fourth. Each token's remaining probability goes to expert 2. What is the batch's load-balancing loss $L_{\\text{aux}}$?"
     answer: 1.125
     tolerance: { abs: 0 }
     solution: "The assignment fractions are $(0.75,0.25)$ and the mean probabilities are $(0.625,0.375)$. Twice their dot product is $1.125$."
