@@ -631,7 +631,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: "This code builds a new causal score row with `[s if j <= t else 0 for j, s in enumerate(scores)]` and then applies softmax to it. `enumerate(scores)` pairs each source's zero-based index `j` with its original score `s`. Which replacement for the `0` keeps the allowed weights normalized and gives later sources zero weight?"
+    prompt: "This code builds a new causal score row with `[s if j <= t else 0 for j, s in enumerate(scores)]` and then applies softmax to it. `enumerate(scores)` pairs each source's zero-based index `j` with its original score `s`. Which replacement for the `0` makes the allowed weights add up to $1$ and gives later sources zero weight?"
     options:
       - id: a
         text: "The smallest score in the row."
