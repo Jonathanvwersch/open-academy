@@ -672,14 +672,25 @@ exercises:
     solution: "The two weights add to $1$. If the second weight is $w$, the output is $2(1-w)+10w=2+8w$, so $w=0.75$."
   - id: attn-code-scale-width
     dimension: implementation
-    type: numeric
+    type: mc
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "An attention function takes queries and keys of width $9$. It divides each query–key dot product by `scale` before applying softmax. What number should the function use for `scale`?"
+    prompt: "A scaled dot-product attention function processes $6$ tokens. Each query and key has width $9$, and each value has width $4$. The function computes a query–key dot product called `dot`. Which line turns `dot` into the scaled score?"
+    options:
+      - id: a
+        text: "`score = dot / 6`"
+        correct: false
+        feedback: "This divides by the number of tokens. The key width determines the scale."
+      - id: b
+        text: "`score = dot / 3`"
+        correct: true
+        feedback: "The divisor is the square root of the key width."
+      - id: c
+        text: "`score = dot / 4`"
+        correct: false
+        feedback: "This divides by the value width. Values contribute to the output after the scores become weights."
     solution: 'Use the square root of the key width. The divisor is $\sqrt{9}=3$.'
-    answer: 3
-    tolerance: { abs: 0 }
   - id: attn-code-query-pair
     dimension: implementation
     type: mc
