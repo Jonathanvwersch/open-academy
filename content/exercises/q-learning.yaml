@@ -795,19 +795,18 @@ exercises:
     knowledge_point: ql-q-table
     difficulty: 2
     est_minutes: 0.5
-    prompt: "In a corridor with reliable moves, taking action $a$ in state $s$ earns reward $r$ and always lands in the same nonterminal state $s'$. Use $a'$ for an available action in $s'$. The best action value $Q^*(s,a)$ starts with the move from $s$, and $\\gamma$ is the discount factor. Fill in the missing value in $Q^*(s,a)=r+\\gamma\\,\\underline{\\quad\\quad}$. Use symbols or words."
+    prompt: "In a corridor with reliable moves, taking action $a$ in state $s$ earns reward $r$ and always lands in the same nonterminal state $s'$. Use $a'$ for an available action in $s'$. The star in $Q^*$ means the best achievable value, not the agent's current estimate. With discount factor $\\gamma$, fill in the missing term in $Q^*(s,a)=r+\\gamma\\,\\underline{\\quad\\quad}$. Use symbols or words."
     accept:
       [
         "max_a' Q*(s',a')",
         "max_{a'} Q^*(s',a')",
         "max Q*(s',a')",
-        "max Q(s',a')",
         '\max_{a''}Q^*(s'',a'')',
         V*(s'),
         the optimal value of the next state,
         the best action value in the next state,
       ]
-    regex: "^\\s*(?:(?:\\\\?max(?:imum)?\\s*(?:_\\s*(?:\\{\\s*a\\s*['’′]\\s*\\}|a\\s*['’′])\\s*|(?:over\\s+)?a\\s*['’′]\\s+)?(?:of\\s+)?q\\s*(?:\\^\\s*(?:\\{\\s*\\*\\s*\\}|\\*)|\\*)?\\s*\\(\\s*s\\s*['’′]\\s*,\\s*a\\s*['’′]\\s*\\)|v\\s*(?:\\^\\s*(?:\\{\\s*\\*\\s*\\}|\\*)|\\*)\\s*\\(\\s*s\\s*['’′]\\s*\\)|(?:the\\s+)?(?:largest|highest|maximum|best|optimal)\\s+(?:action\\s+|state\\s+|q[- ]?)?value\\s+(?:of|in|for|from|at)\\s+(?:the\\s+)?(?:next\\s+state|s\\s*['’′])))\\s*$"
+    regex: "^\\s*(?:(?:\\\\?max(?:imum)?\\s*(?:_\\s*(?:\\{\\s*a\\s*['’′]\\s*\\}|a\\s*['’′])\\s*|(?:over\\s+)?a\\s*['’′]\\s+)?(?:of\\s+)?q\\s*(?:\\^\\s*(?:\\{\\s*\\*\\s*\\}|\\*)|\\*)\\s*\\(\\s*s\\s*['’′]\\s*,\\s*a\\s*['’′]\\s*\\)|v\\s*(?:\\^\\s*(?:\\{\\s*\\*\\s*\\}|\\*)|\\*)\\s*\\(\\s*s\\s*['’′]\\s*\\)|(?:the\\s+)?(?:largest|highest|maximum|best|optimal)\\s+(?:action\\s+|state\\s+|q[- ]?)?value\\s+(?:of|in|for|from|at)\\s+(?:the\\s+)?(?:next\\s+state|s\\s*['’′])))\\s*$"
     solution: "The missing term is $\\max_{a'} Q^*(s',a')$, the largest of the values for the available actions $a'$ in the next state $s'$. It equals $V^*(s')$, the best return achievable from that state."
   - id: ql-recall-update-rule-say
     dimension: conceptual

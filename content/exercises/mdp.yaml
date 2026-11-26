@@ -34,7 +34,7 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot in state $s$ issues a move command, action $a$, and reaches next state $s'$. After replacing the floor, an engineer finds that the same command from the same starting spot lands the robot somewhere different. Which part of the Markov decision process should the engineer update to reflect this change?"
+    prompt: "A robot starts in state $s$, receives move command $a$, and ends in next state $s'$. In many tests on the old floor it stayed put on about 1 in 10 tries. In equally many tests on the new floor it stayed put on about 4 in 10 tries, using the same command from the same starting spot. Which part of the Markov decision process should the engineer update to reflect these results?"
     options:
       - id: a
         text: "The transition probabilities $p(s' \\mid s, a)$"
@@ -55,7 +55,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "It lists the situations an agent can occupy. Transition probabilities describe how often each move leads to them."
-    solution: "Transition probabilities give the chance of each next state $s'$ after action $a$ in state $s$. The new floor changes where the same action can lead."
+    solution: "Transition probabilities give the chance of each next state $s'$ after action $a$ in state $s$. The tests show that staying in the starting state is more likely on the new floor."
   - id: mdpp-state-basics
     dimension: conceptual
     type: mc
