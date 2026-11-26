@@ -223,7 +223,7 @@ knowledge_points:
 
       ### Reading the loss curve
 
-      For most models we can't work this out, so we watch a **loss curve**, a plot of the loss after each step. If it falls by only a sliver each step, check the learning rate and the slopes. A small rate or shallow slopes can slow progress. If the loss rises, the rate is too large.
+      A **loss curve** plots the loss after each step. A small drop can come from a small learning rate or shallow slopes of the loss. If the rate is small, try a larger one and check that the loss still falls. If the loss rises, the rate is too large.
 
       Be careful not to mistake swapping sides for failure. At $\eta=0.75$, $w$ swaps sides, yet the loss falls every step. The warning sign is a loss that goes up.
     worked: |

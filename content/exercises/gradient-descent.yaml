@@ -320,14 +320,14 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: After 1,000 gradient descent updates, the training loss still falls smoothly, by about $0.1\%$ per update, and remains much higher than in other runs on the same data. Which change is worth trying first?
+    prompt: After 1,000 gradient descent updates, the training loss still falls smoothly, by about $0.1\%$ per update, and remains much higher than in other runs of the same model on the same data. Which change is worth trying first?
     options:
       - id: a
         text: Increase the learning rate, then check that the loss still falls after each update.
         correct: true
         feedback: A small learning rate or shallow slopes can make the weights and bias move very little. A cautious increase may help them move farther.
       - id: b
-        text: Decrease the learning rate, because the loss is not yet low.
+        text: Decrease the learning rate, so each update is more accurate.
         correct: false
         category: incorrect_reasoning
         feedback: A smaller learning rate moves the weights and bias less for the same slopes.
@@ -879,28 +879,28 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: Two gradient descent runs train the same model on the same data. In the slower run, where the loss is still high, the learning rate is $0.001$ and the slopes of the loss with respect to the weights and bias have absolute values of about $20$. In the other run, the learning rate is $0.01$ and the slopes have absolute values of about $10$. Which explanation fits how far the weights and bias move on the next update step?
+    prompt: Two gradient descent runs train the same model on the same data. Run A uses a learning rate of $0.001$, and the slopes of the loss with respect to the weights and bias have absolute values of about $20$. Run B uses a learning rate of $0.01$, and its slopes have absolute values of about $10$. On the next update step, how far do Run A's weights and bias move compared with Run B's?
     options:
       - id: a
-        text: The smaller learning rate outweighs the steeper slopes, so the slower run moves its weights and bias less.
+        text: Run A moves its weights and bias less because its smaller learning rate outweighs its steeper slopes.
         correct: true
         feedback: The learning rate is one tenth as large and the slopes are about twice as steep. Multiplying these factors gives about one fifth as much movement.
       - id: b
-        text: The steeper slopes outweigh the smaller learning rate, so the slower run moves its weights and bias more.
+        text: Run A moves its weights and bias more because its steeper slopes outweigh its smaller learning rate.
         correct: false
         category: incorrect_reasoning
         feedback: The slopes are about twice as steep, but the learning rate is one tenth as large. The product is smaller.
       - id: c
-        text: The learning rate and slopes balance each other, so the two runs move their weights and bias equally far.
+        text: Run A moves its weights and bias as far as Run B because the two effects balance.
         correct: false
         category: incorrect_reasoning
         feedback: To balance a learning rate one tenth as large, the slopes would have to be ten times as steep. They are only about twice as steep.
       - id: d
-        text: The movement of the weights and bias cannot be compared without knowing the current loss in each run.
+        text: Run A's movements cannot be compared with Run B's without knowing the current loss in each run.
         correct: false
         category: incorrect_reasoning
         feedback: The learning rate and slope together determine how far each weight or bias moves.
-    solution: Multiplying the learning rate by the absolute value of the slope gives movements of about $0.02$ in the slower run and $0.1$ in the other run. The slower run's weights and bias move less because its smaller learning rate outweighs its steeper slopes.
+    solution: Multiplying the learning rate by the absolute value of the slope gives movements of about $0.02$ in Run A and $0.1$ in Run B. Run A's weights and bias move less because its smaller learning rate outweighs its steeper slopes.
   - id: gd-explain-lr
     dimension: conceptual
     type: explain
@@ -1247,15 +1247,15 @@ exercises:
     prompt: A model trains with gradient descent. Its loss is still high and has fallen only a little since training began. Its weights and bias move only a little on each update. What could explain this pattern?
     options:
       - id: a
-        text: A small learning rate or shallow slopes of the loss with respect to the weights and bias.
+        text: The learning rate is small, the slopes of the loss with respect to the weights and bias are shallow, or both.
         correct: true
         feedback: The learning rate multiplies each slope of the loss with respect to a weight or the bias. A small factor in that product can make the parameter move very little.
       - id: b
-        text: The small drops in loss determine how far the weights and bias move on the next update.
+        text: The small drops in loss between updates determine how far the weights and bias move on the next update.
         correct: false
         feedback: A drop in loss measures progress from an update. The next update uses the current slopes of the loss with respect to the weights and bias.
       - id: c
-        text: Training has finished because the latest drop in loss measures how much room there is to improve.
+        text: Training has finished because the latest drop in loss measures how much room there is for the model to improve.
         correct: false
         feedback: The latest drop measures progress on one update, so the loss could still fall much farther.
     solution: Gradient descent multiplies each slope of the loss with respect to a weight or the bias by the learning rate. A small learning rate or shallow slopes can make the weights and bias move very little even while the loss is high.
