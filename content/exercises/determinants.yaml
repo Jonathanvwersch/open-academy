@@ -29,20 +29,20 @@ exercises:
     lesson_only: true
     difficulty: 2
     est_minutes: 2
-    prompt: In the worked example with the $2\times2$ matrix $B=\begin{bmatrix}2&1\\4&5\end{bmatrix}$, twice row 1 is subtracted from row 2. The map for that row addition takes a point with input coordinates $(x,y)$ to a point with output coordinates $(x,y-2x)$. Apply this map to the unit square whose bottom-left corner is at the origin and whose sides follow the coordinate axes. What happens to the length and spacing of its vertical sides, and to the square's orientation?
+    prompt: The worked example starts with the $2\times2$ matrix $B=\begin{bmatrix}2&1\\4&5\end{bmatrix}$, whose determinant is 6. Subtracting twice row 1 from row 2 maps a point with input coordinates $(x,y)$ to a point with output coordinates $(x,y-2x)$. Apply this map to the unit square whose bottom-left corner is at the origin and whose sides follow the coordinate axes. What happens to the determinant of the matrix after the row addition, and why?
     options:
       - id: one-swap
-        text: Same length, same spacing, same orientation.
+        text: The vertical sides keep their length and spacing, and orientation stays the same, so the determinant stays 6.
         correct: true
         feedback: The left edge stays fixed. Both endpoints of the right edge move down by 2, so its length stays the same. The horizontal spacing stays at 1, and the slide does not reverse orientation.
       - id: two-additions
-        text: Same length, same spacing, reversed orientation.
+        text: The vertical sides keep their length and spacing, and orientation reverses, so the determinant changes to $-6$.
         correct: false
         feedback: Subtracting twice the horizontal coordinate is not the same as negating the vertical coordinate. The top endpoint on each side stays above the bottom endpoint, and the right side stays to the right of the left side.
       - id: initial-zero
-        text: Same length, wider spacing, same orientation.
+        text: The vertical sides keep their length but get farther apart, and orientation stays the same, so the determinant increases.
         correct: false
-        feedback: The endpoints of the top and bottom edges do get farther apart, but that is not the spacing between the vertical sides. Their horizontal coordinates are still 0 and 1.
+        feedback: The top and bottom edges get longer, but the spacing between the vertical sides is measured horizontally. Their horizontal coordinates are still 0 and 1.
     solution: The vertical sides stay one unit long and one unit apart, so the resulting parallelogram has area 1. The right side moves down, not across the left side, and both sides still point up when read from bottom to top. The orientation stays the same, so the row addition preserves signed area and leaves the determinant unchanged.
   - id: det-pivots-triangular-template
     dimension: math
