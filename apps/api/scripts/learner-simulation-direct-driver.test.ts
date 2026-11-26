@@ -43,29 +43,29 @@ test('two direct 15-day runs from the same seed produce byte-identical reports',
 }, 120_000);
 
 test('direct simulator modules do not load the app, the database or its config', async () => {
-  const modules = [
-    'learner-simulator.ts',
-    'learner-simulation-audit.ts',
-    'learner-simulation-driver.ts',
-    'learner-simulation-placement.ts',
-    'learner-simulation-support.ts',
-    'learner-simulation-direct-driver.ts',
-    'learner-simulation-direct-lessons.ts',
-    'learner-simulation-direct-ops.ts',
-    'learner-simulation-direct-repo.ts',
-  ];
   const forbidden =
     /^(?:hono|drizzle-orm|postgres|pg)(?:\/|$)|\/src\/(?:app|config|db|http|features)\b|learner-simulation-http-driver/;
-  for (const module of modules) {
-    const source = await readFile(new URL(module, import.meta.url), 'utf8');
-    const runtimeImports = [
-      ...source.matchAll(/^import\s+(?!type\s)[^;]*?from\s+'([^']+)'/gms),
+  const visited = new Set<string>();
+  const reached: string[] = [];
+  const visit = async (file: URL) => {
+    if (visited.has(file.href)) return;
+    visited.add(file.href);
+    const source = await readFile(file, 'utf8');
+    const specifiers = [
+      ...source.matchAll(/^(?:import|export)\s+(?!type\s)(?:[^;]*?\sfrom\s+)?'([^']+)'/gms),
+      ...source.matchAll(/\bimport\(\s*'([^']+)'\s*\)/g),
     ].map((match) => match[1] ?? '');
-    expect(
-      runtimeImports.filter((specifier) => forbidden.test(specifier)),
-      module,
-    ).toEqual([]);
-  }
+    for (const specifier of specifiers) {
+      if (forbidden.test(specifier)) reached.push(`${file.pathname} -> ${specifier}`);
+      if (specifier.startsWith('.')) {
+        await visit(new URL(specifier.replace(/\.js$/, '.ts'), file));
+      }
+    }
+  };
+  await visit(new URL('learner-simulation-direct-driver.ts', import.meta.url));
+  await visit(new URL('learner-simulator.ts', import.meta.url));
+  expect(visited.size).toBeGreaterThan(5);
+  expect(reached).toEqual([]);
 });
 
 test('direct scripted scenarios and the timed quiz scenario pass every invariant', async () => {
