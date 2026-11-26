@@ -1057,7 +1057,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: "In a pre-norm model, `first` and `second` are two transformer blocks in that order, each with its own LayerNorms. The function `norm` applies the model-level LayerNorm, and `score` maps token vectors to next-token scores. Which expression computes the scores from input vectors `x`?"
+    prompt: "A pre-norm model has exactly two transformer blocks, `first` and `second`, in that order. Each has its own LayerNorms. The function `norm` applies the model-level LayerNorm, and `score` maps token vectors to next-token scores. Which expression computes the scores from input vectors `x`?"
     options:
       - id: a
         text: "`score(second(norm(first(x))))`"
