@@ -17,7 +17,7 @@ export type CourseMasteryEvent = Pick<
 export interface CourseStore extends FlowStore {
   listProjectProgress(learnerId: Id): Promise<CourseProjectProgress[]>;
   listPaperProgress(learnerId: Id): Promise<CoursePaperProgress[]>;
-  listCompletedActivities(learnerId: Id): Promise<Activity[]>;
+  listCompletedActivities(learnerId: Id, since: Date): Promise<Activity[]>;
   listActivityAttemptKeys(
     learnerId: Id,
     activityIds: readonly Id[],

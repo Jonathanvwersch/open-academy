@@ -222,9 +222,10 @@ export async function getLearnHome(store: CourseStore, input: CourseReadInput) {
   const { userId, content: index, timeZone } = input;
   const now = input.now();
   const reader = new CourseReader(store, input);
+  const recentLearnCutoff = new Date(now.getTime() - 7 * 86_400_000);
   const [runRowsRaw, completedRowsRaw, projectRowsRaw] = await Promise.all([
     store.listLessonRuns(userId),
-    store.listCompletedActivities(userId),
+    store.listCompletedActivities(userId, recentLearnCutoff),
     store.listProjectProgress(userId),
   ]);
   const runRows = runRowsRaw.filter((run) => index.conceptsById.has(run.conceptId));
@@ -232,7 +233,6 @@ export async function getLearnHome(store: CourseStore, input: CourseReadInput) {
     sessionActivityIsInContent(index, activity),
   );
   const recentLearnMinutesByConcept: Record<string, number> = {};
-  const recentLearnCutoff = new Date(now.getTime() - 7 * 86_400_000);
   for (const activity of completedRows) {
     if (
       activity.kind !== 'learn' ||

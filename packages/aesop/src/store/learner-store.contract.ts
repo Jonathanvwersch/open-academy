@@ -231,10 +231,12 @@ export function describeLearnerStoreContract(
           activityRow(1, { status: 'completed', completedAt: date, conceptId: topic }),
           activityRow(0, { status: 'completed', completedAt: date, conceptId: topic }),
           activityRow(2, { status: 'in_progress', conceptId: topic }),
+          activityRow(3, { status: 'completed', completedAt: new Date(date.getTime() - 1) }),
+          activityRow(4, { status: 'completed' }),
         ]);
       }
       expect(
-        (await store.listCompletedActivities(learnerId)).map(({ conceptId, idx }) => [
+        (await store.listCompletedActivities(learnerId, date)).map(({ conceptId, idx }) => [
           conceptId,
           idx,
         ]),

@@ -923,12 +923,18 @@ export function drizzleLearnerStore(
         .where(eq(paperProgress.userId, learnerId))
         .orderBy(paperProgress.paperId);
     },
-    async listCompletedActivities(learnerId) {
+    async listCompletedActivities(learnerId, since) {
       const rows = await db
         .select({ activity: sessionActivities, sessionStartedAt: studySessions.startedAt })
         .from(sessionActivities)
         .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
-        .where(and(eq(studySessions.userId, learnerId), eq(sessionActivities.status, 'completed')));
+        .where(
+          and(
+            eq(studySessions.userId, learnerId),
+            eq(sessionActivities.status, 'completed'),
+            gte(sessionActivities.completedAt, since),
+          ),
+        );
       return rows.sort(compareCompletedActivities).map(({ activity }) => activity);
     },
     async listCourseLessonProblems(learnerId, runIds) {

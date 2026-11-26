@@ -181,7 +181,10 @@ export class LearnerRepository {
   }
 
   async attemptedExerciseIdsByActivity(activityIds: readonly string[]) {
-    const rows = await drizzleLearnerStore(this.db).listActivityAttemptKeys(this.userId, activityIds);
+    const rows = await drizzleLearnerStore(this.db).listActivityAttemptKeys(
+      this.userId,
+      activityIds,
+    );
     return groupAttemptedExerciseIdsByActivity(rows);
   }
 

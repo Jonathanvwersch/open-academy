@@ -1315,11 +1315,12 @@ function scopedStore(
         ),
       );
     },
-    async listCompletedActivities(learnerId) {
+    async listCompletedActivities(learnerId, since) {
       assertOpen();
       const sessions = data.learners.get(learnerId)?.sessions;
       return structuredClone(
         matchingActivities(learnerId, { statuses: ['completed'] })
+          .filter(({ completedAt }) => completedAt !== null && completedAt >= since)
           .map((activity) => ({
             activity,
             sessionStartedAt: sessions?.get(activity.sessionId)?.startedAt ?? null,
