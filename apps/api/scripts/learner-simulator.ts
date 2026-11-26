@@ -22,10 +22,7 @@ import {
   startOfNextCalendarDay,
 } from '@academy/aesop/memory/fsrs';
 import { implicitRepetition } from '@academy/aesop/memory/implicit-repetition';
-import {
-  type ImplicitRepetitionTraceEvent,
-  setImplicitRepetitionTrace,
-} from '@academy/aesop/memory/mastery-service';
+import type { ImplicitRepetitionTraceEvent } from '@academy/aesop/memory/mastery-service';
 import { initialMastery, type MasteryState } from '@academy/aesop/memory/types';
 import {
   adjustedMinutesForLearnerPace,
@@ -46,31 +43,19 @@ import {
 import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
 import type { QuizPayload } from '@academy/contracts/quizzes';
 import type { SessionActivity, SessionPayload, TodayPayload } from '@academy/contracts/sessions';
-import { and, asc, desc, eq, exists, inArray, notInArray, sql } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { createEmptyCard, fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
-import { createApp } from '../src/app.js';
-import type { Database } from '../src/db/client.js';
-import { LearnerRepository } from '../src/db/repository.js';
+import type {
+  AuditReviewCardInsert,
+  SimulatorAudit,
+  SimulatorFixtures,
+} from './learner-simulation-audit.js';
 import {
-  attempts,
-  lessonProblems,
-  lessonQuizAttempts,
-  lessonQuizItems,
-  lessonRuns,
-  mastery,
-  placementGrants,
-  quizItems,
-  quizRuns,
-  remediationFlags,
-  reviewCards,
-  reviewLogs,
-  sessionActivities,
-  studySessions,
-  tutorMessages,
-  users,
-  xpEvents,
-} from '../src/db/schema.js';
+  decisionSeed,
+  type SimulatorDriver,
+  type SimulatorDriverFactory,
+  seededRandom,
+} from './learner-simulation-driver.js';
 import {
   auditPlacementGrants,
   emptyPlacementAuditState,
@@ -466,29 +451,6 @@ export interface LearnerSimulationOptions {
   onProgress?: (message: string) => void;
 }
 
-interface ApiResult {
-  ok: boolean;
-  status: number;
-  data: unknown;
-}
-
-export interface SimulatedApiFailure {
-  method: string;
-  path: string;
-  status: number;
-  requestBody?: unknown;
-  responseBody: unknown;
-}
-
-export class SimulatedApiFailureError extends Error {
-  constructor(readonly request: SimulatedApiFailure) {
-    super(
-      `${request.method} ${request.path} failed (${request.status}); request=${JSON.stringify(request.requestBody)} response=${JSON.stringify(request.responseBody)}`,
-    );
-    this.name = 'SimulatedApiFailureError';
-  }
-}
-
 interface SimActivity extends SessionActivity {
   projectId?: string;
   paperId?: string;
@@ -617,25 +579,6 @@ function text(value: unknown): string | undefined {
 
 function numeric(value: unknown, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
-function seededRandom(seed: number): () => number {
-  let state = seed >>> 0;
-  return () => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let value = state;
-    value = Math.imul(value ^ (value >>> 15), value | 1);
-    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-    return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
-  };
-}
-
-function decisionSeed(...parts: Array<string | number>): number {
-  let seed = 2_166_136_261;
-  for (const character of parts.join('\u0000')) {
-    seed = Math.imul(seed ^ character.charCodeAt(0), 16_777_619);
-  }
-  return seed >>> 0;
 }
 
 function decisionRandom(
@@ -768,141 +711,6 @@ function toGraphChangeContent(content: ContentIndex): ContentIndex {
   };
 }
 
-class SimulatedApi {
-  private quizTime = Number.NEGATIVE_INFINITY;
-  private app: ReturnType<typeof createApp>;
-  private now: Date;
-  /** Runs after every request, so audits can see the order of same-day events. */
-  afterCall:
-    | ((
-        method: string,
-        path: string,
-        now: Date,
-        trace: readonly ImplicitRepetitionTraceEvent[],
-      ) => Promise<void>)
-    | undefined;
-  activityTrace: ((trace: readonly ImplicitRepetitionTraceEvent[]) => void) | undefined;
-  private cookie: string | undefined;
-  private readonly requestOrdinals = new Map<string, number>();
-  readonly failedRequests: SimulatedApiFailure[] = [];
-
-  constructor(
-    readonly db: Database,
-    private content: ContentIndex,
-    private readonly timeZone: string,
-    initialNow: Date,
-    private readonly profile: SimulationProfile,
-  ) {
-    this.now = initialNow;
-    this.app = this.createApp();
-  }
-
-  private createApp() {
-    return createApp({
-      db: this.db,
-      content: this.content,
-      demo: { ttlHours: 9_600 },
-      tutorProvider: null,
-      authClock: () => this.now,
-    });
-  }
-
-  setContent(content: ContentIndex) {
-    this.content = content;
-    this.app = this.createApp();
-  }
-
-  get userId(): string | undefined {
-    return this.cookie?.match(/^academy_demo=([^;]+)/)?.[1];
-  }
-
-  nextQuizTime(now: Date): Date {
-    this.quizTime = Math.max(now.getTime() + 1, this.quizTime + 1);
-    return new Date(this.quizTime);
-  }
-
-  async call(method: string, path: string, now: Date, body?: unknown): Promise<ApiResult> {
-    this.now = now;
-    const stablePath = path.replace(
-      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
-      '<id>',
-    );
-    const stableBody = JSON.stringify(body, (key, value: unknown) =>
-      ['activityId', 'sessionId', 'problemId', 'itemId', 'placementId'].includes(key)
-        ? `<${key}>`
-        : value,
-    );
-    const requestKey = `${localDate(now, this.timeZone)}|${method}|${stablePath}|${stableBody ?? ''}`;
-    const ordinal = this.requestOrdinals.get(requestKey) ?? 0;
-    this.requestOrdinals.set(requestKey, ordinal + 1);
-    const originalRandom = Math.random;
-    const apiSeed = decisionSeed(
-      this.profile,
-      localDate(now, this.timeZone),
-      'api',
-      requestKey,
-      ordinal,
-    );
-    Math.random = seededRandom(apiSeed);
-    const headers = new Headers({
-      'X-Now': now.toISOString(),
-      'X-Time-Zone': this.timeZone,
-    });
-    if (this.cookie) headers.set('cookie', this.cookie);
-    if (body !== undefined) headers.set('content-type', 'application/json');
-    const trace: ImplicitRepetitionTraceEvent[] = [];
-    setImplicitRepetitionTrace((event) => trace.push(event));
-    try {
-      const response = await this.app.request(`http://academy.local/api${path}`, {
-        method,
-        headers,
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
-      const setCookie = response.headers.get('set-cookie');
-      if (setCookie) this.cookie = setCookie.split(';', 1)[0];
-      let data: unknown = null;
-      try {
-        data = await response.json();
-      } catch {
-        data = null;
-      }
-      if (response.status >= 500) {
-        const failure: SimulatedApiFailure = {
-          method,
-          path,
-          status: response.status,
-          ...(body === undefined ? {} : { requestBody: body }),
-          responseBody: data,
-        };
-        this.failedRequests.push(failure);
-        throw new SimulatedApiFailureError(failure);
-      }
-      await this.afterCall?.(method, path, now, trace);
-      this.activityTrace?.(trace);
-      return { ok: response.ok, status: response.status, data };
-    } finally {
-      setImplicitRepetitionTrace(undefined);
-      Math.random = originalRandom;
-    }
-  }
-
-  async require<T>(method: string, path: string, now: Date, body?: unknown): Promise<T> {
-    const result = await this.call(method, path, now, body);
-    if (!result.ok) {
-      throw new Error(
-        `${method} ${path} failed (${result.status}): ${JSON.stringify(result.data)}`,
-      );
-    }
-    return result.data as T;
-  }
-
-  async cleanup() {
-    if (this.userId) {
-      await this.db.delete(users).where(eq(users.id, this.userId));
-    }
-  }
-}
-
 function hardAncestorClosure(
   conceptIds: readonly string[],
   content: ContentIndex,
@@ -927,33 +735,13 @@ function hardAncestorClosure(
   return [...ancestors];
 }
 
-async function readProgress(db: Database, userId: string): Promise<LearnerProgress> {
-  const [masteryRows, runs, placements, flags] = await Promise.all([
-    db
-      .select()
-      .from(mastery)
-      .where(eq(mastery.userId, userId))
-      .orderBy(asc(mastery.conceptId), asc(mastery.dimension)),
-    db
-      .select()
-      .from(lessonRuns)
-      .where(eq(lessonRuns.userId, userId))
-      .orderBy(asc(lessonRuns.conceptId), desc(lessonRuns.startedAt), desc(lessonRuns.id)),
-    db
-      .select({ conceptId: placementGrants.conceptId, state: placementGrants.state })
-      .from(placementGrants)
-      .where(eq(placementGrants.userId, userId))
-      .orderBy(asc(placementGrants.createdAt), asc(placementGrants.id)),
-    db
-      .select()
-      .from(remediationFlags)
-      .where(and(eq(remediationFlags.userId, userId), eq(remediationFlags.status, 'open')))
-      .orderBy(
-        asc(remediationFlags.conceptId),
-        asc(remediationFlags.targetPrereqId),
-        asc(remediationFlags.id),
-      ),
-  ]);
+async function readProgress(audit: SimulatorAudit, userId: string): Promise<LearnerProgress> {
+  const {
+    mastery: masteryRows,
+    lessonRuns: runs,
+    placements,
+    openFlags: flags,
+  } = await audit.progressRows(userId);
   const placedOut = new Set<string>();
   for (const grant of placements) {
     if (grant.state === 'withdrawn') placedOut.delete(grant.conceptId);
@@ -1629,7 +1417,7 @@ function scriptedScenarioReviewCard(
   dueAt: Date,
   stability: number,
   targetRetrievability?: number,
-): typeof reviewCards.$inferInsert {
+): AuditReviewCardInsert {
   const reviewedAt = new Date(
     dueAt.getTime() - (targetRetrievability === undefined ? 44 : 5_000) * 86_400_000,
   );
@@ -1671,26 +1459,13 @@ function scriptedScenarioReviewCard(
 }
 
 async function seedScriptedScenario(
-  db: Database,
+  fixtures: SimulatorFixtures,
   userId: string,
   profile: SimulationProfile,
   content: ContentIndex,
   now: Date,
 ): Promise<void> {
   const freshConceptId = 'supervised-learning';
-  await new LearnerRepository(db, userId).startCourse('fixture-course', 'beginning', now);
-  await db
-    .update(users)
-    .set({
-      activeCourseId: 'fixture-course',
-      studySetInitializedAt: now,
-      timezone: 'UTC',
-      startDate: '2026-01-05',
-    })
-    .where(eq(users.id, userId));
-  await db.delete(reviewCards).where(eq(reviewCards.userId, userId));
-  await db.delete(lessonRuns).where(eq(lessonRuns.userId, userId));
-  await db.delete(mastery).where(eq(mastery.userId, userId));
   const masteryRows = content.concepts
     .filter((concept) => concept.id !== freshConceptId)
     .flatMap((concept) =>
@@ -1715,7 +1490,6 @@ async function seedScriptedScenario(
         };
       }),
     );
-  await db.insert(mastery).values(masteryRows);
   const cards =
     profile === 'scenario-p14-fallback'
       ? [scriptedScenarioReviewCard(userId, 'vectors', now, 30)]
@@ -1732,7 +1506,13 @@ async function seedScriptedScenario(
               30,
             ),
           ];
-  await db.insert(reviewCards).values(cards);
+  await fixtures.seedScriptedScenario({
+    userId,
+    now,
+    courseId: 'fixture-course',
+    masteryRows,
+    reviewCards: cards,
+  });
 }
 
 export function requireP17ReviewMinutes(conceptId: string, value: unknown): number {
@@ -2219,15 +1999,21 @@ function auditCoursePage(
 }
 
 async function choiceIsStartable(
-  api: SimulatedApi,
+  api: SimulatorDriver,
   now: Date,
   sessionKind: TodayPayload['sessionKind'],
   conceptId: string,
 ): Promise<boolean> {
-  const result = await api.call('POST', '/sessions', now, {
-    kind: sessionKind,
-    focusConceptId: conceptId,
-  });
+  const result = await api.call(
+    {
+      kind: 'createSession',
+      body: {
+        kind: sessionKind,
+        focusConceptId: conceptId,
+      },
+    },
+    now,
+  );
   if (!result.ok) {
     if (result.status === 409) return false;
     throw new Error(
@@ -2236,12 +2022,12 @@ async function choiceIsStartable(
   }
   const sessionId = text(object(result.data).id);
   if (!sessionId) throw new Error(`Focused session for ${conceptId} returned no id`);
-  await api.require('POST', `/sessions/${sessionId}/end`, now);
+  await api.require({ kind: 'endSession', sessionId: sessionId }, now);
   return true;
 }
 
 async function auditHome(
-  api: SimulatedApi,
+  api: SimulatorDriver,
   now: Date,
   runtime: ProfileRuntime,
   day: number,
@@ -2333,7 +2119,7 @@ async function auditHome(
 }
 
 async function auditSessionActivity(
-  api: SimulatedApi,
+  api: SimulatorDriver,
   runtime: ProfileRuntime,
   now: Date,
   day: number,
@@ -2345,7 +2131,10 @@ async function auditSessionActivity(
   content: ContentIndex,
 ) {
   if (activity.kind === 'lab') {
-    const session = await api.require<SessionPayload>('GET', `/sessions/${sessionId}`, now);
+    const session = await api.require<SessionPayload>(
+      { kind: 'session', sessionId: sessionId },
+      now,
+    );
     if (!session.activities.some(({ id }) => id === activity.id)) return false;
   }
   runtime.activeBehaviors.B3PartialExplain = false;
@@ -2444,33 +2233,36 @@ function recordOutcome(runtime: ProfileRuntime, conceptId: string, day: number, 
   runtime.lastPracticed.set(conceptId, day);
 }
 
-async function fetchCourseCatalog(api: SimulatedApi, now: Date): Promise<CourseCatalogPayload> {
-  return api.require<CourseCatalogPayload>('GET', '/courses', now);
+async function fetchCourseCatalog(api: SimulatorDriver, now: Date): Promise<CourseCatalogPayload> {
+  return api.require<CourseCatalogPayload>({ kind: 'courseCatalog' }, now);
 }
 
 async function fetchCoursePage(
-  api: SimulatedApi,
+  api: SimulatorDriver,
   now: Date,
   courseId: string,
 ): Promise<CoursePayload> {
-  return api.require<CoursePayload>('GET', `/courses/${encodeURIComponent(courseId)}`, now);
+  return api.require<CoursePayload>({ kind: 'course', courseId: courseId }, now);
 }
 
 async function startCourse(
-  api: SimulatedApi,
+  api: SimulatorDriver,
   content: ContentIndex,
   runtime: ProfileRuntime,
   courseId: string,
   now: Date,
   day: number,
 ): Promise<void> {
-  await api.require('PUT', '/course/active', now, { courseId });
+  await api.require({ kind: 'setActiveCourse', body: { courseId } }, now);
   const overplaced = runtime.profile === 'overplaced';
   if (runtime.profile !== 'placement' && !overplaced) {
-    await api.require('POST', `/courses/${courseId}/start`, now, { method: 'beginning' });
+    await api.require(
+      { kind: 'startCourse', courseId: courseId, body: { method: 'beginning' } },
+      now,
+    );
     return;
   }
-  const placement = object(await api.require('POST', '/placement', now, { courseId }));
+  const placement = object(await api.require({ kind: 'startPlacement', body: { courseId } }, now));
   const placementId = text(placement.id);
   if (!placementId) throw new Error('Placement start did not return a run id');
   const course = content.coursesById.get(courseId);
@@ -2481,7 +2273,9 @@ async function startCourse(
   );
   for (const conceptId of knownTopics) runtime.placement.trulyKnown.add(conceptId);
   for (let step = 0; step < 64; step += 1) {
-    const next = object(await api.require('GET', `/placement/${placementId}/next`, now));
+    const next = object(
+      await api.require({ kind: 'placementNext', placementId: placementId }, now),
+    );
     const exercise = object(next.exercise);
     const exerciseId = text(exercise.id);
     if (!exerciseId) break;
@@ -2496,13 +2290,15 @@ async function startCourse(
           ...(overplaced ? { durationMs: guessed ? targetSeconds * 3_000 : 5_000 } : {}),
         }
       : { exerciseId, dontKnow: true };
-    const result = object(await api.require('POST', `/placement/${placementId}/answer`, now, body));
+    const result = object(
+      await api.require({ kind: 'placementAnswer', placementId: placementId, body: body }, now),
+    );
     recordOutcome(runtime, conceptId, day, know ? numeric(result.correct, 1) : 0);
     if (result.complete === true || result.completed === true) break;
   }
-  await api.require('GET', `/placement/${placementId}/results`, now);
+  await api.require({ kind: 'placementResults', placementId: placementId }, now);
   if (overplaced && api.userId) {
-    await recordOverplacement(api.db, api.userId, runtime.placement);
+    await recordOverplacement(api.audit, api.userId, runtime.placement);
   }
 }
 
@@ -2535,18 +2331,14 @@ async function auditP4(
 
 async function reviewCardAudit(
   runtime: ProfileRuntime,
-  db: Database,
+  audit: SimulatorAudit,
   userId: string,
   now: Date,
   day: number,
   timeZone: string,
   reportedCards: Set<string>,
 ) {
-  const cards = await db
-    .select()
-    .from(reviewCards)
-    .where(eq(reviewCards.userId, userId))
-    .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id));
+  const cards = await audit.reviewCards(userId);
   const today = localDate(now, timeZone);
   for (const card of cards) {
     const dueDate = localDate(card.dueAt, timeZone);
@@ -2576,19 +2368,11 @@ async function reviewCardAudit(
   }
 }
 
-async function missedQuizPointIds(db: Database, runId: string): Promise<string[]> {
-  const quizAttempts = await db
-    .select()
-    .from(lessonQuizAttempts)
-    .where(eq(lessonQuizAttempts.runId, runId))
-    .orderBy(lessonQuizAttempts.attemptNo);
+async function missedQuizPointIds(audit: SimulatorAudit, runId: string): Promise<string[]> {
+  const quizAttempts = await audit.lessonQuizAttempts(runId);
   const lastAttempt = quizAttempts.at(-1);
   if (lastAttempt?.passed !== false || !lastAttempt?.submittedAt) return [];
-  const items = await db
-    .select()
-    .from(lessonQuizItems)
-    .where(eq(lessonQuizItems.quizAttemptId, lastAttempt.id))
-    .orderBy(asc(lessonQuizItems.position), asc(lessonQuizItems.id));
+  const items = await audit.lessonQuizItems(lastAttempt.id);
   return [
     ...new Set(
       items
@@ -2606,7 +2390,7 @@ function offerProject(runtime: ProfileRuntime, day: number, courseId: string, pr
 }
 
 async function answerLessonProblem(
-  api: SimulatedApi,
+  api: SimulatorDriver,
   content: ContentIndex,
   runtime: ProfileRuntime,
   now: Date,
@@ -2633,12 +2417,19 @@ async function answerLessonProblem(
   const intendedCorrect =
     !weakPoint && wantsCorrect(runtime, problemConceptId, day, activityId, exerciseId);
   const answer = answerForProfile(content, exerciseId, numeric(pending.seed), intendedCorrect);
-  const response = await api.call('POST', `${runPath}/answer`, now, {
-    problemId,
-    activityId,
-    answer,
-    durationMs: 5_000,
-  });
+  const response = await api.call(
+    {
+      kind: 'answerLessonProblem',
+      conceptId,
+      body: {
+        problemId,
+        activityId,
+        answer,
+        durationMs: 5_000,
+      },
+    },
+    now,
+  );
   if (!response.ok) {
     throw new Error(
       `POST ${runPath}/answer failed (${response.status}) for ${exerciseId}: ${JSON.stringify(response.data)}`,
@@ -2681,7 +2472,7 @@ async function answerLessonProblem(
 }
 
 async function finishLessonSteps(
-  api: SimulatedApi,
+  api: SimulatorDriver,
   content: ContentIndex,
   runtime: ProfileRuntime,
   now: Date,
@@ -2690,7 +2481,9 @@ async function finishLessonSteps(
   activityId: string,
 ): Promise<Record<string, unknown>> {
   const runPath = `/lessons/${conceptId}/run`;
-  const started = object(await api.require('POST', runPath, now, { activityId }));
+  const started = object(
+    await api.require({ kind: 'startLessonRun', conceptId, body: { activityId } }, now),
+  );
   let run = object(started.run);
   if (runtime.awaitingRetryStart.delete(conceptId)) {
     runtime.retryEvents.push({ day, conceptId });
@@ -2701,7 +2494,10 @@ async function finishLessonSteps(
     if (status === 'quiz' || status === 'completed' || status === 'needs_retry') return run;
     let pending = object(run.pendingProblem ?? run.pendingPracticeProblem);
     if (!text(pending.id)) {
-      const refreshed = await api.call('POST', runPath, now, { activityId });
+      const refreshed = await api.call(
+        { kind: 'startLessonRun', conceptId, body: { activityId } },
+        now,
+      );
       if (!refreshed.ok) {
         if (status === 'quiz' || status === 'completed') return run;
         throw new Error(
@@ -2731,8 +2527,8 @@ async function finishLessonSteps(
 }
 
 async function completeQuizWarmup(
-  api: SimulatedApi,
-  db: Database,
+  api: SimulatorDriver,
+  audit: SimulatorAudit,
   content: ContentIndex,
   runtime: ProfileRuntime,
   now: Date,
@@ -2741,15 +2537,22 @@ async function completeQuizWarmup(
   activityId: string,
   runId: string,
 ) {
-  const missedPointIds = await missedQuizPointIds(db, runId);
+  const missedPointIds = await missedQuizPointIds(audit, runId);
   let answerOffsetSeconds = 0;
   for (const pointId of missedPointIds) {
     for (let practiceNo = 0; practiceNo < 4; practiceNo += 1) {
-      const result = await api.call('POST', `/lessons/${conceptId}/run/practice`, now, {
-        pointId,
-        activityId,
-        warmup: true,
-      });
+      const result = await api.call(
+        {
+          kind: 'practiceLessonPoint',
+          conceptId,
+          body: {
+            pointId,
+            activityId,
+            warmup: true,
+          },
+        },
+        now,
+      );
       if (!result.ok) break;
       const run = object(object(result.data).run);
       const pending = object(run.pendingPracticeProblem);
@@ -2771,8 +2574,8 @@ async function completeQuizWarmup(
 }
 
 async function finishLessonQuiz(
-  api: SimulatedApi,
-  db: Database,
+  api: SimulatorDriver,
+  audit: SimulatorAudit,
   content: ContentIndex,
   runtime: ProfileRuntime,
   now: Date,
@@ -2783,21 +2586,19 @@ async function finishLessonQuiz(
 ) {
   const quizPath = `/lessons/${conceptId}/quiz`;
   for (let attempt = 0; attempt < 10; attempt += 1) {
-    const started = await api.call('POST', `${quizPath}/start`, now, { activityId });
+    const started = await api.call(
+      { kind: 'startLessonQuiz', conceptId, body: { activityId } },
+      now,
+    );
     if (!started.ok) {
       if (started.status === 409) {
         if (attempt >= 9) return false;
-        const [lessonRun] = await db
-          .select({ id: lessonRuns.id })
-          .from(lessonRuns)
-          .where(and(eq(lessonRuns.userId, api.userId ?? ''), eq(lessonRuns.conceptId, conceptId)))
-          .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
-          .limit(1);
+        const lessonRun = await audit.latestLessonRun(api.userId ?? '', conceptId);
         const runId = lessonRun?.id;
         if (runId) {
           await completeQuizWarmup(
             api,
-            db,
+            audit,
             content,
             runtime,
             now,
@@ -2817,42 +2618,38 @@ async function finishLessonQuiz(
     const run = object(object(started.data).run);
     const current = object(object(run.quiz).current);
     const items = list(current.items).map(object);
-    const progress = await readProgress(db, api.userId ?? '');
+    const progress = await readProgress(audit, api.userId ?? '');
     for (const item of items) {
       if (item.answered === true) continue;
       const itemId = text(item.id);
       const exercise = object(item.exercise);
       const exerciseId = text(exercise.id);
       if (!itemId || !exerciseId) continue;
-      const [stored] = await db
-        .select({
-          seed: lessonQuizItems.seed,
-          exerciseId: lessonQuizItems.exerciseId,
-        })
-        .from(lessonQuizItems)
-        .where(eq(lessonQuizItems.id, itemId))
-        .limit(1);
+      const stored = await audit.lessonQuizItem(itemId);
       const seed = stored?.seed ?? 0;
       const questionConceptId = content.exercisesById.get(exerciseId)?.concept ?? conceptId;
       await auditP4(runtime, day, courseId, questionConceptId, progress, content);
       const intendedCorrect = wantsCorrect(runtime, questionConceptId, day, activityId, exerciseId);
       const answer = answerForProfile(content, exerciseId, seed, intendedCorrect);
-      const response = await api.call('POST', `${quizPath}/answer`, now, {
-        itemId,
-        activityId,
-        answer,
-        durationMs: 5_000,
-      });
+      const response = await api.call(
+        {
+          kind: 'answerLessonQuiz',
+          conceptId,
+          body: {
+            itemId,
+            activityId,
+            answer,
+            durationMs: 5_000,
+          },
+        },
+        now,
+      );
       if (!response.ok) {
         throw new Error(
           `POST ${quizPath}/answer failed (${response.status}) for ${exerciseId}: ${JSON.stringify(response.data)}`,
         );
       }
-      const [gradedItem] = await db
-        .select({ correct: lessonQuizItems.correct })
-        .from(lessonQuizItems)
-        .where(eq(lessonQuizItems.id, itemId))
-        .limit(1);
+      const gradedItem = await audit.lessonQuizItem(itemId);
       recordOutcome(
         runtime,
         questionConceptId,
@@ -2860,7 +2657,10 @@ async function finishLessonQuiz(
         numeric(gradedItem?.correct, intendedCorrect ? 1 : 0),
       );
     }
-    const submitted = await api.call('POST', `${quizPath}/submit`, now, { activityId });
+    const submitted = await api.call(
+      { kind: 'submitLessonQuiz', conceptId, body: { activityId } },
+      now,
+    );
     if (!submitted.ok) {
       throw new Error(
         `POST ${quizPath}/submit failed (${submitted.status}): ${JSON.stringify(submitted.data)}`,
@@ -2873,20 +2673,28 @@ async function finishLessonQuiz(
 }
 
 async function completeActivity(
-  api: SimulatedApi,
+  api: SimulatorDriver,
   now: Date,
   sessionId: string,
   activity: SimActivity,
   progress: Record<string, unknown> = {},
 ) {
-  await api.require('POST', `/sessions/${sessionId}/activities/${activity.id}/progress`, now, {
-    ...progress,
-    complete: true,
-  });
+  await api.require(
+    {
+      kind: 'activityProgress',
+      sessionId: sessionId,
+      activityId: activity.id,
+      body: {
+        ...progress,
+        complete: true,
+      },
+    },
+    now,
+  );
 }
 
 async function attemptExercise(
-  api: SimulatedApi,
+  api: SimulatorDriver,
   content: ContentIndex,
   runtime: ProfileRuntime,
   now: Date,
@@ -2924,14 +2732,20 @@ async function attemptExercise(
       0.3;
   runtime.activeBehaviors.B3PartialExplain ||= partialExplain;
   const answer = answerForProfile(content, exerciseId, 0, intendedCorrect, partialExplain);
-  const response = await api.call('POST', '/attempts', now, {
-    exerciseId,
-    answer,
-    mode,
-    sessionId,
-    activityId,
-    durationMs: 5_000,
-  });
+  const response = await api.call(
+    {
+      kind: 'exerciseAttempt',
+      body: {
+        exerciseId,
+        answer,
+        mode,
+        sessionId,
+        activityId,
+        durationMs: 5_000,
+      },
+    },
+    now,
+  );
   if (!response.ok) {
     throw new Error(`POST /attempts failed (${response.status}): ${JSON.stringify(response.data)}`);
   }
@@ -2939,14 +2753,20 @@ async function attemptExercise(
   const correct = numeric(result.correct, intendedCorrect ? 1 : 0);
   recordOutcome(runtime, conceptId, day, correct);
   if (partialExplain && result.retryAllowed === true) {
-    const followUp = await api.call('POST', '/attempts', now, {
-      exerciseId,
-      answer: answerForProfile(content, exerciseId, 0, true),
-      mode,
-      sessionId,
-      activityId,
-      durationMs: 5_000,
-    });
+    const followUp = await api.call(
+      {
+        kind: 'exerciseAttempt',
+        body: {
+          exerciseId,
+          answer: answerForProfile(content, exerciseId, 0, true),
+          mode,
+          sessionId,
+          activityId,
+          durationMs: 5_000,
+        },
+      },
+      now,
+    );
     if (!followUp.ok) {
       throw new Error(
         `POST /attempts follow-up failed (${followUp.status}): ${JSON.stringify(followUp.data)}`,
@@ -2977,7 +2797,7 @@ function quizEvidence(
 }
 
 async function auditQuizOffer(
-  db: Database,
+  audit: SimulatorAudit,
   runtime: ProfileRuntime,
   day: number,
   userId: string,
@@ -2985,25 +2805,11 @@ async function auditQuizOffer(
   activities: SimActivity[],
   budget: number,
 ) {
-  const runs = await db
-    .select({ finalizedAt: quizRuns.finalizedAt, retakeOf: quizRuns.retakeOf })
-    .from(quizRuns)
-    .where(eq(quizRuns.userId, userId));
+  const runs = await audit.timedQuizRuns(userId);
   const positions = activities.flatMap((activity, i) =>
     activity.kind === 'mixed_quiz' ? [i] : [],
   );
-  const openActivities = await db
-    .select({ id: sessionActivities.id })
-    .from(sessionActivities)
-    .innerJoin(studySessions, eq(studySessions.id, sessionActivities.sessionId))
-    .where(
-      and(
-        eq(studySessions.userId, userId),
-        eq(studySessions.status, 'active'),
-        eq(sessionActivities.kind, 'mixed_quiz'),
-        inArray(sessionActivities.status, ['planned', 'in_progress']),
-      ),
-    );
+  const openActivities = await audit.openTimedQuizActivityIds(userId);
   const { evidence, violation } = auditP24Offer({
     offer,
     budget,
@@ -3089,8 +2895,8 @@ export function auditP24Offer({
 }
 
 async function processTimedQuiz(
-  api: SimulatedApi,
-  db: Database,
+  api: SimulatorDriver,
+  audit: SimulatorAudit,
   content: ContentIndex,
   runtime: ProfileRuntime,
   now: Date,
@@ -3100,35 +2906,24 @@ async function processTimedQuiz(
   activity: SimActivity,
 ) {
   const userId = api.userId ?? '';
-  const original = await api.require<QuizPayload>('POST', '/quizzes/start', api.nextQuizTime(now), {
-    sessionId,
-    activityId: activity.id,
-  });
-  const runItems = (id: string) =>
-    db.select().from(quizItems).where(eq(quizItems.runId, id)).orderBy(asc(quizItems.position));
+  const original = await api.require<QuizPayload>(
+    {
+      kind: 'startTimedQuiz',
+      body: {
+        sessionId,
+        activityId: activity.id,
+      },
+    },
+    api.nextQuizTime(now),
+  );
+  const runItems = (id: string) => audit.timedQuizItems(id);
   const firstItems = await runItems(original.id);
   const [lessons, confirmedGrants] = await Promise.all([
-    db
-      .select({ topic: lessonRuns.conceptId })
-      .from(lessonRuns)
-      .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.status, 'completed'))),
-    db
-      .select({ topic: placementGrants.conceptId })
-      .from(placementGrants)
-      .where(
-        and(
-          eq(placementGrants.userId, userId),
-          eq(placementGrants.state, 'confirmed'),
-          notInArray(placementGrants.reason, ['legacy_confirmed', 'legacy_provisional']),
-        ),
-      ),
+    audit.completedLessonTopics(userId),
+    audit.confirmedGrantTopics(userId),
   ]);
-  const learned = new Set([...lessons, ...confirmedGrants].map(({ topic }) => topic));
-  const history = await db
-    .select({ question: quizItems.question, runId: quizItems.runId })
-    .from(quizItems)
-    .innerJoin(quizRuns, eq(quizRuns.id, quizItems.runId))
-    .where(eq(quizRuns.userId, userId));
+  const learned = new Set([...lessons, ...confirmedGrants]);
+  const history = await audit.timedQuizHistory(userId);
   const fingerprint = (question: (typeof firstItems)[number]['question']) =>
     question.exercise.prompt.trim().replace(/\s+/g, ' ');
   const encompassing = buildEncompassingIndex(content);
@@ -3172,7 +2967,7 @@ async function processTimedQuiz(
     return items;
   };
   const run = async (start: QuizPayload, items: typeof firstItems, timeout: boolean) => {
-    const path = `/quizzes/${start.id}`;
+    const quizId = start.id;
     const startedAt = new Date(start.startedAt);
     let current = start;
     let received = startedAt;
@@ -3189,12 +2984,20 @@ async function processTimedQuiz(
       const answer = correct
         ? answerFor(content, exercise.id, item.question.seed)
         : wrongAnswerFor(content, exercise.id, item.question.seed);
-      current = await api.require<QuizPayload>('POST', `${path}/answer`, answeredAt, {
-        position: item.position,
-        answer,
-      });
+      current = await api.require<QuizPayload>(
+        {
+          kind: 'answerTimedQuiz',
+          quizId,
+          body: {
+            position: item.position,
+            answer,
+          },
+        },
+        answeredAt,
+      );
       recordOutcome(runtime, exercise.concept, day, Number(correct));
-      if (item.position === 0) current = await api.require<QuizPayload>('GET', path, answeredAt);
+      if (item.position === 0)
+        current = await api.require<QuizPayload>({ kind: 'timedQuiz', quizId }, answeredAt);
     }
     const persisted = await runItems(start.id);
     const expectedScore = persisted.filter((item) => item.correct === true).length / items.length;
@@ -3203,19 +3006,29 @@ async function processTimedQuiz(
       const item = items[current.question.position];
       received = new Date(start.deadline);
       lateStatus = (
-        await api.call('POST', `${path}/answer`, received, {
-          position: item.position,
-          answer: answerFor(content, item.question.exercise.id, item.question.seed),
-        })
+        await api.call(
+          {
+            kind: 'answerTimedQuiz',
+            quizId,
+            body: {
+              position: item.position,
+              answer: answerFor(content, item.question.exercise.id, item.question.seed),
+            },
+          },
+          received,
+        )
       ).status;
     }
     const finalizedAt = api.nextQuizTime(received);
-    const result = await api.require<QuizPayload>('POST', `${path}/finalize`, finalizedAt);
-    const repeated = await api.require<QuizPayload>('POST', `${path}/finalize`, finalizedAt);
-    const awards = await db
-      .select({ amount: xpEvents.amount })
-      .from(xpEvents)
-      .where(and(eq(xpEvents.userId, userId), eq(xpEvents.sourceKey, `mixed-quiz:${start.id}`)));
+    const result = await api.require<QuizPayload>(
+      { kind: 'finalizeTimedQuiz', quizId },
+      finalizedAt,
+    );
+    const repeated = await api.require<QuizPayload>(
+      { kind: 'finalizeTimedQuiz', quizId },
+      finalizedAt,
+    );
+    const awards = await audit.xpAmounts(userId, `mixed-quiz:${start.id}`);
     const expectedXp = start.retake
       ? 0
       : Math.round(
@@ -3268,26 +3081,22 @@ async function processTimedQuiz(
   if (missed.length === 0 || original.retake) {
     return { lessons: 0, reviews: 0, reviewAttempts: 0 };
   }
-  const path = `/quizzes/${original.id}`;
-  const earlyRetake = await api.call('POST', `${path}/retake`, received);
+  const quizId = original.id;
+  const earlyRetake = await api.call({ kind: 'retakeTimedQuiz', quizId }, received);
   const followUpTopics = [...missed, ...slowCorrect];
-  const dueCards = await db
-    .select({ conceptId: reviewCards.conceptId, dueAt: reviewCards.dueAt })
-    .from(reviewCards)
-    .where(and(eq(reviewCards.userId, userId), inArray(reviewCards.conceptId, followUpTopics)));
+  const dueCards = await audit.reviewCardDueDates(userId, followUpTopics);
   const dueNowTopics = followUpTopics.filter((topic) =>
     dueCards.some((card) => card.conceptId === topic && card.dueAt <= received),
   );
   const followUpAt = api.nextQuizTime(received);
-  const followUps = await api.call('POST', `${path}/follow-ups`, followUpAt);
+  const followUps = await api.call({ kind: 'timedQuizFollowUps', quizId }, followUpAt);
   let reviews = 0;
   let reviewAttempts = 0;
   if (followUps.ok) {
     const id = text(object(followUps.data).sessionId);
     if (!id) throw new Error('Follow-ups did not return a session id');
     const session = await api.require<{ activities: SimActivity[] }>(
-      'GET',
-      `/sessions/${id}`,
+      { kind: 'session', sessionId: id },
       followUpAt,
     );
     for (const review of session.activities) {
@@ -3295,7 +3104,7 @@ async function processTimedQuiz(
       runtime.activityKeyById.set(review.id, `day:${day}|quiz-follow-up|${review.conceptId}`);
       const result = await processActivity(
         api,
-        db,
+        audit,
         content,
         runtime,
         reviewAt,
@@ -3307,9 +3116,12 @@ async function processTimedQuiz(
       reviews += result.reviews;
       reviewAttempts += result.reviewAttempts;
     }
-    await api.require('POST', `/sessions/${id}/end`, api.nextQuizTime(followUpAt));
+    await api.require({ kind: 'endSession', sessionId: id }, api.nextQuizTime(followUpAt));
   }
-  const after = await api.require<QuizPayload>('GET', path, api.nextQuizTime(followUpAt));
+  const after = await api.require<QuizPayload>(
+    { kind: 'timedQuiz', quizId },
+    api.nextQuizTime(followUpAt),
+  );
   const reviewed =
     after.result?.topics.filter((topic) => topic.reviewed).map((topic) => topic.conceptId) ?? [];
   const evidence = {
@@ -3334,8 +3146,7 @@ async function processTimedQuiz(
   );
   if (after.result?.retake.eligible) {
     const retake = await api.require<QuizPayload>(
-      'POST',
-      `${path}/retake`,
+      { kind: 'retakeTimedQuiz', quizId },
       api.nextQuizTime(followUpAt),
     );
     const retakeItems = await selectionEvidence(retake.id, false);
@@ -3345,8 +3156,8 @@ async function processTimedQuiz(
 }
 
 async function processActivity(
-  api: SimulatedApi,
-  db: Database,
+  api: SimulatorDriver,
+  audit: SimulatorAudit,
   content: ContentIndex,
   runtime: ProfileRuntime,
   now: Date,
@@ -3357,7 +3168,7 @@ async function processActivity(
 ): Promise<{ lessons: number; reviews: number; reviewAttempts: number }> {
   const exerciseIds = activity.exerciseIds ?? [];
   if (activity.kind === 'mixed_quiz') {
-    return processTimedQuiz(api, db, content, runtime, now, day, courseId, sessionId, activity);
+    return processTimedQuiz(api, audit, content, runtime, now, day, courseId, sessionId, activity);
   }
   let reviewAttempts = 0;
   if (activity.kind === 'learn' && activity.conceptId) {
@@ -3375,7 +3186,7 @@ async function processActivity(
       if (run.status === 'quiz') {
         await finishLessonQuiz(
           api,
-          db,
+          audit,
           content,
           runtime,
           now,
@@ -3385,18 +3196,8 @@ async function processActivity(
           activity.id,
         );
       }
-      const finalRun = await db
-        .select({ status: lessonRuns.status })
-        .from(lessonRuns)
-        .where(
-          and(
-            eq(lessonRuns.userId, api.userId ?? ''),
-            eq(lessonRuns.conceptId, activity.conceptId),
-          ),
-        )
-        .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
-        .limit(1);
-      if (finalRun[0]?.status === 'completed') {
+      const finalRun = await audit.latestLessonRun(api.userId ?? '', activity.conceptId);
+      if (finalRun?.status === 'completed') {
         runtime.placement.learned.add(activity.conceptId);
         await completeActivity(api, now, sessionId, activity, {
           lessonViewed: true,
@@ -3430,7 +3231,7 @@ async function processActivity(
     return { lessons: 1, reviews: 0, reviewAttempts: 0 };
   }
   if (activity.kind === 'review') {
-    const progress = await readProgress(db, api.userId ?? '');
+    const progress = await readProgress(audit, api.userId ?? '');
     const attemptedExerciseIds = new Set<string>();
     let pendingExerciseIds = exerciseIds;
     while (true) {
@@ -3453,7 +3254,7 @@ async function processActivity(
         );
         reviewAttempts += 1;
       }
-      const session = object(await api.require('GET', `/sessions/${sessionId}`, now));
+      const session = object(await api.require({ kind: 'session', sessionId: sessionId }, now));
       const currentActivity = list(session.activities)
         .map((item) => object(item))
         .find((item) => item.id === activity.id);
@@ -3511,7 +3312,7 @@ async function processActivity(
     const paperId = activity.paperId ?? activity.conceptId ?? '';
     if (paperId) runtime.report.papersRecorded.push({ day, courseId, paperId });
     if (paperId) {
-      await api.require('PUT', `/papers/${paperId}/progress`, now, { lastPage: 1 });
+      await api.require({ kind: 'paperProgress', paperId: paperId, body: { lastPage: 1 } }, now);
     }
   } else {
     const mode = activity.kind === 'quick_check' ? 'assessment' : 'practice';
@@ -3945,13 +3746,9 @@ export function attributeActivityLogs<T extends { id: string }>(
 }
 
 /** The API skips planned work that a placement withdrawal no longer unlocks. */
-async function activityWasSkipped(db: Database, activityId: string): Promise<boolean> {
-  const [row] = await db
-    .select({ status: sessionActivities.status })
-    .from(sessionActivities)
-    .where(eq(sessionActivities.id, activityId))
-    .limit(1);
-  return row?.status === 'skipped';
+async function activityWasSkipped(audit: SimulatorAudit, activityId: string): Promise<boolean> {
+  const status = await audit.activityStatus(activityId);
+  return status === 'skipped';
 }
 
 type P28Evidence = { successes: number; trials: number; answers: number };
@@ -4011,7 +3808,7 @@ class P28Audit {
   }
 
   async audit(
-    db: Database,
+    audit: SimulatorAudit,
     runtime: ProfileRuntime,
     userId: string,
     now: Date,
@@ -4020,60 +3817,9 @@ class P28Audit {
     trace: readonly ImplicitRepetitionTraceEvent[],
   ) {
     const [newAttempts, logs, firstCards] = await Promise.all([
-      db
-        .select({
-          id: attempts.id,
-          conceptId: attempts.conceptId,
-          correct: attempts.correct,
-          gradedBy: attempts.gradedBy,
-          hintsUsed: attempts.hintsUsed,
-          attemptNo: attempts.attemptNo,
-          answer: attempts.answer,
-          tutorHelped: exists(
-            db
-              .select({ id: tutorMessages.id })
-              .from(tutorMessages)
-              .innerJoin(lessonProblems, eq(lessonProblems.id, tutorMessages.lessonProblemId))
-              .where(
-                and(
-                  eq(lessonProblems.attemptId, attempts.id),
-                  eq(tutorMessages.userId, userId),
-                  sql`${tutorMessages.role} = 'assistant'`,
-                ),
-              ),
-          ),
-        })
-        .from(attempts)
-        .leftJoin(lessonQuizItems, eq(lessonQuizItems.attemptId, attempts.id))
-        .where(and(eq(attempts.userId, userId), eq(attempts.createdAt, now)))
-        .orderBy(asc(lessonQuizItems.position), asc(attempts.conceptId), asc(attempts.id)),
-      db
-        .select({
-          id: reviewLogs.id,
-          cardId: reviewLogs.cardId,
-          rating: reviewLogs.rating,
-          speed: reviewLogs.speed,
-          rawDueAt: reviewLogs.rawDueAt,
-          fsrsLog: reviewLogs.fsrsLog,
-          cardDueAt: reviewCards.dueAt,
-          conceptId: reviewCards.conceptId,
-          dimension: reviewCards.dimension,
-        })
-        .from(reviewLogs)
-        .innerJoin(reviewCards, eq(reviewCards.id, reviewLogs.cardId))
-        .where(and(eq(reviewCards.userId, userId), eq(reviewLogs.createdAt, now)))
-        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension)),
-      db
-        .select()
-        .from(reviewCards)
-        .where(
-          and(
-            eq(reviewCards.userId, userId),
-            eq(reviewCards.lastReviewAt, now),
-            eq(reviewCards.reps, 1),
-          ),
-        )
-        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension)),
+      audit.attemptsAt(userId, now),
+      audit.timedReviewLogsAt(userId, now),
+      audit.firstReviewCardsAt(userId, now),
     ]);
     for (const attempt of newAttempts) {
       if (this.attemptsSeen.has(attempt.id)) continue;
@@ -4169,8 +3915,8 @@ class P28Audit {
 }
 
 async function processActivityWithMetrics(
-  api: SimulatedApi,
-  db: Database,
+  api: SimulatorDriver,
+  audit: SimulatorAudit,
   content: ContentIndex,
   runtime: ProfileRuntime,
   now: Date,
@@ -4182,35 +3928,11 @@ async function processActivityWithMetrics(
 ) {
   const userId = api.userId ?? '';
   const tracksCards = activity.kind === 'learn' || activity.kind === 'review';
-  const readActivityLogs = () =>
-    db
-      .select({
-        id: reviewLogs.id,
-        cardId: reviewLogs.cardId,
-        rating: reviewLogs.rating,
-        conceptId: reviewCards.conceptId,
-        dimension: reviewCards.dimension,
-      })
-      .from(reviewLogs)
-      .innerJoin(reviewCards, eq(reviewLogs.cardId, reviewCards.id))
-      .where(and(eq(reviewCards.userId, userId), eq(reviewLogs.createdAt, now)))
-      .orderBy(
-        asc(reviewLogs.createdAt),
-        asc(reviewCards.conceptId),
-        asc(reviewCards.dimension),
-        asc(reviewLogs.rating),
-        asc(reviewLogs.id),
-      );
+  const readActivityLogs = () => audit.activityReviewLogsAt(userId, now);
   const beforeSchedulerState = tracksCards
-    ? await new LearnerRepository(db, userId).schedulerState(now, content)
+    ? await audit.schedulerState(userId, now, content)
     : undefined;
-  const beforeCards = tracksCards
-    ? await db
-        .select()
-        .from(reviewCards)
-        .where(eq(reviewCards.userId, userId))
-        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id))
-    : [];
+  const beforeCards = tracksCards ? await audit.reviewCards(userId) : [];
   const previousLogsByCardId = new Map<string, { rating: string; createdAt: Date }>();
   const completedReviewConceptIds = new Set<string>();
   if (activity.kind === 'review') {
@@ -4223,30 +3945,14 @@ async function processActivityWithMetrics(
       )
       .map((card) => card.id);
     if (activityCardIds.length > 0) {
-      const previousLogs = await db
-        .select({
-          cardId: reviewLogs.cardId,
-          rating: reviewLogs.rating,
-          createdAt: reviewLogs.createdAt,
-        })
-        .from(reviewLogs)
-        .where(inArray(reviewLogs.cardId, activityCardIds))
-        .orderBy(desc(reviewLogs.createdAt));
+      const previousLogs = await audit.reviewLogHistory(activityCardIds);
       for (const log of previousLogs) {
         if (!previousLogsByCardId.has(log.cardId)) {
           previousLogsByCardId.set(log.cardId, { rating: log.rating, createdAt: log.createdAt });
         }
       }
     }
-    const priorSessionActivities = await db
-      .select({
-        id: sessionActivities.id,
-        kind: sessionActivities.kind,
-        status: sessionActivities.status,
-        exerciseIds: sessionActivities.exerciseIds,
-      })
-      .from(sessionActivities)
-      .where(eq(sessionActivities.sessionId, sessionId));
+    const priorSessionActivities = await audit.sessionActivities(sessionId);
     for (const priorActivity of priorSessionActivities) {
       if (
         priorActivity.id !== activity.id &&
@@ -4284,7 +3990,7 @@ async function processActivityWithMetrics(
   try {
     result = await processActivity(
       api,
-      db,
+      audit,
       content,
       runtime,
       now,
@@ -4315,13 +4021,7 @@ async function processActivityWithMetrics(
       runtime.planEvidenceByDay.set(day, dayPlans);
     }
   }
-  const afterCards = tracksCards
-    ? await db
-        .select()
-        .from(reviewCards)
-        .where(eq(reviewCards.userId, userId))
-        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id))
-    : [];
+  const afterCards = tracksCards ? await audit.reviewCards(userId) : [];
   const activityLogs = tracksCards ? await readActivityLogs() : [];
   const newLogs = attributeActivityLogs(beforeLogIds, activityLogs, runtime.checkedReviewLogIds);
   const p15ActivityLogs = newLogs.map((log) => ({
@@ -4369,15 +4069,11 @@ async function processActivityWithMetrics(
       },
     };
   }
-  const [savedActivity] =
+  const savedActivityStatus =
     activity.kind === 'review' || activity.kind === 'learn'
-      ? await db
-          .select({ status: sessionActivities.status })
-          .from(sessionActivities)
-          .where(eq(sessionActivities.id, activity.id))
-          .limit(1)
-      : [];
-  const activityCompleted = savedActivity?.status === 'completed';
+      ? await audit.activityStatus(activity.id)
+      : undefined;
+  const activityCompleted = savedActivityStatus === 'completed';
   if (newLogs.length > 0) {
     const loggedConceptIds = new Set(newLogs.map((log) => log.conceptId));
     runtime.pendingP18 = runtime.pendingP18.filter(
@@ -4465,14 +4161,7 @@ async function processActivityWithMetrics(
       activity.kind === 'learn' ? 'learn' : 'review',
       reviewLogOrder,
       prerequisiteResetContext,
-      new Set(
-        (
-          await db
-            .select({ conceptId: placementGrants.conceptId })
-            .from(placementGrants)
-            .where(and(eq(placementGrants.userId, userId), eq(placementGrants.state, 'withdrawn')))
-        ).map((grant) => grant.conceptId),
-      ),
+      new Set((await audit.withdrawnGrants(userId)).map((grant) => grant.conceptId)),
       runtime.p28Audit.speeds(),
     );
     runtime.report.checkedCounts.P15 += p15.checked;
@@ -4631,8 +4320,8 @@ function studySkipped(profile: SimulationProfile, day: number): boolean {
 }
 
 async function maybeSwitchGraphContent(
-  api: SimulatedApi,
-  db: Database,
+  api: SimulatorDriver,
+  audit: SimulatorAudit,
   runtime: ProfileRuntime,
   day: number,
   courseId: string | undefined,
@@ -4647,24 +4336,14 @@ async function maybeSwitchGraphContent(
   ) {
     return graphContent;
   }
-  const [run] = await db
-    .select({ status: lessonRuns.status })
-    .from(lessonRuns)
-    .where(
-      and(
-        eq(lessonRuns.userId, api.userId ?? ''),
-        eq(lessonRuns.conceptId, graphMilestoneConceptId),
-      ),
-    )
-    .orderBy(desc(lessonRuns.updatedAt), desc(lessonRuns.id))
-    .limit(1);
+  const run = await audit.latestLessonRun(api.userId ?? '', graphMilestoneConceptId);
   if (run?.status !== 'completed') return graphContent;
 
   api.setContent(realContent);
   runtime.report.graphChangeDay = day;
-  const progress = await readProgress(db, api.userId ?? '');
-  const today = await api.require<TodayPayload>('GET', '/today', now);
-  const learn = await api.require<LearnPayload>('GET', '/learn', now);
+  const progress = await readProgress(audit, api.userId ?? '');
+  const today = await api.require<TodayPayload>({ kind: 'today' }, now);
+  const learn = await api.require<LearnPayload>({ kind: 'learn' }, now);
   const page = await fetchCoursePage(api, now, graphCourseId);
   await auditHome(api, now, runtime, day, courseId, today, learn, progress, realContent);
   auditCoursePage(runtime, day, graphCourseId, page, progress, realContent);
@@ -4681,7 +4360,7 @@ function getViolationCounts(violations: SimulationViolation[]): Record<Invariant
 }
 
 async function auditCompressionPlan(
-  db: Database,
+  audit: SimulatorAudit,
   runtime: ProfileRuntime,
   userId: string,
   content: ContentIndex,
@@ -4690,7 +4369,7 @@ async function auditCompressionPlan(
   courseId: string,
   activities: SimActivity[],
 ): Promise<number> {
-  const state = await new LearnerRepository(db, userId).schedulerState(now, content);
+  const state = await audit.schedulerState(userId, now, content);
   const dueConceptIds = new Set(
     state.cards
       .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
@@ -5377,7 +5056,7 @@ function remediationReport(
 }
 
 async function simulateProfile(
-  db: Database,
+  createDriver: SimulatorDriverFactory,
   realContent: ContentIndex,
   options: LearnerSimulationOptions,
   profile: SimulationProfile,
@@ -5389,7 +5068,8 @@ async function simulateProfile(
   const graphContent = toGraphChangeContent(realContent);
   const initialContent = profile === 'graph-change' ? graphContent : realContent;
   const firstNow = localNoon(startDate, timeZone);
-  const api = new SimulatedApi(db, initialContent, timeZone, firstNow, profile);
+  const api = createDriver({ content: initialContent, timeZone, initialNow: firstNow, profile });
+  const audit = api.audit;
   const report: ProfileSimulationReport = {
     profile,
     seed,
@@ -5488,7 +5168,7 @@ async function simulateProfile(
   let auditDay = 0;
   api.afterCall = async (method, path, now, trace) => {
     if (!api.userId) return;
-    await recordLessonRunsAtWithdrawal(db, api.userId, runtime.placement);
+    await recordLessonRunsAtWithdrawal(audit, api.userId, runtime.placement);
     if (
       trace.length > 0 ||
       (method === 'POST' &&
@@ -5499,7 +5179,7 @@ async function simulateProfile(
           /^\/lessons\/[^/]+\/(run\/answer|quiz\/submit)$/.test(path) ||
           /^\/quizzes\/[^/]+\/finalize$/.test(path)))
     ) {
-      await runtime.p28Audit.audit(db, runtime, api.userId, now, timeZone, auditDay, trace);
+      await runtime.p28Audit.audit(audit, runtime, api.userId, now, timeZone, auditDay, trace);
     }
   };
   let activeContent = initialContent;
@@ -5556,41 +5236,26 @@ async function simulateProfile(
         await startCourse(api, activeContent, runtime, courseId, now, day);
         if (summary) summary.startedDay = day;
       } else {
-        await api.require('PUT', '/course/active', now, { courseId });
+        await api.require({ kind: 'setActiveCourse', body: { courseId } }, now);
       }
 
       if (day === 1 && isScriptedScenarioProfile(profile)) {
         const userId = api.userId;
         if (!userId) throw new Error('Simulation API did not create a learner');
-        await seedScriptedScenario(db, userId, profile, activeContent, now);
+        await seedScriptedScenario(api.fixtures, userId, profile, activeContent, now);
       }
       if (profile === 'scenario-quizzes') {
         const userId = api.userId;
         if (!userId) throw new Error('Simulation API did not create a learner');
-        await db
-          .insert(lessonRuns)
-          .values(
-            activeContent.lessons.map(({ concept }) => ({
-              userId,
-              conceptId: concept,
-              status: 'completed' as const,
-              startedAt: now,
-              updatedAt: now,
-              completedAt: now,
-            })),
-          )
-          .onConflictDoNothing();
-        await db.insert(xpEvents).values({
+        await api.fixtures.seedCompletedLessons({
           userId,
-          kind: 'knowledge_point',
-          sourceKey: 'scenario:quiz-xp',
-          amount: 150,
-          earnedAt: now,
-          localDate: localDate(now, timeZone),
+          conceptIds: activeContent.lessons.map(({ concept }) => concept),
+          now,
+          xp: { sourceKey: 'scenario:quiz-xp', amount: 150, localDate: localDate(now, timeZone) },
         });
       }
-      const today = await api.require<TodayPayload>('GET', '/today', now);
-      const learn = await api.require<LearnPayload>('GET', '/learn', now);
+      const today = await api.require<TodayPayload>({ kind: 'today' }, now);
+      const learn = await api.require<LearnPayload>({ kind: 'learn' }, now);
       const userId = api.userId;
       if (!userId) throw new Error('Simulation API did not create a learner');
       const budgetChoices: Array<number | undefined> = [10, 20, 30, 45, 60, undefined];
@@ -5606,10 +5271,7 @@ async function simulateProfile(
                 )
               ];
       const budgetRequest = selectedBudget === undefined ? {} : { budgetMinutes: selectedBudget };
-      const stateBeforeSession = await new LearnerRepository(db, userId).schedulerState(
-        now,
-        activeContent,
-      );
+      const stateBeforeSession = await audit.schedulerState(userId, now, activeContent);
       const hadDueReviews = stateBeforeSession.cards.some((card) =>
         isDueToday(card.dueAt, now, stateBeforeSession.timezone ?? timeZone),
       );
@@ -5625,7 +5287,7 @@ async function simulateProfile(
         B3PartialExplain: false,
         B4Replan: shouldReplan,
       };
-      const progress = await readProgress(db, userId);
+      const progress = await readProgress(audit, userId);
       const initialBudgetMinutes = selectedBudget ?? today.budgetMinutes;
       const initialExplanations = explainReviewSelection(
         stateBeforeSession,
@@ -5713,10 +5375,16 @@ async function simulateProfile(
       let ranDueFocus = false;
       if (!skip) {
         const session = object(
-          await api.require('POST', '/sessions', now, {
-            kind: today.sessionKind,
-            ...budgetRequest,
-          }),
+          await api.require(
+            {
+              kind: 'createSession',
+              body: {
+                kind: today.sessionKind,
+                ...budgetRequest,
+              },
+            },
+            now,
+          ),
         );
         const sessionId = text(session.id);
         if (!sessionId) throw new Error('Session start did not return an id');
@@ -5732,7 +5400,7 @@ async function simulateProfile(
           return parsed.kind === 'paper' && paperId ? { ...parsed, paperId } : parsed;
         });
         await auditQuizOffer(
-          db,
+          audit,
           runtime,
           day,
           userId,
@@ -5753,7 +5421,7 @@ async function simulateProfile(
           activities,
         );
         daily.coveredSkips += await auditCompressionPlan(
-          db,
+          audit,
           runtime,
           userId,
           activeContent,
@@ -5764,12 +5432,9 @@ async function simulateProfile(
         );
         daily.offers.push(...activities.map(sessionOffer));
         for (const activity of activities) {
-          if (await activityWasSkipped(db, activity.id)) continue;
-          const activityProgress = await readProgress(db, userId);
-          const activityState = await new LearnerRepository(db, userId).schedulerState(
-            now,
-            activeContent,
-          );
+          if (await activityWasSkipped(audit, activity.id)) continue;
+          const activityProgress = await readProgress(audit, userId);
+          const activityState = await audit.schedulerState(userId, now, activeContent);
           if (
             !(await auditSessionActivity(
               api,
@@ -5787,7 +5452,7 @@ async function simulateProfile(
             continue;
           const result = await processActivityWithMetrics(
             api,
-            db,
+            audit,
             activeContent,
             runtime,
             now,
@@ -5806,17 +5471,10 @@ async function simulateProfile(
           daily.negativeImplicitCredits += result.negativeImplicitCredits;
         }
         if (shouldReplan) {
-          const stateBeforeReplan = await new LearnerRepository(db, userId).schedulerState(
-            now,
-            activeContent,
-          );
-          const replanLearn = await api.require<LearnPayload>('GET', '/learn', now);
+          const stateBeforeReplan = await audit.schedulerState(userId, now, activeContent);
+          const replanLearn = await api.require<LearnPayload>({ kind: 'learn' }, now);
           const originalActivityIds = new Set(activities.map((activity) => activity.id));
-          const existingActivities = await db
-            .select()
-            .from(sessionActivities)
-            .where(eq(sessionActivities.sessionId, sessionId))
-            .orderBy(asc(sessionActivities.idx));
+          const existingActivities = await audit.sessionActivities(sessionId);
           const existingPlannedActivities = existingActivities as unknown as PlannedActivity[];
           const remainingBudget = Math.max(
             0,
@@ -5836,8 +5494,7 @@ async function simulateProfile(
             existingPlannedActivities,
           ).results;
           const replanned = await api.require<{ activities: SessionActivity[] }>(
-            'POST',
-            `/sessions/${sessionId}/replan`,
+            { kind: 'replanSession', sessionId: sessionId },
             now,
           );
           const newActivities = newActivitiesForReplan(
@@ -5865,7 +5522,7 @@ async function simulateProfile(
             reviewExplanations,
           );
           daily.coveredSkips += await auditCompressionPlan(
-            db,
+            audit,
             runtime,
             userId,
             activeContent,
@@ -5876,12 +5533,9 @@ async function simulateProfile(
           );
           daily.offers.push(...newActivities.map(sessionOffer));
           for (const activity of newActivities) {
-            if (await activityWasSkipped(db, activity.id)) continue;
-            const activityProgress = await readProgress(db, userId);
-            const activityState = await new LearnerRepository(db, userId).schedulerState(
-              now,
-              activeContent,
-            );
+            if (await activityWasSkipped(audit, activity.id)) continue;
+            const activityProgress = await readProgress(audit, userId);
+            const activityState = await audit.schedulerState(userId, now, activeContent);
             if (
               !(await auditSessionActivity(
                 api,
@@ -5899,7 +5553,7 @@ async function simulateProfile(
               continue;
             const result = await processActivityWithMetrics(
               api,
-              db,
+              audit,
               activeContent,
               runtime,
               now,
@@ -5918,10 +5572,10 @@ async function simulateProfile(
             daily.negativeImplicitCredits += result.negativeImplicitCredits;
           }
         }
-        await api.require('POST', `/sessions/${sessionId}/end`, now);
+        await api.require({ kind: 'endSession', sessionId: sessionId }, now);
       }
       if (!skip && shouldFocusDueReview) {
-        const refreshedLearn = await api.require<LearnPayload>('GET', '/learn', now);
+        const refreshedLearn = await api.require<LearnPayload>({ kind: 'learn' }, now);
         const choices = refreshedLearn.choices;
         if (choices.length > 0) {
           const choiceIndex = Math.floor(
@@ -5929,17 +5583,20 @@ async function simulateProfile(
           );
           const choice = choices[choiceIndex];
           if (choice) {
-            const stateBeforeFocus = await new LearnerRepository(db, userId).schedulerState(
-              now,
-              activeContent,
-            );
+            const stateBeforeFocus = await audit.schedulerState(userId, now, activeContent);
             stateBeforeFocus.inProgressConceptId = choice.conceptId;
             const focusedSession = object(
-              await api.require('POST', '/sessions', now, {
-                kind: today.sessionKind,
-                ...budgetRequest,
-                focusConceptId: choice.conceptId,
-              }),
+              await api.require(
+                {
+                  kind: 'createSession',
+                  body: {
+                    kind: today.sessionKind,
+                    ...budgetRequest,
+                    focusConceptId: choice.conceptId,
+                  },
+                },
+                now,
+              ),
             );
             const focusedSessionId = text(focusedSession.id);
             if (!focusedSessionId) {
@@ -5968,7 +5625,7 @@ async function simulateProfile(
               choice.conceptId,
             );
             daily.coveredSkips += await auditCompressionPlan(
-              db,
+              audit,
               runtime,
               userId,
               activeContent,
@@ -5979,12 +5636,9 @@ async function simulateProfile(
             );
             daily.offers.push(...focusedActivities.map(sessionOffer));
             for (const activity of focusedActivities) {
-              if (await activityWasSkipped(db, activity.id)) continue;
-              const activityProgress = await readProgress(db, userId);
-              const activityState = await new LearnerRepository(db, userId).schedulerState(
-                now,
-                activeContent,
-              );
+              if (await activityWasSkipped(audit, activity.id)) continue;
+              const activityProgress = await readProgress(audit, userId);
+              const activityState = await audit.schedulerState(userId, now, activeContent);
               if (
                 !(await auditSessionActivity(
                   api,
@@ -6002,7 +5656,7 @@ async function simulateProfile(
                 continue;
               const result = await processActivityWithMetrics(
                 api,
-                db,
+                audit,
                 activeContent,
                 runtime,
                 now,
@@ -6020,26 +5674,29 @@ async function simulateProfile(
               daily.positiveImplicitCredits += result.positiveImplicitCredits;
               daily.negativeImplicitCredits += result.negativeImplicitCredits;
             }
-            await api.require('POST', `/sessions/${focusedSessionId}/end`, now);
+            await api.require({ kind: 'endSession', sessionId: focusedSessionId }, now);
             ranDueFocus = true;
           }
         }
       }
       if (!skip && !ranDueFocus && daily.lessons + daily.reviews === 0) {
-        const refreshedLearn = await api.require<LearnPayload>('GET', '/learn', now);
+        const refreshedLearn = await api.require<LearnPayload>({ kind: 'learn' }, now);
         const choice = refreshedLearn.choices[0];
         if (choice) {
-          const stateBeforeFocus = await new LearnerRepository(db, userId).schedulerState(
-            now,
-            activeContent,
-          );
+          const stateBeforeFocus = await audit.schedulerState(userId, now, activeContent);
           stateBeforeFocus.inProgressConceptId = choice.conceptId;
           const focusedSession = object(
-            await api.require('POST', '/sessions', now, {
-              kind: today.sessionKind,
-              ...budgetRequest,
-              focusConceptId: choice.conceptId,
-            }),
+            await api.require(
+              {
+                kind: 'createSession',
+                body: {
+                  kind: today.sessionKind,
+                  ...budgetRequest,
+                  focusConceptId: choice.conceptId,
+                },
+              },
+              now,
+            ),
           );
           const focusedSessionId = text(focusedSession.id);
           if (!focusedSessionId) {
@@ -6068,7 +5725,7 @@ async function simulateProfile(
             choice.conceptId,
           );
           daily.coveredSkips += await auditCompressionPlan(
-            db,
+            audit,
             runtime,
             userId,
             activeContent,
@@ -6079,12 +5736,9 @@ async function simulateProfile(
           );
           daily.offers.push(...focusedActivities.map(sessionOffer));
           for (const activity of focusedActivities) {
-            if (await activityWasSkipped(db, activity.id)) continue;
-            const activityProgress = await readProgress(db, userId);
-            const activityState = await new LearnerRepository(db, userId).schedulerState(
-              now,
-              activeContent,
-            );
+            if (await activityWasSkipped(audit, activity.id)) continue;
+            const activityProgress = await readProgress(audit, userId);
+            const activityState = await audit.schedulerState(userId, now, activeContent);
             if (
               !(await auditSessionActivity(
                 api,
@@ -6102,7 +5756,7 @@ async function simulateProfile(
               continue;
             const result = await processActivityWithMetrics(
               api,
-              db,
+              audit,
               activeContent,
               runtime,
               now,
@@ -6120,13 +5774,13 @@ async function simulateProfile(
             daily.positiveImplicitCredits += result.positiveImplicitCredits;
             daily.negativeImplicitCredits += result.negativeImplicitCredits;
           }
-          await api.require('POST', `/sessions/${focusedSessionId}/end`, now);
+          await api.require({ kind: 'endSession', sessionId: focusedSessionId }, now);
         }
       }
       const pageAfter = await fetchCoursePage(api, now, courseId);
       daily.newTopicsCompleted = newTopicsCompleted(pageBefore, pageAfter);
       daily.plans = runtime.planEvidenceByDay.get(day) ?? [];
-      const endOfDayProgress = await readProgress(db, userId);
+      const endOfDayProgress = await readProgress(audit, userId);
       daily.lessonRunStatuses = endOfDayProgress.lessonRuns.map((run) => ({
         conceptId: run.conceptId,
         status: run.status,
@@ -6168,9 +5822,9 @@ async function simulateProfile(
         }
       }
 
-      await reviewCardAudit(runtime, db, userId, now, day, timeZone, overdueReported);
+      await reviewCardAudit(runtime, audit, userId, now, day, timeZone, overdueReported);
       await auditPlacementGrants({
-        db,
+        audit,
         userId,
         content: activeContent,
         day,
@@ -6194,7 +5848,7 @@ async function simulateProfile(
       });
       const switchedContent = await maybeSwitchGraphContent(
         api,
-        db,
+        audit,
         runtime,
         day,
         courseId,
@@ -6246,7 +5900,7 @@ async function simulateProfile(
 }
 
 export async function simulateLearners(
-  db: Database,
+  createDriver: SimulatorDriverFactory,
   content: ContentIndex,
   options: LearnerSimulationOptions,
 ): Promise<LearnerSimulationReport> {
@@ -6280,7 +5934,7 @@ export async function simulateLearners(
       const profileContent = scenarioProfile
         ? scriptedScenarioContent(profile, options.scenarioContent ?? content)
         : content;
-      profiles.push(await simulateProfile(db, profileContent, options, profile));
+      profiles.push(await simulateProfile(createDriver, profileContent, options, profile));
     }
   } finally {
     if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
@@ -6511,3 +6165,8 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
   }
   return `${lines.join('\n')}\n`;
 }
+
+export {
+  type SimulatedApiFailure,
+  SimulatedApiFailureError,
+} from './learner-simulation-driver.js';

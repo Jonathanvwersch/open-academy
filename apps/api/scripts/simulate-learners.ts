@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { env } from '../src/config.js';
 import { loadContent } from '../src/content/load.js';
 import { createDb } from '../src/db/client.js';
+import { httpPostgresDriver } from './learner-simulation-http-driver.js';
 import {
   renderMarkdownReport,
   type SimulationProfile,
@@ -65,7 +66,7 @@ async function main() {
     )
       ? await loadContent('tests/fixtures/content')
       : undefined;
-    const report = await simulateLearners(db, content, {
+    const report = await simulateLearners(httpPostgresDriver(db), content, {
       profiles,
       days,
       ...(courseIds ? { courseIds } : {}),

@@ -1,18 +1,6 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
 import { applyPlacementGrantOutcome } from '@academy/aesop/placement/grant-commands';
-import { and, asc, eq } from 'drizzle-orm';
-import type { Database } from '../src/db/client.js';
-import { drizzleLearnerStore } from '../src/db/learner-store.js';
-import {
-  attempts,
-  lessonRuns,
-  mastery,
-  masteryEvents,
-  placementGrants,
-  remediationFlags,
-  reviewCards,
-  xpEvents,
-} from '../src/db/schema.js';
+import type { SimulatorAudit } from './learner-simulation-audit.js';
 
 export type PlacementInvariantId = 'P20' | 'P21' | 'P22' | 'P23';
 
@@ -112,21 +100,14 @@ export function lessonRunConceptsAtWithdrawal(input: {
 
 /** Called after each simulated request: snapshots lesson runs for newly withdrawn grants. */
 export async function recordLessonRunsAtWithdrawal(
-  db: Database,
+  audit: SimulatorAudit,
   userId: string,
   state: PlacementAuditState,
 ): Promise<void> {
-  const withdrawn = await db
-    .select({ id: placementGrants.id })
-    .from(placementGrants)
-    .where(and(eq(placementGrants.userId, userId), eq(placementGrants.state, 'withdrawn')));
+  const withdrawn = await audit.withdrawnGrants(userId);
   const fresh = withdrawn.filter((grant) => !state.lessonRunsAtWithdrawal.has(grant.id));
   if (fresh.length === 0) return;
-  const runs = await db
-    .select({ conceptId: lessonRuns.conceptId })
-    .from(lessonRuns)
-    .where(eq(lessonRuns.userId, userId));
-  const conceptIds = new Set(runs.map((run) => run.conceptId));
+  const conceptIds = new Set(await audit.lessonRunTopics(userId));
   for (const grant of fresh) state.lessonRunsAtWithdrawal.set(grant.id, conceptIds);
 }
 
@@ -174,63 +155,13 @@ function hardDependents(conceptId: string, content: ContentIndex): string[] {
   return [...found];
 }
 
-async function historySnapshot(db: Database, userId: string) {
-  const [attemptRows, xpRows] = await Promise.all([
-    db.select().from(attempts).where(eq(attempts.userId, userId)),
-    db.select().from(xpEvents).where(eq(xpEvents.userId, userId)),
-  ]);
-  return {
-    attempts: new Map(attemptRows.map((row) => [row.id, JSON.stringify(row)])),
-    xp: new Map(xpRows.map((row) => [row.id, JSON.stringify(row)])),
-  };
-}
-
-async function learnerSnapshot(db: Database, userId: string): Promise<string> {
-  const [grants, masteryRows, events, cards, flags, history] = await Promise.all([
-    db
-      .select()
-      .from(placementGrants)
-      .where(eq(placementGrants.userId, userId))
-      .orderBy(asc(placementGrants.id)),
-    db
-      .select()
-      .from(mastery)
-      .where(eq(mastery.userId, userId))
-      .orderBy(asc(mastery.conceptId), asc(mastery.dimension)),
-    db.select({ id: masteryEvents.id }).from(masteryEvents).where(eq(masteryEvents.userId, userId)),
-    db
-      .select()
-      .from(reviewCards)
-      .where(eq(reviewCards.userId, userId))
-      .orderBy(asc(reviewCards.id)),
-    db
-      .select()
-      .from(remediationFlags)
-      .where(eq(remediationFlags.userId, userId))
-      .orderBy(asc(remediationFlags.id)),
-    historySnapshot(db, userId),
-  ]);
-  return JSON.stringify({
-    grants,
-    mastery: masteryRows,
-    masteryEvents: events.length,
-    cards,
-    flags,
-    attempts: [...history.attempts].sort(),
-    xp: [...history.xp].sort(),
-  });
-}
-
 /** Records which conditional placement credit the overplaced learner does not actually know. */
 export async function recordOverplacement(
-  db: Database,
+  audit: SimulatorAudit,
   userId: string,
   state: PlacementAuditState,
 ): Promise<void> {
-  const grants = await db
-    .select({ conceptId: placementGrants.conceptId, state: placementGrants.state })
-    .from(placementGrants)
-    .where(eq(placementGrants.userId, userId));
+  const grants = await audit.placementGrants(userId);
   for (const grant of grants) {
     if (grant.state === 'conditional' && !state.trulyKnown.has(grant.conceptId)) {
       state.overplaced.add(grant.conceptId);
@@ -239,7 +170,7 @@ export async function recordOverplacement(
 }
 
 export async function auditPlacementGrants(input: {
-  db: Database;
+  audit: SimulatorAudit;
   userId: string;
   content: ContentIndex;
   day: number;
@@ -256,18 +187,14 @@ export async function auditPlacementGrants(input: {
     grants: SimulationPlacementGrantEvidence[],
   ) => void;
 }): Promise<void> {
-  const { db, userId, content, day, state } = input;
-  const grants = await db
-    .select()
-    .from(placementGrants)
-    .where(eq(placementGrants.userId, userId))
-    .orderBy(asc(placementGrants.createdAt), asc(placementGrants.id));
+  const { audit, userId, content, day, state } = input;
+  const grants = await audit.placementGrants(userId);
   if (grants.length === 0) return;
   const latest = new Map(grants.map((grant) => [grant.conceptId, grant]));
   const [runs, newAttempts, flags] = await Promise.all([
-    db.select().from(lessonRuns).where(eq(lessonRuns.userId, userId)),
-    db.select().from(attempts).where(eq(attempts.userId, userId)),
-    db.select().from(remediationFlags).where(eq(remediationFlags.userId, userId)),
+    audit.lessonRuns(userId),
+    audit.attempts(userId),
+    audit.remediationFlags(userId),
   ]);
   const evidenceFor = (conceptIds: readonly string[]): SimulationPlacementGrantEvidence[] =>
     conceptIds.flatMap((conceptId) => {
@@ -424,7 +351,7 @@ export async function auditPlacementGrants(input: {
     }
   }
 
-  const history = await historySnapshot(db, userId);
+  const history = await audit.attemptHistory(userId);
   if (state.history && newlyWithdrawn.length > 0) {
     input.markChecked('P23');
     const changed = [
@@ -452,9 +379,9 @@ export async function auditPlacementGrants(input: {
     const attempt = newAttempts.find((row) => row.id === attemptId);
     if (!attempt) continue;
     input.markChecked('P23');
-    const before = await learnerSnapshot(db, userId);
+    const before = await audit.learnerSnapshot(userId);
     await applyPlacementGrantOutcome({
-      store: drizzleLearnerStore(db),
+      store: audit.store(),
       userId,
       content,
       exerciseId: attempt.exerciseId,
@@ -466,7 +393,7 @@ export async function auditPlacementGrants(input: {
       gradedBy: attempt.gradedBy,
       now: attempt.createdAt,
     });
-    if ((await learnerSnapshot(db, userId)) !== before) {
+    if ((await audit.learnerSnapshot(userId)) !== before) {
       input.addViolation(
         'P23',
         conceptId,
@@ -475,6 +402,6 @@ export async function auditPlacementGrants(input: {
         evidenceFor(newlyWithdrawn),
       );
     }
-    state.history = await historySnapshot(db, userId);
+    state.history = await audit.attemptHistory(userId);
   }
 }

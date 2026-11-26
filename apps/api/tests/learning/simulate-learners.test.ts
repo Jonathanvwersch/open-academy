@@ -5,6 +5,7 @@ import type { SchedulerState } from '@academy/aesop/planner/scheduler';
 import { eq } from 'drizzle-orm';
 import { type Card, Rating, State } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';
+import { httpPostgresDriver } from '../../scripts/learner-simulation-http-driver.js';
 import {
   lessonRunConceptsAtWithdrawal,
   p20HasWithdrawnCreditViolation,
@@ -175,7 +176,7 @@ test('P24–P28 observe a quiz, a slow correct answer, timeout, follow-ups, and 
   const content = await loadContent('content');
   const {
     profiles: [profile],
-  } = await simulateLearners(db, content, {
+  } = await simulateLearners(httpPostgresDriver(db), content, {
     profiles: ['scenario-quizzes'],
     days: 1,
     timeZone: 'UTC',
@@ -1278,7 +1279,7 @@ test('P23 reports changed or removed history rows and allows new rows', () => {
 });
 
 test('overplaced learner loses conditional placement credit without P20-P23 violations', async () => {
-  const report = await simulateLearners(db, await loadContent(), {
+  const report = await simulateLearners(httpPostgresDriver(db), await loadContent(), {
     profiles: ['overplaced'],
     days: 30,
     courseIds: ['maths-for-ml'],
@@ -1331,8 +1332,8 @@ test('two profiles produce byte-identical 15-day simulation reports from the sam
     days: 15,
     courseIds: ['maths-for-ml'],
   };
-  const first = await simulateLearners(db, content, options);
-  const second = await simulateLearners(db, content, options);
+  const first = await simulateLearners(httpPostgresDriver(db), content, options);
+  const second = await simulateLearners(httpPostgresDriver(db), content, options);
 
   for (const profile of first.profiles) {
     expect(
@@ -1382,7 +1383,7 @@ test('same-timestamp review logs exclude logs created by the lesson quiz', () =>
 
 test('diligent and graph-change Mathematics for ML runs produce structured reports', async () => {
   const content = await loadContent();
-  const report = await simulateLearners(db, content, {
+  const report = await simulateLearners(httpPostgresDriver(db), content, {
     profiles: ['diligent', 'graph-change'],
     days: 45,
     courseIds: ['maths-for-ml'],
@@ -1405,7 +1406,7 @@ test('diligent and graph-change Mathematics for ML runs produce structured repor
     first30Days.reduce((total, stats) => total + stats.newTopicsCompleted, 0),
   ).toBeGreaterThanOrEqual(10);
   expect(renderMarkdownReport(report)).toContain('P11 ambiguous');
-  const struggling = await simulateLearners(db, content, {
+  const struggling = await simulateLearners(httpPostgresDriver(db), content, {
     profiles: ['struggling'],
     days: 12,
     courseIds: ['maths-for-ml'],
@@ -1446,7 +1447,7 @@ test('diligent and graph-change Mathematics for ML runs produce structured repor
 }, 110_000);
 
 test('gap learner reviews logistic regression before completing the affected lesson', async () => {
-  const report = await simulateLearners(db, await loadContent(), {
+  const report = await simulateLearners(httpPostgresDriver(db), await loadContent(), {
     profiles: ['gap'],
     days: 45,
     courseIds: ['maths-for-ml', 'ml-foundations'],
