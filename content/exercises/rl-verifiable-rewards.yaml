@@ -1315,12 +1315,12 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: 'A reward checker extracts the final `Answer:` line and removes spaces around the answer and trailing full stops. The reference is `"9"`. Which pair of replies would get different rewards from each other if the checker compares the two strings, but the same reward as each other if it converts both strings to integers before comparing them?'
+    prompt: "A reward checker extracts the final `Answer:` line and removes spaces around the answer and trailing full stops. It compares each extracted answer with the fixed reference `9`. One version compares the answer and reference as exact text. The other parses both as base-10 integers before comparing them. Which pair of replies gets different rewards under exact text comparison but the same reward under integer comparison?"
     options:
       - id: a
         text: "`Answer: 9` and `Answer: 9.`"
         correct: false
-        feedback: "The trailing period is removed. Both extracted strings become `9`."
+        feedback: "The trailing full stop is removed. Both extracted strings become `9`."
       - id: b
         text: "`Answer: 9` and `Answer: 8`"
         correct: false
