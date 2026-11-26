@@ -196,7 +196,7 @@ export const directMemoryDriver: SimulatorDriverFactory = (input) => new DirectM
 
 /**
  * The value a Drizzle `jsonb` column returns: plain JSON with keys ordered by length, then bytes.
- * Drizzle parses a top-level string once more, so the stored string "0" reads back as 0.
+ * Drizzle parses a top-level string once more, keeping its text order, so "0" reads back as 0.
  */
 function jsonb(value: unknown): unknown {
   const order = (entry: unknown): unknown => {
@@ -215,7 +215,7 @@ function jsonb(value: unknown): unknown {
   const json: unknown = JSON.parse(JSON.stringify(value));
   if (typeof json !== 'string') return order(json);
   try {
-    return order(JSON.parse(json));
+    return JSON.parse(json);
   } catch {
     return json;
   }
