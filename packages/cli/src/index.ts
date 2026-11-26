@@ -14,6 +14,7 @@ import {
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual, parseArgs } from 'node:util';
+import { MIN_REVIEW_POOL } from '@academy/aesop/course/review-pool';
 import {
   ContentValidationError,
   loadContent,
@@ -802,7 +803,7 @@ async function newLesson(topicId: string, directory: string) {
     usedExerciseIds.add(id);
     return id;
   }
-  const problemIds = Array.from({ length: 5 }, (_, index) =>
+  const problemIds = Array.from({ length: MIN_REVIEW_POOL }, (_, index) =>
     uniqueExerciseId(`${topicId}-problem-${index + 1}`),
   );
   const selfExplanationId = uniqueExerciseId(`${topicId}-self-explanation`);
@@ -834,32 +835,35 @@ async function newLesson(topicId: string, directory: string) {
     final: finalId,
     summary: 'TODO: Summarize the lesson.\n\n**Next:** TODO: Name the next topic.',
   });
+  const questionSkeleton = (id: string, dimension: string, index: number, role: string) => ({
+    id,
+    dimension,
+    type: 'mc',
+    role,
+    difficulty: (index % 3) + 1,
+    est_minutes: 2,
+    prompt: 'TODO: Write a practice question.',
+    hints: [],
+    solution: 'TODO: Explain the answer.',
+    options: [
+      {
+        id: 'answer',
+        text: 'TODO: Correct answer.',
+        correct: true,
+        feedback: 'TODO: Explain why this is correct.',
+      },
+      {
+        id: 'distractor',
+        text: 'TODO: Plausible alternative.',
+        correct: false,
+        feedback: 'TODO: Explain why this is not the answer.',
+      },
+    ],
+  });
   const skeletonExercises = [
-    ...problemIds.map((problemId, index) => ({
-      id: problemId,
-      dimension: 'conceptual',
-      type: 'mc',
-      role: index === 0 ? 'basics' : 'practice',
-      difficulty: (index % 3) + 1,
-      est_minutes: 2,
-      prompt: 'TODO: Write a practice question.',
-      hints: [],
-      solution: 'TODO: Explain the answer.',
-      options: [
-        {
-          id: 'answer',
-          text: 'TODO: Correct answer.',
-          correct: true,
-          feedback: 'TODO: Explain why this is correct.',
-        },
-        {
-          id: 'distractor',
-          text: 'TODO: Plausible alternative.',
-          correct: false,
-          feedback: 'TODO: Explain why this is not the answer.',
-        },
-      ],
-    })),
+    ...problemIds.map((id, index) =>
+      questionSkeleton(id, 'conceptual', index, index === 0 ? 'basics' : 'practice'),
+    ),
     {
       id: selfExplanationId,
       dimension: 'conceptual',
@@ -899,6 +903,18 @@ async function newLesson(topicId: string, directory: string) {
       rubric: [{ id: 'key-idea', criterion: 'TODO: Identify the core idea.', weight: 1 }],
       exemplar: 'TODO: Write an exemplar answer.',
     },
+    ...[...new Set(concept.dimensions)]
+      .filter((dimension) => dimension !== 'conceptual')
+      .flatMap((dimension) =>
+        Array.from({ length: MIN_REVIEW_POOL }, (_, index) =>
+          questionSkeleton(
+            uniqueExerciseId(`${topicId}-${dimension}-review-${index + 1}`),
+            dimension,
+            index,
+            'review',
+          ),
+        ),
+      ),
   ];
   const exerciseFile = join(directory, 'exercises', `${topicId}.yaml`);
   if (existsSync(exerciseFile)) {

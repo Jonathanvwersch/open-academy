@@ -1383,6 +1383,50 @@ describe('academy CLI', () => {
     }
   });
 
+  it('generates a loadable review pool for every dimension of a new lesson', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      const initialized = run(['init', pack, '--title', 'Applied Science']);
+      expect(initialized.status, initialized.stderr).toBe(0);
+      const topicId = 'applied-science-first-topic';
+      const conceptFile = join(pack, 'concepts', 'main.yaml');
+      const source = parse(readFileSync(conceptFile, 'utf8')) as {
+        concepts: Array<{ dimensions: string[] }>;
+      };
+      const [concept] = source.concepts;
+      if (!concept) throw new Error('Expected a starter concept');
+      concept.dimensions = ['math', 'implementation'];
+      writeFileSync(conceptFile, stringify(source));
+
+      const created = run(['new', 'lesson', topicId, '--pack', pack]);
+      expect(created.status, created.stderr).toBe(0);
+      const checked = runWithInitCwd(['check', pack], parent);
+      expect(checked.status).toBe(1);
+      expect(checked.stderr).toContain('TODO field at .objective');
+      expect(
+        checked.stderr
+          .trim()
+          .split('\n')
+          .every((issue) => issue.includes('TODO field at ')),
+      ).toBe(true);
+
+      const { exercises } = parse(
+        readFileSync(join(pack, 'exercises', `${topicId}.yaml`), 'utf8'),
+      ) as { exercises: Array<{ dimension: string; role: string }> };
+      for (const dimension of concept.dimensions) {
+        expect(
+          exercises.filter(
+            ({ dimension: questionDimension, role }) =>
+              questionDimension === dimension && role === 'review',
+          ),
+        ).toHaveLength(5);
+      }
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
   it('chooses a free skeleton ID when an existing exercise uses the base ID', () => {
     const parent = temporaryDirectory();
     try {
