@@ -298,7 +298,7 @@ exercises:
     code: |
       import math
       weight = math.exp(____)
-    accept: ["(z - largest) / tau", "(z-largest)/tau"]
+    accept: ["(z - largest) / tau", "(z-largest)/tau", "(z - largest) / tau,"]
     solution: Divide the logit difference by temperature. Subtracting the same largest logit from every entry cancels out during normalisation and avoids large positive exponents.
   - id: pd-temp-new-setting
     dimension: conceptual
