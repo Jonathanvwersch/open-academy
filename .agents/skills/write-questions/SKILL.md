@@ -29,6 +29,7 @@ Basic-skill questions in maths courses (difficulty 1, numeric or multiple choice
 - **One idea at a time.** A question checks one thing, so a wrong answer says what to review. Split a question that needs two new ideas into two.
 - **One right answer.** The stem says exactly what to give: units, rounding, which quantity. "What is $p$, to two decimal places?" rather than "What happens to $p$?"
 - **Stands alone.** A question can come back in a review weeks later, so it gives all the numbers and context it needs and never refers to the lesson, a step number, the worked example or a picture. Only `lesson_only` self-explanation questions may refer to the worked example.
+- **Every symbol is named.** Say what each letter, tuple and matrix in the stem is: "two probability distributions over the same two outcomes, $p=(1,0)$ and $q=(1/2,1/2)$", not "Let $p=(1,0)$ and $q=(1/2,1/2)$"; "a move of $a=(1,2)$ metres east and north", not "$a=(1,2)$". The lesson's notation is not enough, because a review shows the question mixed in with other topics. If someone fluent in the subject, reading only the stem, could take a symbol for something else (a vector or a distribution, a probability or a count, a row or a column), the stem is ambiguous.
 - **Typed answers for numbers.** Recalling an answer strengthens memory more than recognising it. If the answer is a number or short expression, make it `numeric` or a template, not MC.
 - **Effort lands on the idea.** Keep the arithmetic easy (clean numbers, small integers) so the learner's effort goes into the idea, not into long division.
 
@@ -94,11 +95,12 @@ Keep concept-pool questions within what the output lists or the lesson teaches. 
 ## 9. Checking before you ship
 
 1. Run the giveaway test (§1) on every question.
-2. Compute every numeric answer with a script (Python or Node), including every template combination.
-3. For each MC question, confirm exactly one option is correct and each wrong one has its own feedback.
-4. Check the step's mix: at least five questions, difficulties 1 to 3, and at least two angles per idea (§3), plus three recall questions (§6).
-5. Run `pnpm content:check`, `pnpm exec vitest run apps/api/tests/content/` and `pnpm check`.
-6. Once the topic's questions are done, follow `../set-weights/SKILL.md` to work out its encompassing weights and have a separate agent check them before you record them.
+2. Cold-read every stem with nothing else open, as it would appear in a mixed review. Rewrite any stem where a symbol, unit or quantity could mean two things (§2).
+3. Compute every numeric answer with a script (Python or Node), including every template combination.
+4. For each MC question, confirm exactly one option is correct and each wrong one has its own feedback.
+5. Check the step's mix: at least five questions, difficulties 1 to 3, and at least two angles per idea (§3), plus three recall questions (§6).
+6. Run `pnpm content:check`, `pnpm exec vitest run apps/api/tests/content/` and `pnpm check`.
+7. Once the topic's questions are done, follow `../set-weights/SKILL.md` to work out its encompassing weights and have a separate agent check them before you record them.
 
 ## 10. Reviewing existing questions
 
