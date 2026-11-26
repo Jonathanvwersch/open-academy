@@ -157,7 +157,7 @@ knowledge_points:
 
       ### Training on the real earlier words
 
-      Every input prefix is the real text. We could instead let the model predict from its own guesses. Feeding it the true earlier tokens, even at positions where it would have guessed wrong, is called **teacher forcing**. Because every input is known before the run starts, the causal mask can then train all positions in the same run.
+      **Teacher forcing** gives the model the true earlier tokens instead of its own guesses. One run makes all predictions, with the mask hiding later tokens from each position. The loss scores the predictions against the true next tokens for the training update.
 
       Be careful not to score position $t$ against $x_t$. The model already has $x_t$ as input, so its target is the token after it, $x_{t+1}$.
     worked: |
