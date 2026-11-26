@@ -1,4 +1,9 @@
-import { readFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
 import { loadContent } from '../src/content/load.js';
 import { directMemoryDriver } from './learner-simulation-direct-driver.js';
@@ -67,6 +72,36 @@ test('direct simulator modules do not load the app, the database or its config',
   expect(visited.size).toBeGreaterThan(5);
   expect(reached).toEqual([]);
 });
+
+test('the simulator CLI runs in direct mode by default without database config', async () => {
+  const out = await mkdtemp(join(tmpdir(), 'simulate-direct-'));
+  try {
+    await promisify(execFile)(
+      process.execPath,
+      [
+        '--import',
+        'tsx',
+        'scripts/simulate-learners.ts',
+        '--days',
+        '1',
+        '--profiles',
+        'average',
+        '--out',
+        out,
+      ],
+      {
+        cwd: fileURLToPath(new URL('..', import.meta.url)),
+        env: { ...process.env, DATABASE_URL: 'invalid', TEST_DATABASE_URL: 'invalid' },
+      },
+    );
+    const report = JSON.parse(await readFile(join(out, 'report.json'), 'utf8'));
+    expect(report.profiles.map((profile: { profile: string }) => profile.profile)).toEqual([
+      'average',
+    ]);
+  } finally {
+    await rm(out, { recursive: true, force: true });
+  }
+}, 60_000);
 
 test('direct scripted scenarios and the timed quiz scenario pass every invariant', async () => {
   const content = await loadContent();
