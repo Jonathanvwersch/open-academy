@@ -3043,6 +3043,32 @@ test('starting a stale in-progress lesson skips it without changing its run or p
   ]);
 });
 
+test('Up next does not forecast lessons Today when no learn tasks are planned', async () => {
+  const courseId = content.curriculum?.default_course ?? content.courses[0]?.id;
+  if (!courseId) throw new Error('Missing default course');
+  await db
+    .update(users)
+    .set({ activeCourseId: courseId, prefs: { scheduleMinutes: 5 } })
+    .where(eq(users.id, userId));
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId,
+    startMethod: 'beginning',
+  });
+
+  const learn = await (await get('/learn')).json();
+  const learnTaskConceptIds = learn.tasks
+    .filter((task: { activityKind: string }) => task.activityKind === 'learn')
+    .map((task: { conceptId: string }) => task.conceptId);
+  const todayConceptIds = learn.upNext.upcoming
+    .filter((topic: { dayLabel: string }) => topic.dayLabel === 'Today')
+    .map((topic: { conceptId: string }) => topic.conceptId);
+
+  expect(learn.activeSessionId).toBeNull();
+  expect(learnTaskConceptIds).toEqual([]);
+  expect(todayConceptIds).toEqual(learnTaskConceptIds);
+});
+
 test('Up next starts with active-session lessons in order and projects future topics from tomorrow', async () => {
   const now = new Date('2026-01-07T10:00:00.000Z');
   await db

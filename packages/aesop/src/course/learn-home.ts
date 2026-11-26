@@ -718,7 +718,7 @@ export async function getLearnHome(store: CourseStore, input: CourseReadInput) {
     const projection = projectCourseFinishes({
       courses,
       dailyXp: dailyXpAtPace,
-      today: addLocalDays(todayLocal, topicsForToday.length > 0 ? 1 : 0),
+      today: addLocalDays(todayLocal, 1),
       assumedDoneConceptIds: todayConceptIds,
       spentBySubject,
     });
