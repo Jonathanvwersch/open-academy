@@ -346,7 +346,7 @@ knowledge_points:
 
       1. Multiplying $F$ by one column of $G$ makes the matching column of $FG$.
       2. As in step 3, that multiplication combines the $k$ columns of $F$, so the result lies in their span.
-      3. Pick any $k+1$ columns of $FG$. Their columns in $G$ form a grid with $k$ rows, so at least one of its $k+1$ columns lacks a pivot. A nonzero combination of those columns gives zero. Multiplying that combination by $F$ still gives zero, so the chosen columns of $FG$ are dependent. Therefore:
+      3. Pick any $k+1$ columns of $FG$. Their columns in $G$ form a grid with $k$ rows, so at least one lacks a pivot. A combination of those columns with at least one nonzero coefficient gives the zero vector. Multiplying that combination by $F$ still gives zero, so the chosen columns of $FG$ are dependent. Therefore:
 
       $$\operatorname{rank}(FG)\le k.$$
 
