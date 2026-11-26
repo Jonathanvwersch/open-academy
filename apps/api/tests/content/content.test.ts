@@ -2352,8 +2352,17 @@ test('multiple-choice options format numbers consistently', async () => {
     }),
   ]);
 
+  expect(await optionIssues('−18, because twice the error')).toEqual([
+    expect.objectContaining({
+      message: expect.stringContaining(
+        'option "a" writes a negative number in plain text ("−18"); write it in maths, e.g. "$-1$"',
+      ),
+    }),
+  ]);
+
   for (const text of [
     '$3$ and $-2$',
+    '$−1$',
     '3 and 4',
     '$p$ and $d$',
     '$W$ is $8 \\times 5$ and $b$ has 1 entry',

@@ -232,7 +232,7 @@ function plainNegativeNumber(text: string): string | null {
   const withoutMathOrCode = text.replace(/\$\$[\s\S]*?\$\$|\$[^$]*\$|(`+)[\s\S]*?\1/g, (segment) =>
     ' '.repeat(segment.length),
   );
-  const match = /(?<![\w.)\]])-\d+(?:\.\d+)?/.exec(withoutMathOrCode);
+  const match = /(?<![\w.)\]])[-\u2212]\d+(?:\.\d+)?/.exec(withoutMathOrCode);
   return match ? text.slice(match.index, match.index + match[0].length) : null;
 }
 
