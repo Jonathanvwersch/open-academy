@@ -757,8 +757,14 @@ test.each([
       new Set(['original-lesson']),
     );
     expect(execution.map(({ id }) => id)).toEqual(['prerequisite', 'covering-review']);
-    const result = compressionPlanEvidence(state, await loadContent(), now, execution, 'replan');
+    const content = await loadContent();
+    const result = compressionPlanEvidence(state, content, now, execution, 'replan');
     expect([...result.redundantReviews]).toEqual(redundant);
+    expect(result.coveredSkips).toBe(0);
+    const withoutPrerequisite = execution.filter(({ id }) => id !== 'prerequisite');
+    expect(
+      compressionPlanEvidence(state, content, now, withoutPrerequisite, 'replan').coveredSkips,
+    ).toBe(1);
   },
 );
 

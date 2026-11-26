@@ -4735,29 +4735,28 @@ export function compressionPlanEvidence(
       flag.status !== 'resolved' && flag.targetPrereqId ? [flag.targetPrereqId] : [],
     ),
   );
-  const reviewConceptIds = new Set(
-    activities
+  const conceptIdsForActivity = (activity: (typeof executionActivities)[number]) => [
+    ...(activity.conceptId ? [activity.conceptId] : []),
+    ...(activity.exerciseIds ?? []).flatMap((exerciseId) => {
+      const conceptId = content.exercisesById.get(exerciseId)?.concept;
+      return conceptId ? [conceptId] : [];
+    }),
+  ];
+  const executionReviewConceptIds = new Set(
+    executionActivities
       .filter((activity) => activity.kind === 'review')
-      .flatMap((activity) => [
-        ...(activity.conceptId ? [activity.conceptId] : []),
-        ...(activity.exerciseIds ?? []).flatMap((exerciseId) => {
-          const conceptId = content.exercisesById.get(exerciseId)?.concept;
-          return conceptId ? [conceptId] : [];
-        }),
-      ]),
+      .flatMap(conceptIdsForActivity),
   );
+  const reviewConceptIds =
+    phase === 'replan'
+      ? new Set(
+          activities
+            .filter((activity) => activity.kind === 'review')
+            .flatMap(conceptIdsForActivity),
+        )
+      : executionReviewConceptIds;
   const taskConceptIds = activities.flatMap((activity) =>
-    activity.kind === 'learn' || activity.kind === 'review'
-      ? [
-          ...new Set([
-            ...(activity.conceptId ? [activity.conceptId] : []),
-            ...(activity.exerciseIds ?? []).flatMap((exerciseId) => {
-              const conceptId = content.exercisesById.get(exerciseId)?.concept;
-              return conceptId ? [conceptId] : [];
-            }),
-          ]),
-        ]
-      : [],
+    activity.kind === 'learn' || activity.kind === 'review' ? conceptIdsForActivity(activity) : [],
   );
   const coverageByTask = new Map(
     [...new Set(taskConceptIds)].map((conceptId) => [
@@ -4788,7 +4787,7 @@ export function compressionPlanEvidence(
       if (!remediationConceptIds.has(dueConceptId) && reviewIsRedundant && coveringConceptId) {
         redundantReviews.set(dueConceptId, coveringConceptId);
       }
-    } else if (coveringConceptIds.length > 0) {
+    } else if (!executionReviewConceptIds.has(dueConceptId) && coveringConceptIds.length > 0) {
       coveredSkips += 1;
     }
   }
