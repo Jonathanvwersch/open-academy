@@ -1070,3 +1070,25 @@ exercises:
       ]
     regex: '^\s*(?:w\s*(?:[\u1d40\u22a4''\u2032]|\.\s*t|\^\s*(?:[\u22a4t]|\\top|\\(?:mathrm|text)\s*\{\s*t\s*\}|\{\s*(?:[\u22a4t]|\\top|\\(?:mathrm|text)\s*\{\s*t\s*\})\s*\}))|(?:np\s*\.\s*)?transpose\s*\(\s*w\s*\)|w\s*\.\s*transpose\s*\(\s*\)|(?:the\s+)?transpose\s+of\s+(?:w|(?:the\s+)?weights?\s+matrix(?:\s+w)?)|(?:the\s+)?transposed\s+(?:w|weights?\s+matrix(?:\s+w)?)|w\s+transpos(?:e|ed))\s*$'
     solution: "Use $W^\\top$. This puts one neuron's weights in each column, so an example row can multiply the matching input weights."
+
+  - id: mlpp-batch-hidden-count
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A hidden layer has four neurons with ReLU. A batch puts seven examples through that layer. How many hidden values does the layer produce for the whole batch?"
+    answer: 28
+    tolerance: { abs: 0 }
+    solution: "The array has one row per example and one column per hidden neuron, so it contains $7\\times4=28$ numbers."
+
+  - id: mlpp-output-weight-from-batch
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A batch has two examples with input rows $(2,1)$ and $(0,3)$. The hidden layer stores one neuron's weights per row: $(2,-1)$ for the first neuron and $(-2,1)$ for the second. Their biases are $0$ and $1$, respectively, and both use ReLU. The linear output neuron has weight $3$ on the first hidden value, weight $1$ on the second, and bias $-2$. What is the prediction for the first input row minus the prediction for the second input row?"
+    answer: 5
+    tolerance: { abs: 0 }
+    solution: "The hidden scores are $(3,-2)$ and $(-3,4)$, so ReLU gives hidden values $(3,0)$ and $(0,4)$. The output layer gives $3\\cdot3+0-2=7$ and $0+4-2=2$, so the difference is $5$."

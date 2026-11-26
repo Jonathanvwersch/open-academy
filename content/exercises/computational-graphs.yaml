@@ -678,3 +678,36 @@ exercises:
     answer: "x+2*y+z"
     variables: { x: [-3, 5], y: [-3, 5], z: [-3, 5] }
     solution: "The path through $a$ contributes $b$, and the path through $b$ contributes $a$. Their sum is $(y+z)+(x+y)$."
+
+  - id: cg-local-target-slope
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A graph subtracts the target $t=7$ from the prediction $p=4$ to get the error $e=p-t$, then squares the error to get the loss $L=e^2$. What is the local derivative $\\partial e/\\partial t$, the slope of the error with respect to the target?"
+    answer: -1
+    tolerance: { abs: 0 }
+    solution: "With $p$ fixed, each unit increase in $t$ decreases $e$ by one, so the local derivative is $-1$."
+
+  - id: cg-intermediate-slope
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A graph multiplies a weight $w=3$ by an input $x=2$ to get the prediction $p=wx$. It subtracts the target $t=8$ to get the error $e=p-t$, then squares the error to get the loss $L=e^2$. What is $\\partial L/\\partial p$, the slope of the loss with respect to the prediction?"
+    answer: -4
+    tolerance: { abs: 0 }
+    solution: "The error is $6-8=-2$. From $p$ to $L$, the local slopes are $1$ and $2e=-4$, giving $-4$."
+
+  - id: cg-two-squared-paths
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A graph starts with an input $x=1$. It computes two intermediate values, the difference $a=x-2$ and the product $b=2x$. The output $g=a^2+b^2$ adds their squares. What is $\\partial g/\\partial x$, the slope of the output with respect to the input?"
+    answer: 6
+    tolerance: { abs: 0 }
+    solution: "The path through $a$ gives $2(-1)\\cdot1=-2$ and the path through $b$ gives $2(2)\\cdot2=8$. Add them to get $6$."

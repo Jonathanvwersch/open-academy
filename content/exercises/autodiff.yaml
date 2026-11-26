@@ -668,3 +668,56 @@ exercises:
     answer: "1+o"
     variables: { "o": { "values": [1, 4, 12] } }
     solution: "One recording pass serves all the outputs. Add $o$ backward passes, one per output."
+
+  - id: ad-record-squared-input
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "An automatic differentiation routine records the operation that squares the prediction error $e$ to get the loss $L=e^2$. Which value should it save so the backward step can apply the local slope rule for squaring directly?"
+    options:
+      - id: a
+        text: "The operation's output $L$"
+        correct: false
+        feedback: "The squared value loses the sign of $e$, which the local slope needs."
+      - id: b
+        text: "The operation's input $e$"
+        correct: true
+      - id: c
+        text: "The slope arriving at $L$"
+        correct: false
+        feedback: "The arriving slope combines with the local slope during the backward pass. You still need the saved input to calculate the local slope."
+    solution: "The local slope of squaring is $2e$. Save $e$ as it was during the forward calculation."
+
+  - id: ad-rebuild-before-backward
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A PyTorch program computes the squared-error loss `loss = (2 * w - 1) ** 2` from a weight `w`. It calls `loss.backward()` and clears the gradient stored in the weight's `.grad`. It now needs another backward pass without changing the weight or the loss formula. What should it do first?"
+    options:
+      - id: a
+        text: "Call `loss.backward()` again on the old loss."
+        correct: false
+        feedback: "The first backward call releases the squared operation's saved input. Clearing `.grad` does not restore it."
+      - id: b
+        text: "Read the old loss with `loss.item()`."
+        correct: false
+        feedback: "Reading its number does not record any operations for backward."
+      - id: c
+        text: "Recompute `loss` from the unchanged weight."
+        correct: true
+    solution: "Recompute `loss` to record the value that was squared. PyTorch needs that value for the backward pass and releases it after the first call."
+
+  - id: ad-mode-count-with-recording
+    dimension: implementation
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A calculation has four adjustable inputs and six scalar outputs. To find the slope of every output with respect to each input, how many more passes does reverse mode take than forward mode? For each mode, count every pass through the calculation, forward or backward."
+    answer: 3
+    tolerance: { abs: 0 }
+    solution: "Forward mode takes $4$ passes, one per input. Reverse mode takes one recording pass plus one backward pass for each of the $6$ outputs, so it takes $7-4=3$ more passes."
