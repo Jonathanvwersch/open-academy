@@ -208,14 +208,14 @@ knowledge_points:
 
       $$Q^\top Q=I.$$
 
-      To check for an inverse, let $x$ be a vector with one coefficient per column of $Q$. Suppose $Qx=0$, where $0$ is the zero vector:
+      To check for an inverse, ask whether a combination of columns of $Q$ with at least one nonzero coefficient can give the zero vector. Let $x$ be the vector of coefficients, one per column of $Q$, and suppose $Qx=0$, where $0$ is the zero vector:
       $$
       \begin{aligned}
       Q^\top Qx&=Q^\top0 &&\text{multiply by the transpose}\\
       x&=0 &&\text{use }Q^\top Q=I
       \end{aligned}
       $$
-      Only zero amounts work, so every column has a pivot after elimination. The matrix is square, so every row has a pivot too. That makes $Qx=b$ solvable for any $b$, with no free variables, so $Q$ has an inverse. Now:
+      Only zero coefficients work, so every column has a pivot after elimination. The matrix is square, so every row has a pivot too. That makes $Qx=b$ solvable for any $b$, with no free variables, so $Q$ has an inverse. Now:
       $$
       \begin{aligned}
       Q^\top QQ^{-1}&=IQ^{-1} &&\text{multiply }Q^\top Q=I\text{ by the inverse}\\
