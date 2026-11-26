@@ -1,6 +1,7 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
+import { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import { eq } from 'drizzle-orm';
-import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
+import { afterAll, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
@@ -153,18 +154,58 @@ test('replanning cannot delete an activity after a successful progress write', a
     .values({ sessionId: session.id, idx: 0, kind: 'practice', plannedMinutes: 5 })
     .returning();
   if (!activity) throw new Error('Missing activity');
-  const [replanned, progressed] = await Promise.all([
-    app.request(`/api/sessions/${session.id}/replan`, {
-      method: 'POST',
-      headers,
-      body: '{}',
-    }),
+  let snapshotRead: () => void = () => {};
+  let release: () => void = () => {};
+  const read = new Promise<void>((resolve) => {
+    snapshotRead = resolve;
+  });
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let paused = false;
+  const originalSchedulerState = EngineLearnerRepository.prototype.schedulerState;
+  const schedulerStateSpy = vi
+    .spyOn(EngineLearnerRepository.prototype, 'schedulerState')
+    .mockImplementation(async function (this: EngineLearnerRepository, now, contentIndex, loaded) {
+      if (!paused) {
+        paused = true;
+        snapshotRead();
+        await blocked;
+      }
+      return originalSchedulerState.call(this, now, contentIndex, loaded);
+    });
+  const replanning = app.request(`/api/sessions/${session.id}/replan`, {
+    method: 'POST',
+    headers,
+    body: '{}',
+  });
+  await read;
+  const progressing = Promise.resolve(
     app.request(`/api/sessions/${session.id}/activities/${activity.id}/progress`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ answerDraft: 'keep my work' }),
     }),
-  ]);
+  );
+  try {
+    const deadline = Date.now() + 5000;
+    let waitingForSessionLock = false;
+    while (!waitingForSessionLock) {
+      const [waiting] = await db.$client<{ waiting: number }[]>`
+        select count(*)::int as waiting from pg_stat_activity
+        where datname = current_database() and wait_event_type = 'Lock'
+        and query like '%study_sessions%'
+      `;
+      waitingForSessionLock = (waiting?.waiting ?? 0) > 0;
+      if (!waitingForSessionLock && Date.now() > deadline)
+        throw new Error('Progress did not wait for the session lock');
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+  } finally {
+    release();
+    schedulerStateSpy.mockRestore();
+  }
+  const [replanned, progressed] = await Promise.all([replanning, progressing]);
   expect(replanned.status).toBe(200);
   const [saved] = await db
     .select()
