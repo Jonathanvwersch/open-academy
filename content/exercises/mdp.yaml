@@ -200,7 +200,7 @@ exercises:
     difficulty: 1
     est_minutes: 1
     prompt: >-
-      An MDP takes action $a$ in state $s$, and $s'$ is a possible next state. What does $p(s'\mid s,a)$ describe?
+      In a Markov decision process (MDP), an agent takes action $a$ in state $s$, and the environment determines the next state. If $s'$ is a possible next state, what does $p(s'\mid s,a)$ describe?
     options:
       - id: a
         text: The chance of choosing action $a$ after arriving in state $s'$.
