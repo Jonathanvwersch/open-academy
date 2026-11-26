@@ -867,7 +867,7 @@ exercises:
     difficulty: 3
     est_minutes: 1
     prompt: |
-      `predict(prefix)` gives the next-token probabilities, and `sample(probs)` chooses one token. This loop starts with `prefix = ["we"]` and runs twice. Which change makes both predictions use the correct prefix? `prefix.append(...)` adds the chosen token to the end of the list.
+      `predict(prefix)` gives the next-token probabilities. `sample(probs)` chooses one token, and `prefix.append(...)` adds it to the end of the list. The loop starts with `prefix = ["we"]` and runs twice. Which change makes each draw use the prefix as it stands at that step?
 
       ```python
       probs = predict(prefix)
@@ -880,11 +880,11 @@ exercises:
         correct: true
         feedback: "Each draw uses a fresh prediction from the prefix as it stands at that step."
       - id: b
-        text: "Leave `probs = predict(prefix)` outside and sample twice from it before appending either token."
+        text: 'Move the prediction inside the loop, before sampling, and call `predict(["we"])`.'
         correct: false
-        feedback: "Both draws still use the initial prefix, so the second cannot depend on the first."
+        feedback: "Predicting from the same one-token list leaves out the first draw when the second draw is made."
       - id: c
-        text: "Move `probs = predict(prefix)` inside the loop and pass `prefix[:1]` to `predict`."
+        text: "Move `probs = predict(prefix)` inside the loop, after `prefix.append(...)`."
         correct: false
-        feedback: "Slicing to the first token omits the chosen continuation from later predictions."
+        feedback: "The first draw needs probabilities before the loop can append its chosen token."
     solution: "Recompute the distribution from the current prefix at the start of each iteration. On the second iteration the prefix includes the first sampled token."
