@@ -133,7 +133,7 @@ knowledge_points:
 
       No column is a multiple of another, yet adding the first two gives the third:
       $$(1,1,2)+(1,2,1)=(2,3,3).$$
-      Checking pairs isn't enough.
+      Be careful: checking pairs misses this dependence.
 
       ### Testing by elimination
 
