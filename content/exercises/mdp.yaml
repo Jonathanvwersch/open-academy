@@ -6,7 +6,7 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: Two robots with identical bodies and motors face the same task on the same corridor floor. Each runs a program that controls its moves. Both can move left or right and earn points as they move. Which item can differ between the robots while the task stays the same?
+    prompt: Two robots with identical bodies and motors are given exactly the same task on the same corridor floor. Which of the following could still differ between them?
     options:
       - id: a
         text: The rule each agent uses to choose actions
