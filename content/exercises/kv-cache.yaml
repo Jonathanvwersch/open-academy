@@ -838,7 +838,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: A decoder's cache holds the prompt. The decoder processes token A in the first decode call and predicts token B. Which token should the newly appended cache entry describe?
+    prompt: A language model streams token A to a user as soon as prefill finishes. It then makes one decode call and streams token B. Which token should the cache entry added by that decode call describe?
     options:
       - id: a
         text: The final prompt token.
