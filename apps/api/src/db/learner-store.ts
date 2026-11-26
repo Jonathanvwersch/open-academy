@@ -904,14 +904,15 @@ export function drizzleLearnerStore(
       return row;
     },
     async lockLessonProblem(learnerId, conceptId, problemId) {
-      const [row] = await db
-        .select({ run: lessonRunFields, problem: lessonProblems })
+      const run = await this.getLessonRun(learnerId, { conceptId }, { forUpdate: true });
+      if (!run) return undefined;
+      const [problem] = await db
+        .select()
         .from(lessonProblems)
-        .innerJoin(lessonRuns, eq(lessonProblems.runId, lessonRuns.id))
-        .where(and(lessonWhere(learnerId, { conceptId }), eq(lessonProblems.id, problemId)))
+        .where(and(eq(lessonProblems.runId, run.id), eq(lessonProblems.id, problemId)))
         .for('update')
         .limit(1);
-      return row;
+      return problem ? { run, problem } : undefined;
     },
     async insertLessonRunIfAbsent(learnerId, run) {
       const [row] = await db
