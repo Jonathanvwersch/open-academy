@@ -189,7 +189,7 @@ exercises:
     prompt: In symmetric INT8 quantisation, how is the scale $s$ chosen for a group that contains at least one nonzero weight?
     options:
       - id: a
-        text: It is the largest absolute weight divided by 127, so that weight reaches one end of the integer range.
+        text: It is the size of the weight farthest from zero divided by 127, so that weight reaches one end of the integer range.
         correct: true
         feedback: With $s=\max|x|/127$, every number in the group fits in $[-127,127]$ after dividing by $s$.
       - id: b
@@ -457,7 +457,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A model with {{=n}} billion parameters uses FP8 weight-and-activation quantisation. Its GPU performs about 2,000 trillion FP8 floating-point operations per second. It reads a prompt of 2,000 tokens. Count only the work using the weights: one multiply and one add per parameter per prompt token. How many milliseconds does prefill take?"
+    prompt: "A model with {{=n}} billion parameters uses FP8 weight-and-activation quantisation. Its GPU performs about 2,000 trillion FP8 floating-point operations per second. It reads a prompt of 2,000 tokens. Count only the multiply-adds using the weights. Each multiply-add counts as two operations. How many milliseconds does prefill take?"
     params:
       n:
         min: 1
@@ -751,7 +751,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A 16-bit model and its INT4 version take the same test of {{= 100 * m^2 }} independently sampled maths problems. Only the 16-bit model solves {{= (10 + d) * m^2 }} problems, only INT4 solves {{= 10 * m^2 }}, and they agree on the rest. How many standard errors separate their success rates? Compute the standard error from the paired differences, one per problem. Give 1 decimal place."
+    prompt: "A 16-bit model and its INT4 version take the same test of {{= 100 * m^2 }} independently sampled maths problems. On {{= (10 + d) * m^2 }} problems the 16-bit model succeeds and INT4 fails. On {{= 10 * m^2 }} problems INT4 succeeds and the 16-bit model fails. The models agree on the rest. How many standard errors separate their success rates? Compute the standard error from the paired differences, one per problem. Give 1 decimal place."
     params:
       m:
         min: 1
@@ -765,9 +765,9 @@ exercises:
     tolerance:
       abs: 0.05
     common_wrong:
-      - answer_expr: "(20 + d) / d"
+      - answer_expr: "(d / 200) * sqrt(100 * m^2 - 1) / sqrt((20 + d) / 100 - (d / 100)^2)"
         category: misapplied_technique
-        feedback: The number of disagreements helps compute the variability of the differences. It is not the standard error.
+        feedback: That divides the drop by two standard errors. Divide by one standard error to get the number of standard errors.
     solution: |
       Give each problem a difference of 1 if only the 16-bit model solves it, −1 if only INT4 solves it and 0 when they agree. The mean difference is {{= d / 100 }}, a drop of {{= d }} percentage points. For each difference, square its distance from the mean:
 
@@ -789,7 +789,7 @@ exercises:
     prompt: "You want to serve Llama 3 8B with INT8 weights. Explain how to quantise one weight matrix to INT8 with a single scale, including when all its weights are zero. Why does this speed up decoding for one request at a time? How would you check the quantised model's quality?"
     rubric:
       - id: scale
-        criterion: If any weight is nonzero, set the scale to the largest absolute weight divided by 127. If every weight is zero, use a positive scale such as 1 and store zeros.
+        criterion: If any weight is nonzero, set the scale to the size of the weight farthest from zero divided by 127. If every weight is zero, use a positive scale such as 1 and store zeros.
         weight: 1
         required: true
       - id: round
@@ -804,7 +804,7 @@ exercises:
         criterion: Compare the quantised and 16-bit models on held-out loss or perplexity and on real tasks users care about.
         weight: 1
         required: true
-    exemplar: "Divide the largest absolute weight by 127 to get the scale. Divide each weight by that scale, round it, then clamp it to the range from $-127$ to $127$. To dequantise, multiply the integer by the scale. If every weight is zero, use scale 1 and store zeros. For one request, decoding reads every weight from memory for each token. One byte per weight halves the bytes read compared with 16-bit weights, so decoding is faster. To check quality, run both the 16-bit and INT8 models on the same held-out text and compare their loss or perplexity, and also compare their scores on real tasks the users care about."
+    exemplar: "Divide the size of the weight farthest from zero by 127 to get the scale. Divide each weight by that scale, round it, then clamp it to the range from $-127$ to $127$. To dequantise, multiply the integer by the scale. If every weight is zero, use scale 1 and store zeros. For one request, decoding reads every weight from memory for each token. One byte per weight halves the bytes read compared with 16-bit weights, so decoding is faster. To check quality, run both the 16-bit and INT8 models on the same held-out text and compare their loss or perplexity, and also compare their scores on real tasks the users care about."
   - id: qzp-recall-memory-speed-say
     dimension: conceptual
     type: explain

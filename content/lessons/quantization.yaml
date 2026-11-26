@@ -381,7 +381,7 @@ knowledge_points:
 
       ### Tests on real tasks
 
-      Average loss over ordinary text can barely move while a skill such as coding gets much worse. Test both models on the same tasks with the same settings. For each problem, record a paired difference: $+1$ if only the original solves it, $-1$ if only the quantised model solves it, $0$ if they agree. The mean difference is the drop in success rate. To find its standard error for independently sampled problems, sum the squared distances from the mean. Divide by one less than the problem count and take the square root to get the sample standard deviation. Divide that by the square root of the problem count.
+      Average loss can barely move while coding gets worse. Test both models on the same problems: their success rates can move together, so measure uncertainty from their paired differences. Record $+1$ if only the original solves a problem, $-1$ if only the quantised model solves it, $0$ if they agree. The mean difference is the drop in success rate. For independently sampled problems, sum squared distances from the mean, divide by one less than the problem count and take the square root. Divide that sample standard deviation by the square root of the problem count.
 
       If both checks show only a small drop that is acceptable for the product, we ship the quantised model. If a task gets clearly worse, we can try a finer scale, such as one per row or per group, or keep some layers at 16 bits. To find which layers to keep, quantise one layer at a time and see which hurts the score most.
     worked: |
@@ -414,7 +414,7 @@ knowledge_points:
 final: qz-explain
 summary: |
   - Quantisation stores numbers with fewer bits. Llama 3 8B's weights take 16 GB at 16 bits, 8 GB at INT8 and 4 GB at INT4, and decode gets faster in proportion because it reads every weight for each token.
-  - For nonzero groups of weights, the INT8 scale is the largest absolute weight divided by 127. Divide by the scale, round and clamp to store the weights, then multiply by the scale to recover them. For an all-zero group, store zeros with scale 1.
+  - For nonzero groups of weights, the INT8 scale is the size of the weight farthest from zero divided by 127. Divide by the scale, round and clamp to store the weights, then multiply by the scale to recover them. For an all-zero group, store zeros with scale 1.
   - Weight-only quantisation speeds up decode by reading fewer bytes, and weight-and-activation quantisation with FP8 or INT8 also uses faster 8-bit maths, which helps prefill.
   - We check quality by comparing the quantised and 16-bit models on held-out loss or perplexity, $e^{\text{loss}}$, and on the real tasks users care about.
 

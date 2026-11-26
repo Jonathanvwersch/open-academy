@@ -27,7 +27,7 @@ knowledge_points:
     explain: |
       ### Attention as three kernels
 
-      Llama 3 8B runs on an H100 SXM GPU, a module that plugs into a server board. For a prompt of $T=1{,}000$ tokens, follow one of the model's query heads. Each query, key and value vector contains $d_h=128$ numbers. The query matrix $Q$, key matrix $K$ and value matrix $V$ each have $T$ rows and $d_h$ columns.
+      Llama 3 8B runs on an H100 SXM, the server version of the GPU. For a prompt of $T=1{,}000$ tokens, follow one of the model's 32 parallel attention heads that make queries. Each query, key and value vector has width $d_h=128$, called $d_k$ in the recap. The query matrix $Q$, key matrix $K$ and value matrix $V$ each have $T$ rows and $d_h$ columns.
 
       A **kernel** is one program that the GPU runs on many compute units at once, each working on part of the data. A kernel's on-chip memory is cleared when it finishes, so its result is written to HBM, and the next kernel reads it back from there. The usual way, which the FlashAttention paper calls standard attention, uses three kernels. The first finds the score table $S$, with $s_{tj}$ in row $t$, column $j$. The second applies softmax to each row of $S$ to give the weight table $P$, which holds the weights $a_{tj}$. The third multiplies $P$ by $V$ to give the outputs $O$, one row per token.
 
@@ -80,7 +80,7 @@ knowledge_points:
       \end{aligned}
       $$
 
-      FLOPs and bytes both grow like $T^2$. Their ratio levels off near $64$, far below the H100's $300$, so longer prompts stay memory-bound.
+      FLOPs and bytes both grow like $T^2$. Their ratio levels off near $64$, below the H100 SXM's ops:byte ratio of about $300$ FLOPs per byte. Longer prompts stay memory-bound.
     worked: |
       Let's count the traffic of standard attention for our head, with $T=1{,}000$ tokens, $d_h=128$ and $b=2$ bytes per number. A TB is $10^{12}$ bytes, and a TFLOP is $10^{12}$ floating-point operations. We'll use the H100's figures rounded to $1{,}000$ TFLOP/s and $3.35$ TB/s.
 

@@ -170,7 +170,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A static batch has four slots, each holding one sequence. The replies take 8, 6, 4 and 2 tokens. Prompts are already processed. Of all the slots across all decode steps, what percentage produce a token? Count each slot once per step.
+    prompt: A static batch has four slots, each holding one sequence. At the start of the first decode step, the four requests have 8, 6, 4 and 2 tokens left to generate. Of all the slots across all decode steps, what percentage produce a token? Count each slot once per step.
     answer: 62.5
     tolerance:
       abs: 0.001
@@ -188,7 +188,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A text-to-speech server generates one audio chunk per active request each step. Reading model weights sets the step time, clips have different lengths, and requests are waiting. Each slot holds one active request. With the same number of slots, which schedule keeps the most slots producing chunks?
+    prompt: A text-to-speech server generates one piece of audio each step for each active request. A request's full reply is an audio clip. Clips have different lengths, requests are waiting, and reading model weights sets the step time. Each slot holds one active request. Which schedule keeps the most slots producing audio with the same number of slots?
     options:
       - id: a
         text: Replace each finished clip with a waiting clip at the next step.
@@ -473,7 +473,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A model has {{=W}} GB of weights, split with tensor parallelism across {{=N}} GPUs. Each GPU reads memory at 2 TB/s. Ignoring result exchanges and KV-cache reads, about how many ms does one decode step take to read the weights?
+    prompt: A model has {{=W}} GB of weights split evenly across {{=N}} GPUs by tensor parallelism. Every weight is used for each token, so each decode step reads all the weights once across the GPUs. Each GPU reads at 2 TB/s. How many milliseconds does the weight read take, ignoring result exchanges and KV-cache reads?
     params:
       W:
         min: 16

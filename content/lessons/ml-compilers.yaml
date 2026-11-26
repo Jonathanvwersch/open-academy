@@ -1,7 +1,7 @@
 concept: ml-compilers
 version: 1
 objective: |
-  **Goal:** explain how an ML compiler makes a model run faster, by recording the whole model as a graph, fusing operations so less data moves to and from GPU memory, searching equal versions of the graph with an e-graph, and tuning each GPU program for one GPU and shape.
+  **Goal:** explain how an ML compiler makes a model run faster, by recording operations and their connections, fusing operations to move less data, finding cheaper ways to compute the same result, and tuning each GPU program for one GPU and shape.
 recap:
   - concept: computational-graphs
     text: "A computational graph has a node for each input and each simple operation, with an arrow from each value to the operations that use it. The forward pass computes each node once its inputs are ready."
@@ -12,30 +12,30 @@ recap:
 where_this_fits: |
   ### What is an ML compiler?
 
-  An ML compiler is a program that takes a model written as ordinary code and turns it into fast programs for the GPU. It looks at the whole calculation before running it.
+  An ML compiler is a program that takes a model written as ordinary code and turns it into fast programs for the GPU. It can look ahead across the operations it records.
 
-  Why do we need one? PyTorch normally starts each operation as Python reaches it. Separate GPU programs on large tensors can spend most of their time moving intermediate results through GPU memory. A compiler can merge steps, choose cheaper calculations within its numerical rules, and time different versions to find the fastest on one GPU. Examples include XLA, TVM, tinygrad, Luminal and PyTorch's `torch.compile`.
+  Why do we need one? PyTorch normally sends operations to run as Python reaches them. Separate GPU programs on large tensors can spend most of their time moving intermediate results through GPU memory. A compiler can merge steps, look for cheaper calculations, and time different versions to find the fastest on one GPU. Examples include XLA, TVM, tinygrad, Luminal and PyTorch's `torch.compile`.
 knowledge_points:
   - id: mlc-record-graph
     key_prereqs: [computational-graphs, classification-softmax, fast-attention]
     title: "Turn the model into a graph"
 
     tldr: |
-      - Normal PyTorch runs each operation the moment Python reaches it, so it can't see what comes next.
-      - A compiler first records the whole calculation as a graph of operations and how they connect.
+      - Normal PyTorch sends each operation to run as Python reaches it. Later operations are still unknown.
+      - A compiler first records connected operations in a graph.
       - It breaks them into simple pieces, so it can merge them and write fast GPU programs.
     explain: |
       ### Running one operation at a time
 
-      A GPU holds tensors in HBM and does arithmetic using faster on-chip storage. Bandwidth limits how quickly large operations can move data.
+      A GPU stores tensors in HBM and uses faster on-chip memory during calculations.
 
-      By default PyTorch uses **eager execution**: it starts each operation as Python reaches it. A **kernel** is a program that processes data on the GPU. An operation can run several kernels or use a prewritten kernel that combines several calculations. A transpose can create a view, reinterpreting data without moving it. Caches also serve reads.
+      By default PyTorch uses **eager execution**: it sends operations to run as Python reaches them. GPU work may wait in a queue. A **kernel** is a GPU program. An operation can run several kernels or use one prewritten kernel. A transpose can create a view, reinterpreting data without moving it.
 
-      For the arithmetic examples below, assume each eager primitive, an operation close to what the GPU runs, launches its own kernel and reads and writes its tensor data through HBM. In `y = (x * 2 + 1) ** 2`, the result of `x * 2` is written out, then read by the next kernel. When eager execution starts `x * 2`, it hasn't seen `+ 1` yet.
+      For the arithmetic examples below, assume each eager primitive, an operation close to what the GPU runs, launches its own kernel and reads and writes its tensor data through HBM. PyTorch applies `y = (x * 2 + 1) ** 2` to each entry of tensor `x` to get tensor `y`. The next kernel reads the written result of `x * 2`. When PyTorch sends that multiplication to run, it hasn't seen `+ 1` yet.
 
       ### Recording the graph first
 
-      An ML compiler first records the model's operations as a computational graph. One way is to run the code once on stand-in tensors that hold only a shape, noting each operation. With the whole graph, the compiler can see that the result of `x * 2` is used only by `+ 1`, so it can run both in one kernel and keep that result on chip.
+      A compiler can record the graph by running the code on stand-in tensors that carry shapes. The graph shows that only `+ 1` uses the result of `x * 2`, so one kernel can do both and keep that result on chip.
 
       Be careful: a compiler can't see everything. If the code takes a Python `if` based on a number inside a tensor, the compiler can't know which branch comes next. So `torch.compile` runs a graph up to that line, checks the condition in plain Python, then runs a graph for the branch taken, and can't merge across the split.
 
@@ -145,7 +145,7 @@ knowledge_points:
 
       $$\text{eager bytes}=2kS,\qquad\text{fused bytes}=2S.$$
 
-      The fused kernel does three arithmetic operations per number. Each works on floating-point numbers, which can represent fractions, so it counts as one FLOP. Count its reads and writes to find intensity:
+      In our multiply, add and square example, the fused kernel does three floating-point operations (FLOPs) per number. Floating-point numbers can represent fractions. Count the reads and writes to find intensity:
 
       $$
       \begin{aligned}
@@ -218,11 +218,11 @@ knowledge_points:
     tldr: |
       - The same answer can often be computed in cheaper or costlier ways.
       - Always taking the cheapest swap right away can throw out a version that leads somewhere cheaper.
-      - An e-graph is a structure that keeps every equal version, so the compiler can pick the cheapest at the end.
+      - An e-graph is a structure that keeps every equal version it finds, so the compiler can pick the cheapest at the end.
     explain: |
       ### Rewriting a graph
 
-      **Rewrite rules** replace patterns with equivalent ones. Our toy compiler uses exact arithmetic. Each attention score sums products of query and key entries. Dividing queries by a nonzero number divides each product, and thus each score. For $T$ tokens and query width $d_k$, this takes $Td_k$ divisions instead of $T^2$.
+      **Rewrite rules** replace patterns with equivalent ones. Our toy rules use exact real arithmetic with nonzero divisors. For one attention head with $T$ queries and keys of width $d_k$, score every query against every key. Dividing query entries scales every score by the same divisor. Dividing the $Td_k$ query entries costs less than dividing the $T^2$ scores when $T>d_k$.
 
       Here are four rules for that exact-arithmetic model, adapted from the paper behind egg, a rewriting library (Willsey et al., 2021). The letters $x$, $y$ and $z$ stand for expressions:
 
@@ -248,7 +248,7 @@ knowledge_points:
 
       ### Keeping every version
 
-      An **e-graph** keeps every version at once. It sorts expressions into groups, called e-classes, where everything in a group has the same value. Each node is an operation whose arrows point down to the groups it uses, the reverse of a computational graph's arrows, so it stands for that operation applied to any version from those groups. Rules add nodes, or merge two groups shown to be equal, and never delete anything.
+      An **e-graph** keeps every version it finds. It sorts expressions into groups, called e-classes, where everything in a group has the same value. Each node is an operation whose arrows point down to the groups it uses, the reverse of a computational graph's arrows, so it stands for that operation applied to any version from those groups. Rules add nodes, or merge two groups shown to be equal, and never delete anything.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="An e-graph for (a times 2) divided by 2. Dashed boxes are groups of equal values. The top group holds a divide node, with arrows to a middle group and to the group holding 2. The middle group holds two nodes, a times 2 and a plus a. The times node points to the groups for a and for 2; the plus node points twice to the group for a. So the divide node stands for both (a times 2) divided by 2 and (a plus a) divided by 2">
@@ -305,7 +305,7 @@ knowledge_points:
 
       The greedy compiler stopped at a cost of 5, while the e-graph found $a$, which costs nothing, because it never threw away $a\times2$.
 
-      Real compilers must follow the number format's rules for rounding and for results too large to store. In 16-bit floating point (FP16), the largest finite number is 65,504. In $(40000\times2)\div2$, the intermediate product is too large and becomes infinity, so replacing the calculation with $40000$ changes the result. A compiler can make changes like this only if its settings allow different numerical results. The same care applies when moving the division in attention.
+      Real compilers must follow the number format's rules for rounding and for results too large to store. In 16-bit floating point (FP16), the largest finite number is 65,504. In $(40000\times2)\div2$ rounded to FP16 after each operation, the product rounds to infinity. Dividing that by 2 still gives infinity, so replacing the calculation with $40000$ changes the result. A compiler can make changes like this only if its settings allow different numerical results. The same care applies when moving the division in attention.
     problems:
       - mlc-egraph-basics
       - mlcp-egraph-self-explain
@@ -396,7 +396,7 @@ knowledge_points:
       - mlcp-robot-gpu
 final: mlc-explain
 summary: |
-  - An ML compiler records a computational graph, splitting where a Python decision depends on tensor values, then lowers it to primitives: elementwise, reduce and movement. Eager execution starts operations as Python reaches them; the graph exposes opportunities to merge them.
+  - An ML compiler records a computational graph, splitting where a Python decision depends on tensor values, then lowers it to primitives: elementwise, reduce and movement. Eager execution sends operations to run as Python reaches them; the graph exposes opportunities to merge them.
   - Kernel fusion keeps in-between results on chip and reduces launch overhead. In our traffic model, $k$ elementwise operations on $S$ bytes move $2kS$ bytes eagerly and $2S$ fused. For our large, memory-bound chain, estimated time falls by the same factor as bytes.
   - An e-graph keeps equivalent versions in groups. Equality saturation applies rewrite rules until nothing new appears, and extraction picks the cheapest by a cost model. Our toy rules assume exact real arithmetic; rewrites for real machines must respect the number format's rounding and overflow rules.
   - Autotuning times candidate kernels on the real GPU and shape and keeps the fastest. Bytes moved divided by bandwidth gives the fastest time a memory-bound kernel could possibly take.

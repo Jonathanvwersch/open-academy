@@ -16,7 +16,7 @@ exercises:
         }
       - {
           id: b,
-          text: "The tables must be sent to the host computer's memory before the next kernel can read them.",
+          text: "The tables must be sent to the computer's main memory outside the GPU before the next kernel can read them.",
           correct: false,
           category: misunderstood_definition,
           feedback: "HBM is the GPU's own main memory. The tables go there because each kernel hands its result to the next through it.",
@@ -584,7 +584,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A kernel computes attention one block of keys at a time. It sums the score exponentials in $\ell$ and the value vectors weighted by those exponentials in $u$, then outputs $u/\ell$. How does this compare with computing all scores, applying softmax over the whole row, and then mixing the values?
+    prompt: For one query, a kernel computes attention one block of keys at a time. It sums the score exponentials in $\ell$ and the value vectors multiplied by their score exponentials in $u$, then outputs $u/\ell$. How does this compare with applying softmax to all scores for that query at once and mixing the values?
     options:
       - {
           id: a,
@@ -1133,7 +1133,7 @@ exercises:
     knowledge_point: fa-running-max
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, why does a kernel working in blocks subtract the largest score seen so far from each score, and what does it do to its two running totals, the sum of score exponentials and the sum of the weighted values, if that score rises?"
+    prompt: "In one or two sentences, why does a kernel working in blocks subtract the largest score seen so far from each score, and what does it do to its two running totals, the sum of shifted score exponentials and the sum of values multiplied by those same exponentials, if the largest score rises?"
     rubric:
       - id: shift
         criterion: "Explain that the largest score isn't known until the last block, so the kernel subtracts the largest so far, which keeps each exponential at most one and avoids overflow."

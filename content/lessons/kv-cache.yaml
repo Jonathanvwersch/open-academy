@@ -16,7 +16,7 @@ where_this_fits: |
 
   Prefill processes the prompt together, then decode processes one new token at a time. The saved entries occupy GPU memory alongside model weights. Each stored cache number takes 2 bytes at 16-bit precision.
 
-  We'll follow a chat assistant using Llama 3 8B, a language model with about 8 billion parameters, on one NVIDIA H100 SXM GPU, a module that plugs into a server board. Its weights take about 16 GB within the GPU's 80 GB. We'll update, count and reuse its cache.
+  We'll follow a chat assistant using Llama 3 8B, a language model with about 8 billion parameters, on one NVIDIA H100 SXM, the server version of the GPU. Its weights take about 16 GB within the GPU's 80 GB. We'll update, count and reuse its cache.
 knowledge_points:
   - id: kvc-reuse
     key_prereqs: [prefill-decode, attention, causal-masking]
