@@ -221,7 +221,7 @@ function mixedNumberFormatting(text: string): string | null {
     const right = numberTokens[index + 1];
     if (!left || !right || left.kind === right.kind) continue;
     const joiner = text.slice(left.end, right.start);
-    if (/^\s*(?:,|\s+and\s+|\s+or\s+)\s*$/i.test(joiner)) {
+    if (/^\s*(?:,\s*(?:and|or)\s+|,|\s+and\s+|\s+or\s+)\s*$/i.test(joiner)) {
       return text.slice(left.start, right.end);
     }
   }
