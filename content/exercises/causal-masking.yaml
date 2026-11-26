@@ -631,21 +631,21 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: "This code builds a new causal score row with `[s if j <= t else 0 for j, s in enumerate(scores)]` and then applies softmax to it. `enumerate(scores)` pairs each source's zero-based index `j` with its original score `s`. Which replacement for the `0` makes the allowed weights add up to $1$ and gives later sources zero weight?"
+    prompt: "An attention function needs a full row of weights for position $t$ in a sequence of $T$ tokens, numbered from $1$. It can take softmax over only part of the score row and then add zero weights to fill the remaining slots. Which procedure gives the same row as a causal mask?"
     options:
       - id: a
-        text: "The smallest score in the row."
-        correct: false
-        feedback: "The minimum finite score still has a positive exponential."
-      - id: b
-        text: "The constant `-1`."
-        correct: false
-        feedback: "Softmax assigns a positive weight to a finite negative score."
-      - id: c
-        text: "Negative infinity."
+        text: "Take softmax over scores $1$ through $t$, then fill the later slots with zeros."
         correct: true
-        feedback: "The exponential of negative infinity contributes zero to the softmax."
-    solution: "Replace blocked scores with negative infinity before softmax. Their exponentials vanish and the allowed scores supply the whole denominator."
+        feedback: "The full weight of $1$ is shared among the visible positions."
+      - id: b
+        text: "Take softmax over scores $1$ through $t-1$, then fill the remaining slots with zeros."
+        correct: false
+        feedback: "This also hides the current position, which should be allowed."
+      - id: c
+        text: "Take softmax over scores $t$ through $T$, then fill the earlier slots with zeros."
+        correct: false
+        feedback: "This keeps later positions visible and hides earlier ones."
+    solution: "Blocked positions have zero weight and contribute nothing to the softmax total. Taking softmax over positions $1$ through $t$ makes their weights add up to $1$. Place zeros in all later slots."
   - id: cm-code-output-invariance
     dimension: implementation
     type: mc
