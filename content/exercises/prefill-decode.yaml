@@ -79,7 +79,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A server's first token arrives slowly, but later tokens arrive at a satisfactory steady rate. Profiling attributes the initial delay to processing the prompt. Which change directly addresses that delay?
+    prompt: A server's first token arrives slowly, but later tokens arrive at a satisfactory steady rate. Timing shows that processing the prompt accounts for the initial delay. Which change directly addresses that delay?
     options:
       - {
           id: a,
@@ -143,7 +143,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A code assistant handles two requests alone on the same loaded model, with identical delivery overhead. One has a short prompt and a long answer; the other has a long prompt and a short answer. Which work would you inspect first for each request?
+    prompt: A code assistant handles two requests one at a time, with the same model already in memory, with identical delivery overhead. One has a short prompt and a long answer; the other has a long prompt and a short answer. Which work would you inspect first for each request?
     options:
       - {
           id: a,
@@ -291,7 +291,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: Complete the stable exponential weight for a logit $z$, a positive temperature `tau` and `largest = max(logits)`.
+    prompt: Complete the exponential weight for the token's logit `z`. The positive temperature is `tau`, and `largest` is the maximum of the list `logits`, which contains all token logits. The largest logit should give an exponent of zero.
     code: |
       import math
       weight = math.exp(____)

@@ -1,7 +1,7 @@
 concept: ml-compilers
 version: 1
 objective: |
-  **Goal:** explain how an ML compiler makes a model run faster, by recording the whole model as a graph, fusing operations so less data moves to and from GPU memory, searching equal versions of the graph with an e-graph, and tuning each kernel for one GPU and shape.
+  **Goal:** explain how an ML compiler makes a model run faster, by recording the whole model as a graph, fusing operations so less data moves to and from GPU memory, searching equal versions of the graph with an e-graph, and tuning each GPU program for one GPU and shape.
 recap:
   - concept: computational-graphs
     text: "A computational graph has a node for each input and each simple operation, with an arrow from each value to the operations that use it. The forward pass computes each node once its inputs are ready."
@@ -14,7 +14,7 @@ where_this_fits: |
 
   An ML compiler is a program that takes a model written as ordinary code and turns it into fast programs for the GPU. It looks at the whole calculation before running it.
 
-  Why do we need one? PyTorch normally dispatches operations as Python reaches them. Separate kernels on large tensors can spend most of their time moving intermediate results through GPU memory. A compiler can merge steps, choose cheaper calculations within its numerical rules, and time kernel versions to find the fastest on one GPU. Examples include XLA, TVM, tinygrad, Luminal and PyTorch's `torch.compile`.
+  Why do we need one? PyTorch normally starts each operation as Python reaches it. Separate GPU programs on large tensors can spend most of their time moving intermediate results through GPU memory. A compiler can merge steps, choose cheaper calculations within its numerical rules, and time different versions to find the fastest on one GPU. Examples include XLA, TVM, tinygrad, Luminal and PyTorch's `torch.compile`.
 knowledge_points:
   - id: mlc-record-graph
     key_prereqs: [computational-graphs, classification-softmax, fast-attention]
@@ -27,11 +27,11 @@ knowledge_points:
     explain: |
       ### Running one operation at a time
 
-      A GPU holds tensors in HBM and performs arithmetic using much faster on-chip storage. Memory bandwidth limits how quickly large memory-bound operations can move their inputs and outputs.
+      A GPU holds tensors in HBM and does arithmetic in faster on-chip storage. Bandwidth limits how quickly large operations can move data.
 
-      By default PyTorch uses **eager execution**: it dispatches each operation as Python reaches it. A **kernel** is a program that processes data on the GPU. Operations may use several kernels or fused library kernels; a transpose can create a view, reinterpreting data without moving it. Caches also serve reads.
+      By default PyTorch uses **eager execution**: it starts each operation as Python reaches it. A **kernel** is a program that processes data on the GPU. An operation can run several kernels or use a prewritten kernel that combines several calculations. A transpose can create a view, reinterpreting data without moving it. Caches also serve reads.
 
-      For the arithmetic examples below, assume each eager primitive, an operation close to what the GPU runs, launches its own kernel and reads and writes its tensor data through HBM. In `y = (x * 2 + 1) ** 2`, the result of `x * 2` is written out, then read by the next kernel. When eager execution dispatches `x * 2`, it hasn't seen `+ 1` yet.
+      For the arithmetic examples below, assume each eager primitive, an operation close to what the GPU runs, launches its own kernel and reads and writes its tensor data through HBM. In `y = (x * 2 + 1) ** 2`, the result of `x * 2` is written out, then read by the next kernel. When eager execution starts `x * 2`, it hasn't seen `+ 1` yet.
 
       ### Recording the graph first
 
@@ -145,7 +145,7 @@ knowledge_points:
 
       $$\text{eager bytes}=2kS,\qquad\text{fused bytes}=2S.$$
 
-      The fused kernel does 3 FLOPs on each number, one per operation. Count its reads and writes to find intensity:
+      The fused kernel does three floating-point operations (FLOPs) on each number. Count its reads and writes to find intensity:
 
       $$
       \begin{aligned}
@@ -222,7 +222,7 @@ knowledge_points:
     explain: |
       ### Rewriting a graph
 
-      A compiler can swap parts of a graph using **rewrite rules**, which replace one pattern with an equivalent one under stated numerical rules. Our toy search assumes exact real arithmetic, with no rounding and only nonzero divisors. In this model, scaling attention's queries is mathematically equivalent to scaling the bigger score matrix, for less work.
+      **Rewrite rules** replace one pattern with an equivalent one. Our toy compiler uses exact arithmetic and nonzero divisors. Each attention score adds products of query and key entries. Dividing each query entry by a scale divides every term, so it divides the whole score by that scale. If there are fewer query entries than scores, dividing queries is cheaper.
 
       Here are four rules for that exact-arithmetic model, adapted from the paper behind egg, a rewriting library (Willsey et al., 2021). The letters $x$, $y$ and $z$ stand for expressions:
 
@@ -305,7 +305,7 @@ knowledge_points:
 
       The greedy compiler stopped at a cost of 5, while the e-graph found $a$, which costs nothing, because it never threw away $a\times2$.
 
-      Real floating-point compilers must preserve their supported numerical semantics. Reassociation, regrouping operations as the second rule does, can change rounding or overflow: with 16-bit FP16, $(40000\times2)\div2$ overflows to infinity, while $40000$ is finite. A compiler may reassociate only where its semantics or explicitly relaxed accuracy settings permit it. Attention scaling rewrites need this qualification too.
+      Real compilers must follow the number format's rules for rounding and for results too large to store. In 16-bit floating point (FP16), the largest finite number is 65,504. In $(40000\times2)\div2$, the intermediate product is too large and becomes infinity, so replacing the calculation with $40000$ changes the result. A compiler can make changes like this only if its settings allow different numerical results. The same care applies when moving the division in attention.
     problems:
       - mlc-egraph-basics
       - mlcp-egraph-self-explain
@@ -396,9 +396,9 @@ knowledge_points:
       - mlcp-robot-gpu
 final: mlc-explain
 summary: |
-  - An ML compiler records a computational graph, splitting where a Python decision depends on tensor values, then lowers it to primitives: elementwise, reduce and movement. Eager execution dispatches operations as Python reaches them; the graph exposes opportunities to merge them.
+  - An ML compiler records a computational graph, splitting where a Python decision depends on tensor values, then lowers it to primitives: elementwise, reduce and movement. Eager execution starts operations as Python reaches them; the graph exposes opportunities to merge them.
   - Kernel fusion keeps in-between results on chip and reduces launch overhead. In our traffic model, $k$ elementwise operations on $S$ bytes move $2kS$ bytes eagerly and $2S$ fused. For our large, memory-bound chain, estimated time falls by the same factor as bytes.
-  - An e-graph keeps equivalent versions in groups. Equality saturation applies rewrite rules until nothing new appears, and extraction picks the cheapest by a cost model. Our toy rules assume exact real arithmetic; floating-point rewrites must respect the compiler's numerical semantics.
+  - An e-graph keeps equivalent versions in groups. Equality saturation applies rewrite rules until nothing new appears, and extraction picks the cheapest by a cost model. Our toy rules assume exact real arithmetic; rewrites for real machines must follow the compiler's rules for rounding and numbers too large to store.
   - Autotuning times candidate kernels on the real GPU and shape and keeps the fastest. Bytes moved divided by bandwidth gives the fastest time a memory-bound kernel could possibly take.
 
   **Next:** In the course project, you'll write a tiny graph compiler in Python that records elementwise operations, fuses each chain into one kernel and measures the speed-up.

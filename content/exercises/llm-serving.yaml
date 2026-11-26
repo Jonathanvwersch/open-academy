@@ -145,9 +145,9 @@ exercises:
     prompt: A learner says, "Switching from static to continuous batching raised throughput from 300 to 400 tokens/s, so each decode step must now take less time." What is wrong with this reasoning?
     options:
       - id: a
-        text: The batch limit alone sets throughput, so changing the schedule cannot affect tokens per second.
+        text: The maximum number of sequences per batch alone sets throughput, so changing the schedule cannot affect tokens per second.
         correct: false
-        feedback: A fixed batch limit can still have different numbers of idle slots.
+        feedback: Batches with the same maximum size can still have different numbers of idle slots.
         category: incorrect_reasoning
       - id: b
         text: Continuous batching necessarily slows each step, so the throughput increase proves the reverse.
@@ -170,7 +170,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A static batch has 4 sequences with replies of 8, 6, 4 and 2 tokens. Prompts are already processed. What percentage of its slot-steps produce a token?
+    prompt: A static batch has 4 sequences with replies of 8, 6, 4 and 2 tokens. Prompts are already processed. Of all the slots across all decode steps, what percentage produce a token? Count each slot once per step.
     answer: 62.5
     tolerance:
       abs: 0.001
@@ -180,15 +180,15 @@ exercises:
         feedback: Finished sequences leave idle slots while the longest reply continues.
       - answer: 37.5
         category: math_error
-        feedback: That is the idle share, 12 of the 32 slot-steps.
-    solution: The batch runs 8 steps across 4 slots, giving 32 slot-steps. Its 20 reply tokens occupy 20/32 = 62.5% of them.
+        feedback: That is the idle share, 12 of the 32 slots across the steps.
+    solution: The batch runs 8 steps across 4 slots, giving 32 places to produce a token. Its 20 reply tokens occupy 20/32 = 62.5% of them.
   - id: lsv-batching-speech
     dimension: transfer
     type: mc
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A text-to-speech server generates one audio chunk per active request each step. Reading model weights sets the step time, clips have different lengths, and requests are waiting. With the same slot limit, which schedule keeps the most slots producing chunks?
+    prompt: A text-to-speech server generates one audio chunk per active request each step. Reading model weights sets the step time, clips have different lengths, and requests are waiting. With the same maximum number of active requests, which schedule keeps the most slots producing chunks?
     options:
       - id: a
         text: Replace each finished clip with a waiting clip at the next step.
@@ -207,7 +207,7 @@ exercises:
       - id: d
         text: Leave a finished clip's slot empty for two steps before admitting another clip.
         correct: false
-        feedback: An enforced delay adds idle slot-steps while requests wait.
+        feedback: An enforced delay leaves slots idle while requests wait.
         category: incorrect_reasoning
     solution: Refilling after every step keeps slots generating useful chunks. Different clip lengths otherwise leave slots idle until the longest clip finishes.
   - id: lsv-paging-basics
@@ -473,7 +473,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A dense model has {{=W}} GB of weights, split with tensor parallelism across {{=N}} GPUs. Each GPU reads memory at 2 TB/s. Ignoring result exchanges and KV-cache reads, about how many ms does one decode step take to read the weights?
+    prompt: A model has {{=W}} GB of weights, split with tensor parallelism across {{=N}} GPUs. Each GPU reads memory at 2 TB/s. Ignoring result exchanges and KV-cache reads, about how many ms does one decode step take to read the weights?
     params:
       W:
         min: 16
@@ -511,7 +511,7 @@ exercises:
         correct: true
         feedback: Replicas serve more batches at once while preserving each GPU's step time.
       - id: b
-        text: Shrink the batch limit on the existing GPU so fewer users decode at each step.
+        text: Lower the maximum batch size on the existing GPU so fewer users decode at each step.
         correct: false
         feedback: A smaller batch reduces simultaneous useful tokens when latency is already acceptable.
         category: incorrect_reasoning
@@ -560,12 +560,12 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A dense model has 70 billion parameters stored at 16-bit precision, or 2 bytes each. Available GPUs each have 80 GB of memory. Which setup can hold its weights and serve it?
+    prompt: A model without separate experts has 70 billion parameters stored at 16-bit precision, or 2 bytes each. Available GPUs each have 80 GB of memory. Which setup can hold its weights and serve it?
     options:
       - id: a
         text: Place its experts on separate GPUs using expert parallelism.
         correct: false
-        feedback: This is a dense model, so it has no separate experts to distribute.
+        feedback: This model has no separate experts to distribute.
         category: incorrect_reasoning
       - id: b
         text: Use continuous batching to hold all its weights on one GPU.
@@ -645,7 +645,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A dense model has {{=N}} billion parameters. A GPU performs 1,000 TFLOP/s. Ignoring attention scores and other overhead, about how many ms does processing a {{=P}}-token prompt take?
+    prompt: A model has {{=N}} billion parameters. Its GPU performs 1,000 trillion floating-point operations per second. Ignoring attention scores and other overhead, about how many ms does processing a {{=P}}-token prompt take?
     params:
       N:
         min: 1
@@ -677,7 +677,7 @@ exercises:
     prompt: A chat server's inter-token latency is about 5 ms most of the time but jumps to about 30 ms when a long prompt arrives. Which change most directly reduces those prompt-induced gaps on the same GPU?
     options:
       - id: a
-        text: Raise the batch limit so more decoding requests share each long-prompt step.
+        text: Raise the maximum batch size so more decoding requests share each long-prompt step.
         correct: false
         feedback: A larger batch does not reduce the prompt work in that step.
         category: incorrect_reasoning
@@ -720,7 +720,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: Llama 3 8B has 8 billion parameters. A GPU performs 1,000 TFLOP/s. To keep a prompt-processing step within an inter-token latency target of {{=t}} ms, what is the largest chunk in tokens? Ignore decoding's own maths, attention scores and other overhead.
+    prompt: Llama 3 8B has 8 billion parameters. A GPU performs 1,000 trillion floating-point operations per second. To keep a prompt-processing step within an inter-token latency target of {{=t}} ms, what is the largest chunk in tokens? Ignore decoding's own maths, attention scores and other overhead.
     params:
       t:
         min: 8
@@ -753,7 +753,7 @@ exercises:
         feedback: Tiny token gaps are unnecessary for unattended work and leave three GPUs unused.
         category: incorrect_reasoning
       - id: c
-        text: One GPU serving one document at a time with a batch limit of one.
+        text: One GPU serving one document at a time.
         correct: false
         feedback: That leaves three GPUs unused and shares no weight reads across requests.
         category: incorrect_reasoning
@@ -954,7 +954,7 @@ exercises:
     knowledge_point: lsv-parallel
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A dense model fits on one GPU. The team adds GPUs chiefly to shorten the weight read for each user's decode step. Which arrangement tackles that read directly?"
+    prompt: "A model without separate experts fits on one GPU. The team adds GPUs chiefly to shorten the weight read for each user's decode step. Which arrangement tackles that read directly?"
     options:
       - id: a
         text: "Put a full model replica on each GPU."
@@ -967,7 +967,7 @@ exercises:
       - id: c
         text: "Put different experts on different GPUs."
         correct: false
-        feedback: "Expert parallelism applies to a mixture-of-experts model. This dense model has no experts to split."
+        feedback: "Expert parallelism applies to a mixture-of-experts model. This model has no experts to split."
     solution: "Tensor parallelism divides the weights read per GPU. The GPUs still have to exchange results, so the saving depends on the cost of that exchange."
   - id: lsv-recall-parallel-formula
     dimension: math

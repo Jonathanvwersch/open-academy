@@ -16,7 +16,7 @@ exercises:
         }
       - {
           id: b,
-          text: "The tables are too big for the GPU, so they go out to the CPU's memory.",
+          text: "The tables are too big for the GPU, so they go to a separate memory outside the GPU.",
           correct: false,
           category: misunderstood_definition,
           feedback: "HBM is the GPU's own main memory. The tables go there because each kernel hands its result to the next through it.",
@@ -420,7 +420,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A tensor holds 1,000,000 numbers at 16-bit. One kernel multiplies every entry by 3 and a second kernel then adds 1 to every entry. Each kernel reads its input from HBM and writes its output to HBM. How many MB ($10^6$ bytes) of HBM traffic does fusing the two kernels into one save?"
+    prompt: "An array holds 1,000,000 numbers at 16-bit. One kernel multiplies every entry by 3 and a second kernel then adds 1 to every entry. Each kernel reads its input from HBM and writes its output to HBM. How many MB ($10^6$ bytes) of HBM traffic does fusing the two kernels into one save?"
     answer: 4
     tolerance: { abs: 0.01 }
     common_wrong:
@@ -434,7 +434,7 @@ exercises:
           category: incorrect_reasoning,
           feedback: "8 MB is the traffic with two kernels. The fused kernel still reads the input and writes the output.",
         }
-    solution: The tensor is 2 MB. Two kernels move 8 MB, reading and writing 2 MB each. A fused kernel reads 2 MB and writes 2 MB, so fusing saves 4 MB.
+    solution: The array takes 2 MB. Two kernels move 8 MB, reading and writing 2 MB each. A fused kernel reads 2 MB and writes 2 MB, so fusing saves 4 MB.
   - id: fa-online-basics
     dimension: conceptual
     type: mc
@@ -588,7 +588,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "It is the same, apart from tiny differences from floating-point rounding.",
+          text: "It is the same, apart from tiny differences from rounding the arithmetic.",
           correct: true,
           feedback: "It does the same additions in a different order.",
         }
@@ -1075,7 +1075,7 @@ exercises:
     knowledge_point: fa-online-softmax
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, what two totals does online softmax keep for one query before any shift for large scores?"
+    prompt: "In one or two sentences, what two totals does online softmax keep for one query before subtracting the largest score?"
     rubric:
       - id: scalar
         criterion: "State that one total sums the exponentials of the scores seen so far."
@@ -1133,7 +1133,7 @@ exercises:
     knowledge_point: fa-running-max
     difficulty: 1
     est_minutes: 1
-    prompt: "In one or two sentences, why does a kernel working in blocks shift scores by the largest score seen so far, and what does it do to its old totals if that score rises?"
+    prompt: "In one or two sentences, why does a kernel working in blocks subtract the largest score seen so far from each score, and what does it do to its old totals if that score rises?"
     rubric:
       - id: shift
         criterion: "Explain that the largest score isn't known until the last block, so the kernel subtracts the largest so far, which keeps each exponential at most one and avoids overflow."
