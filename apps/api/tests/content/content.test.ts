@@ -2332,6 +2332,7 @@ test('multiple-choice options format numbers consistently', async () => {
 
   for (const [text, mixedNumbers] of [
     ['3 and $-2$', '3 and $-2$'],
+    ['3 and $−2$', '3 and $−2$'],
     ['3, $-2$ and $-1$', '3, $-2$'],
     ['$-1$ or 4', '$-1$ or 4'],
     ['$-1$ or 4.', '$-1$ or 4'],
@@ -2362,6 +2363,7 @@ test('multiple-choice options format numbers consistently', async () => {
 
   for (const text of [
     '$3$ and $-2$',
+    '$3$ and $−2$',
     '$−1$',
     '3 and 4',
     '$p$ and $d$',

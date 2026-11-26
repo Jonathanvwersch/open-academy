@@ -204,7 +204,7 @@ function mixedNumberFormatting(text: string): string | null {
 
   for (const match of mathSegments) {
     const segment = match[0];
-    if (!/^\$\s*[+-]?\s*\d+(?:\.\d+)?\s*\$$/.test(segment)) continue;
+    if (!/^\$\s*[+\-\u2212]?\s*\d+(?:\.\d+)?\s*\$$/.test(segment)) continue;
     const start = match.index ?? 0;
     numberTokens.push({ kind: 'math', start, end: start + segment.length });
   }
