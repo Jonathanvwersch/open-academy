@@ -686,7 +686,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: "`queries` and `keys` hold the query and key vectors by token position. The entry `scores[t][j]` is the scaled attention score for output position `t` and source position `j`. The function `dot` computes a dot product, and `scale` holds the square root of the key width. Which line assigns this score?"
+    prompt: "`queries` and `keys` hold the query and key vectors by token position. The entry `scores[t][j]` is the scaled attention score for output position `t` and source position `j`. The function `dot` computes a dot product, and `scale` holds the square root of the key width. Which line assigns the correct score for every pair of positions?"
     options:
       - id: a
         text: "`scores[t][j] = dot(queries[j], keys[t]) / scale`"
