@@ -1009,21 +1009,27 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A transformer block without LayerNorm takes input token vectors `x`. The attention function `attn` returns one update per token. The function `add` adds corresponding vector components, so `u = add(x, attn(x))` gives the vectors after the attention shortcut. The function `mlp` applies the MLP to each token separately. Which line computes the block's final vectors `y`?"
+    prompt: |
+      In a transformer block without LayerNorm, `x` holds the input token vectors and `u` holds the vectors after the attention shortcut. The function `mlp` produces an update for each token, and `add` adds matching components. A trace shows how the code computes the MLP updates `m` and the block outputs `y`. Which diagnosis fits this trace?
+
+      ```python
+      m = mlp(x)
+      y = add(u, m)
+      ```
     options:
       - id: a
-        text: "`y = add(x, mlp(u))`"
+        text: "The MLP reads the right vectors and its update goes to the wrong shortcut."
         correct: false
-        feedback: "This skips the attention update on the second shortcut."
+        feedback: "The shortcut carries the attention-updated vectors. The mistake is the input to the MLP."
       - id: b
-        text: "`y = add(u, mlp(x))`"
-        correct: false
-        feedback: "This gives the MLP the old token vectors, before attention updated them."
-      - id: c
-        text: "`y = add(u, mlp(u))`"
+        text: "The MLP reads the wrong vectors and its update goes to the right shortcut."
         correct: true
-        feedback: "Both the MLP input and its shortcut begin with the attention-updated vectors."
-    solution: "The MLP reads `u`, and the second shortcut adds its output to `u`."
+        feedback: "The MLP reads the original vectors. Its update is added to the attention-updated vectors."
+      - id: c
+        text: "The MLP reads the wrong vectors and its update goes to the wrong shortcut."
+        correct: false
+        feedback: "Only the MLP input is wrong. The second line uses the right shortcut."
+    solution: "Change `mlp(x)` to `mlp(u)` so that the MLP can use the attention update. The second line already adds the MLP result to `u`."
   - id: tbp-code-prenorm-shortcut
     dimension: implementation
     type: mc
