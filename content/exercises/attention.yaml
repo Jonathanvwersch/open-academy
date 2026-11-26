@@ -719,7 +719,7 @@ exercises:
     difficulty: 2
     est_minutes: 1
     prompt: |
-      An attention function processes three tokens in order: oak, pine, elm. No source tokens are masked. The table shows scores for two query tokens (row labels) against all three source tokens (column labels). Which scores should the function pass together to softmax to build the output at the second token position?
+      An attention function processes three tokens in order: oak, pine, elm. Each token can use its scores for all three source tokens. The table shows scores for two query tokens (row labels) against all three source tokens (column labels). Which scores should the function pass together to softmax to build the output at the second token position?
 
       | Query / source | oak | pine | elm |
       | --- | --- | --- | --- |
