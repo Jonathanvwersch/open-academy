@@ -246,7 +246,7 @@ test('starts a quiz, preserves progress on refresh, and unlocks a fresh retake o
   ).toBeVisible();
   await expect(
     page.getByText(
-      'You reviewed the topic from this retake. That was your one retake, so there is nothing more to do here. These topics stay in your normal reviews.',
+      'You reviewed the topic from this retake. That was your one retake, so there is nothing more to do here. That topic stays in your normal reviews.',
     ),
   ).toBeVisible();
   await expect(page.getByRole('link', { name: 'Back to Home' })).toHaveAttribute('href', '/');

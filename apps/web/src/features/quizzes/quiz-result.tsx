@@ -6,9 +6,10 @@ type Result = NonNullable<QuizPayload['result']>;
 
 export function completedReviewMessage(retake: boolean, reviewed: number) {
   const topics = reviewed === 1 ? 'the topic' : `all ${reviewed} topics`;
+  const stay = reviewed === 1 ? 'That topic stays' : 'These topics stay';
   return retake
-    ? `You reviewed ${topics} from this retake. That was your one retake, so there is nothing more to do here. These topics stay in your normal reviews.`
-    : `You reviewed ${topics} you answered slowly. You got every question right, so there is no retake. These topics stay in your normal reviews.`;
+    ? `You reviewed ${topics} from this retake. That was your one retake, so there is nothing more to do here. ${stay} in your normal reviews.`
+    : `You reviewed ${topics} you answered slowly. You got every question right, so there is no retake. ${stay} in your normal reviews.`;
 }
 
 export function QuizResult({
