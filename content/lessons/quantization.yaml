@@ -4,13 +4,13 @@ objective: |
   **Goal:** store a model's numbers in 8 or 4 bits, work out how much memory and time that saves, choose which numbers to shrink, and check that the model still gives good answers.
 recap:
   - concept: gpu-inference-basics
-    text: "A model's weights take its parameter count times the bytes per number, so Llama 3 8B at 16 bits fills about 16 GB of an H100's 80 GB. Each decode step reads every weight from memory."
+    text: "A model's weights take its parameter count times the bytes per number. Each decode step reads every weight from GPU memory."
   - concept: descriptive-statistics
     text: "A success rate $\\hat p$ measured on $n$ independent attempts has standard error $\\sqrt{\\hat p(1-\\hat p)/n}$, which says how much luck alone typically moves it. About 95% of repeats land within two standard errors."
 where_this_fits: |
   ### What is quantisation?
 
-  Quantisation means storing a model's numbers with fewer bits, for example as 8-bit integers in place of 16-bit floating-point numbers. Each number becomes a small whole number, and one scale shared by a group of numbers turns them back into roughly their original values. We can quantise the weights and the activations, the numbers flowing between layers.
+  Quantisation means storing a model's numbers with fewer bits, for example as 8-bit whole numbers in place of 16-bit numbers that can have fractional parts. One scale shared by a group turns the whole numbers back into roughly their original values. We can quantise the weights and the activations, the numbers flowing between layers.
 
   Why is it useful? Recall that a model's weights fill its number of parameters times the bytes per number in memory, and decoding reads every weight from GPU memory for each new token. So fewer bytes per weight means a smaller model that also generates faster. The price is a small rounding error in every number, and we have to check that the model's answers survive it.
 knowledge_points:
@@ -25,11 +25,11 @@ knowledge_points:
     explain: |
       ### Our running example
 
-      Throughout this lesson we follow a chat assistant that serves Llama 3 8B on one NVIDIA H100 SXM GPU. SXM is the version built into the server board, which has faster memory than the plug-in card. The model has about 8 billion parameters in 32 layers. The GPU has 80 GB of memory, which it can read at about 3.35 TB/s. We count in decimal units, so a GB is $10^9$ bytes and a TB is $10^{12}$ bytes.
+      Throughout this lesson we follow a chat assistant that serves Llama 3 8B on one NVIDIA H100 SXM GPU. SXM is the version built into the server board, which has faster memory than the plug-in card. The model has about 8 billion parameters in 32 layers. The GPU has 80 gigabytes (GB) of memory, which it can read at about 3.35 terabytes per second (TB/s). A GB is $10^9$ bytes and a TB is $10^{12}$ bytes.
 
       ### Memory at each precision
 
-      At 16 bits, each number takes 2 bytes ($b=2$). INT8 and INT4 are 8-bit and 4-bit integer formats. Each halving of the bits halves the memory:
+      There are 8 bits in a byte, so at 16 bits each number takes 2 bytes. INT8 and INT4 are 8-bit and 4-bit integer formats. Each halving of the bits halves the memory:
 
       $$
       \begin{aligned}
@@ -39,7 +39,7 @@ knowledge_points:
       \end{aligned}
       $$
 
-      The bars show the same model at four precisions, starting from 32-bit floating point (FP32, 4 bytes). Beside each bar is the time to read those weights once, which we use next.
+      The bars show the same model at four precisions, starting from 32-bit floating point (FP32, 4 bytes). Floating-point formats can store fractions as well as whole numbers. Beside each bar is the time to read those weights once, in milliseconds (ms). There are 1,000 ms in a second.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Bars of Llama 3 8B weight memory at four precisions, drawn to scale against the H100's 80 GB: 32 GB at FP32, 16 GB at 16 bits, 8 GB at INT8 and 4 GB at INT4. Beside each bar is the shortest time to read all the weights once at 3.35 TB/s: about 9.6, 4.8, 2.4 and 1.2 milliseconds">
@@ -109,9 +109,9 @@ knowledge_points:
     explain: |
       ### The idea
 
-      We want to turn each weight into an 8-bit integer and back. An 8-bit integer holds whole numbers from $-128$ to $127$. We'll use only $-127$ to $127$, so that a number and its negative always get integers of the same size. This is **symmetric** quantisation: the range is the same on both sides of 0.
+      An 8-bit integer ranges from $-128$ to $127$. **Symmetric** quantisation uses $-127$ to $127$, so a weight and its negative map to integers of the same size.
 
-      We pick one scale $s$ for a group of numbers, such as a whole weight matrix or one row of it. Think of $s$ as the gap between neighbouring stored values (we'll see how to choose it below). Dividing by $s$ puts the group's largest number at $127$ and every other number in proportion. Then we round. In the diagram, the top line holds the weights $x$ and the bottom line their integers $q$. Dividing by $s=0.01$ sends $-1.27$ to $-127$ and $1.27$ to $127$, so each weight sits above its integer, and rounding moves it under half a step. The small 0 on each line marks zero.
+      We pick one scale $s$ for a group of numbers, such as a whole weight matrix or one row of it. Think of $s$ as the gap between neighbouring stored values. The weight farthest from zero sets the scale, so it lands at $127$ if positive or $-127$ if negative. Then we round. In the diagram, the top line holds the weights $x$ and the bottom line their integers $q$. Dividing by $s=0.01$ sends $-1.27$ to $-127$ and $1.27$ to $127$. Rounding moves each result by at most half a step.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Two number lines. The top line runs from -1.27 to 1.27 and marks four weights: -0.514, 0.006, 0.333 and 1.27. The bottom line runs from -127 to 127, with 0 marked in the middle of both lines, and marks their integers: -51, 1, 33 and 127. A nearly vertical line joins each weight to its integer, because dividing by the scale 0.01 sends each weight right above its integer and rounding moves each point less than half a step">
@@ -145,7 +145,9 @@ knowledge_points:
 
       $$s=\frac{\max|x|}{127}.$$
 
-      Each number becomes the integer $q=\text{round}(x/s)$. Then we clamp it to $[-127,127]$. This moves any value outside the range to the nearest end. Here nothing lands outside. Clamping matters when the scale came from other numbers, as with activations, the numbers flowing between layers, in the third step. To use the integer, we dequantise it, turning it back into a real number: $\hat x=q\cdot s$. We store the integers plus the scale.
+      If every number in the group is zero, use a positive scale such as $s=1$ and store all zeros. This avoids dividing by zero and gives zeros back exactly.
+
+      For a weight $x$, divide by the scale and round to get the integer $q=\text{round}(x/s)$. At an exact tie, PyTorch rounds to the even integer: $2.5$ becomes $2$, and $3.5$ becomes $4$. Then clamp the result to the range from $-127$ to $127$. This moves any value outside the range to the nearest end. To dequantise, multiply by the scale to recover the approximate weight $\hat x=q\cdot s$. We store the integers plus the scale.
 
       ### How big is the error?
 
@@ -175,20 +177,19 @@ knowledge_points:
       4. **Measure the error.** We take the size of each difference. The largest error is $0.004$, below the limit $s/2=0.005$.
          $$|x-\hat x|=(0,\,0.004,\,0.004,\,0.003)$$
 
-      Here's the same calculation in PyTorch. `x.abs().max()` finds the largest size, `torch.clamp` keeps values inside the range, and `.to(torch.int8)` stores them as 8-bit integers. `.float()` turns the integers back into floating-point numbers, and `.item()` reads out a plain Python number.
+      Here's the same calculation in PyTorch. `torch.tensor` makes a tensor from a list. Dividing or multiplying it by a single number applies that operation to every entry. `x.abs().max()` finds the largest size, `torch.round` rounds each entry, and `torch.clamp` keeps each result inside the range. `.to(torch.int8)` stores the results as 8-bit integers; if a value still has a fractional part, it drops that part. `.float()` changes them back to floating point, `.item()` reads out a Python number, and `.tolist()` makes an ordinary list.
 
       ```python
       import torch
 
       x = torch.tensor([1.27, -0.514, 0.006, 0.333])
-      s = x.abs().max() / 127
+      largest = x.abs().max().item()
+      s = largest / 127 if largest else 1
       q = torch.clamp(torch.round(x / s), -127, 127).to(torch.int8)
       x_hat = q.float() * s
       print(q.tolist())
       print(round((x - x_hat).abs().max().item(), 4))
       ```
-
-      `.tolist()` converts the tensor to an ordinary Python list so its integer values print in a readable form.
 
       It prints:
 
@@ -226,11 +227,11 @@ knowledge_points:
     tldr: |
       - Storing only the weights in a smaller format cuts the bytes read, so decoding gets faster.
       - The maths still runs at 16 bits, so reading the prompt gets no faster.
-      - Making both the weights and the numbers passed between layers 8-bit doubles the maths speed, so reading the prompt speeds up too.
+      - On the H100, using 8-bit floating point for both weights and activations can double the maths rate and speed up prompt processing.
     explain: |
       ### Two kinds of format
 
-      To choose a format, we need to know what each can store. There are two families: floating point and integer.
+      Two kinds of format are floating point and integer.
 
       A floating-point number stores a sign, an exponent and a mantissa. The exponent sets the size, like the power of ten in $3.1\times10^{4}$. The mantissa holds the digits, like the $3.1$. More exponent bits give a wider range. More mantissa bits give finer steps.
 
@@ -317,7 +318,7 @@ knowledge_points:
 
       In **weight-only** quantisation we store the weights in INT8 or INT4 and keep the activations at 16 bits. The GPU reads the small weights, turns them back into 16-bit numbers in on-chip memory right before use, and does 16-bit maths. Decode gets faster because less is read. Prefill doesn't get faster, because its maths is unchanged.
 
-      In **weight-and-activation** quantisation, both inputs of each matrix multiply are 8-bit, for example FP8 or INT8, and the GPU does 8-bit maths. On the H100, FP8 maths runs at about twice the 16-bit rate. So prefill can speed up too. So can decode with a large batch, because each weight read is used for every request, giving more maths per byte.
+      In **weight-and-activation** quantisation, both inputs of each matrix multiply are 8-bit, for example FP8 or INT8, and the GPU does 8-bit maths. On the H100, FP8 maths runs at about twice the 16-bit rate. One floating-point operation is a FLOP. One TFLOP/s is a trillion FLOPs per second. So prefill can speed up too. So can decode with a large batch, because each weight read is used for every request, giving more maths per byte.
 
       Activation scales are either measured as the model runs, or chosen in advance from calibration data, a small sample of text passed through the model to record typical values. A value bigger than any seen in calibration gets clamped. Activations have more outliers, so this mode is harder.
     worked: |
@@ -380,25 +381,25 @@ knowledge_points:
 
       ### Tests on real tasks
 
-      The loss is an average over ordinary text. It can barely move while a skill that few tokens depend on gets much worse, such as arithmetic, code, long prompts or a language that is rare in the text. So we also run the two models on tasks the assistant's users care about, and compare their scores. Both get the same prompts and the same settings, for example always picking the most likely next token. Use enough examples that a difference isn't just luck. A success rate $\hat p$ on $n$ problems has standard error $\sqrt{\hat p(1-\hat p)/n}$, and a drop of several standard errors is almost never luck.
+      Average loss can barely move while coding gets worse. Test both models on the same problems: their success rates can move together, so measure uncertainty from their paired differences. Record $+1$ if only the original solves a problem, $-1$ if only the quantised model solves it, $0$ if they agree. The mean difference is the drop in success rate. For independently sampled problems, sum squared distances from the mean, divide by one less than the problem count and take the square root. Divide that sample standard deviation by the square root of the problem count.
 
       If both checks show only a small drop that is acceptable for the product, we ship the quantised model. If a task gets clearly worse, we can try a finer scale, such as one per row or per group, or keep some layers at 16 bits. To find which layers to keep, quantise one layer at a time and see which hurts the score most.
     worked: |
-      We quantise the assistant's Llama 3 8B to INT4 and test both models. On the same held-out text, the 16-bit model's average loss is $2.00$ and the INT4 model's is $2.08$. On 500 maths word problems, the 16-bit model solves 400 and the INT4 model solves 360. These numbers are made up for practice.
+      We quantise the assistant's Llama 3 8B to INT4 and test both models. On the same held-out text, their average losses are $2.00$ and $2.08$. On 500 independently sampled maths problems, both solve 310, only the original solves 90, only INT4 solves 50, and neither solves 50. These numbers are made up for practice.
 
       1. **Turn each loss into perplexity.** We raise $e$ to each loss.
          $$e^{2.00}\approx7.39,\qquad e^{2.08}\approx8.00$$
 
       2. **Compare the perplexities.** The INT4 model's perplexity is about $8.00/7.39\approx1.08$ times as large, about 8% higher. It's as if it chose among 8 tokens where the 16-bit model chose among about 7.4.
 
-      3. **Turn the task counts into accuracy.** We divide each count by 500.
-         $$400/500=80\%,\qquad360/500=72\%$$
+      3. **Turn the task counts into accuracy.** Add the 310 problems both solve to each model's wins on its own. Then divide by 500.
+         $$(310+90)/500=400/500=80\%,\qquad(310+50)/500=360/500=72\%$$
 
       4. **Compare the accuracies.** The score fell from 80% to 72%. We call that a drop of 8 percentage points, because we subtract the two percentages.
 
-      5. **Check whether luck could explain the drop.** We find the standard error of the 16-bit model's success rate, $\hat p=0.8$ on $n=500$ problems.
-         $$\mathrm{SE}(\hat p)=\sqrt{\frac{0.8(0.2)}{500}}\approx0.018$$
-         That's about 1.8 percentage points. The drop of 8 points is more than four standard errors, so luck alone almost certainly didn't cause it.
+      5. **Find the standard error of the drop.** The differences average $(90-50)/500=0.08$. To find their sample standard deviation, square each difference's distance from that average, add across all 500 problems, divide by $500-1$, then take the square root. Divide that by $\sqrt{500}$:
+         $$\sqrt{\frac{90(1-0.08)^2+50(-1-0.08)^2+360(0-0.08)^2}{499\times500}}\approx0.0234.$$
+         That's about 2.34 percentage points. The 8-point drop is about 3.4 standard errors, evidence that it is larger than we'd expect from the luck of which problems were sampled.
 
       The loss rose by only $0.08$, but the maths score fell clearly. If the assistant's users ask maths questions, this INT4 model isn't good enough as it is.
     problems:
@@ -413,7 +414,7 @@ knowledge_points:
 final: qz-explain
 summary: |
   - Quantisation stores numbers with fewer bits. Llama 3 8B's weights take 16 GB at 16 bits, 8 GB at INT8 and 4 GB at INT4, and decode gets faster in proportion because it reads every weight for each token.
-  - INT8 quantisation uses one scale $s=\max|x|/127$ per group, stores $q=\text{round}(x/s)$ clamped to $[-127,127]$, and dequantises to $q\cdot s$, with an error of at most $s/2$ that grows when an outlier makes $s$ large.
+  - For nonzero groups of weights, the INT8 scale is the size of the weight farthest from zero divided by 127. Divide by the scale, round and clamp to store the weights, then multiply by the scale to recover them. For an all-zero group, store zeros with scale 1.
   - Weight-only quantisation speeds up decode by reading fewer bytes, and weight-and-activation quantisation with FP8 or INT8 also uses faster 8-bit maths, which helps prefill.
   - We check quality by comparing the quantised and 16-bit models on held-out loss or perplexity, $e^{\text{loss}}$, and on the real tasks users care about.
 

@@ -9,9 +9,9 @@ exercises:
     prompt: What does eager execution do when it runs a model?
     options:
       - id: a
-        text: It dispatches each operation as soon as Python reaches that operation.
+        text: It sends each operation to run as Python reaches it.
         correct: true
-        feedback: Eager execution dispatches operations as Python reaches them. The kernel count and memory traffic depend on the operation.
+        feedback: Eager execution sends operations to run as Python reaches them. The kernel count and memory traffic depend on the operation.
       - id: b
         text: It records every operation first, then runs the model as one kernel.
         correct: false
@@ -27,7 +27,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: That is lowering, which a compiler does to a recorded graph.
-    solution: Eager execution dispatches operations as Python reaches them. An operation can use one or several kernels, an existing fused kernel, or a view that moves no data.
+    solution: Eager execution sends operations to run as Python reaches them. An operation can use one or several kernels, a prewritten kernel that combines calculations, or a view that moves no data.
   - id: mlcp-lower-self-explain
     lesson_only: true
     dimension: conceptual
@@ -63,12 +63,12 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "Assume eager PyTorch runs `y = x * 2 + 1` on a large tensor as two kernels, writing the intermediate to HBM. Fusion would preserve the arithmetic order and rounding. Why doesn't eager execution merge these operations?"
+    prompt: "In `y = x * 2 + 1`, `x` is a large input tensor and `y` is the result. Assume eager PyTorch runs two kernels, writing the result of `x * 2` to HBM. Combining the kernels would preserve arithmetic order and rounding. Why doesn't eager execution merge them?"
     options:
       - id: a
         text: When it runs `x * 2`, it hasn't yet seen the `+ 1` that uses the result.
         correct: true
-        feedback: Eager execution runs each operation as soon as it reaches it, so it never knows what comes next.
+        feedback: Eager execution sends each operation to run before seeing the next one.
       - id: b
         text: A GPU kernel can't multiply and add in the same program.
         correct: false
@@ -80,11 +80,11 @@ exercises:
         category: incorrect_reasoning
         feedback: This example assumes fusion preserves arithmetic order and rounding, so changing the values isn't the obstacle.
       - id: d
-        text: Merging them would need more FLOPs than running them separately.
+        text: Merging them would need more arithmetic operations than running them separately.
         correct: false
         category: misunderstood_definition
-        feedback: This fusion keeps the same FLOPs while reducing intermediate memory traffic and kernel-launch overhead.
-    solution: Eager execution runs each operation the moment it reaches it, so when it runs `x * 2` it doesn't know a `+ 1` follows. A compiler records the graph first, so it can see both and merge them.
+        feedback: Merging the kernels keeps the same number of arithmetic operations. It moves less data and saves time starting kernels.
+    solution: Eager execution sends `x * 2` to run before seeing the `+ 1`. A compiler records the graph first, so it can see both and merge them.
   - id: mlcp-primitive-kind
     dimension: conceptual
     type: mc
@@ -139,7 +139,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A model compiled with `torch.compile` has a line `if h.mean() > 0:` that chooses between two branches, where `h` is a tensor computed earlier in the model. What does the compiler do at that line?"
+    prompt: "A model compiled with `torch.compile` using its default settings chooses between two branches at the line `if h.mean() > 0:`. Here `h` is a tensor computed earlier in the model, and `h.mean()` returns the average of its entries. What does the compiler do at that line?"
     options:
       - id: a
         text: It splits the model into separate graphs there, since the branch depends on a value it can't know ahead of time.
@@ -360,7 +360,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: One fused kernel applies {{= k }} elementwise operations, each costing 1 FLOP per number, to a tensor stored with {{= b }} bytes per number. It reads each number once and writes each result once. What is its arithmetic intensity, in FLOPs per byte?
+    prompt: One fused kernel applies {{= k }} elementwise operations, each costing one floating-point operation (FLOP) per number, to a tensor stored with {{= b }} bytes per number. Floating-point numbers can represent fractions. It reads each input once and writes each result once, using {{= b }} bytes per number in both tensors. What is its arithmetic intensity, in FLOPs per byte moved?
     params:
       k:
         min: 2
@@ -485,7 +485,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: A toy compiler uses exact real arithmetic, with no rounding and all divisors nonzero. Which rewrite preserves the value for every allowed choice of $x$, $y$ and $z$?
+    prompt: A toy compiler uses exact arithmetic. The inputs $x$, $y$ and $z$ are real numbers. For each rule, consider only inputs for which both expressions have nonzero divisors. Which rewrite preserves the value for every allowed input?
     options:
       - id: a
         text: $(x+y)\times z$ can become $x\times z+y\times z$.
@@ -506,7 +506,7 @@ exercises:
         correct: false
         category: math_error
         feedback: Subtracting $(y-z)$ adds $z$ back. With $x=3$, $y=2$, $z=1$ the left is $2$ and the right is $0$.
-    solution: Distributivity, $(x+y)\times z=x\times z+y\times z$, holds for all real values in this exact-arithmetic model. Each other rule has a counterexample with nonzero divisors. Floating-point compilers must also respect their supported numerical semantics.
+    solution: Distributivity, $(x+y)\times z=x\times z+y\times z$, holds for all real values in this exact-arithmetic model. Each other rule has a counterexample with nonzero divisors. For floating-point calculations, a compiler must respect the number format's rounding and overflow rules.
   - id: mlcp-versions-template
     dimension: implementation
     type: numeric
@@ -846,10 +846,10 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt: Explain why recording the whole model as a graph lets a compiler fuse operations that eager execution runs one at a time, what fusing a chain of elementwise operations saves, and how an e-graph helps the compiler pick a cheaper equal version of the graph.
+    prompt: Explain why recording connected operations in a graph exposes opportunities for fusion that eager execution misses. For a large, memory-bound chain of elementwise operations, explain what fusing saves. How does an e-graph help the compiler pick a cheaper calculation with the same result?
     rubric:
       - id: r1
-        criterion: Explain that eager execution dispatches operations as Python reaches them, while the recorded graph shows which results are used only by the next operation and exposes opportunities for fusion.
+        criterion: Explain that eager execution starts operations as Python reaches them, while the recorded graph shows which results are used only by the next operation and exposes opportunities for fusion.
         weight: 1
         required: true
       - id: r2
@@ -857,7 +857,7 @@ exercises:
         weight: 1
         required: true
       - id: r3
-        criterion: Explain that an e-graph keeps every equal version in groups of equal value without deleting any, and extraction picks the cheapest by a cost model.
+        criterion: Explain that the e-graph groups and keeps the equivalent versions it finds, and extraction picks the cheapest of them by a cost model.
         weight: 1
         required: true
       - id: r4
@@ -868,7 +868,7 @@ exercises:
         criterion: Mention that a greedy rewriter can throw away a version a later rule needed, which the e-graph avoids.
         weight: 1
         required: false
-    exemplar: Eager execution dispatches each operation as Python reaches it. A compiler records the graph first, so it can see that a result is used only by the next operation. In our chain, the separate eager kernels write and reread intermediate tensors. A fused kernel keeps those results on chip, reading the input once and writing the output once. This reduces memory traffic and kernel-launch overhead. For our large, memory-bound chain, the estimated time falls by about the same factor as bytes moved. An e-graph keeps equivalent versions in groups under its numerical rules, which use exact real arithmetic in our toy search. Keeping alternatives lets later rules reach versions a greedy rewrite could lose. Extraction picks the cheapest version using a cost model.
+    exemplar: Eager execution sends each operation to run as Python reaches it. A compiler records the graph first, so it can see that a result is used only by the next operation. In our chain, the separate eager kernels write and reread intermediate tensors. A fused kernel keeps those results on chip, reading the input once and writing the output once. This reduces memory traffic and kernel-launch overhead. For our large, memory-bound chain, the estimated time falls by about the same factor as bytes moved. The e-graph groups every version the rules find by equal value and keeps them all without deleting any. Our toy compiler uses exact arithmetic. Keeping the versions it finds lets later rules reach versions a greedy rewrite could lose. Extraction picks the cheapest version using a cost model.
   - id: mlcp-recall-record-graph-say
     dimension: conceptual
     type: explain

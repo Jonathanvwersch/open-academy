@@ -79,7 +79,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A server's first token arrives slowly, but later tokens arrive at a satisfactory steady rate. Profiling attributes the initial delay to processing the prompt. Which change directly addresses that delay?
+    prompt: A server's first token arrives slowly, but later tokens arrive at a satisfactory steady rate. Timing shows that processing the prompt accounts for the initial delay. Which change directly addresses that delay?
     options:
       - {
           id: a,
@@ -143,7 +143,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A code assistant handles two requests alone on the same loaded model, with identical delivery overhead. One has a short prompt and a long answer; the other has a long prompt and a short answer. Which work would you inspect first for each request?
+    prompt: A code assistant tests two requests separately with its model already in memory. One has a short prompt and a long answer; the other has a long prompt and a short answer. For each request, which model work would you time first to find a way to speed it up?
     options:
       - {
           id: a,
@@ -291,11 +291,14 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: Complete the stable exponential weight for a logit $z$, a positive temperature `tau` and `largest = max(logits)`.
+    prompt: |
+      A sampler divides each token's result from `math.exp` by the sum of those results to get its probability. Here `z` is the current token's logit, `largest` is the largest logit across all tokens, and `tau` is the positive temperature. Fill the blank to get the intended temperature-adjusted probabilities while keeping each exponential small enough to store.
+
+      In the blank, use each of the three names once, with one division and one other arithmetic operation. Use parentheses only where Python needs them.
     code: |
       import math
       weight = math.exp(____)
-    accept: ["(z - largest) / tau", "(z-largest)/tau"]
+    accept: ["(z - largest) / tau", "(z-largest)/tau", "(z - largest) / tau,"]
     solution: Divide the logit difference by temperature. Subtracting the same largest logit from every entry cancels out during normalisation and avoids large positive exponents.
   - id: pd-temp-new-setting
     dimension: conceptual

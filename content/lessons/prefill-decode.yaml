@@ -126,7 +126,7 @@ knowledge_points:
 
       ### Scaling before softmax
 
-      Write temperature as $\tau$ (tau). Many papers and APIs call it $T$ or "temperature". For token $i$, with logit $z_i$, the adjusted probability is
+      Write temperature as $\tau$ (tau). Other texts and code may call it $T$ or "temperature". For token $i$, with logit $z_i$, the adjusted probability is
 
       $$p_i=\frac{e^{z_i/\tau}}{\sum_j e^{z_j/\tau}},\qquad \tau>0.$$
 
@@ -211,6 +211,7 @@ knowledge_points:
           return fallback
 
       tokens = ["Yes", "No"]
+      # math.log returns the natural logarithm.
       logits = [math.log(4), 0]
       print(temperature_sample(tokens, logits, 2, 0.70))
       # prints: No
@@ -390,14 +391,14 @@ knowledge_points:
 
       This complete Python example takes a nonempty list of positive probabilities summing to 1. As in top-k, tied probabilities keep their input order. We use `append` to add an index to `keep` before checking the threshold. Once the total reaches $p$, `break` exits the loop, leaving the crossing token included. The final loop repeats the worked draw $u=0.85$.
 
-      Floating-point sums can land just under $p$, so `math.fsum` adds the retained probabilities more accurately at the boundary.
+      Rounding during addition can leave a sum just under the probability cutoff $p$, so `math.fsum` adds the retained probabilities more accurately at the boundary.
 
       ```python
       import math
 
       def top_p(probs, p):
           if not 0 < p <= 1:
-              raise ValueError("p must be in (0, 1]")
+              raise ValueError("p must be greater than 0 and at most 1")
           order = sorted(
               range(len(probs)),
               key=lambda i: probs[i], reverse=True
