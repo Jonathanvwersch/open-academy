@@ -1254,6 +1254,15 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
   expect(learnResponse.status).toBe(200);
   const learn = await learnResponse.json();
   expect(learn.activeSessionId).toBeNull();
+  expect(
+    learn.upNext.upcoming
+      .filter((topic: { dayLabel: string }) => topic.dayLabel === 'Today')
+      .map((topic: { conceptId: string }) => topic.conceptId),
+  ).toEqual(
+    learn.tasks
+      .filter((task: { activityKind: string }) => task.activityKind === 'learn')
+      .map((task: { conceptId: string }) => task.conceptId),
+  );
   expect(learn.tasks.length).toBeGreaterThan(0);
   expect(learn.tasks[0]).toMatchObject({
     id: expect.any(String),
@@ -1292,6 +1301,7 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
       project: {
         id: string;
         title: string;
+        authored: boolean;
         available: boolean;
         status: 'not_started' | 'in_progress' | 'completed';
       } | null;
@@ -1335,6 +1345,7 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
     project: {
       id: 'linreg-numpy',
       title: expect.any(String),
+      authored: true,
       available: false,
       status: 'not_started',
     },
@@ -1369,6 +1380,23 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
     expect(topic.status === 'locked').toBe(locked);
   }
   expect(await rowCounts()).toEqual(before);
+});
+
+test('course payload marks stub projects as unauthored', async () => {
+  await activateCourse('llm-inference');
+
+  const course = (await (await get('/course')).json()) as {
+    units: Array<{
+      project: { id: string; authored: boolean; available: boolean } | null;
+    }>;
+  };
+  const project = course.units.find((unit) => unit.project?.id === 'inference-engine')?.project;
+
+  expect(project).toMatchObject({
+    id: 'inference-engine',
+    authored: false,
+    available: false,
+  });
 });
 
 test('Home previews the same quiz-first activities as a new session', async () => {
@@ -1685,6 +1713,10 @@ test('all-subject projection uses recent learn minutes from outside the focus', 
       completedAt: new Date('2026-01-07T10:00:00.000Z'),
     },
   ]);
+  await db
+    .update(users)
+    .set({ prefs: { scheduleMinutes: 5 } })
+    .where(eq(users.id, userId));
 
   const allSubjects = await (await get('/learn')).json();
   expect(allSubjects.focusSubjectId).toBeNull();
@@ -3009,6 +3041,34 @@ test('starting a stale in-progress lesson skips it without changing its run or p
   ).toMatchObject([
     { knowledgePointId: 'embeddings-preserved', exerciseId: 'embeddings-preserved-answer' },
   ]);
+});
+
+test('Up next does not forecast lessons Today when no learn tasks are planned', async () => {
+  const courseId = content.curriculum?.default_course ?? content.courses[0]?.id;
+  if (!courseId) throw new Error('Missing default course');
+  await db
+    .update(users)
+    .set({ activeCourseId: courseId, prefs: { scheduleMinutes: 5 } })
+    .where(eq(users.id, userId));
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId,
+    startMethod: 'beginning',
+  });
+
+  const learn = await (await get('/learn')).json();
+  const learnTaskConceptIds = learn.tasks
+    .filter((task: { activityKind: string }) => task.activityKind === 'learn')
+    .map((task: { conceptId: string }) => task.conceptId);
+  const todayConceptIds = learn.upNext.upcoming
+    .filter((topic: { dayLabel: string }) => topic.dayLabel === 'Today')
+    .map((topic: { conceptId: string }) => topic.conceptId);
+
+  expect(learn.activeSessionId).toBeNull();
+  expect(learnTaskConceptIds).toEqual([]);
+  expect(learn.upNext.upcoming.length).toBeGreaterThan(0);
+  expect(learn.upNext.upcoming[0]?.dayLabel).not.toBe('Today');
+  expect(todayConceptIds).toEqual(learnTaskConceptIds);
 });
 
 test('Up next starts with active-session lessons in order and projects future topics from tomorrow', async () => {

@@ -175,7 +175,7 @@ function buildProjectionCourses(
 }
 
 function activeLearnTopics(
-  activities: readonly ActivityRecord[],
+  activities: readonly (ActivityRecord | PlannedActivity)[],
   courses: ProjectionCourse[],
   index: ContentIndex,
   date: string,
@@ -708,7 +708,7 @@ export async function getLearnHome(store: CourseStore, input: CourseReadInput) {
     today: todayLocal,
     spentBySubject: recentLearnMinutesBySubject,
   });
-  const todayTopics = activeLearnTopics(activeActivities, projectionCourses, index, todayLocal);
+  const todayTopics = activeLearnTopics(activities, projectionCourses, index, todayLocal);
   const projectUpcoming = (
     courses: ProjectionCourse[],
     topicsForToday: typeof todayTopics,
@@ -718,7 +718,7 @@ export async function getLearnHome(store: CourseStore, input: CourseReadInput) {
     const projection = projectCourseFinishes({
       courses,
       dailyXp: dailyXpAtPace,
-      today: addLocalDays(todayLocal, topicsForToday.length > 0 ? 1 : 0),
+      today: addLocalDays(todayLocal, 1),
       assumedDoneConceptIds: todayConceptIds,
       spentBySubject,
     });
