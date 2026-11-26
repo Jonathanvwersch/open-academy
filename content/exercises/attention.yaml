@@ -672,18 +672,13 @@ exercises:
     solution: "The two weights add to $1$. If the second weight is $w$, the output is $2(1-w)+10w=2+8w$, so $w=0.75$."
   - id: attn-code-scale-width
     dimension: implementation
-    type: code_read
+    type: numeric
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "What numeric divisor belongs in place of `scale` to compute a scaled attention score for these inputs?"
-    code: |
-      q = [2, 1, 3, 0]
-      k = [1, 2, 0, 1]
-      dot = sum(q[i] * k[i] for i in range(len(k)))
-      score = dot / scale
-    solution: "The divisor is the square root of the key width. The key has four entries, so the divisor is $2$."
-    answer: 2
+    prompt: "An attention function takes queries and keys of width $9$. It divides each query–key dot product by `scale` before applying softmax. What number should the function use for `scale`?"
+    solution: 'Use the square root of the key width. The divisor is $\sqrt{9}=3$.'
+    answer: 3
     tolerance: { abs: 0 }
   - id: attn-code-query-pair
     dimension: implementation
