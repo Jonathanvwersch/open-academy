@@ -169,6 +169,7 @@ const quizItem: NewRow<Omit<LessonQuizItem, 'quizAttemptId'>> = {
   exerciseId,
   seed: null,
   answer: null,
+  evidence: null,
   correct: null,
   durationMs: null,
   attemptId: null,
@@ -628,8 +629,25 @@ export function describeLearnerStoreContract(
         await store.getLessonRun(learnerId, { conceptId: 'vectors', quizItemId: one.id }),
       ).toBeUndefined();
       const answer = { selected: [1] };
+      const evidence = {
+        exercise: {
+          id: 'replacement',
+          concept: 'vectors',
+          dimension: 'math',
+          role: 'core',
+          contentVersion: 'v1',
+        },
+        grade: {
+          status: 'graded',
+          correct: 1,
+          credit: 1,
+          feedback: 'Correct',
+          graded_by: 'deterministic',
+        },
+      } as const;
       await store.patchLessonQuizItem(learnerId, run.id, replacementId, {
         answer,
+        evidence,
         answeredAt: later,
       });
       answer.selected.push(2);
@@ -664,6 +682,7 @@ export function describeLearnerStoreContract(
             exerciseId: 'replacement',
             answeredAt: later,
             answer: { selected: [1] },
+            evidence,
           },
         ],
       });
@@ -808,7 +827,16 @@ export function describeLearnerStoreContract(
       const expected = {
         statuses: ['planned'] as const,
         exerciseIds: ['vectors-q1', 'vectors-q2'],
+        reason: first.reason,
       };
+      expect(
+        await store.patchActivities(
+          learnerId,
+          query,
+          { status: 'skipped' },
+          { reason: { stale: true } },
+        ),
+      ).toEqual([]);
       const concurrent = await Promise.all([
         store.patchActivities(learnerId, query, { status: 'in_progress' }, expected),
         store.patchActivities(learnerId, query, { status: 'skipped' }, expected),

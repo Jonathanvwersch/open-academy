@@ -117,7 +117,7 @@ async function reviewFixture() {
         lapses: fsrs.lapses,
       });
     },
-    answer: async (activityId: string, exerciseId: string) => {
+    answer: async (activityId: string, exerciseId: string, durationMs = 1000) => {
       const exercise = index.exercisesById.get(exerciseId);
       if (!exercise) throw new Error(`Missing exercise: ${exerciseId}`);
       const prepared = await prepareExerciseAttempt(
@@ -125,7 +125,7 @@ async function reviewFixture() {
         userId,
         index,
         exercise,
-        { activityId, mode: 'review', answer: 'submitted answer', durationMs: 1000 },
+        { activityId, mode: 'review', answer: 'submitted answer', durationMs },
         session,
       );
       if (prepared.kind !== 'ready') throw new Error(JSON.stringify(prepared));
@@ -217,7 +217,11 @@ test.each(['unanswered question', 'answered and unanswered questions'] as const)
     const first = await fixture.addCard('supervised-learning', 'conceptual');
     await fixture.addCard('vectors', 'conceptual');
     const review = await fixture.addReview([answered, pending, last], { conceptId: null });
-    const answer = await fixture.answer(review.id, answered);
+    const answer = await fixture.answer(
+      review.id,
+      answered,
+      deletion === 'unanswered question' ? undefined : 60 * 60_000,
+    );
     expect(answer.activityCompleted).toBe(false);
     expect(await fixture.store.listReviewLogs(userId, { cardIds: [first.id] })).toEqual([]);
     fixture.remove(deletion === 'unanswered question' ? [pending] : [answered, pending]);
@@ -302,6 +306,22 @@ test('Continue awards earned review XP once even when none of the saved question
   expect(await fixture.store.listXpEvents(userId, {})).toMatchObject([
     { sourceKey: `activity:${review.id}`, amount: review.plannedMinutes },
   ]);
+});
+
+test('an empty recovered review with no answers keeps its due date and earns no XP', async () => {
+  const fixture = await reviewFixture();
+  const topic = 'derivatives';
+  const exercise = 'derivatives-power-rule';
+  const card = await fixture.addCard(topic, 'math');
+  const review = await fixture.addReview([exercise], { conceptId: topic });
+  const index = await content;
+  fixture.remove((index.exercisesByConcept.get(topic) ?? []).map(({ id }) => id));
+  expect(await fixture.continueReview(review.id)).toMatchObject({
+    kind: 'ok',
+    body: { status: 'completed', exerciseIds: [] },
+  });
+  expect(await fixture.store.getReviewCard(userId, topic, 'math')).toEqual(card);
+  expect(await fixture.store.listXpEvents(userId, {})).toEqual([]);
 });
 
 test('a replacement question in a new dimension cannot apply FIRe again for the same review topic', async () => {

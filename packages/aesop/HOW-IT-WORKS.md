@@ -56,8 +56,9 @@ The learner does the steps in order. Each step has a worked example, then questi
 - Then the learner takes the lesson quiz. A 1-step lesson gives 6 questions. A 2-step lesson gives 3 for each step. A 3- or 4-step lesson gives 2 for each step. **[Ours]**
 - The pass mark is 80%. **[Ours]** If the learner fails, they practise each step that had a wrong answer, then take a new quiz.
 - When the learner passes the quiz for the first time, the topic is complete and gets its first review card.
-- If a saved question was removed from the course, keep the learner's past grades. Replace a pending step question through normal selection. In an open quiz, replace an unanswered question with an unused question from the topic if one exists. Otherwise drop that item. A saved quiz answer still counts. If no questions remain, discard the open quiz without recording a grade. The learner can start a new quiz using the current questions. **[Ours]**
-- For a saved review activity, keep the questions that still exist. If none remain, use the normal question selection for its due review. If there are no eligible questions, let the learner continue without rescheduling the card. **[Ours]**
+- If a saved question was removed from the course, keep the learner's past grades. Replace a pending step question through normal selection. In an open quiz, replace an unanswered question with an unused question from the topic if one exists. Otherwise drop that item. Keep the grade and record the assessment once on Submit, even if the question is gone. If no questions remain, discard the open quiz without recording a grade. The learner can start a new quiz using the current questions. **[Ours]**
+- Save the topics planned for a review. Keep the questions that still exist. Fill gaps in mixed review coverage from the planned topics first. Use other due topics only for slots that remain. For an older review without saved topics, look at the remaining questions and saved attempts. If no eligible questions remain, let the learner continue. Earned review XP still counts once. **[Ours]**
+- When a recovered review ends, rate cards from saved answers, including answers to deleted questions. A card without an answer keeps its due date. If the target time is gone, do not count the answer as slow. **[Ours]**
 
 ## 5. Mastery (`memory/mastery.ts`)
 
@@ -104,6 +105,8 @@ The engine uses the FSRS algorithm (the `ts-fsrs` library) for spaced repetition
 ## 7. FIRe credit through the graph (`memory/implicit-repetition.ts`, `graph/encompassing.ts`)
 
 A review of an advanced topic also practises its prerequisites. **[MA]** The engine gives that practice to the prerequisite cards. Math Academy calls this Fractional Implicit Repetition (FIRe).
+
+- Give FIRe once per review activity per topic. Use the lowest rating saved for that topic in the activity. A replacement question can rate a different card without giving FIRe twice. **[Ours]**
 
 - A Good or Hard review moves credit _down_ to the prerequisites. Their due dates move later. **[MA]**
 - When a prerequisite has speed below 1, switch off all positive FIRe credit to it. **[MA]**
@@ -163,18 +166,20 @@ Rules that apply to the whole plan:
 ### Time, score and reviews
 
 - Add the target times for the 8 questions. Use 90 seconds for each missing target time. Multiply the total by the learner's extra-time setting. The multiplier defaults to 1. Round planned minutes up. **[Ours]**
-- Save the deadline when the learner starts. Keep it when the learner refreshes. Reject answers on the server at or after the deadline. Count late and unanswered questions as wrong. **[Ours]**
+- Save the deadline when the learner starts. Keep it on refresh and when a question changes. Reject answers on the server at or after the deadline. Count late and unanswered live questions as wrong. **[Ours]**
+- Keep saved answers when questions are deleted. Before the deadline, replace an unanswered deleted question with a fresh question from the same topic. If none is available, drop the question. Drop any still-deleted unanswered question at expiry. Do not rate it or require a follow-up. **[Ours]**
+- Send the question ID with the answer. If the question changed, reject the old answer. Show the message and load the current question. **[Ours]**
 - Accept answers in question order. Measure each answer's time from the start or from the preceding answer. Allow the learner to finish when all answers arrive or time expires. **[Ours]**
 - Keep hints, the tutor and lesson links out of the timed quiz. **[Ours]**
 - Rate each wrong answer Again. Rate a correct answer Hard when its time exceeds the question's target. Rate other correct answers Good. Apply normal FIRe credit for Good. **[Ours]**
 - Make a follow-up review due immediately for each missed topic. **[MA]**
 - Make a follow-up review due immediately for each slow correct answer at every speed. Apply speed only when the quiz uses the FSRS due date. Skip suspended cards when the quiz rates, gives FIRe credit, or schedules reviews. **[Ours]**
-- Divide the number of correct answers by 8 to get the score. Multiply planned minutes by the score and round to the nearest whole XP. Award the XP once. **[Ours]**
+- Divide the correct answers by the number of questions left after drops. If none remain, the score is zero. Multiply the original planned minutes by the score and round to the nearest whole XP. Award the XP once. **[Ours]**
 
 ### Retake
 
 - Offer an optional retake. **[MA]**
-- Allow one retake if the learner missed at least one question and finished all follow-up reviews. Use the reserve questions on the same topics. A retake gives no XP and leaves the quiz cadence unchanged. **[Ours]**
+- Allow one retake if the learner missed at least one question and finished all follow-up reviews. Use the fresh reserve questions on the same topics. Replace a deleted reserve with a fresh question from its topic. Leave out the topic if none is available. A retake gives no XP and leaves the quiz cadence unchanged. **[Ours]**
 - Keep the end-of-lesson quiz separate. **[Ours]**
 
 ## 10. Placement (`placement/`)

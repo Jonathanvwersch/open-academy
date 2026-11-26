@@ -1,3 +1,5 @@
+import type { IndexedExercise } from '../course/types.js';
+import type { GradeResult } from '../lessons/grading/types.js';
 import type { Id, NewRow } from './core-store.js';
 import type { ReviewLogRecord } from './learner-store.js';
 import type { RemediationFlag, RowEdit, SessionStore } from './session-store.js';
@@ -45,6 +47,14 @@ export type LessonQuizAttempt = {
   passed: boolean | null;
 };
 
+export type LessonQuizEvidence = {
+  exercise: Pick<
+    IndexedExercise,
+    'id' | 'concept' | 'dimension' | 'role' | 'contentVersion' | 'target_seconds'
+  >;
+  grade: Extract<GradeResult, { status: 'graded' }>;
+};
+
 export type LessonQuizItem = {
   id: Id;
   quizAttemptId: Id;
@@ -53,6 +63,7 @@ export type LessonQuizItem = {
   exerciseId: Id;
   seed: number | null;
   answer: unknown;
+  evidence: LessonQuizEvidence | null;
   correct: number | null;
   durationMs: number | null;
   attemptId: Id | null;

@@ -237,6 +237,9 @@ test('an answer graded before its lesson quiz question is deleted still records 
   const result = await submitQuiz();
   expect(result.status).toBe(200);
   expect((await result.json()).run.quiz.last).toMatchObject({ passed: true, score: 1 });
+  const replay = await submitQuiz();
+  expect(replay.status).toBe(200);
+  expect((await replay.json()).xpAwarded).toBe(0);
   const evidence = await db
     .select()
     .from(attempts)

@@ -275,7 +275,7 @@ test.each([false, true])(
 
     const blank = await answerQuiz(deps, {
       ...request,
-      body: { position: 1, answer: '' },
+      body: { position: 1, questionId: active.exercise.id, answer: '' },
       now: () => startedAt,
     });
     expect(blank.status).toBe(422);

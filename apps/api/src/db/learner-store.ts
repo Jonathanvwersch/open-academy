@@ -871,6 +871,9 @@ export function drizzleLearnerStore(
             expected?.exerciseIds === undefined
               ? undefined
               : eq(sessionActivities.exerciseIds, [...expected.exerciseIds]),
+            expected?.reason === undefined
+              ? undefined
+              : sql`${sessionActivities.reason} = ${JSON.stringify(expected.reason)}::jsonb`,
           ),
         )
         .returning();

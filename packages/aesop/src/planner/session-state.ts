@@ -3,9 +3,11 @@ import { filterSchedulerStateForContent } from '../graph/content-filters.js';
 import { localDateKey } from '../progress/xp.js';
 import type { Id } from '../store/core-store.js';
 import type { Activity, SessionStore } from '../store/session-store.js';
+import { reviewActivityReason } from './review-topics.js';
 import {
   buildRemedialReviewActivityForConcept,
   buildReviewActivityForConcept,
+  interleaveReviewExercises,
   type SchedulerState,
 } from './scheduler.js';
 
@@ -39,41 +41,94 @@ export async function recoverReviewActivities(
       continue;
     const survivors = activity.exerciseIds.filter((id) => content.exercisesById.has(id));
     if (survivors.length === activity.exerciseIds.length) continue;
-    const exerciseIds = survivors;
-    if (exerciseIds.length === 0) {
+    const reason = reviewActivityReason(activity.reason);
+    const exerciseIds = [...survivors];
+    const survivingTopics = new Set(
+      survivors.flatMap((id) => content.exercisesById.get(id)?.concept ?? []),
+    );
+    const legacyAttempts =
+      !reason.topicIds && !activity.conceptId
+        ? (await store.listAttempts(learnerId, { activityIds: [activity.id] })).filter(
+            (attempt) => attempt.mode === 'review',
+          )
+        : [];
+    const knownTopics = [
+      ...new Set(
+        reason.topicIds ??
+          (activity.conceptId
+            ? [activity.conceptId]
+            : [...survivingTopics, ...legacyAttempts.map(({ conceptId }) => conceptId)]),
+      ),
+    ];
+    const coveredTopics = new Set([
+      ...survivingTopics,
+      ...(survivors.length > 0 ? legacyAttempts.map(({ conceptId }) => conceptId) : []),
+    ]);
+    const missingTopics = knownTopics.filter((id) => !coveredTopics.has(id));
+    const mixed = !activity.conceptId;
+    if (survivors.length === 0 || (mixed && (reason.topicIds || missingTopics.length > 0))) {
       state ??= filterSchedulerStateForContent(content, await schedulerState());
+      const current = state;
       const usedExerciseIds = activities
         .filter((other) => other.id !== activity.id)
         .flatMap((other) => other.exerciseIds);
       const reservedTopics = new Set(
         usedExerciseIds.map((id) => content.exercisesById.get(id)?.concept),
       );
-      const topics = activity.conceptId
-        ? [activity.conceptId]
-        : [...new Set(state.cards.map((card) => card.conceptId))].filter(
-            (id) => !reservedTopics.has(id),
-          );
-      for (const topic of topics) {
-        const reselect = state.remediationFlags.some(
+      const slots = activity.exerciseIds.length;
+      const select = (topic: string, used: string[]) => {
+        const reselect = current.remediationFlags.some(
           (flag) => flag.status !== 'resolved' && flag.targetPrereqId === topic,
         )
           ? buildRemedialReviewActivityForConcept
           : buildReviewActivityForConcept;
         const replacement = reselect(
-          { ...state, usedExerciseIds: [...usedExerciseIds, ...exerciseIds] },
+          {
+            ...current,
+            usedExerciseIds: [...(current.usedExerciseIds ?? []), ...usedExerciseIds, ...used],
+          },
           content,
           now,
           topic,
         );
-        if (replacement) exerciseIds.push(...replacement.exerciseIds);
-        if (exerciseIds.length >= activity.exerciseIds.length) break;
+        return replacement?.exerciseIds ?? [];
+      };
+      const originals = missingTopics.map((topicId) => ({
+        topicId,
+        exerciseIds: select(topicId, survivors),
+      }));
+      for (const { exerciseIds: replacements } of originals) {
+        if (exerciseIds.length >= slots) break;
+        const replacement = replacements.shift();
+        if (replacement) exerciseIds.push(replacement);
+      }
+      for (const topicId of knownTopics) {
+        if (exerciseIds.length >= slots) break;
+        if (coveredTopics.has(topicId)) {
+          originals.push({ topicId, exerciseIds: select(topicId, exerciseIds) });
+        }
+      }
+      exerciseIds.push(
+        ...interleaveReviewExercises(originals).slice(0, slots - exerciseIds.length),
+      );
+      if (mixed) {
+        const tried = new Set([...knownTopics, ...reservedTopics]);
+        for (const topic of new Set(current.cards.map((card) => card.conceptId))) {
+          if (exerciseIds.length >= slots) break;
+          if (!tried.has(topic)) {
+            exerciseIds.push(...select(topic, exerciseIds).slice(0, slots - exerciseIds.length));
+          }
+        }
       }
     }
     const [updated] = await store.patchActivities(
       learnerId,
-      { ids: [activity.id] },
-      { exerciseIds, reason: { ...(activity.reason as object), removedQuestions: true } },
-      { exerciseIds: activity.exerciseIds },
+      { ids: [activity.id], statuses: ['planned', 'in_progress'] },
+      {
+        exerciseIds,
+        reason: { ...reason, removedQuestions: true },
+      },
+      { exerciseIds: activity.exerciseIds, reason: activity.reason },
     );
     if (updated) Object.assign(activity, updated);
     else {

@@ -63,7 +63,11 @@ export async function getQuiz(deps: FeatureServices, request: FeatureRequest) {
 
 export async function answerQuiz(deps: FeatureServices, request: FeatureRequest) {
   const body = z
-    .object({ position: z.number().int().nonnegative(), answer: z.unknown() })
+    .object({
+      position: z.number().int().nonnegative(),
+      questionId: z.string().min(1),
+      answer: z.unknown(),
+    })
     .safeParse(request.body);
   if (!body.success) return serviceResult({ error: 'Invalid quiz answer' }, 400);
   return respond(

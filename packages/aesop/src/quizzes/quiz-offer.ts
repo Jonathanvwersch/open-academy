@@ -13,6 +13,30 @@ import {
   selectQuizQuestions,
 } from './mixed-quiz.js';
 
+export async function quizQuestionHistory(store: FlowStore, learnerId: string) {
+  const runs = await store.listTimedQuizRuns(learnerId, {});
+  const items = await store.listTimedQuizItems(
+    learnerId,
+    runs.map(({ id }) => id),
+  );
+  const originalIds = new Set(runs.filter(({ retakeOf }) => retakeOf === null).map(({ id }) => id));
+  const missedOriginals = new Set(
+    items
+      .filter(({ runId, correct }) => correct === false && originalIds.has(runId))
+      .map(({ runId }) => runId),
+  );
+  const usedKeys = new Set<string>();
+  const exposure = new Map<string, number>();
+  for (const { runId, conceptId, question, reserve } of items) {
+    usedKeys.add(question.key);
+    for (const key of question.previousKeys ?? []) usedKeys.add(key);
+    if (question.withdrawn) continue;
+    exposure.set(conceptId, (exposure.get(conceptId) ?? 0) + 1);
+    if (reserve && missedOriginals.has(runId)) usedKeys.add(reserve.key);
+  }
+  return { items, usedKeys, exposure };
+}
+
 export function quizAccommodation(prefs: unknown): number {
   const value = (prefs as { quizTimeMultiplier?: unknown } | null)?.quizTimeMultiplier;
   return typeof value === 'number' && Number.isFinite(value) && value >= 1 ? value : 1;
@@ -89,21 +113,7 @@ export async function quizOffer(
   const [lessons, confirmedPlacementTopics, history, learnerSettings] = await Promise.all([
     store.listLessonRuns(learnerId),
     confirmedPlacementTopicIds(store, learnerId),
-    store.listTimedQuizRuns(learnerId, {}).then(async (runs) => {
-      const items = await store.listTimedQuizItems(
-        learnerId,
-        runs.map(({ id }) => id),
-      );
-      const originalIds = new Set(
-        runs.filter(({ retakeOf }) => retakeOf === null).map(({ id }) => id),
-      );
-      const missedOriginals = new Set(
-        items
-          .filter(({ runId, correct }) => correct === false && originalIds.has(runId))
-          .map(({ runId }) => runId),
-      );
-      return { items, missedOriginals };
-    }),
+    quizQuestionHistory(store, learnerId),
     settings === undefined ? store.getSettings(learnerId) : settings,
   ]);
   const completedTopics = new Set(
@@ -114,12 +124,6 @@ export async function quizOffer(
       )
       .map(({ conceptId }) => conceptId),
   );
-  const usedKeys = new Set(history.items.map(({ question }) => question.key));
-  const exposure = new Map<string, number>();
-  for (const item of history.items) {
-    exposure.set(item.conceptId, (exposure.get(item.conceptId) ?? 0) + 1);
-    if (item.reserve && history.missedOriginals.has(item.runId)) usedKeys.add(item.reserve.key);
-  }
   const previous = originals.at(-1);
   const difficulty = nextQuizDifficulty(
     previous?.score == null
@@ -135,8 +139,8 @@ export async function quizOffer(
     courseId,
     seed,
     difficulty,
-    exposure,
-    usedKeys,
+    exposure: history.exposure,
+    usedKeys: history.usedKeys,
   });
   if (!questions) return { xpBalance };
   const accommodation = quizAccommodation(learnerSettings?.prefs);

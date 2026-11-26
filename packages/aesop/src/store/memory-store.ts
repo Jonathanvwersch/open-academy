@@ -54,6 +54,18 @@ type LearnerState = {
 
 type Hint = { exerciseId: string; activityId: string | null; createdAt: Date; level: number };
 
+function jsonWithSortedKeys(value: unknown) {
+  return JSON.stringify(value, (_, item) =>
+    item && typeof item === 'object' && !Array.isArray(item)
+      ? Object.fromEntries(
+          Object.keys(item)
+            .sort()
+            .map((key) => [key, item[key]]),
+        )
+      : item,
+  );
+}
+
 type MemorySeed = {
   settings?: ReadonlyMap<string, Settings>;
   hints?: ReadonlyMap<string, readonly Hint[]>;
@@ -943,6 +955,8 @@ function scopedStore(
       const rows = matchingActivities(learnerId, query).filter(
         (row) =>
           (!expected?.statuses || expected.statuses.includes(row.status)) &&
+          (expected?.reason === undefined ||
+            jsonWithSortedKeys(expected.reason) === jsonWithSortedKeys(row.reason)) &&
           (!expected?.exerciseIds ||
             (expected.exerciseIds.length === row.exerciseIds.length &&
               expected.exerciseIds.every((id, i) => id === row.exerciseIds[i]))),
