@@ -1078,18 +1078,18 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 1
-    prompt: "A post-norm block's attention half returns token vectors `u`. The function `mlp` produces an update for each token, `norm` applies LayerNorm to each token vector, and `add` adds matching components. A bug makes the block compute its final vectors as `y = add(u, norm(mlp(u)))`. What does this line normalize that a correct post-norm block would handle differently?"
+    prompt: "A post-norm block's attention half returns token vectors `u`. The function `mlp` produces an update for each token, `norm` applies LayerNorm to each token vector, and `add` adds matching components. A bug makes the block compute its final vectors as `y = add(u, norm(mlp(u)))`. Which replacement line implements post-norm?"
     options:
       - id: a
-        text: "It normalizes the shortcut alone. Post-norm normalizes the sum."
+        text: "`y = add(norm(u), mlp(u))`"
         correct: false
-        feedback: "The shortcut enters the sum as the unchanged vectors `u`."
+        feedback: "This normalizes the shortcut alone, before the addition."
       - id: b
-        text: "It normalizes the MLP update alone. Post-norm normalizes the sum."
+        text: "`y = norm(add(u, mlp(u)))`"
         correct: true
-        feedback: "The MLP update reaches LayerNorm before the shortcut is added."
+        feedback: "LayerNorm receives the sum of the shortcut and the MLP update."
       - id: c
-        text: "It normalizes the MLP update alone. Post-norm normalizes the MLP input."
+        text: "`y = add(u, mlp(norm(u)))`"
         correct: false
         feedback: "Normalizing the MLP input is the pre-norm placement."
     solution: "The call `norm(mlp(u))` sees only the MLP update. In post-norm, add the update to the shortcut first, then send the sum to LayerNorm."
