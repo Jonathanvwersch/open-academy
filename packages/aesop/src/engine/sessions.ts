@@ -169,7 +169,7 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
         })[0],
     })),
     serverNow: request.now(),
-    tutorEnabled: false,
+    tutorEnabled: request.tutorEnabled,
   });
 }
 
