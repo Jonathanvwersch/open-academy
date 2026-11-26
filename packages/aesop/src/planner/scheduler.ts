@@ -2,6 +2,7 @@ import type { Card } from 'ts-fsrs';
 import { Rating, State } from 'ts-fsrs';
 import { orderCourseIdsBySubject } from '../course/course-order.js';
 import { subjectForCourse } from '../course/index.js';
+import { isReviewPoolExercise } from '../course/review-pool.js';
 import { isTemplate } from '../course/templates.js';
 import type {
   ContentIndex,
@@ -74,6 +75,7 @@ export interface PriorityTerms {
 
 export interface ActivityReason {
   courseId?: string;
+  topicIds?: string[];
   terms: PriorityTerms;
   summary: string;
 }
@@ -1719,6 +1721,9 @@ export function mixReviewActivities(selected: Candidate[], content: ContentIndex
           0,
         ),
         reason: {
+          topicIds: reviews.flatMap(({ activity }) =>
+            activity.conceptId ? [activity.conceptId] : [],
+          ),
           terms: {
             ...firstReason.terms,
             review: Math.max(...reviews.map((review) => review.activity.reason.terms.review)),
@@ -2161,6 +2166,7 @@ function buildReviewCandidateForConcept(
     reviewProject,
   );
   candidate.activity.reason.terms.review = terms.review;
+  candidate.activity.reason.topicIds = [conceptId];
   candidate.score = scoreTerms(candidate.activity.reason.terms, candidate.adjustedMinutes);
   const earliestDueAt = Math.min(...includedCards.map((card) => Date.parse(card.dueAt)));
   const lowestRetrievability = Math.min(...includedCards.map((card) => card.retrievability ?? 0.9));
@@ -2363,14 +2369,6 @@ function candidateSummary(
   return parts.length
     ? parts.join(' · ')
     : `${kind === 'learn' ? 'Learn' : 'Practice'} ${concept.title}.`;
-}
-
-function isReviewPoolExercise(exercise: IndexedExercise): boolean {
-  return (
-    REVIEW_ROLES.some((role) => role === exercise.role) &&
-    !exercise.lesson_only &&
-    !isTemplate(exercise)
-  );
 }
 
 function chooseExercise(
