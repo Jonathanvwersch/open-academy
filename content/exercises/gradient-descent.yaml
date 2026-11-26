@@ -879,17 +879,17 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: A model trains with gradient descent. After 10,000 update steps, its loss is still falling slowly and is much higher than the loss other runs on the same data reach. Which check would best help you tell whether this run is using a small learning rate?
+    prompt: A model trains with gradient descent. After 10,000 update steps, its loss is still falling slowly and is much higher than the loss other runs on the same data reach. Which check would best help you tell whether a small learning rate, shallow slopes of the loss, or both are slowing this run?
     options:
       - id: a
-        text: Compare the loss slopes for the weights and bias with the sizes of their updates.
+        text: Compare each change in a weight or bias with the corresponding slope before that update.
         correct: true
         feedback: The update size depends on both the slope and the learning rate. Tiny updates where the slopes are steep point to a small learning rate.
       - id: b
-        text: Compare the weights and bias in this run with their values in the other runs.
+        text: Compare the slopes for the weights and bias in this run with those in other runs.
         correct: false
         category: incorrect_reasoning
-        feedback: The values of the weights and bias tell you where each run is on the loss curve. You still need the slopes there and the sizes of the updates.
+        feedback: This can tell you whether this run is on shallower slopes. You need the update sizes as well to tell how the learning rate scales those slopes.
       - id: c
         text: Compare the drop in loss in this run with the drop in the other runs.
         correct: false
@@ -899,7 +899,7 @@ exercises:
         text: Compare the learning rate in this run with the rates used in the other runs.
         correct: false
         category: incorrect_reasoning
-        feedback: The runs can reach places where the loss has different slopes. The learning rates alone cannot tell you why this run is slow.
+        feedback: This can tell you which run uses a smaller learning rate. Even with a smaller rate, shallow slopes could also be slowing this run.
     solution: The size of each update depends on the learning rate and the steepness of the corresponding slope. Tiny updates on steep slopes point to a small learning rate, while shallow slopes can give tiny updates even with a larger rate.
   - id: gd-explain-lr
     dimension: conceptual
