@@ -1043,17 +1043,20 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 1
-    prompt: A live translation service uses PagedAttention. When one translation starts, the GPU puts the first block of its cache at memory block 5. The same translation grows enough to need a second block, and the GPU puts it at memory block 2, the only free block. What should the service now store in this translation's block table?
+    prompt: A live translation service uses PagedAttention. It stores the newest tokens of a translation in memory block 2 and the earlier tokens from that translation in memory block 5. What should its block table contain for this translation?
     options:
       - id: a
         text: "`[2, 5]`"
         correct: false
+        category: implementation_error
         feedback: Sorting by memory location puts the later tokens before the earlier tokens.
       - id: b
         text: "`[5, 2]`"
         correct: true
+        feedback: Block 5 holds the earlier tokens, so it comes first in the table.
       - id: c
         text: "`[0, 1]`"
         correct: false
+        category: implementation_error
         feedback: These give the blocks' order in the translation, but the table needs their locations in memory.
     solution: The table lists memory locations in token order, so it stores block 5 before block 2.
