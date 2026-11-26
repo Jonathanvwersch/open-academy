@@ -2,6 +2,7 @@ import type { ContentIndex } from '../course/types.js';
 import { filterSchedulerStateForContent } from '../graph/content-filters.js';
 import { localDateKey } from '../progress/xp.js';
 import type { Id } from '../store/core-store.js';
+import type { PlacementReviewStore } from '../store/placement-review-store.js';
 import type { Activity, SessionStore } from '../store/session-store.js';
 import { reviewActivityReason } from './review-topics.js';
 import {
@@ -25,7 +26,7 @@ export async function activeSessionForDate(
 }
 
 export async function recoverReviewActivities(
-  store: SessionStore,
+  store: PlacementReviewStore,
   learnerId: Id,
   activities: Activity[],
   content: ContentIndex,
@@ -41,17 +42,50 @@ export async function recoverReviewActivities(
       continue;
     const survivors = activity.exerciseIds.filter((id) => content.exercisesById.has(id));
     if (survivors.length === activity.exerciseIds.length) continue;
-    const reason = reviewActivityReason(activity.reason);
+    const reason = { ...reviewActivityReason(activity.reason) };
     const exerciseIds = [...survivors];
     const survivingTopics = new Set(
       survivors.flatMap((id) => content.exercisesById.get(id)?.concept ?? []),
     );
+    const inferTopics = !reason.topicIds && !activity.conceptId;
+    const needsLegacyFire =
+      !reason.topicIds && !reason.fireAppliedTopicIds && !reason.removedQuestions;
     const legacyAttempts =
-      !reason.topicIds && !activity.conceptId
+      needsLegacyFire || inferTopics
         ? (await store.listAttempts(learnerId, { activityIds: [activity.id] })).filter(
             (attempt) => attempt.mode === 'review',
           )
         : [];
+    if (needsLegacyFire && legacyAttempts.length > 0) {
+      const savedAttempts = new Map(legacyAttempts.map((attempt) => [attempt.exerciseId, attempt]));
+      const originalExercises = activity.exerciseIds.map((id) => {
+        const exercise = content.exercisesById.get(id);
+        const attempt = savedAttempts.get(id);
+        return (
+          exercise ?? (attempt && { concept: attempt.conceptId, dimension: attempt.dimension })
+        );
+      });
+      if (originalExercises.every((exercise) => exercise !== undefined)) {
+        const attemptsById = new Map(legacyAttempts.map((attempt) => [attempt.id, attempt]));
+        const logs = await store.listReviewLogs(learnerId, { activityId: activity.id });
+        const dimensionsByTopic = new Map<string, Set<string>>();
+        for (const { concept, dimension } of originalExercises) {
+          const dimensions = dimensionsByTopic.get(concept) ?? new Set<string>();
+          dimensions.add(dimension);
+          dimensionsByTopic.set(concept, dimensions);
+        }
+        reason.fireAppliedTopicIds = [...dimensionsByTopic].flatMap(([topic, dimensions]) => {
+          const topicLogs = logs.filter((log) => log.conceptId === topic);
+          const loggedDimensions = new Set(
+            topicLogs.map(({ attemptId }) => attemptsById.get(attemptId ?? '')?.dimension),
+          );
+          return topicLogs.length === dimensions.size &&
+            [...dimensions].every((dimension) => loggedDimensions.has(dimension))
+            ? [topic]
+            : [];
+        });
+      }
+    }
     const knownTopics = [
       ...new Set(
         reason.topicIds ??
@@ -62,7 +96,9 @@ export async function recoverReviewActivities(
     ];
     const coveredTopics = new Set([
       ...survivingTopics,
-      ...(survivors.length > 0 ? legacyAttempts.map(({ conceptId }) => conceptId) : []),
+      ...(inferTopics && survivors.length > 0
+        ? legacyAttempts.map(({ conceptId }) => conceptId)
+        : []),
     ]);
     const missingTopics = knownTopics.filter((id) => !coveredTopics.has(id));
     const mixed = !activity.conceptId;

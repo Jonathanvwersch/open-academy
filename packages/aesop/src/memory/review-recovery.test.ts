@@ -354,3 +354,20 @@ test('a replacement question in a new dimension cannot apply FIRe again for the 
   for (const id of replacements) await fixture.answer(review.id, id);
   expect(await fixture.store.getReviewCard(userId, 'vectors', 'math')).toEqual(once);
 });
+
+test('a legacy review does not repeat FIRe already earned before a question was deleted', async () => {
+  const fixture = await reviewFixture();
+  const answered = 'derivatives-explain';
+  const pending = 'vectors-dot-product';
+  const prerequisite = await fixture.addCard('vectors', 'math', true);
+  await fixture.addCard('derivatives', 'conceptual');
+  const review = await fixture.addReview([answered, pending], { conceptId: null });
+  await fixture.answer(review.id, answered);
+  const credited = await fixture.store.getReviewCard(userId, 'vectors', 'math');
+  expect(Number(credited?.dueAt)).toBeGreaterThan(Number(prerequisite.dueAt));
+  await fixture.store.patchActivities(userId, { ids: [review.id] }, { reason: {} });
+
+  fixture.remove([answered]);
+  expect((await fixture.answer(review.id, pending)).activityCompleted).toBe(true);
+  expect(await fixture.store.getReviewCard(userId, 'vectors', 'math')).toEqual(credited);
+});
