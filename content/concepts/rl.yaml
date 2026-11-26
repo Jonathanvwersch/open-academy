@@ -9,7 +9,7 @@ concepts:
       goal_weight: 3,
       dimensions: [conceptual, math],
       prereqs: [{ id: probability-basics }],
-      encompassings: [{ id: probability-basics, weight: 0.1 }],
+      encompassings: [{ id: probability-basics, weight: 0.11 }],
       objectives: [{ text: "Formalise a task as an MDP", dimension: conceptual }],
       status: authored,
     }
@@ -56,10 +56,10 @@ concepts:
       prereqs: [{ id: value-functions }],
       encompassings:
         [
-          { id: value-functions, weight: 0.21 },
-          { id: mdp, weight: 0.2 },
-          { id: policies-returns, weight: 0.23 },
-          { id: probability-basics, weight: 0.05 },
+          { id: value-functions, weight: 0.24 },
+          { id: mdp, weight: 0.11 },
+          { id: policies-returns, weight: 0.04 },
+          { id: probability-basics, weight: 0.04 },
         ],
       objectives: [{ text: "Perform a Q-learning update", dimension: math }],
       status: authored,
@@ -163,7 +163,7 @@ concepts:
       goal_weight: 2,
       dimensions: [conceptual, implementation],
       prereqs: [{ id: mdp }],
-      encompassings: [{ id: mdp, weight: 0.18 }, { id: probability-basics, weight: 0.05 }],
+      encompassings: [{ id: mdp, weight: 0.11 }, { id: probability-basics, weight: 0.04 }],
       objectives: [{ text: "Write an environment interaction loop", dimension: implementation }],
       status: authored,
     }
