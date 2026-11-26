@@ -675,7 +675,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "An automatic differentiation routine records the operation $L=e^2$. Which value should it save so the backward step can apply the local slope rule for squaring directly?"
+    prompt: "An automatic differentiation routine records the operation that squares the prediction error $e$ to get the loss $L=e^2$. Which value should it save so the backward step can apply the local slope rule for squaring directly?"
     options:
       - id: a
         text: "The operation's output $L$"
@@ -696,7 +696,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "A PyTorch program computes `loss = (2 * w - 1) ** 2` from a weight `w`. It calls `loss.backward()` and clears the weight's `.grad`. It now needs another backward pass without changing the weight or the loss formula. What should it do first?"
+    prompt: "A PyTorch program computes the squared-error loss `loss = (2 * w - 1) ** 2` from a weight `w`. It calls `loss.backward()` and clears the gradient stored in the weight's `.grad`. It now needs another backward pass without changing the weight or the loss formula. What should it do first?"
     options:
       - id: a
         text: "Call `loss.backward()` again on the old loss."
@@ -717,7 +717,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: "A calculation has three adjustable inputs and three scalar outputs. To find every input-output slope from start to finish, how many more passes does reverse mode take than ordinary forward mode?"
+    prompt: "A calculation has three adjustable inputs and three scalar outputs. To find the slope of every output with respect to each input from start to finish, how many more passes does reverse mode take than ordinary forward mode?"
     answer: 1
     tolerance: { abs: 0 }
     solution: "Forward mode takes $3$ passes, one per input. Reverse mode takes one recording pass plus $3$ backward passes, so it takes one more pass."

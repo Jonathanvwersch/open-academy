@@ -858,7 +858,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A convolution takes two input channels. Each filter is $2\\times2$ and has one bias. How many additional adjustable parameters does the layer gain if it adds one more filter?"
+    prompt: "A convolution takes two input channels. Each filter covers a patch two pixels high and two pixels wide, and has one bias. How many additional adjustable parameters does the layer gain if it adds one more filter?"
     answer: 9
     tolerance: { abs: 0 }
     solution: "The added filter has $2\\cdot2$ weights for each of the two input channels and one bias, so it adds $9$ parameters."
@@ -869,7 +869,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: "Three convolution layers in order use square filters with sides $3$, $5$ and $5$. All have stride $1$, with no padding or pooling. What is the side length in pixels of one final output cell's receptive field in the original input?"
+    prompt: "Three convolution layers in order use square filters with side lengths of $3$, $5$ and $5$ pixels. All have stride $1$, with no padding or pooling. What is the side length in pixels of one final output cell's receptive field in the original input?"
     answer: 11
     tolerance: { abs: 0 }
     solution: "Start with one cell and trace backward. The layers add $5-1$, $5-1$ and $3-1$ to the side length, giving $1+4+4+2=11$."

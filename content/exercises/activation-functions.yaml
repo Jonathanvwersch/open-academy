@@ -1059,7 +1059,7 @@ exercises:
     role: transfer
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot steering controller sends a command between $-1$ and $1$. Negative scores should turn it left, positive scores should turn it right, and a zero score should leave it straight. The command must stay between those limits for any score. Which activation fits without any further calculation?"
+    prompt: "A robot steering controller uses an activation to turn a score into a steering command. A negative command turns left, a positive command turns right, and zero means straight ahead. The command must have the same sign as the score, give zero at a score of zero, and stay between $-1$ and $1$. Which activation fits without any further calculation?"
     options:
       - id: a
         text: "ReLU"

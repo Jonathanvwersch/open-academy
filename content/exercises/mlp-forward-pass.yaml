@@ -1088,7 +1088,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: "A batch has input rows $(2,1)$ and $(0,3)$. The hidden layer stores one neuron's weights per row: $(2,-1)$ for the first neuron and $(-2,1)$ for the second. The layer uses bias $(0,1)$ and ReLU. The linear output layer has weights $(3,1)$ and bias $-2$. What is the first input row's prediction minus the second input row's prediction?"
+    prompt: "A batch has two examples with input rows $(2,1)$ and $(0,3)$. The hidden layer stores one neuron's weights per row: $(2,-1)$ for the first neuron and $(-2,1)$ for the second. Their biases are $0$ and $1$, respectively, and both use ReLU. The linear output neuron has weight $3$ on the first hidden value, weight $1$ on the second, and bias $-2$. What is the prediction for the first input row minus the prediction for the second input row?"
     answer: 5
     tolerance: { abs: 0 }
     solution: "The hidden scores are $(3,-2)$ and $(-3,4)$, so ReLU gives hidden values $(3,0)$ and $(0,4)$. The output layer gives $3\\cdot3+0-2=7$ and $0+4-2=2$, so the difference is $5$."
