@@ -346,7 +346,8 @@ knowledge_points:
 
       1. Multiplying $F$ by one column of $G$ makes the matching column of $FG$.
       2. As in step 3, that multiplication combines the $k$ columns of $F$, so the result lies in their span.
-      3. Pick any $k+1$ columns of $FG$. The columns at those positions in $G$ have only $k$ rows, so at least one lacks a pivot when we eliminate on those columns. Subtract its combination of earlier pivot columns to get zero, with coefficient 1 on the skipped column. Multiplying by $F$ gives zero with the same coefficients on the matching columns of $FG$. So the chosen product columns are dependent:
+      3. Pick any $k+1$ columns of $FG$. The columns at those positions in $G$ have only $k$ rows, so eliminating on those columns leaves at least one without a pivot. In the original columns of $G$, the skipped column minus its combination of earlier pivot columns gives zero, with coefficient 1 on the skipped column.
+      4. Multiply that zero combination by $F$. The coefficients stay the same, but now they multiply the matching columns of $FG$. The result is still zero, so the chosen product columns are dependent:
 
       $$\operatorname{rank}(FG)\le k.$$
 
