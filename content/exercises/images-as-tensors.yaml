@@ -629,7 +629,7 @@ exercises:
     prompt: "An image in HWC (height, width, channels) layout has two rows of pixels. Each pixel triple lists its red, green and blue values. From left to right, row $0$ has pixels $(15,20,25)$ and $(30,37,42)$, and row $1$ has pixels $(45,51,55)$ and $(60,65,70)$. Transpose the image to CHW (channels, height, width). In channel $2$, take the value at row $1$, column $0$ and subtract the value at row $0$, column $1$. What is the result? All indices start at zero."
     answer: 13
     tolerance: { abs: 0 }
-    solution: "The transpose keeps each pixel at the same row and column. Channel $2$ selects the blue values: $55$ at row $1$, column $0$ and $42$ at row $0$, column $1$. The difference is $55-42=13$."
+    solution: "The transpose keeps the row and column of each blue value, so channel $2$ has $55$ at row $1$, column $0$ and $42$ at row $0$, column $1$. Subtract to get $55-42=13$."
 
   - id: iat-standardise-from-uint8
     dimension: math
