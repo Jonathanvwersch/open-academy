@@ -1037,7 +1037,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: A model predicts the same value for the targets $2$, $5$ and $8$. Its current prediction is $3$. By how much would the mean squared error fall if it switched to the best constant prediction?
+    prompt: A model predicts the same value for the targets $2$, $5$ and $8$. Its current prediction is $3$. By how much would the mean squared error fall if it switched to the constant prediction with the lowest mean squared error?
     answer: 4
     tolerance: { abs: 0.001 }
     solution: The best constant is the mean, $5$, with MSE $(9+0+9)/3=6$. The current MSE is $(1+4+25)/3=10$, so it falls by $4$.

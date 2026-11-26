@@ -1265,20 +1265,20 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 0.5
-    prompt: A Python training loop stores one example's prediction in `y_hat` and its target in `y`. The signed error `e` is the prediction minus the target. Which line computes the squared-error loss?
+    prompt: A Python training loop stores one example's target in `y` and its signed error in `e`. The signed error is the prediction minus the target. Which line computes the squared-error loss?
     options:
       - id: a
-        text: "`loss = y_hat ** 2`"
+        text: "`loss = (e + y) ** 2`"
         correct: false
-        feedback: Squaring the prediction ignores how far it is from the target.
+        feedback: Adding the target back recovers the prediction. Squaring it ignores how far it is from the target.
       - id: b
         text: "`loss = e ** 2`"
         correct: true
         feedback: Squaring the signed miss gives the loss for this example.
       - id: c
-        text: "`loss = (y_hat + y) ** 2`"
+        text: "`loss = (e - y) ** 2`"
         correct: false
-        feedback: The error is the difference between prediction and target. Adding them can give a nonzero loss even for a perfect prediction.
+        feedback: The error already subtracts the target. Subtracting it again can give a nonzero loss even for a perfect prediction.
     solution: Use `e ** 2` to turn the signed miss into a squared error.
   - id: gd-review-stale-error-code
     dimension: implementation

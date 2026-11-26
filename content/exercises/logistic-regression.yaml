@@ -755,7 +755,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: A logistic regression model assigns probability $p=0.8$ to label 1 on two examples. Example A has observed label 0 and example B has observed label 1. Find the binary cross-entropy loss for A minus the loss for B, to two decimal places. Round only at the end.
+    prompt: A logistic regression model assigns probability $p=0.8$ to label 1 on two examples. Example A has observed label 0 and example B has observed label 1. Find the binary cross-entropy loss for A minus the loss for B. Use natural logarithms and round to two decimal places only at the end.
     answer: 1.39
     tolerance: { abs: 0.005 }
     solution: The observed labels received probabilities $0.2$ and $0.8$ respectively. Their loss difference is $-\ln(0.2)+\ln(0.8)\approx1.39$.
@@ -777,9 +777,9 @@ exercises:
         correct: false
         feedback: The weight would scale the bias as well as the input.
       - id: c
-        text: Swap the weight and bias before multiplying by the input.
+        text: Multiply the input by the bias and add the weight.
         correct: false
-        feedback: The order within the sum makes no difference. Both terms still get multiplied by the input.
+        feedback: This swaps the parameters' jobs. The weight scales the input and the bias adds a fixed amount.
     solution: Compute the weighted input first, then add the bias once with `z = w * x + b`.
   - id: logreg-review-threshold-code
     dimension: implementation
