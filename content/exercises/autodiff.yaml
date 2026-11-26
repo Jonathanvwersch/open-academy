@@ -717,7 +717,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: "A calculation has four adjustable inputs and six scalar outputs. To find the slope of every output with respect to each input, how many more passes does reverse mode take than ordinary forward mode? Compare the total passes for each mode, including any recording pass."
+    prompt: "A calculation has four adjustable inputs and six scalar outputs. To find the slope of every output with respect to each input, how many more passes does reverse mode take than forward mode? For each mode, count every pass through the calculation, forward or backward."
     answer: 3
     tolerance: { abs: 0 }
     solution: "Forward mode takes $4$ passes, one per input. Reverse mode takes one recording pass plus one backward pass for each of the $6$ outputs, so it takes $7-4=3$ more passes."
