@@ -208,7 +208,7 @@ knowledge_points:
 
       $$Q^\top Q=I.$$
 
-      To check for an inverse, ask whether a combination of columns with at least one nonzero coefficient can give the zero vector. Suppose $Qx=0$:
+      To check for an inverse, let $x$ be a vector with one coefficient per column of $Q$. Suppose $Qx=0$, where $0$ is the zero vector:
       $$
       \begin{aligned}
       Q^\top Qx&=Q^\top0 &&\text{multiply by the transpose}\\
