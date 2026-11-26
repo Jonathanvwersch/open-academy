@@ -1,14 +1,18 @@
 import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
 import type { ContentIndex } from '@academy/aesop/course/types';
 import { scoreLessonQuiz } from '@academy/aesop/lessons/lesson-quiz';
+import { answerLessonProblem } from '@academy/aesop/lessons/run-commands';
+import { loadRunSnapshot } from '@academy/aesop/lessons/run-recovery';
 import { newReviewCard, scheduleReview } from '@academy/aesop/memory/fsrs';
-import { and, eq, inArray } from 'drizzle-orm';
+import { applyMastery } from '@academy/aesop/memory/mastery-service';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { Rating, State } from 'ts-fsrs';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
+import { drizzleLearnerStore } from '../../src/db/learner-store.js';
 import {
   attempts,
   courseEnrollments,
@@ -122,6 +126,97 @@ test('a stale answer racing question recovery cannot record an attempt', async (
     expect.objectContaining({ id: recovered.pendingProblem.id, answeredAt: null }),
   ]);
   expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(0);
+});
+
+test('recovery can replace a deleted problem while its answer waits for the run lock', async () => {
+  expect((await startRun()).status).toBe(200);
+  const store = drizzleLearnerStore(db);
+  const run = await store.getLessonRun(userId, { conceptId });
+  if (!run) throw new Error('Missing lesson run');
+  const [stale] = await store.listLessonProblems(userId, run.id);
+  const lesson = content.lessonsByConcept.get(conceptId);
+  if (!lesson) throw new Error('Missing lesson');
+  const index = { ...content, exercisesById: new Map(content.exercisesById) };
+  index.exercisesById.delete(stale.exerciseId);
+  const now = new Date(headers['X-Now']);
+  const runtime = {
+    now: () => now,
+    random: () => 0.5,
+    newId: () => crypto.randomUUID(),
+    enableFsrsFuzz: false,
+  };
+  const submitAnswer = (reportPid: (pid: number) => void) =>
+    db.transaction(async (connection) => {
+      const [{ pid }] = await connection.execute<{ pid: number }>(
+        sql`select pg_backend_pid() as pid`,
+      );
+      reportPid(pid);
+      return answerLessonProblem(
+        drizzleLearnerStore(connection),
+        runtime,
+        {
+          userId,
+          conceptId,
+          timeZone: 'Europe/London',
+          resolved: { index, lesson },
+          problemId: stale.id,
+          answer: correctAnswer(stale.exerciseId, stale.seed),
+        },
+        {
+          applyMastery,
+          async grade() {
+            throw new Error('Deleted problem should not be graded');
+          },
+          async hasTutorReply() {
+            return false;
+          },
+        },
+      );
+    });
+  let answer: ReturnType<typeof submitAnswer> | undefined;
+  const recoveryStore: typeof store = {
+    ...store,
+    transaction(fn) {
+      return store.transaction((tx) =>
+        fn({
+          ...tx,
+          async getLessonRun(...args) {
+            const locked = await tx.getLessonRun(...args);
+            const pid = await new Promise<number>((resolve, reject) => {
+              answer = submitAnswer(resolve);
+              void answer.catch(reject);
+            });
+            // Hold recovery after its run lock until PostgreSQL reports the answer waiting on it.
+            const deadline = performance.now() + 2_000;
+            while (performance.now() < deadline) {
+              const [{ blocked }] = await tx.connection.execute<{ blocked: boolean }>(
+                sql`select pg_backend_pid() = any(pg_blocking_pids(${pid})) as blocked`,
+              );
+              if (blocked) return locked;
+            }
+            throw new Error('Answer did not wait for the recovery transaction');
+          },
+        }),
+      );
+    },
+  };
+
+  const recovered = await loadRunSnapshot(
+    recoveryStore,
+    userId,
+    run,
+    lesson,
+    index,
+    now,
+    runtime,
+  ).catch(async (error: unknown) => {
+    await answer?.catch(() => undefined);
+    throw error;
+  });
+  expect(await answer).toEqual({ kind: 'not_found' });
+  expect(recovered?.derived.pending?.exerciseId).not.toBe(stale.exerciseId);
+  expect(recovered?.derived.pending).toBeDefined();
+  expect(await store.listAttempts(userId, {})).toEqual([]);
 });
 
 test('a deleted last answer keeps step progress and opens the next question', async () => {
