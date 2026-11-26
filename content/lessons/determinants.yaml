@@ -1,14 +1,14 @@
 concept: determinants
 version: 1
 objective: |
-  **Goal:** calculate determinants with the 2×2 formula and row operations, explain their size and sign as area or volume scaling and orientation, and use zero to recognise when a square matrix loses information.
+  **Goal:** calculate determinants with the 2×2 formula and row operations, explain how a 2×2 determinant records area scaling and orientation, and use zero to recognise when a square matrix loses information.
 recap:
   - concept: matrices
     text: "Multiplying a matrix by a vector takes one dot product per row. For a two-entry input, $\\begin{bmatrix}a&b\\\\c&d\\end{bmatrix}\\begin{bmatrix}x\\\\y\\end{bmatrix}=\\begin{bmatrix}ax+by\\\\cx+dy\\end{bmatrix}$."
 where_this_fits: |
   ### What is a determinant?
 
-  A determinant is a number that measures how much a matrix changes area or volume, with a sign that records a mirror flip. It belongs to a **square matrix**, which has the same number of rows and columns. We'll start with $2\times2$ matrices and flat pictures, then use row operations to calculate determinants of larger matrices.
+  A determinant is a number associated with a **square matrix**, which has the same number of rows and columns. For a $2\times2$ matrix, it tells us how areas scale and whether the picture flips. We'll start with flat pictures, then use row operations to calculate determinants of larger matrices.
 
   Matrix multiplication already lets us calculate where each point goes. The determinant answers a question about the whole picture: does it cover more area, turn over, or collapse? That last case matters when we want to recover an input from an output, because a collapse can erase information.
 
@@ -325,7 +325,7 @@ knowledge_points:
 
       $$R_2\leftarrow R_2-2R_1.$$
 
-      This replaces row 2 and keeps row 1. It leaves the determinant unchanged because it slides one output coordinate in proportion to another. The slide keeps base, perpendicular height and orientation, preserving area. In three dimensions it keeps base area and perpendicular height, preserving volume.
+      This replaces row 2 and keeps row 1. Adding a multiple of one row to another leaves the determinant unchanged. In two dimensions this move slides one output coordinate in proportion to the other. The slide keeps the base, perpendicular height and orientation, so the signed area scale stays the same.
 
       The picture shows a rectangle's top sliding right while its base stays fixed. Both shapes have base 2 and height 3.
 
@@ -344,11 +344,11 @@ knowledge_points:
       </g></svg>
       ```
 
-      A **row swap**, written $R_1\leftrightarrow R_2$, exchanges two entire rows. This exchanges two output coordinates, reflecting the picture across the line where those coordinates agree. Area or volume stays the same, while orientation reverses, so each swap flips the determinant's sign.
+      A **row swap**, written $R_1\leftrightarrow R_2$, exchanges two entire rows and flips the determinant's sign. In two dimensions this exchanges the output coordinates. The picture reflects across the line where the coordinates agree, keeping its area and reversing its orientation.
 
       ### Zeros below the diagonal
 
-      The **main diagonal** runs from top left to bottom right. An **upper triangular matrix** has zeros below it; a **lower triangular matrix** has zeros above it. Either determinant is the product of its diagonal entries. For the upper case in two dimensions, the first column gives a horizontal base and the second gives its height. In three dimensions, the first two columns give a base in the first two coordinate directions; the third diagonal entry gives the perpendicular height. Multiplying these signed lengths gives signed area or volume. The same base-and-height argument works for the lower case.
+      The **main diagonal** runs from top left to bottom right. An **upper triangular matrix** has zeros below it; a **lower triangular matrix** has zeros above it. Either determinant is the product of its diagonal entries. In two dimensions, one of the two products in the determinant formula is zero, leaving the diagonal product.
 
       A **pivot** is the first nonzero entry of a row used to clear entries below it. Work left to right, swapping in a nonzero entry when needed. Add multiples of that row to make the entries below its pivot zero. For a square matrix with a pivot in every column, the pivots end up on the diagonal. If no pivot is available in a column, the resulting triangular matrix has a zero diagonal entry and determinant zero.
 

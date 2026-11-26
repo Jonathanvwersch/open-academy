@@ -307,7 +307,7 @@ knowledge_points:
 
       ### The closest point instead
 
-      The independent columns of $A$ span a plane. Picture it as a sheet of paper with $b$ sticking out. Every $Ax$ lies in that plane. Write its closest point to $b$ as $A\hat x$, where $\hat x$ ("x hat") holds the best $c$ and $m$. Draw any line in the plane through that point. It must also be closest along the line, so the projection rule makes the error $e=b-A\hat x$ perpendicular to the line. This works in every direction in the plane, including both column directions.
+      The independent columns of $A$ span a plane that contains every $Ax$. Write the plane's closest point to $b$ as $A\hat x$, where $\hat x$ ("x hat") holds the best $c$ and $m$. Subtract $A\hat x$ from $b$ and from every point in the plane. This shifts the closest point to the origin without changing distances or directions. The origin is now the projection of the error vector $e=b-A\hat x$ onto every line through the origin in the shifted plane. So $e$ is perpendicular to both column directions.
 
       Each entry of $A^\top e$ dots a column with the error. Require these dot products to be zero:
       $$

@@ -16,7 +16,7 @@ exercises:
       - id: sum-sign
         text: Add the diagonal entries and reverse the sign for each swap.
         correct: false
-        feedback: A triangular determinant is a product of diagonal entries. Adding them does not give its area or volume scale.
+        feedback: The diagonal entries of a triangular matrix give its determinant when multiplied together.
       - id: product-additions
         text: Multiply the diagonal entries and reverse the sign for each row addition.
         correct: false
@@ -29,21 +29,21 @@ exercises:
     lesson_only: true
     difficulty: 2
     est_minutes: 2
-    prompt: For $A=\begin{bmatrix}0&2&1\\2&2&0\\4&6&5\end{bmatrix}$, one row swap followed by two row additions gives $T=\begin{bmatrix}2&2&0\\0&2&1\\0&0&4\end{bmatrix}$. Why do the row additions leave the determinant unchanged?
+    prompt: One row swap and two row additions change the original matrix $A=\begin{bmatrix}0&2&1\\2&2&0\\4&6&5\end{bmatrix}$ into the triangular matrix $T=\begin{bmatrix}2&2&0\\0&2&1\\0&0&4\end{bmatrix}$. Which reasoning gives the determinant of $A$?
     options:
       - id: one-swap
-        text: They slide output coordinates while preserving volume and orientation.
+        text: Use the diagonal product of $T$ and reverse its sign for the row swap.
         correct: true
-        feedback: Each slide keeps base area and perpendicular height, and it preserves orientation.
+        feedback: The row additions leave the determinant unchanged. The one swap accounts for the sign reversal.
       - id: two-additions
-        text: They change entries below the diagonal, which never affect a determinant.
+        text: Use the diagonal product of $A$, since entries below the diagonal do not affect it.
         correct: false
         feedback: Entries below the diagonal can affect a determinant. The diagonal-product shortcut applies once the matrix is triangular.
       - id: initial-zero
-        text: They keep each row's sum fixed, which preserves volume and orientation.
+        text: Use the diagonal product of $T$ as it is, since all three row moves preserve the determinant.
         correct: false
-        feedback: The third row's sum changes from 15 to 7 to 4 during the additions. Row sums do not measure volume.
-    solution: Row additions slide the output picture while keeping its volume and orientation. The triangular determinant is $2\times2\times4=16$; only the row swap reverses the original determinant's sign, giving $-16$.
+        feedback: Row additions preserve the determinant, but a row swap reverses its sign.
+    solution: The triangular determinant is $2\times2\times4=16$. The two row additions preserve the determinant and the one swap reverses its sign, so the original determinant is $-16$.
   - id: det-pivots-triangular-template
     dimension: math
     type: numeric
@@ -148,7 +148,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A robot's planar coordinate map sends $(1,0)$ to $(0,2)$ and $(0,1)$ to $(3,1)$. What is the signed area scale of this map?
+    prompt: A robot maps planar coordinate vectors by multiplying them by a $2\times2$ matrix. The input vector $(1,0)$ becomes $(0,2)$, and the input vector $(0,1)$ becomes $(3,1)$. What is the signed area scale of this map?
     answer: -6
     tolerance: { abs: 0.000001 }
     common_wrong:
@@ -191,7 +191,7 @@ exercises:
       - id: row-addition
         text: Add three times row 1 to row 2, keeping row 1.
         correct: true
-        feedback: Adding a multiple of another row preserves area or volume and orientation.
+        feedback: Adding a multiple of one row to another leaves the determinant unchanged.
       - id: swap
         text: Exchange row 1 and row 2, keeping every entry.
         correct: false
@@ -199,8 +199,8 @@ exercises:
       - id: erase
         text: Replace row 2 with zeros, keeping row 1.
         correct: false
-        feedback: Erasing a row can collapse area or volume and make a nonzero determinant zero.
-    solution: Adding a row multiple slides the output picture while preserving its area or volume and orientation. This keeps its determinant.
+        feedback: A zero row gives a zero determinant, so replacing a row by zeros can change the determinant.
+    solution: The row-addition rule says that adding a multiple of one row to another leaves the determinant unchanged.
   - id: det-recall-pivots-formula
     dimension: math
     type: expression
@@ -347,7 +347,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A planar map sends $(1,0)$ to $(-1,0)$ and $(0,1)$ to $(0,-1)$. What happens to orientation?
+    prompt: A planar map multiplies coordinate vectors by a $2\times2$ matrix. It sends the first edge vector $(1,0)$ to $(-1,0)$ and the second edge vector $(0,1)$ to $(0,-1)$. What happens to orientation?
     options:
       - id: preserved
         text: It is preserved, because turning from the first edge to the second is still counterclockwise.
