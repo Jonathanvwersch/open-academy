@@ -1,71 +1,55 @@
-import { activeStudyCourseIds, studySetBackfill } from '@academy/aesop/course/study-set';
-import type { ContentIndex } from '@academy/aesop/course/types';
-import { activePlacementRuns } from '@academy/aesop/placement/diagnostic-commands';
-import { loadSchedulerState } from '@academy/aesop/planner/load-scheduler-state';
-import { attemptedExerciseIdsByActivity as groupAttemptedExerciseIdsByActivity } from '@academy/aesop/planner/review-topics';
-import type { SchedulerState } from '@academy/aesop/planner/scheduler';
-import {
-  activeSessionForDate,
-  recoverReviewActivities,
-} from '@academy/aesop/planner/session-state';
-import type { Enrollment, Settings } from '@academy/aesop/store/core-store';
-import type { MemoryLearnerStore } from '@academy/aesop/store/memory-store';
-import type { Session } from '@academy/aesop/store/session-store';
+import { activeStudyCourseIds, studySetBackfill } from '../course/study-set.js';
+import type { ContentIndex } from '../course/types.js';
+import { activePlacementRuns } from '../placement/diagnostic-commands.js';
+import { loadSchedulerState } from '../planner/load-scheduler-state.js';
+import { attemptedExerciseIdsByActivity as groupAttemptedExerciseIdsByActivity } from '../planner/review-topics.js';
+import type { SchedulerState } from '../planner/scheduler.js';
+import { activeSessionForDate, recoverReviewActivities } from '../planner/session-state.js';
+import type { Enrollment, Settings } from '../store/core-store.js';
+import type { CourseStore } from '../store/course-store.js';
+import type { Session } from '../store/session-store.js';
 
-/** The learner row the HTTP app reads once per request. */
-export type DirectUser = {
+export type EngineUser = {
   id: string;
-  displayName: string;
   timezone: string;
   startDate: string;
   prefs: Record<string, unknown>;
   activeCourseId: string | null;
   studySetInitializedAt: Date | null;
-  createdAt: Date;
 };
 
-export function directUser(
-  userId: string,
-  createdAt: Date,
-  settings: Settings | undefined,
-): DirectUser | undefined {
+export function engineUser(userId: string, settings: Settings | undefined): EngineUser | undefined {
   return settings
     ? {
         id: userId,
-        displayName: 'Learner',
         timezone: settings.timeZone,
         startDate: settings.startDate,
         prefs: settings.prefs,
         activeCourseId: settings.activeCourseId,
         studySetInitializedAt: settings.studySetInitializedAt,
-        createdAt,
       }
     : undefined;
 }
 
-/**
- * The same reads and request-scoped caches as the API's `LearnerRepository`, answered from the
- * in-memory learner store.
- */
-export class DirectLearnerRepository {
-  private userPromise: Promise<DirectUser | undefined> | undefined;
+export class EngineLearnerRepository {
+  private userPromise: Promise<EngineUser | undefined> | undefined;
   private courseEnrollmentsPromise: Promise<Enrollment[]> | undefined;
   private studyCourseIdsPromise: Promise<string[]> | undefined;
   private studySetInitialized = false;
 
   constructor(
-    readonly store: MemoryLearnerStore,
+    readonly store: CourseStore,
     readonly userId: string,
-    private readonly createdAt: Date,
-    private readonly requestUser?: DirectUser,
+    private readonly requestUser?: EngineUser,
     private readonly sessionContent?: { load: () => Promise<ContentIndex>; now: () => Date },
+    private readonly enableFsrsFuzz = true,
   ) {}
 
   user() {
     if (this.requestUser) return Promise.resolve(this.requestUser);
     this.userPromise ??= this.store
       .getSettings(this.userId)
-      .then((settings) => directUser(this.userId, this.createdAt, settings));
+      .then((settings) => engineUser(this.userId, settings));
     return this.userPromise;
   }
 
@@ -143,7 +127,7 @@ export class DirectLearnerRepository {
       ...loaded,
       settings: settings ?? null,
       studyCourseIds: this.studyCourseIds(content, this.sessionContent?.now ?? (() => now)),
-      enableFsrsFuzz: process.env.NODE_ENV !== 'test',
+      enableFsrsFuzz: this.enableFsrsFuzz,
     });
   }
 

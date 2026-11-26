@@ -69,7 +69,7 @@ test('direct simulator modules do not load the app, the database or its config',
   };
   await visit(new URL('learner-simulation-direct-driver.ts', import.meta.url));
   await visit(new URL('learner-simulator.ts', import.meta.url));
-  expect(visited.size).toBeGreaterThan(5);
+  expect(visited.size).toBeGreaterThan(4);
   expect(reached).toEqual([]);
 });
 

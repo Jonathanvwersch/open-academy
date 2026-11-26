@@ -320,6 +320,12 @@ export function answerQuiz(
   context: QuizContext,
   id: string | undefined,
   input: { position: number; questionId?: string; answer: unknown },
+  gradeExerciseAnswer: (
+    exercise: Parameters<typeof gradeExercise>[0],
+    answer: unknown,
+    options: { random: () => number },
+  ) => ReturnType<typeof gradeExercise> = (exercise, answer, { random }) =>
+    gradeExercise(exercise, answer, { random }),
 ) {
   const { learnerId, content, now, random } = context;
   return withQuizLock(store, learnerId, async (tx) => {
@@ -346,7 +352,7 @@ export function answerQuiz(
     }
     const emptyMessage = emptyAnswerMessage(current.question.exercise.type, input.answer);
     if (emptyMessage) return rejected('invalid', emptyMessage);
-    const grade = await gradeExercise(current.question.exercise, input.answer, { random });
+    const grade = await gradeExerciseAnswer(current.question.exercise, input.answer, { random });
     if (grade.status !== 'graded') return rejected('invalid', grade.feedback);
     const shownAt = items[items.indexOf(current) - 1]?.answeredAt ?? run.startedAt;
     await tx.patchTimedQuizItem(learnerId, run.id, current.position, {

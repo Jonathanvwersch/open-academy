@@ -1,11 +1,18 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
 import {
+  createEngine,
+  type EngineOperation,
+  type EngineResult,
+} from '@academy/aesop/engine/create-engine';
+import { EngineLearnerRepository } from '@academy/aesop/engine/repository';
+import {
   type ImplicitRepetitionTraceEvent,
   setImplicitRepetitionTrace,
 } from '@academy/aesop/memory/mastery-service';
 import type { MasteryRecord } from '@academy/aesop/memory/types';
 import { localDateKey } from '@academy/aesop/progress/xp';
 import { type MemoryLearnerStore, memoryStore } from '@academy/aesop/store/memory-store';
+import { z } from 'zod';
 import type {
   AuditAttemptRow,
   AuditLessonRunRow,
@@ -16,9 +23,6 @@ import type {
   SimulatorAudit,
   SimulatorFixtures,
 } from './learner-simulation-audit.js';
-import type { DirectRequest } from './learner-simulation-direct-lessons.js';
-import { directOperation, type PaperProgressRow } from './learner-simulation-direct-ops.js';
-import { DirectLearnerRepository, directUser } from './learner-simulation-direct-repo.js';
 import {
   type ApiResult,
   httpRequestFor,
@@ -35,10 +39,57 @@ import {
 
 const learnerId = '00000000-0000-4000-8000-000000000001';
 
+type PaperProgressRow = {
+  userId: string;
+  paperId: string;
+  lastPage: number;
+  notes: Record<string, string>;
+  summary: string | null;
+  summaryJudgement: unknown;
+  completedAt: Date | null;
+  updatedAt: Date;
+};
 /** Deterministic UUID-shaped ids, so ids look the same to every check as they do over HTTP. */
 function uuidCounter() {
   let count = 0;
   return () => `00000000-0000-4000-8000-${(++count).toString(16).padStart(12, '0')}`;
+}
+
+function paperProgress(
+  content: ContentIndex,
+  userId: string,
+  now: Date,
+  paperId: string,
+  input: Record<string, unknown>,
+  papers: Map<string, PaperProgressRow>,
+) {
+  const paper = content.papersById.get(paperId);
+  if (!paper) return { status: 404, body: { error: 'Paper not found' } };
+  const body = z
+    .object({
+      lastPage: z.number().int().min(1).optional(),
+      notes: z.record(z.string(), z.string().max(4000)).optional(),
+    })
+    .strict()
+    .safeParse(input);
+  if (!body.success) return { status: 400, body: { error: 'Invalid paper progress' } };
+  const allowed = new Set(paper.questions.map((question) => question.id));
+  if (Object.keys(body.data.notes ?? {}).some((id) => !allowed.has(id))) {
+    return { status: 400, body: { error: 'Unknown question id in notes' } };
+  }
+  const existing = papers.get(paper.id);
+  const saved: PaperProgressRow = {
+    userId,
+    paperId: paper.id,
+    lastPage: body.data.lastPage ?? existing?.lastPage ?? 1,
+    notes: { ...(existing?.notes ?? {}), ...(body.data.notes ?? {}) },
+    summary: existing?.summary ?? null,
+    summaryJudgement: existing?.summaryJudgement ?? null,
+    completedAt: existing?.completedAt ?? null,
+    updatedAt: now,
+  };
+  papers.set(paper.id, saved);
+  return { status: 200, body: saved };
 }
 
 /** Calls Aesop use cases on a fresh in-memory store for each learner: no app, database or keys. */
@@ -50,7 +101,7 @@ export class DirectMemoryDriver implements SimulatorDriver {
   private content: ContentIndex;
   private readonly timeZone: string;
   private store: MemoryLearnerStore | undefined;
-  private createdAt: Date | undefined;
+  private engine: ReturnType<typeof createEngine> | undefined;
   afterCall: SimulatorAfterCall | undefined;
   activityTrace: ((trace: readonly ImplicitRepetitionTraceEvent[]) => void) | undefined;
   readonly failedRequests: SimulatedApiFailure[] = [];
@@ -67,7 +118,7 @@ export class DirectMemoryDriver implements SimulatorDriver {
       if (!this.store) throw new Error('The simulated learner has not made a request yet');
       return this.store;
     };
-    this.audit = memorySimulatorAudit(store, () => this.createdAt ?? new Date(0));
+    this.audit = memorySimulatorAudit(store);
     this.fixtures = memorySimulatorFixtures(store);
   }
 
@@ -85,7 +136,6 @@ export class DirectMemoryDriver implements SimulatorDriver {
 
   private learnerStore(now: Date) {
     if (!this.store) {
-      this.createdAt = now;
       this.store = memoryStore({
         settings: new Map([
           [
@@ -100,6 +150,12 @@ export class DirectMemoryDriver implements SimulatorDriver {
           ],
         ]),
       });
+      this.engine = createEngine({
+        content: async () => this.content,
+        store: this.store,
+        newId: this.newId,
+        fsrsFuzz: process.env.NODE_ENV !== 'test',
+      });
     }
     return this.store;
   }
@@ -107,47 +163,43 @@ export class DirectMemoryDriver implements SimulatorDriver {
   async call(operation: SimulatorOperation, now: Date): Promise<ApiResult> {
     const { method, path, body } = httpRequestFor(operation);
     const store = this.learnerStore(now);
-    const createdAt = this.createdAt ?? now;
     const random = this.randomness.next({ method, path, body }, now);
     const trace: ImplicitRepetitionTraceEvent[] = [];
     setImplicitRepetitionTrace((event) => trace.push(event));
     try {
-      let settings = await store.getSettings(learnerId);
+      const settings = await store.getSettings(learnerId);
       if (settings && settings.timeZone !== this.timeZone) {
         if ((await store.listXpEvents(learnerId, {})).length > 0) {
           throw new Error('The direct driver cannot move XP days to a new time zone');
         }
         await store.patchSettings(learnerId, { timeZone: this.timeZone });
-        settings = await store.getSettings(learnerId);
       }
-      const content = this.content;
       const clock = () => now;
-      const repository = (
-        target: MemoryLearnerStore,
-        requestUser: boolean,
-        sessionContent: boolean,
-      ) =>
-        new DirectLearnerRepository(
-          target,
-          learnerId,
-          createdAt,
-          requestUser ? directUser(learnerId, createdAt, settings) : undefined,
-          sessionContent ? { load: async () => content, now: clock } : undefined,
-        );
-      const request: DirectRequest = {
-        store,
-        userId: learnerId,
+      const engine = this.engine;
+      if (!engine) throw new Error('The simulated learner engine is not initialized');
+      const learner = engine.learner({
+        id: learnerId,
         timeZone: this.timeZone,
         now: clock,
-        content,
         random,
-        newId: this.newId,
-        repo: repository(store, true, true),
-        freshRepo: (target, sessionContent) => repository(target, false, sessionContent),
-      };
+      });
       let response: { status: number; body: unknown };
       try {
-        response = await directOperation(request, operation, this.papers);
+        if (operation.kind === 'paperProgress') {
+          response = paperProgress(
+            this.content,
+            learnerId,
+            now,
+            operation.paperId,
+            operation.body,
+            this.papers,
+          );
+        } else {
+          const invoke = learner[operation.kind] as (
+            operation: EngineOperation,
+          ) => Promise<EngineResult>;
+          response = await invoke(operation);
+        }
       } catch (error) {
         response = {
           status: 500,
@@ -188,6 +240,7 @@ export class DirectMemoryDriver implements SimulatorDriver {
 
   async cleanup() {
     this.store = undefined;
+    this.engine = undefined;
   }
 }
 
@@ -269,10 +322,7 @@ const time = (value: Date | string | null | undefined) =>
   value === null || value === undefined ? 0 : new Date(value).getTime();
 
 /** Reads the same audit facts as the PostgreSQL audit, in the same row order. */
-export function memorySimulatorAudit(
-  store: () => MemoryLearnerStore,
-  createdAt: () => Date,
-): SimulatorAudit {
+export function memorySimulatorAudit(store: () => MemoryLearnerStore): SimulatorAudit {
   const masteryRows = async (userId: string) =>
     (await store().listMastery(userId))
       .map((record) => masteryRow(userId, record))
@@ -325,7 +375,14 @@ export function memorySimulatorAudit(
       xp: new Map(xpList.map((row) => [row.id, JSON.stringify(row)])),
     };
   };
-  const repository = (userId: string) => new DirectLearnerRepository(store(), userId, createdAt());
+  const repository = (userId: string) =>
+    new EngineLearnerRepository(
+      store(),
+      userId,
+      undefined,
+      undefined,
+      process.env.NODE_ENV !== 'test',
+    );
   const audit: SimulatorAudit = {
     async progressRows(userId) {
       const [mastery, runs, placements, open] = await Promise.all([
@@ -594,11 +651,13 @@ export function memorySimulatorFixtures(store: () => MemoryLearnerStore): Simula
       if (existingCards.length || existingRuns.length || existingMastery.length) {
         throw new Error('Scripted scenarios start from a learner with no progress');
       }
-      await new DirectLearnerRepository(target, userId, now).startCourse(
-        courseId,
-        'beginning',
-        now,
-      );
+      await new EngineLearnerRepository(
+        target,
+        userId,
+        undefined,
+        undefined,
+        process.env.NODE_ENV !== 'test',
+      ).startCourse(courseId, 'beginning', now);
       await target.patchSettings(userId, {
         activeCourseId: courseId,
         studySetInitializedAt: now,
