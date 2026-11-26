@@ -30,6 +30,8 @@ A course is a folder of YAML files. The engine loads the folder and checks it.
 
 The check stops a course that has a missing topic, a prerequisite cycle, or a question for a topic that does not exist.
 
+- Multiple-choice options can't mix plain and maths numbers (`3 and $-2$`) or write a negative number in plain text (`-1`). Write them in maths: `$3$ and $-2$`, `$-1$`.
+
 Topic IDs are global. A topic in one course can use a topic from a different course as a prerequisite.
 
 ## 3. Unlocking (`graph/`)
