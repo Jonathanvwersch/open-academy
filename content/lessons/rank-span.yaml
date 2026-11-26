@@ -137,7 +137,7 @@ knowledge_points:
 
       ### Testing by elimination
 
-      Row moves preserve column equalities in both directions because the moves are reversible.
+      Each row move applies the same linear operation to every column, preserving their relations. Reversing the move recovers any relation that holds after it.
 
       Scan columns from left to right. Use a nonzero entry as a **pivot** to clear the entries below it. After each pivot, look only in the rows below it. Skip a column if all those rows have zero there. Swap rows if needed to bring the pivot to the first unused row.
 
