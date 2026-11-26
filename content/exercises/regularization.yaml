@@ -397,7 +397,8 @@ exercises:
     prompt: A training library updates weight $w$ to $w_{\text{new}}=(1-\eta d)\,w-\eta\,\partial
       L_{\text{data}}/\partial w$, where $\eta$ is the learning rate, $d$ the library's decay setting and
       $L_{\text{data}}$ the data loss. You set $d=0.01$. Which penalty strength $\lambda$, in
-      $L_{\text{data}}+\lambda\sum_j w_j^2$, does that match?
+      $L_{\text{data}}+\lambda\sum_{j=1}^n w_j^2$, does that match? Here $w_j$ is the $j$th weight
+      and $n$ is the number of weights.
     options:
       - id: a
         text: $\lambda=0.01$
