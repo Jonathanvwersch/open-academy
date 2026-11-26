@@ -34,7 +34,7 @@ export function LessonSteps({
     >
       {state.points.map((item, index) => {
         const passed = item.status === 'passed';
-        const current = item.id === state.currentPointId;
+        const current = item.id === (currentPointId ?? state.currentPointId);
         const available = passed || current;
         const statusClass = passed
           ? 'border-green-300 bg-green-50 text-green-900'
@@ -45,9 +45,7 @@ export function LessonSteps({
           viewingPastStep && item.id === viewingPointId ? 'ring-1 ring-primary' : '';
         const ariaCurrent =
           (viewingPastStep && item.id === viewingPointId) ||
-          (!viewingPastStep &&
-            state.status === 'in_progress' &&
-            item.id === (currentPointId ?? state.currentPointId))
+          (!viewingPastStep && state.status === 'in_progress' && current)
             ? 'step'
             : undefined;
         const label = `${passed ? '✓ ' : ''}Step ${index + 1}`;
@@ -70,9 +68,7 @@ export function LessonSteps({
                     passed ? 'passed' : current ? 'current' : 'locked'
                   }`}
                   aria-current={ariaCurrent}
-                  onClick={() =>
-                    item.id === state.currentPointId ? returnToCurrentStep() : viewStep(item.id)
-                  }
+                  onClick={() => (current ? returnToCurrentStep() : viewStep(item.id))}
                 >
                   {label}
                 </button>
