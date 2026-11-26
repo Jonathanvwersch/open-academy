@@ -399,8 +399,11 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: On trips $(1,3)$ and $(2,5)$, a linear model stalls at $w=2.6$, $b=0$ with loss 0.1. Its
-      weight slope is 0 and bias slope is -0.2. What should you inspect first?
+    prompt:
+      A linear model predicts trip time in seconds from distance in metres. Its two training trips
+      took 3 seconds for 1 metre and 5 seconds for 2 metres. Training stalls at weight $w=2.6$ and bias
+      $b=0$, with loss 0.1. The weight slope is 0 and the bias slope is $-0.2$. What should you inspect
+      first?
     options:
       - id: a
         text: Whether the bias parameter is included in the optimiser updates.
@@ -561,7 +564,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A check uses h=0.01, L(w+h)=8.8804 and L(w-h)=9.1204. What is the numerical slope?
+    prompt: A numerical gradient check for the loss $L$ at weight $w$ uses a nudge of $h=0.01$. It
+      measures $L(w+h)=8.8804$ and $L(w-h)=9.1204$. What is the central estimate of the loss slope with
+      respect to $w$?
     answer: -12
     tolerance:
       abs: 0.001
@@ -1149,3 +1154,44 @@ exercises:
     answer: "(1+2*eta)*(w-4)"
     variables: { "w": [-2, 10], "eta": [0.01, 1.4] }
     solution: "The slope is $2(w-4)$. Adding the slope step gives $w+2\\eta(w-4)-4=(1+2\\eta)(w-4)$."
+
+  - id: dbt-epoch-loss-logging
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A training loop currently logs the loss on the final minibatch of each epoch. The resulting curve jumps around. Which quantity should it log to check if training loss is falling across epochs?"
+    options:
+      - id: a
+        text: "Loss on the whole training set at the end of each epoch."
+        correct: true
+      - id: b
+        text: "Loss on the first training minibatch of each epoch."
+        correct: false
+        feedback: "The first batch is still only a slice of the data."
+      - id: c
+        text: "The smallest minibatch loss seen in each epoch."
+        correct: false
+        feedback: "The lowest batch loss leaves out the harder examples and can hide overall changes."
+    solution: "After each epoch, evaluate loss on all training examples with the weights at that point. An individual batch can give a noisy view."
+
+  - id: dbt-relative-check-code
+    dimension: implementation
+    type: expression
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A program checks a code slope `a` against a numerical slope `n`. Assume at least one slope is nonzero. Write the expression for their relative difference. Type `abs(...)` for absolute value and `max(...)` for maximum."
+    answer: "abs(a-n)/max(abs(a),abs(n))"
+    variables:
+      a: { values: [-11, -0.8, -0.4, -0.1, 0.2, 0.35, 0.7, 7] }
+      n: { values: [-15, -0.7, -0.3, -0.05, 0.15, 0.4, 0.9, 9] }
+    common_wrong:
+      - answer: "abs(a-n)/max(a,n)"
+        category: math_error
+        feedback: "Taking the maximum of the signed slopes can use the wrong scale for negative slopes."
+      - answer: "abs(a-n)/(abs(a)+abs(n))"
+        category: math_error
+        feedback: "Adding the sizes changes the scale; the check uses just the larger size."
+    solution: "Use `abs(a - n) / max(abs(a), abs(n))`. The absolute values measure the difference and the slope sizes whether the slopes are positive or negative."

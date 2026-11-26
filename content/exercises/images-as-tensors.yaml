@@ -67,7 +67,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: Which (row, column) pair names the top-left pixel?
+    prompt: Using zero-based image array indices, which (row, column) pair names the top-left pixel?
     options:
       - id: a
         text: (0, 0)
@@ -586,3 +586,58 @@ exercises:
     answer: "(x-m_c)/s_c"
     variables: { "x": [0, 1], "m_c": [0.1, 0.9], "s_c": [0.05, 0.5] }
     solution: "Subtract the channel mean and divide by its standard deviation to get $(x-m_c)/s_c$."
+
+  - id: iat-grid-row-from-index
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A grayscale image has two rows of brightness values. From left to right, the top row is $(14,38,72)$ and the bottom row is $(101,53,26)$. What brightness is at row index $1$ and column index $0$?"
+    answer: 101
+    tolerance: { abs: 0 }
+    solution: "The array counts from zero, so row $1$ is the second row and column $0$ is its first entry: $101$."
+
+  - id: iat-rgba-channel-axis
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A colour image has shape $(6,9,4)$ in HWC (height, width, channels) layout. Transparency is the last channel. You transpose it to CHW (channels, height, width), then make a list by reading the channel grids in order, one grid at a time, from left to right and top to bottom. How many values come before the first transparency value in the list?"
+    answer: 162
+    tolerance: { abs: 0 }
+    solution: "CHW puts the three colour grids before the transparency grid. Each grid has $6$ rows of $9$ values, so $3\\cdot6\\cdot9=162$ values come first."
+
+  - id: iat-batch-pixels-from-shape
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Two batches of red, green and blue (RGB) images use different tensor layouts. The first batch has shape $(5,3,2,7)$ in NCHW (number of images, channels, height, width). The second batch has shape $(4,2,8,3)$ in NHWC (number of images, height, width, channels). How many more pixel positions are there across the images in the first batch than in the second?"
+    answer: 6
+    tolerance: { abs: 0 }
+    solution: "The first batch has $5\\cdot2\\cdot7=70$ pixel positions and the second has $4\\cdot2\\cdot8=64$. The channels store values at the same positions, so the difference is $70-64=6$."
+
+  - id: iat-blue-plane-read
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "An image in HWC (height, width, channels) layout has two rows of pixels. Each pixel triple lists its red, green and blue values. From left to right, row $0$ has pixels $(15,20,25)$ and $(30,37,42)$, and row $1$ has pixels $(45,51,55)$ and $(60,65,70)$. Transpose the image to CHW (channels, height, width). In channel $2$, take the value at row $1$, column $0$ and subtract the value at row $0$, column $1$. What is the result? All indices start at zero."
+    answer: 13
+    tolerance: { abs: 0 }
+    solution: "The transpose keeps the row and column of each blue value, so channel $2$ has $55$ at row $1$, column $0$ and $42$ at row $0$, column $1$. Subtract to get $55-42=13$."
+
+  - id: iat-standardise-from-uint8
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A uint8 pixel has red, green and blue values $(51,204,102)$. The model expects values first rescaled to lie between $0$ and $1$ and then standardised. For the rescaled values, the model uses channel means $(0.5,0.7,0.3)$ and channel standard deviations $(0.1,0.25,0.2)$, both in red, green and blue order. What standardised green value should go to the model?"
+    answer: 0.4
+    tolerance: { abs: 0.0001 }
+    solution: "Green rescales to $204/255=0.8$. Using the green mean and standard deviation gives $(0.8-0.7)/0.25=0.4$."

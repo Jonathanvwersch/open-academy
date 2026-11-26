@@ -69,7 +69,10 @@ exercises:
     role: "practice"
     difficulty: 1
     est_minutes: 3
-    prompt: "The model $\\hat y=2w+b$ has target $y=0$. The saved prediction is 3, and the shared slope at the prediction is $2(3-0)=6$. Complete the backward step: what is $\\partial L/\\partial w$?"
+    prompt: >-
+      A model predicts $\hat y=2w+b$ with weight $w$ and bias $b$. Its target is $y=0$ and its saved
+      prediction is 3. The slope of the loss $L$ with respect to the prediction is $2(3-0)=6$. Complete
+      the backward step: what is $\partial L/\partial w$?
     answer: 12
     tolerance: { "abs": 0.001 }
     solution: "Multiply the shared slope 6 by the weight’s local derivative 2, giving 12."
@@ -298,7 +301,10 @@ exercises:
     role: "practice"
     difficulty: 1
     est_minutes: 3
-    prompt: "For $\\hat y=wx+b$ on a batch of two examples, the prediction slopes are 2 and 4, already including the MSE’s division. Complete the bias step: what is $\\partial L/\\partial b$?"
+    prompt: >-
+      A model predicts $\hat y=wx+b$ from input $x$, weight $w$ and bias $b$. On a batch of two examples,
+      the loss slopes with respect to the predictions are 2 and 4, already including the division in the
+      mean squared error loss $L$. Complete the bias step: what is $\partial L/\partial b$?
     answer: 6
     tolerance: { "abs": 0.001 }
     solution: "The bias has local derivative 1 in each example, so its slope is $2+4=6$."
@@ -319,7 +325,10 @@ exercises:
     role: "practice"
     difficulty: 2
     est_minutes: 2
-    prompt: "With examples in rows, $X$ has shape $4\\times3$ and $G$ has shape $4\\times2$. What shape do the weight slopes $X^\\top G$ have?"
+    prompt:
+      The input matrix $X$ has shape $4\times3$ and the matrix $G$ of loss slopes for the layer's
+      scores has shape $4\times2$. Both matrices have examples in rows. What shape does the
+      weight-gradient matrix $X^\top G$ have?
     options:
       [
         {
@@ -423,7 +432,8 @@ exercises:
     role: "practice"
     difficulty: 1
     est_minutes: 3
-    prompt: "A gradient check measures $L(w+0.1)=10.24$ and $L(w-0.1)=7.84$. What derivative does the central difference estimate?"
+    prompt: A gradient check at weight $w$ measures loss $L(w+0.1)=10.24$ and $L(w-0.1)=7.84$. What
+      derivative does the central difference estimate?
     answer: 12
     tolerance: { "abs": 0.001 }
     common_wrong:
@@ -482,7 +492,10 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot’s calibration loss is $L(w)=(3w-1)^2$. At $w=1$, use nudge 0.1: $L(1.1)=5.29$ and $L(0.9)=2.89$. What central estimate should the backward derivative match?"
+    prompt: >-
+      A robot's calibration loss depends on weight $w$ as $L(w)=(3w-1)^2$. To check the derivative at
+      $w=1$, nudge the weight by 0.1 in each direction: $L(1.1)=5.29$ and $L(0.9)=2.89$. What central
+      estimate should the backward derivative match?
     answer: 12
     tolerance: { "abs": 0.001 }
     solution: "The estimate is $(5.29-2.89)/0.2=12$, agreeing with $2(3w-1)\\cdot3$ at $w=1$."
@@ -886,3 +899,162 @@ exercises:
     answer: "(Lp-Lm)/(2*eps)"
     variables: { Lp: [0, 10], Lm: [0, 10], eps: [0.001, 0.2] }
     solution: "Subtract the lower-weight loss from the higher-weight loss and divide by $2\\varepsilon$, the gap between the two weights."
+
+  - id: bp-backward-add-slopes
+    dimension: implementation
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A backward routine has stored a loss slope of $8$ at a node. A second branch that uses that same node sends it a slope contribution of $-3$. What number should the routine now store at the node?"
+    answer: 5
+    tolerance: { abs: 0 }
+    solution: "Each branch contributes to the same node's slope. Add the contributions to get $8-3=5$."
+
+  - id: bp-relu-backward-mask
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Two neurons feed scores $-3$ and $4$ into ReLU. The loss slopes arriving at their ReLU outputs are $7$ and $-2$, respectively. Which backward instruction gives the loss slopes for the scores before ReLU?"
+    options:
+      - id: a
+        text: "Multiply each arriving slope by its saved score."
+        correct: false
+        feedback: "The score's sign selects a local slope of $0$ or $1$. The score itself is not the multiplier."
+      - id: b
+        text: "Keep positive arriving slopes and zero negative arriving slopes."
+        correct: false
+        feedback: "The indicator tests the saved forward scores. An arriving slope can be negative and still pass through."
+      - id: c
+        text: "Keep arriving slopes for positive saved scores and zero the others."
+        correct: true
+    solution: "The indicator is $0$ for the negative score and $1$ for the positive score. Multiplying by it sets the first arriving slope to zero and keeps the second unchanged."
+
+  - id: bp-weight-slope-product
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A layer multiplies its batch input matrix $X$ by the weight matrix $W$ to get the score matrix $Z=XW$. The matrix $G$ stores the loss slopes for those scores. Each row of $X$ and $G$ represents one example. Which expression gives the matrix of loss slopes for the weights in $W$?"
+    options:
+      - id: a
+        text: "$XG^\\top$"
+        correct: false
+        feedback: "This product only works if the numbers of inputs and neurons match. Even then, its rows and columns both index examples."
+      - id: b
+        text: "$X^\\top G$"
+        correct: true
+      - id: c
+        text: "$G^\\top X$"
+        correct: false
+        feedback: "This gives the transpose of the required weight slopes, with a row per neuron instead of a row per input."
+    solution: "Use $X^\\top G$. Each entry pairs one input column of $X$ with one score-slope column of $G$ across all examples."
+
+  - id: bp-check-isolate-bias
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A gradient-check routine uses `loss(w, b)`, a loss function with weight `w`, bias `b` and fixed training data. To check the bias, it takes a small positive nudge `d` and stores two losses as `hi = loss(w + d, b + d)` and `lo = loss(w - d, b - d)`. It then estimates the slope as `(hi - lo) / (2 * d)`. Which change fixes what the routine measures?"
+    options:
+      - id: a
+        text: "Keep the bias fixed in both loss calls."
+        correct: false
+        feedback: "That would isolate the weight slope."
+      - id: b
+        text: "Nudge the weight in the opposite direction to the bias."
+        correct: false
+        feedback: "This still changes both parameters, so the loss difference includes the weight's effect."
+      - id: c
+        text: "Keep the weight fixed in both loss calls."
+        correct: true
+    solution: "Leave $w$ fixed in both calls and nudge $b$ alone. That isolates the bias's effect on the loss."
+
+  - id: bp-steering-prediction-unchanged
+    dimension: transfer
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A steering model predicts an angle larger than the target. The training program runs only the backward pass, then predicts again for the same input. How does this prediction compare with the first one?"
+    options:
+      - id: a
+        text: "It moves closer to the target."
+        correct: false
+        feedback: "A backward pass provides slopes for an update. It does not take that update."
+      - id: b
+        text: "It matches the first prediction."
+        correct: true
+      - id: c
+        text: "It matches the target exactly."
+        correct: false
+        feedback: "Sending slopes backward does not set the model's output to the target."
+    solution: "Backpropagation computes the loss slopes while leaving the parameters fixed. With the same input and parameters, the model gives the same prediction."
+
+  - id: bp-valve-relu-path
+    dimension: transfer
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A valve controller uses one ReLU neuron to pass a sensor signal on to its prediction. On one training example, the score fed into ReLU is $-2$. The loss slope with respect to the neuron's output is $5$. What is the loss slope with respect to a weight used only in that neuron's score?"
+    answer: 0
+    tolerance: { abs: 0 }
+    solution: "The local slope of ReLU at $-2$ is zero. The weight only affects the loss through that neuron, so its slope is zero as well."
+
+  - id: bp-thermostat-shared-bias
+    dimension: transfer
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A thermostat model adds the same bias to every temperature prediction in a batch. Its predictions are $18$, $23$ and $22$ degrees Celsius, and the corresponding targets are $20$, $20$ and $24$ degrees Celsius. The loss is the mean squared error. What is the loss slope with respect to the shared bias? Enter a fraction or round to four decimal places."
+    answer: -0.6666666666666666
+    tolerance: { abs: 0.0001 }
+    solution: "The signed errors are $-2$, $3$ and $-2$. The bias contributes equally to all three predictions, so its slope is $2(-2+3-2)/3=-2/3$."
+
+  - id: bp-pump-check-reuse
+    dimension: transfer
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "An engineer checks a pump model's backpropagation slope for one weight. The finite-difference estimate agrees with backpropagation at that weight's starting value. Later in training, another weight gives a surprising slope. Which action tests whether that slope is right?"
+    options:
+      - id: a
+        text: "Repeat the check for the original weight at its current value."
+        correct: false
+        feedback: "That checks a different weight, so it cannot verify the suspect slope."
+      - id: b
+        text: "Check the suspect weight with the current parameter values."
+        correct: true
+      - id: c
+        text: "Check the suspect weight with the starting parameter values."
+        correct: false
+        feedback: "That compares slopes at the start, whereas the reported problem occurs at the current values."
+    solution: "The first check covers the parameter and values tested then. A new check should nudge the suspect weight around its current value and compare the slopes there."
+
+  - id: bp-camera-check-corner
+    dimension: transfer
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A camera controller has a positive score going into ReLU. A gradient check nudges one weight up and down to measure that weight's loss slope. The upward nudge leaves the score positive, but the downward nudge makes it negative. What is the best next check at the same starting weight?"
+    options:
+      - id: a
+        text: "Shrink the nudge until both scores stay positive."
+        correct: true
+      - id: b
+        text: "Grow the nudge until both scores are farther from zero."
+        correct: false
+        feedback: "The nudges would still straddle the point where the slope jumps."
+      - id: c
+        text: "Switch to another training example with a larger positive score."
+        correct: false
+        feedback: "That would test a different loss calculation, rather than the one giving the surprising comparison."
+    solution: "The two nudges span ReLU's corner, so the estimate combines parts with different slopes. Use smaller nudges that keep both scores on the positive side."

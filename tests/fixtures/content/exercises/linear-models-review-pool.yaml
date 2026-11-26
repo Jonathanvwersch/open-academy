@@ -1,0 +1,92 @@
+concept: linear-models
+exercises:
+  - id: linear-models-fixture-pool-conceptual-1
+    dimension: conceptual
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What constant sets a linear model's prediction when all inputs are zero?"
+    accept: ["bias"]
+    solution: "The answer is bias."
+  - id: linear-models-fixture-pool-implementation-1
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "For `y = w * x + b`, what does Python return with `w = 2`, `x = 3`, and `b = 1`?"
+    accept: ["7"]
+    solution: "The answer is 7."
+  - id: linear-models-fixture-pool-implementation-2
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "For `y = w * x + b`, what does Python return with `w = 0`, `x = 8`, and `b = 5`?"
+    accept: ["5"]
+    solution: "The answer is 5."
+  - id: linear-models-fixture-pool-implementation-3
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "For `y = w * x + b`, what does Python return with `w = 2`, `x = -1`, and `b = 0`?"
+    accept: ["-2"]
+    solution: "The answer is -2."
+  - id: linear-models-fixture-pool-implementation-4
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "For `y = w * x + b`, what does Python return with `w = 1`, `x = 3`, and `b = -4`?"
+    accept: ["-1"]
+    solution: "The answer is -1."
+  - id: linear-models-fixture-pool-transfer-1
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A taxi charges 4 before any travel and 2 per kilometre. What does a 3 km trip cost?"
+    accept: ["10"]
+    solution: "The answer is 10."
+  - id: linear-models-fixture-pool-transfer-2
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A pump fills a tank at 2 litres per minute. It starts empty. How many litres are in the tank after 6 minutes?"
+    accept: ["12"]
+    solution: "The answer is 12."
+  - id: linear-models-fixture-pool-transfer-3
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A car rental costs 10 up front and 5 per hour. What does a rental of 2 hours cost?"
+    accept: ["20"]
+    solution: "The answer is 20."
+  - id: linear-models-fixture-pool-transfer-4
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A worker earns 8 per hour and a fixed bonus of 3. What do they earn after 4 hours?"
+    accept: ["35"]
+    solution: "The answer is 35."
+  - id: linear-models-fixture-pool-transfer-5
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A candle starts at 20 cm and loses 2 cm each hour. What is its height after 3 hours?"
+    accept: ["14"]
+    solution: "The answer is 14."

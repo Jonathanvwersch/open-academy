@@ -382,7 +382,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A team raises $\beta$ from $0.01$ to $1$ in the KL-penalised reward and keeps everything else the same. What should they expect?
+    prompt:
+      A team raises the KL penalty coefficient $\beta$ from $0.01$ to $1$ and keeps everything else
+      the same. What should they expect?
     options:
       - id: a
         text: The policy stays closer to the SFT model and gains less reward model score.
@@ -438,7 +440,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: With $\beta=0.2$, reply A has reward model score $3$, policy log-probability $-2$ and reference log-probability $-6$. Reply B has score $2.5$, policy log-probability $-3$ and reference log-probability $-3.5$. What is A's KL-penalised reward minus B's?
+    prompt: With KL penalty coefficient $\beta=0.2$, reply A has reward model score $3$, policy
+      log-probability $-2$ and reference log-probability $-6$. Reply B has score $2.5$, policy
+      log-probability $-3$ and reference log-probability $-3.5$. What is A's KL-penalised reward minus
+      B's?
     answer: -0.2
     tolerance:
       abs: 0.001
@@ -456,7 +461,11 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot arm's policy is trained with reinforcement learning from a learned reward, using the same KL-penalised reward with a reference policy trained on demonstrations. One action has learned reward $0.5$, log-probability $-0.2$ under the policy and $-1.2$ under the reference policy, and $\beta=0.3$. What is its penalised reward?
+    prompt:
+      A robot arm's policy is trained with reinforcement learning from a learned reward and a KL
+      penalty against a reference policy trained on demonstrations. One action has learned reward $0.5$,
+      log-probability $-0.2$ under the policy and $-1.2$ under the reference policy. The penalty
+      coefficient is $\beta=0.3$. What is the action's penalised reward?
     answer: 0.2
     tolerance:
       abs: 0.001
@@ -544,7 +553,11 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: Averaged over the replies the policy writes, what does the log ratio $\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}$ equal?
+    prompt:
+      For a fixed prompt $x$, let $\pi_\theta(y\mid x)$ be the trained policy's probability of reply
+      $y$ and $\pi_{\text{ref}}(y\mid x)$ the reference policy's probability. What does
+      $\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}$ equal on average over replies from the
+      trained policy?
     options:
       - id: a
         text: $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$
@@ -601,7 +614,10 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: During RLHF, one sampled reply has log ratio $\ln\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}=-0.4$. What does this tell you about $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$?
+    prompt:
+      During RLHF, one reply sampled from the policy $\pi_\theta$ has log-probability $0.4$ lower
+      under that policy than under the reference policy $\pi_{\text{ref}}$. What does this tell you about
+      $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})$?
     options:
       - id: a
         text: The true KL is positive, but this sample does not determine its value.
@@ -656,7 +672,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: With $\beta=0.1$, when is the average KL penalty for a prompt exactly zero?
+    prompt: The KL penalty in RLHF has coefficient $\beta=0.1$. When is the average KL penalty for a
+      prompt exactly zero?
     options:
       - id: a
         text: When the policy gives every reply the same probability as the reference model.
@@ -684,7 +701,11 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: Two policies are trained on the same prompts with $\beta=0.2$. Averaged over those prompts, policy A gets a reward model score of $2.4$ and $\mathrm{KL}(\pi_\theta\Vert\pi_{\text{ref}})=3$ nats. Policy B gets an average score of $2.0$ with a KL of $0.5$ nats. What is B's RLHF objective minus A's?
+    prompt:
+      Two policies are trained on the same prompts with KL penalty coefficient $\beta=0.2$. Averaged
+      over those prompts, policy A gets a reward model score of $2.4$ and has KL divergence of 3 nats from
+      the reference policy. Policy B gets an average score of $2.0$ and has KL divergence of $0.5$ nats
+      from that same reference. What is B's RLHF objective minus A's?
     answer: 0.1
     tolerance:
       abs: 0.001

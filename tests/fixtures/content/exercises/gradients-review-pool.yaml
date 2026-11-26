@@ -1,0 +1,92 @@
+concept: gradients
+exercises:
+  - id: gradients-fixture-pool-conceptual-1
+    dimension: conceptual
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Which operation keeps all inputs but one fixed when finding a slope?"
+    accept: ["partial derivative"]
+    solution: "The answer is partial derivative."
+  - id: gradients-fixture-pool-conceptual-2
+    dimension: conceptual
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What vector points in the direction of steepest increase?"
+    accept: ["gradient"]
+    solution: "The answer is gradient."
+  - id: gradients-fixture-pool-implementation-1
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "If a gradient tuple is stored as `(dx, dy)`, what is the index of `dy` in Python?"
+    accept: ["1"]
+    solution: "The answer is 1."
+  - id: gradients-fixture-pool-implementation-2
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A Python function returns the gradient `(3, 4)`. What does `grad[0]` read?"
+    accept: ["3"]
+    solution: "The answer is 3."
+  - id: gradients-fixture-pool-implementation-3
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A Python function returns `(2, -1)` as its gradient. What does `grad[1]` read?"
+    accept: ["-1"]
+    solution: "The answer is -1."
+  - id: gradients-fixture-pool-implementation-4
+    dimension: implementation
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A scalar function accepts a vector of length 4. How many components should its gradient function return?"
+    accept: ["4"]
+    solution: "The answer is 4."
+  - id: gradients-fixture-pool-transfer-1
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Elevation grows by 2 metres per metre east and stays constant northward. What is the northward gradient component?"
+    accept: ["0"]
+    solution: "The answer is 0."
+  - id: gradients-fixture-pool-transfer-2
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A cost depends only on input $x$. What is its partial derivative with respect to $y$?"
+    accept: ["0"]
+    solution: "The answer is 0."
+  - id: gradients-fixture-pool-transfer-3
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A loss has partial derivative 2 with respect to a weight. What is the approximate loss change if the weight rises by 0.1?"
+    accept: ["0.2"]
+    solution: "The answer is 0.2."
+  - id: gradients-fixture-pool-transfer-4
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Temperature rises fastest eastward at 3 degrees per metre. What is its westward rate of change?"
+    accept: ["-3"]
+    solution: "The answer is -3."

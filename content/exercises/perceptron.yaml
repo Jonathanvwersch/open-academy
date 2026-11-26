@@ -219,7 +219,9 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "Why can no single perceptron $\\phi(w\\cdot x + b)$ with the step activation compute XOR of two binary inputs?"
+    prompt:
+      A single perceptron computes $\phi(w\cdot x+b)$ with weight vector $w$, binary input vector
+      $x$, bias $b$ and step activation $\phi$. Why can't it compute XOR of two binary inputs?
     options:
       - {
           id: a,
@@ -254,7 +256,8 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "A neuron has $w = (2, 1)$ and $b = -4$. Its decision boundary crosses the $x_1$-axis (where $x_2 = 0$) at what value of $x_1$?"
+    prompt: A neuron has weight vector $w=(2,1)$ for inputs $x_1,x_2$ and bias $b=-4$. Its decision
+      boundary crosses the $x_1$-axis (where $x_2=0$) at what value of $x_1$?
     answer: 2
     tolerance: { abs: 0.001 }
     solution: "$2x_1 + 0 - 4 = 0$, so $x_1 = 2$."
@@ -264,7 +267,8 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 2
-    prompt: "With a step activation (1 if $z > 0$), which weights and bias implement OR on binary inputs?"
+    prompt: A perceptron uses a step activation that outputs 1 if its score $z$ is positive and 0
+      otherwise. Which weights and bias implement OR on two binary inputs?
     options:
       - { id: a, text: "$w = (1, 1)$, $b = -0.5$", correct: true }
       - {
@@ -379,7 +383,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 1
-    prompt: "A perceptron with the step activation scores a house at exactly $z = 0$. What does it output?"
+    prompt: A house has perceptron score $z=0$, exactly on the decision boundary. Under the strict
+      step-activation convention, what does the perceptron output?
     options:
       - { id: a, text: "0, because the step needs a positive score", correct: true }
       - {
@@ -410,7 +415,10 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A shortlisting neuron has score $z = 2x_1 - x_2 - 1$, where $x_2$ is the distance to the station in km. A house moves 1 km farther from the station with everything else the same. What happens to its score?"
+    prompt:
+      A shortlisting neuron has score $z=2x_1-x_2-1$, where $x_1$ represents the house's size and
+      $x_2$ its distance to the station in kilometres. A house moves 1 km farther from the station with
+      everything else fixed. What happens to its score?
     options:
       - { id: a, text: "It drops by 1, because the distance weight is $-1$", correct: true }
       - {
@@ -563,7 +571,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A neuron has $w = (2, -1)$ and $b = -1$, with $x_1$ the size in hundreds of m² and $x_2$ the distance in km. Which house lies on the yes side of its boundary?"
+    prompt:
+      A neuron has weight vector $w=(2,-1)$ and bias $b=-1$, with $x_1$ the size in hundreds of m²
+      and $x_2$ the distance in km. Which house lies on the yes side of its boundary?
     options:
       - { id: a, text: "Size 1.5, 1.5 km away", correct: true }
       - {
@@ -594,7 +604,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "A neuron's boundary is $2x_1 - x_2 - 1 = 0$. You change only the bias, from $-1$ to $-2$. What happens to the boundary line?"
+    prompt: For inputs $x_1$ and $x_2$, a neuron's decision boundary is the line $2x_1-x_2-1=0$. You
+      change only the bias, from $-1$ to $-2$. What happens to the boundary line?
     options:
       - { id: a, text: "It slides sideways without turning", correct: true }
       - {
@@ -790,7 +801,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A perceptron has weights $w = (-1, -1)$, bias $b = 1.5$ and the step rule. What does it output for the house with a garden that's also near the station, $x = (1, 1)$?"
+    prompt:
+      A perceptron has weights $w=(-1,-1)$, bias $b=1.5$ and the step rule. Its two inputs indicate
+      whether the house has a garden and whether it is near the station. What does it output for input
+      vector $x=(1,1)$, meaning yes to both?
     answer: 0
     tolerance: { abs: 0.001 }
     common_wrong:

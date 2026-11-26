@@ -329,7 +329,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "With observed label 1, both $p=3/4$ and $p=1/2$ predict label 1 at threshold $1/2$. How do their losses compare?"
+    prompt: An example has observed label 1. Two classifiers give label 1 probabilities $p=3/4$ and
+      $p=1/2$, respectively. Both predict label 1 at threshold $1/2$. How do their binary cross-entropy
+      losses compare?
     options:
       - {
           id: a,
@@ -366,7 +368,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "A house sold ($y=1$), but the model gave it $p=0.01$. Why does binary cross-entropy punish this more than squared error would?"
+    prompt:
+      A house sold (observed label $y=1$), but the model gave it sale probability $p=0.01$. Why does
+      binary cross-entropy punish this more than squared error would?
     options:
       - {
           id: a,
@@ -448,9 +452,9 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt:
-      A house with $x=4$ viewings sold ($y=1$), and the model gave it $p=1/2$. The loss slope with respect to
-      the score is $-1/2$. What is the loss slope with respect to the weight $w$?
+    prompt: A house with $x=4$ viewings sold (label $y=1$), and the model gave it sale probability
+      $p=1/2$. The loss slope with respect to the score is $-1/2$. What is the loss slope with respect to
+      the weight $w$ on viewings?
     answer: -2
     tolerance:
       abs: 1.0e-06
@@ -486,7 +490,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "If $x=0$ and $p-y$ is nonzero, which gradients does this example produce?"
+    prompt:
+      On one logistic regression example, the input is $x=0$ and the predicted probability $p$ for
+      label 1 differs from the observed label $y$. Which loss gradients does this example produce?
     options:
       - {
           id: a,
@@ -513,7 +519,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot starts with $w=0$, $b=0$, input $x=-2$, observed label $y=1$, and learning rate $1/2$. After one simultaneous weight-and-bias update, what is its new score for this example?"
+    prompt:
+      A robot's logistic model starts with weight $w=0$, bias $b=0$, input $x=-2$, observed label
+      $y=1$ and learning rate $1/2$. After one simultaneous weight-and-bias update, what is its new score
+      for this example?
     answer: 1.25
     tolerance: { abs: 0.000001 }
     solution: Initially $p=1/2$, so the weight slope is 1 and the bias slope is $-1/2$. The new parameters are $w=-1/2$, $b=1/4$, giving score $(-1/2)(-2)+1/4=5/4$.
@@ -749,3 +758,124 @@ exercises:
         "eta": [0.01, 0.2],
       }
     solution: "Subtract the scaled weight slope: $w_{\\text{new}}=w-\\eta(p-y)x$."
+  - id: logreg-review-loss-gap
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: A logistic regression model assigns probability $p=0.8$ to label 1 on two examples. Example A has observed label 0 and example B has observed label 1. Find the binary cross-entropy loss for A minus the loss for B. Use natural logarithms and round to two decimal places only at the end.
+    answer: 1.39
+    tolerance: { abs: 0.005 }
+    solution: The observed labels received probabilities $0.2$ and $0.8$ respectively. Their loss difference is $-\ln(0.2)+\ln(0.8)\approx1.39$.
+  - id: logreg-review-score-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A Python logistic regression program calculates its score as `z = (w + b) * x`, where `x` is the input, `w` is the weight and `b` is the bias. Which edit fixes how the score uses the bias?
+    options:
+      - id: a
+        text: Add the bias after multiplying the weight by the input.
+        correct: true
+        feedback: The bias adds a fixed amount to the weighted input.
+      - id: b
+        text: Add the bias to the input before multiplying by the weight.
+        correct: false
+        feedback: The weight would scale the bias as well as the input.
+      - id: c
+        text: Multiply the input by the bias and add the weight.
+        correct: false
+        feedback: This swaps the parameters' jobs. The weight scales the input and the bias adds a fixed amount.
+    solution: Compute the weighted input first, then add the bias once with `z = w * x + b`.
+  - id: logreg-review-threshold-code
+    dimension: implementation
+    type: code_complete
+    role: review
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A Python classifier has computed the raw logistic regression score `z`. It predicts label 1 when the sigmoid probability is at least $0.5$. Fill the blank with a single comparison between `z` and an integer cutoff.
+    code: |
+      if ____:
+          label = 1
+      else:
+          label = 0
+    accept:
+      [
+        "z >= 0",
+        "0 <= z",
+        "z >= 0.0",
+        "0.0 <= z",
+        "z >= 0.00",
+        "0.00 <= z",
+        "(z >= 0)",
+        "(0 <= z)",
+        "(z >= 0.0)",
+        "(0.0 <= z)",
+        "(z >= 0.00)",
+        "(0.00 <= z)",
+      ]
+    solution: The sigmoid is increasing and gives $0.5$ at score zero, so `z >= 0` gives the same decisions.
+  - id: logreg-review-sigmoid-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A Python program uses `p = 1 / (1 + exp(z))` to compute `p`, its probability of label 1. Here `z` is the logistic regression score and `exp` is the exponential function. How does this output respond to a rising score compared with the intended sigmoid?
+    options:
+      - id: a
+        text: This output falls, while the intended sigmoid rises.
+        correct: true
+        feedback: The code's denominator grows with the score, so its reciprocal falls.
+      - id: b
+        text: This output and the intended sigmoid both rise.
+        correct: false
+        feedback: The intended sigmoid rises. This code puts the score itself in the exponential, so its denominator grows.
+      - id: c
+        text: This output and the intended sigmoid both fall.
+        correct: false
+        feedback: The intended sigmoid puts the negative score in the exponential, so its denominator shrinks as the score rises.
+    solution: As `z` rises, `exp(z)` and the denominator both rise, so the output falls. The intended sigmoid should rise with the score.
+  - id: logreg-review-observed-label-code
+    dimension: implementation
+    type: code_complete
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A Python function named `loss` is meant to compute binary cross-entropy, but it returns `-log(p)` for both observed labels. Here `p` is the model's probability of label 1, `y` is the observed label and `log` is the natural logarithm. At a predicted probability of 0.8 for label 1, which observed label exposes the bug? Fill the blank with the label's integer value.
+    code: |
+      loss(p=0.8, y=____)
+    accept: ["0", "(0)"]
+    solution: Use observed label 0. The function returns the negative log of $0.8$, but the observed label received probability $1-0.8=0.2$, whose negative log is larger.
+  - id: logreg-review-bias-update-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: |
+      This Python code takes one gradient descent step on binary cross-entropy for a logistic regression example. Here `p` is the predicted probability of label 1, `y` is the observed label and `x` is the input feature. The model has weight `w` and bias `b`. The variable `dw` holds the loss slope for the weight, and `lr` is the learning rate. Which line should replace the last line to correct the bias update?
+
+      ```python
+      dw = (p - y) * x
+      w = w - lr * dw
+      b = b - lr * dw
+      ```
+    options:
+      - id: a
+        text: "`b = b - lr * (y - p)`"
+        correct: false
+        feedback: Reversing the probability and the label reverses the direction of the step.
+      - id: b
+        text: "`b = b - lr * (p - y)`"
+        correct: true
+        feedback: The bias's slope is the probability minus the observed label.
+      - id: c
+        text: "`b = b - lr * (p - y) * w`"
+        correct: false
+        feedback: The score changes by one unit per unit of bias, so the bias slope has no factor of `w`.
+    solution: The bias adds directly to the score, so its slope is `p - y`. Subtract that slope times `lr`.

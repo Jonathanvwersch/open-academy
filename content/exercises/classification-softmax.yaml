@@ -430,7 +430,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: With true class ball and probabilities (0.67, 0.24, 0.09), what does a positive-learning-rate update of only the biases do?
+    prompt:
+      A robot classifies an object as cup, ball or box with softmax probabilities $(0.67,0.24,0.09)$
+      in that order. The true class is ball. What does a positive-learning-rate step on cross-entropy loss
+      do if it updates only the biases?
     options:
       - {
           id: a,
@@ -476,7 +479,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A digit reader uses feature $x=3$ and score $z_7=w_7x+b_7$ for digit 7. Its probability for 7 is 0.20, but the true digit is 7. Find the loss slope against $w_7$, not the bias, to 2 decimal places."
+    prompt:
+      A digit reader uses feature $x=3$. The score for digit 7 is $z_7=w_7x+b_7$, with weight $w_7$
+      and bias $b_7$. Its softmax probability for 7 is 0.20, and the true digit is 7. Find the
+      cross-entropy loss slope with respect to $w_7$, to 2 decimal places.
     answer: -2.4
     tolerance: { abs: 0.005 }
     common_wrong:

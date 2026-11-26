@@ -577,3 +577,24 @@ exercises:
         correct: false
         feedback: "Grouping by neighbourhood separates places. The training groups could still contain later sales."
     solution: "Train on the earlier year and check the later year, as the model will do when it makes predictions."
+
+  - id: gen-reused-test
+    dimension: transfer
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A factory tests three defect detectors on the same inspection records and chooses the detector with the lowest error there. What should it do to estimate the chosen detector's error on future items?"
+    options:
+      - id: a
+        text: "Score it on untouched records from the same inspection process."
+        correct: true
+      - id: b
+        text: "Report its score on the records used to choose it."
+        correct: false
+        feedback: "That score helped choose the detector, so it is no longer an untouched test."
+      - id: c
+        text: "Report its score on the records used to train it."
+        correct: false
+        feedback: "A training score measures fit to records the detector has already seen."
+    solution: "Once the records helped choose the detector, they served as validation data. Score the chosen detector once on untouched records from the process it will inspect."

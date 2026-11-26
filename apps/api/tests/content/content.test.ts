@@ -119,7 +119,7 @@ test('loads the fixture graph and builds lookup indexes', async () => {
     prerequisiteId: 'gradients',
     strength: 'hard',
   });
-  expect(content.exercisesByConcept.get('vectors')).toHaveLength(15);
+  expect(content.exercisesByConcept.get('vectors')).toHaveLength(21);
   expect(content.exercisesById.get('vectors-magnitude')?.lesson_only).toBe(false);
   expect(content.exercisesByDimension.get('math')?.length).toBeGreaterThan(0);
   expect(content.exercisesByRole.get('diagnostic')?.length).toBe(9);
@@ -2306,8 +2306,54 @@ test('lesson review dimensions require a non-template schedulable exercise', asy
         id: 'vectors',
         message: 'dimension "math" has exercises but no non-template review-compatible exercise',
       }),
+      expect.objectContaining({
+        id: 'vectors',
+        message:
+          'dimension "math" has 0 review questions; reviews need at least 5 (role review, core, practice, transfer or basics; not lesson_only; not a template)',
+      }),
     ]),
   );
+});
+
+test('every authored dimension needs five eligible review pool questions', async () => {
+  const data = await notationFixture();
+  expect(validateContent(data)).toEqual([]);
+
+  const vectors = required(
+    data.concepts.find(({ value }) => value.id === 'vectors'),
+    'vectors concept',
+  );
+  vectors.value.dimensions.push('implementation');
+  data.exercises = data.exercises.filter(
+    ({ value }) => value.id !== 'vectors-fixture-pool-conceptual-1',
+  );
+  const transfer = required(
+    data.exercises.find(({ value }) => value.id === 'vectors-fixture-pool-transfer-1'),
+    'vectors transfer exercise',
+  );
+  transfer.value.lesson_only = true;
+  expect(
+    validateContent(data).filter(({ message }) => message.includes(' reviews need at least ')),
+  ).toEqual([
+    {
+      file: vectors.file,
+      id: 'vectors',
+      message:
+        'dimension "conceptual" has 4 review questions; reviews need at least 5 (role review, core, practice, transfer or basics; not lesson_only; not a template)',
+    },
+    {
+      file: vectors.file,
+      id: 'vectors',
+      message:
+        'dimension "transfer" has 4 review questions; reviews need at least 5 (role review, core, practice, transfer or basics; not lesson_only; not a template)',
+    },
+    {
+      file: vectors.file,
+      id: 'vectors',
+      message:
+        'dimension "implementation" has 0 review questions; reviews need at least 5 (role review, core, practice, transfer or basics; not lesson_only; not a template)',
+    },
+  ]);
 });
 
 test('non-diagnostic exercise prompts must be standalone or lesson-only', async () => {

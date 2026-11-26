@@ -199,7 +199,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: On the bowl $f(x,y)=x^2+2y^2$, take one gradient-descent step from $(1,1)$ with $\eta=0.1$. What is the height $f$ at the new point? (It was $3$.)
+    prompt:
+      On the bowl $f(x,y)=x^2+2y^2$, take one gradient-descent step from $(1,1)$ with learning rate
+      $\eta=0.1$. What is the height $f$ at the new point? (It was $3$.)
     answer: 1.36
     tolerance:
       abs: 0.001
@@ -240,7 +242,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A robot arm has two adjustable joint angles, labelled $\theta_1$ and $\theta_2$, measured in radians (an angle unit). Its gripper misses the target by a distance error $E$, and at the current angles $\nabla E=(2,-1)$ (one slope for each angle). With $\eta=0.1$, how should the angles change in one gradient-descent step?
+    prompt: A robot arm has adjustable joint angles $\theta_1$ and $\theta_2$, in radians. For the
+      distance error $E$ between the gripper and its target, the current gradient is $\nabla E=(2,-1)$ in
+      that angle order. With learning rate $\eta=0.1$, how should the angles change in one
+      gradient-descent step?
     options:
       - id: a
         text: $\theta_1$ by $-0.2$ and $\theta_2$ by $+0.1$ radians.
@@ -407,7 +412,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A drone tunes its altitude controller by gradient descent on its hover error. With $\eta=0.1$ the error goes $9\to5.8\to3.7\to2.4$. With $\eta=0.6$ it goes $9\to20\to44\to96$. Which rate should it use next?
+    prompt:
+      A drone tunes its altitude controller by gradient descent on its hover error. With learning
+      rate $\eta=0.1$ the error goes $9\to5.8\to3.7\to2.4$. With $\eta=0.6$ it goes $9\to20\to44\to96$.
+      Which rate should it use next?
     options:
       - id: a
         text: Something between $0.1$ and $0.6$, nearer $0.1$, and check that the error still falls.
@@ -464,7 +472,10 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: A model $\hat y=wx+b$ predicts $10$ for an example with $x=3$ and true output $6$. Which way does one gradient-descent step move $w$?
+    prompt:
+      A model predicts $\hat y=wx+b$, with weight $w$ and bias $b$. For an example with input $x=3$
+      and target $6$, it predicts $10$. With squared-error loss, which way does one gradient-descent step
+      move $w$?
     options:
       - id: a
         text: "Down: the error $e=4$ is positive and $x$ is positive, so $\\partial L/\\partial w=2ex>0$."
@@ -510,7 +521,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: A model $\hat y=wx+b$ has $w=2$ and $b=0$. On the example $x=3$, $y=3$ with squared-error loss and $\eta=0.05$, what is $w$ after one gradient-descent step?
+    prompt:
+      A model predicts $\hat y=wx+b$ with weight $w=2$ and bias $b=0$. On an example with input
+      $x=3$ and target $y=3$, it uses squared-error loss and learning rate $\eta=0.05$. What is $w$ after
+      one gradient-descent step?
     answer: 1.1
     tolerance:
       abs: 0.001
@@ -528,7 +542,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: A model $\hat y=wx+b$ has $w=1$, $b=0$, and two examples, $(x,y)=(1,3)$ and $(2,2)$. With MSE as the loss, what is $\partial L/\partial w$?
+    prompt:
+      A model predicts $\hat y=wx+b$ with weight $w=1$ and bias $b=0$. The two input-target pairs
+      $(x,y)$ are $(1,3)$ and $(2,2)$. For mean squared error loss $L$, what is $\partial L/\partial w$?
     answer: -2
     tolerance:
       abs: 0.001
@@ -569,7 +585,11 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: For one training example with $x=2$, $y=7$, starting at $w=b=1$ with learning rate $\eta = 0.05$, a coder computes the error as `e = y - y_hat` but keeps the update `w = w - lr * 2 * e * x` (with `lr` = $\eta$) and subtracts `lr * 2 * e` from `b`. What happens to the training loss as this loop repeats?
+    prompt:
+      A linear model predicts `y_hat = w * x + b` from input `x = 2` with target `y = 7`. Its weight
+      `w` and bias `b` both start at 1, and its learning rate `lr` is 0.05. A coder computes the error as
+      `e = y - y_hat` but keeps the update `w = w - lr * 2 * e * x` and subtracts `lr * 2 * e` from `b`.
+      What happens to the squared-error loss as this loop repeats?
     options:
       - id: a
         text: It grows, because every slope has the wrong sign, so each step goes uphill.
@@ -653,7 +673,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A model $\hat y=wx+b$ is trained by gradient descent on one example, $x=2$, $y=7$, with squared-error loss and $\eta=0.05$. Pass 4 starts at $w=2.4$, $b=1.7$. What is $w$ after pass 4's update?
+    prompt:
+      A model predicts $\hat y=wx+b$ and trains on one example with input $x=2$ and target $y=7$. It
+      uses squared-error loss and gradient descent with learning rate $\eta=0.05$. Pass 4 starts at weight
+      $w=2.4$ and bias $b=1.7$. What is $w$ after pass 4's update?
     answer: 2.5
     tolerance:
       abs: 0.001
@@ -671,7 +694,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: Complete the weight's loss slope for one example with squared-error loss. `e = y_hat - y` and `x` is the input.
+    prompt:
+      Complete the weight's loss slope for one example with squared-error loss. The variable `e` is
+      the signed error (prediction minus target), and `x` is the input.
     code: |
       dw = ____
     accept:
@@ -831,7 +856,9 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 3
-    prompt: For $L(w) = 4(w - 1)^2$, gradient descent converges only for learning rates below some threshold $\eta_{\max}$. What is $\eta_{\max}$?
+    prompt:
+      For loss $L(w)=4(w-1)^2$ as a function of weight $w$, gradient descent converges only for
+      learning rates below some threshold $\eta_{\max}$. What is this threshold?
     answer: 0.25
     tolerance:
       abs: 0.001
@@ -1006,7 +1033,10 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "For $\\hat y=wx+b$ trained with mean squared error, explain how to calculate the weight slope, how to calculate the bias slope, and how to use them for one gradient-descent step. Let $e$ be prediction minus true output."
+    prompt:
+      A model predicts $\hat y=wx+b$ from input $x$ with weight $w$ and bias $b$. It trains with
+      mean squared error. Let $e$ be prediction minus true output. Explain how to calculate the weight
+      slope, how to calculate the bias slope, and how to use them for one gradient-descent step.
     rubric:
       - id: r2
         criterion: Average $2ex$ across the training examples to obtain the weight slope.
@@ -1258,3 +1288,75 @@ exercises:
         correct: false
         feedback: A rate that is too large overshoots further each step, so the loss goes up.
     solution: A loss that creeps down slowly from the start and is still high is the sign of a learning rate that is too small.
+  - id: gd-review-square-loss-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A Python training loop stores one example's target in `y` and its signed error in `e`. The signed error is the prediction minus the target. Which line computes the squared-error loss?
+    options:
+      - id: a
+        text: "`loss = (e + y) ** 2`"
+        correct: false
+        feedback: Adding the target back recovers the prediction. Squaring it ignores how far it is from the target.
+      - id: b
+        text: "`loss = e ** 2`"
+        correct: true
+        feedback: Squaring the signed miss gives the loss for this example.
+      - id: c
+        text: "`loss = (e - y) ** 2`"
+        correct: false
+        feedback: The error already subtracts the target. Subtracting it again can give a nonzero loss even for a perfect prediction.
+    solution: Use `e ** 2` to turn the signed miss into a squared error.
+  - id: gd-review-stale-error-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: |
+      This Python loop trains a model with weight `w` and squared-error loss. The input `x`, target `y` and learning rate `lr` stay fixed. The variable `step` counts loop passes, `e` holds the prediction error and `dw` holds the loss slope for the weight. Which edit ensures that every pass updates `w` using the loss slope at the start of that pass?
+
+      ```python
+      e = w * x - y
+      for step in range(4):
+          dw = 2 * e * x
+          w = w - lr * dw
+      ```
+    options:
+      - id: a
+        text: Move the assignment to `e` inside the loop before the assignment to `dw`.
+        correct: true
+        feedback: The loop then recomputes the error using the weight at the start of each pass.
+      - id: b
+        text: Move the assignment to `dw` outside the loop just after the assignment to `e`.
+        correct: false
+        feedback: Computing the slope once makes every pass reuse the starting slope.
+      - id: c
+        text: Move the assignment to `w` outside the loop just after the assignment to `dw`.
+        correct: false
+        feedback: The model would only update once, after repeatedly computing the same slope.
+    solution: Recompute the prediction error inside the loop before finding the slope. Each update changes the weight used on the next pass.
+  - id: gd-review-average-slopes-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: A Python program computes the slope of each example's squared error with respect to the current model weight `w`. It stores those slopes in `dw_a` and `dw_b`, one per example. Which line takes one gradient descent step on the mean squared error for the two examples with learning rate `lr`?
+    options:
+      - id: a
+        text: "`w = w - lr * (dw_a + dw_b)`"
+        correct: false
+        feedback: The sum makes the step twice as large as the mean slope calls for.
+      - id: b
+        text: "`w = w + lr * (dw_a + dw_b) / 2`"
+        correct: false
+        feedback: Adding the scaled slope steps uphill when the mean slope is nonzero.
+      - id: c
+        text: "`w = w - lr * (dw_a + dw_b) / 2`"
+        correct: true
+        feedback: This subtracts the learning rate times the average slope.
+    solution: Take the mean of the two slopes, multiply by the learning rate and subtract that amount from the weight.

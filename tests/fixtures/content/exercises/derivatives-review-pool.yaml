@@ -1,0 +1,56 @@
+concept: derivatives
+exercises:
+  - id: derivatives-fixture-pool-conceptual-1
+    dimension: conceptual
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a zero derivative say about the slope at that point?"
+    accept: ["zero"]
+    solution: "The answer is zero."
+  - id: derivatives-fixture-pool-transfer-1
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A car's position is $s(t)=3t$. What is its speed?"
+    accept: ["3"]
+    solution: "The answer is 3."
+  - id: derivatives-fixture-pool-transfer-2
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A falling object's height is $h(t)=9-t^2$. What is the signed rate of change of height at $t=2$?"
+    accept: ["-4"]
+    solution: "The answer is -4."
+  - id: derivatives-fixture-pool-transfer-3
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Revenue is $R(q)=4q$. What is its marginal revenue?"
+    accept: ["4"]
+    solution: "The answer is 4."
+  - id: derivatives-fixture-pool-transfer-4
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A tank holds $V(t)=20-2t$ litres at time $t$. What is its signed rate of change?"
+    accept: ["-2"]
+    solution: "The answer is -2."
+  - id: derivatives-fixture-pool-transfer-5
+    dimension: transfer
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A heater's temperature stays fixed at 25 degrees. What is its rate of change?"
+    accept: ["0"]
+    solution: "The answer is 0."

@@ -343,7 +343,9 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A word table $E$ has rows $(2,1),(1,3),(0,2),(3,1)$ for cat, on, sat, the (IDs 1 to 4). What is $uE$ for $u=(1,1,0,0)$?"
+    prompt:
+      A word embedding table $E$ has rows $(2,1),(1,3),(0,2),(3,1)$ for cat, on, sat and the (IDs 1
+      to 4). What is the product $uE$ for the row vector $u=(1,1,0,0)$?
     options:
       - {
           id: a,
@@ -368,7 +370,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: Why do implementations usually read a token's row of $E$ directly instead of explicitly multiplying a dense one-hot row by $E$?
+    prompt:
+      Why do implementations usually read a token's row of an embedding table $E$ directly instead
+      of explicitly multiplying a dense one-hot row by $E$?
     options:
       - {
           id: a,
@@ -541,7 +545,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A sentence contains only cat and sat. Its one-hot matrix $U$ uses a vocabulary with cat, on, sat and the. What contribution does the row for "on" make to the sentence's input embeddings $UE$?
+    prompt:
+      A sentence contains only cat and sat. Its one-hot matrix $U$ uses a vocabulary with cat, on,
+      sat and the. What contribution does the row for "on" in the embedding table $E$ make to the
+      sentence's input embeddings $UE$?
     options:
       - {
           id: a,

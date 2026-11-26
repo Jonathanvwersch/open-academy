@@ -93,7 +93,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A minibatch of two examples gives loss slopes $2$ and $6$ at $w=5$. With $\eta=0.1$, what is $w$ after one minibatch update?
+    prompt:
+      A minibatch of two examples gives loss slopes $2$ and $6$ at weight $w=5$. With learning rate
+      $\eta=0.1$, what is $w$ after one minibatch update?
     options:
       - id: a
         text: $4.2$
@@ -135,7 +137,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A robot's prediction model has two adjustable weights, currently $(2,3)$. At these weights, a minibatch of two examples gives gradients $(4,-2)$ and $(0,6)$, listing slopes in the same weight order. With $\eta=0.1$, what are the weights after one minibatch update?
+    prompt:
+      A robot's prediction model has two adjustable weights, currently $(2,3)$. At these weights, a
+      minibatch of two examples gives gradients $(4,-2)$ and $(0,6)$, listing slopes in the same weight
+      order. With learning rate $\eta=0.1$, what are the weights after one minibatch update?
     options:
       - id: a
         text: $(1.6,2.6)$
@@ -277,7 +282,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A model predicts the constant $w$ and uses squared error with slope $2(w-y)$. A previous batch left $w=2$. The next batch has targets $4$ and $6$. Using $\\eta=0.1$, what is $w$ after this next update?"
+    prompt:
+      A model predicts the constant $w$ and uses squared error with slope $2(w-y)$ for a target $y$.
+      A previous batch left $w=2$. The next batch has targets $4$ and $6$. Using learning rate $\eta=0.1$,
+      what is $w$ after this next update?
     answer: 2.6
     tolerance: { abs: 0.001 }
     solution: "At the current $w=2$, the slopes are $2(2-4)=-4$ and $2(2-6)=-8$. Their average is $-6$, so the new parameter is $2-0.1\\times(-6)=2.6$."
@@ -434,7 +442,9 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: At $w=4$, our targets $1,3,5,7$ give slopes $6,2,-2,-6$, so the full gradient is zero. Which statement about a batch containing targets $1$ and $7$ is correct?
+    prompt:
+      At weight $w=4$, the targets $1,3,5,7$ give loss slopes $6,2,-2,-6$, respectively, so the full
+      gradient is zero. Which statement about a batch containing targets $1$ and $7$ is correct?
     options:
       - id: a
         text: Its average slope is $0$, so an update on this batch leaves $w$ at $4$.

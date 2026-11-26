@@ -604,3 +604,66 @@ exercises:
       ]
     regex: "^\\s*\\$?\\s*(?:[-−]\\s*(?:∞|\\\\infty|infinity|inf|np\\s*\\.\\s*inf)|(?:minus|negative)\\s+infinity)\\s*\\$?\\s*$"
     solution: "For a blocked cell, $m_{tj}=-\\infty$, making its exponential zero."
+  - id: cm-code-block-predicate
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A loop visits row `t` and column `j` of an attention score grid. The row is the token making the prediction, and the column is the token it might read. Both indices start at zero. Which Python condition should trigger replacement of the score by negative infinity for a causal mask?"
+    options:
+      - id: a
+        text: "`j >= t`"
+        correct: false
+        feedback: "This blocks the diagonal too. The current token is available when predicting the next token."
+      - id: b
+        text: "`j > t`"
+        correct: true
+        feedback: "Only source positions after the row's position are blocked."
+      - id: c
+        text: "`j < t`"
+        correct: false
+        feedback: "This blocks the earlier tokens and leaves future tokens visible."
+    solution: "A causal mask hides sources later than the current token. With both indices starting at zero, those cells have `j > t`."
+  - id: cm-code-score-overwrite
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: "An attention function needs a full row of weights for position $t$ in a sequence of $T$ tokens, numbered from $1$. It can take softmax over only part of the score row and then add zero weights to fill the remaining slots. Which procedure gives the same row as a causal mask?"
+    options:
+      - id: a
+        text: "Take softmax over scores $1$ through $t$, then fill the later slots with zeros."
+        correct: true
+        feedback: "The full weight of $1$ is shared among the visible positions."
+      - id: b
+        text: "Take softmax over scores $1$ through $t-1$, then fill the remaining slots with zeros."
+        correct: false
+        feedback: "This also hides the current position, which should be allowed."
+      - id: c
+        text: "Take softmax over scores $t$ through $T$, then fill the earlier slots with zeros."
+        correct: false
+        feedback: "This keeps later positions visible and hides earlier ones."
+    solution: "Blocked positions have zero weight and contribute nothing to the softmax total. Taking softmax over positions $1$ through $t$ makes their weights add up to $1$. Place zeros in all later slots."
+  - id: cm-code-output-invariance
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 1
+    prompt: "You are testing one causal attention layer on a four-token input. In a second run you change only the value vector at source position 3 (positions start at 1). All scores and other value vectors stay fixed. Which test checks the full set of output positions that must stay unchanged because position 3 is hidden from them?"
+    options:
+      - id: a
+        text: "Compare outputs at positions 1 and 2 between the runs."
+        correct: true
+        feedback: "Those rows hide source 3 because it is later than either row."
+      - id: b
+        text: "Compare outputs at positions 1, 2 and 3 between the runs."
+        correct: false
+        feedback: "The diagonal is visible, so changing source 3 can affect output 3."
+      - id: c
+        text: "Compare outputs at positions 3 and 4 between the runs."
+        correct: false
+        feedback: "Source 3 is visible to itself and to position 4."
+    solution: "Rows 1 and 2 give source 3 zero weight. Rows 3 and 4 can include that value in their output."
