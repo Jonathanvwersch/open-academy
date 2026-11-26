@@ -32,10 +32,10 @@ concepts:
       prereqs: [{ id: autoregressive-lm }, { id: inference-metrics }],
       encompassings:
         [
-          { id: autoregressive-lm, weight: 0.12 },
-          { id: inference-metrics, weight: 0.05 },
-          { id: classification-softmax, weight: 0.06 },
-          { id: probability-basics, weight: 0.12 },
+          { id: autoregressive-lm, weight: 0.13 },
+          { id: inference-metrics, weight: 0.04 },
+          { id: classification-softmax, weight: 0.05 },
+          { id: probability-basics, weight: 0.13 },
         ],
       objectives:
         [
@@ -108,11 +108,11 @@ concepts:
       prereqs: [{ id: prefill-decode }, { id: multi-head-attention }, { id: gpu-inference-basics }],
       encompassings:
         [
-          { id: prefill-decode, weight: 0.05 },
-          { id: multi-head-attention, weight: 0.21 },
+          { id: prefill-decode, weight: 0.06 },
+          { id: multi-head-attention, weight: 0.14 },
           { id: gpu-inference-basics, weight: 0.05 },
-          { id: attention, weight: 0.06 },
-          { id: causal-masking, weight: 0.13 },
+          { id: attention, weight: 0.09 },
+          { id: causal-masking, weight: 0.16 },
         ],
       objectives:
         [
@@ -137,11 +137,11 @@ concepts:
       prereqs: [{ id: arithmetic-intensity }, { id: gpu-inference-basics }, { id: attention }],
       encompassings:
         [
-          { id: arithmetic-intensity, weight: 0.17 },
-          { id: gpu-inference-basics, weight: 0.22 },
-          { id: attention, weight: 0.28 },
+          { id: arithmetic-intensity, weight: 0.19 },
+          { id: gpu-inference-basics, weight: 0.23 },
+          { id: attention, weight: 0.41 },
           { id: classification-softmax, weight: 0.14 },
-          { id: prefill-decode, weight: 0 },
+          { id: prefill-decode, weight: 0.03 },
         ],
       objectives:
         [
@@ -164,12 +164,12 @@ concepts:
       prereqs: [{ id: gpu-inference-basics }, { id: descriptive-statistics }],
       encompassings:
         [
-          { id: gpu-inference-basics, weight: 0.19 },
-          { id: descriptive-statistics, weight: 0.03 },
+          { id: gpu-inference-basics, weight: 0.18 },
+          { id: descriptive-statistics, weight: 0.01 },
           { id: arithmetic-intensity, weight: 0.09 },
           { id: autoregressive-lm, weight: 0 },
-          { id: prefill-decode, weight: 0.01 },
-          { id: supervised-learning, weight: 0.03 },
+          { id: prefill-decode, weight: 0.05 },
+          { id: supervised-learning, weight: 0.06 },
         ],
       objectives:
         [
@@ -231,11 +231,11 @@ concepts:
       prereqs: [{ id: kv-cache }, { id: inference-metrics }, { id: mixture-of-experts }],
       encompassings:
         [
-          { id: kv-cache, weight: 0.07 },
-          { id: inference-metrics, weight: 0.1 },
+          { id: kv-cache, weight: 0.05 },
+          { id: inference-metrics, weight: 0.09 },
           { id: mixture-of-experts, weight: 0.01 },
-          { id: arithmetic-intensity, weight: 0.06 },
-          { id: gpu-inference-basics, weight: 0.09 },
+          { id: arithmetic-intensity, weight: 0.11 },
+          { id: gpu-inference-basics, weight: 0.08 },
           { id: matrices, weight: 0.02 },
         ],
       objectives:
@@ -259,12 +259,12 @@ concepts:
       prereqs: [{ id: fast-attention }, { id: gpu-inference-basics }, { id: computational-graphs }],
       encompassings:
         [
-          { id: fast-attention, weight: 0.08 },
+          { id: fast-attention, weight: 0.10 },
           { id: gpu-inference-basics, weight: 0.14 },
-          { id: computational-graphs, weight: 0.07 },
-          { id: arithmetic-intensity, weight: 0.09 },
+          { id: computational-graphs, weight: 0.05 },
+          { id: arithmetic-intensity, weight: 0.12 },
           { id: classification-softmax, weight: 0.01 },
-          { id: matrices, weight: 0.02 },
+          { id: matrices, weight: 0.01 },
         ],
       objectives:
         [

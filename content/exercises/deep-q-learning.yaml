@@ -121,7 +121,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: "A robot moves right from cell 1 to cell 2, receives reward $-1$, and continues its episode. Its Q-network outputs (left, right) are (3, 5) in cell 1 and (4, 6) in cell 2. With $\\gamma=0.9$, what is the squared-error loss for this move?"
+    prompt: >-
+      A robot moves right from cell 1 to cell 2, receives reward $-1$, and continues its episode. The online Q-network predicts action values in (left, right) order: $(3,5)$ in cell 1 and $(4,6)$ in cell 2. The target network currently has the same weights as the online network. With discount factor $\gamma=0.9$, what is the loss for this move, defined as the square of the difference between the prediction and the DQN target?
     answer: 0.36
     tolerance: { abs: 0.000001 }
     common_wrong:
@@ -311,7 +312,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A stored move is (cell 2, left, reward $-1$, cell 1, episode continues). The Q-network outputs (left, right) are (4, 6) in cell 2 and (3, 5) in cell 1. With $\\gamma=0.9$, what is the signed prediction error $Q(s,a)-y$?"
+    prompt: >-
+      A robot takes action $a=\text{left}$ in state $s=\text{cell 2}$, earns reward $-1$, reaches cell 1, and continues its episode. The Q-network predicts action values in (left, right) order: $(4,6)$ in cell 2 and $(3,5)$ in cell 1. With discount factor $\gamma=0.9$, what is the signed error $Q(s,a)-y$, where $y$ is the Q-learning target?
     answer: 0.5
     tolerance: { abs: 0.000001 }
     common_wrong:
@@ -361,7 +363,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot moves right from cell 3 to cell 4, receives 10, and ends its episode. A learner writes $y=10+0.9\\max_a Q(4,a)$. What is the mistake?"
+    prompt: >-
+      A robot moves right from cell 3 to cell 4, receives reward $10$, and ends its episode. A learner computes the Q-learning target as $y=10+0.9\max_a Q(4,a)$, where $Q(4,a)$ is the network's value for action $a$ in cell 4 and $0.9$ is the discount factor. What is the mistake?
     options:
       - {
           id: a,
@@ -551,7 +554,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot moves right from cell 2 to cell 3, receives $-1$, and continues its episode with $\\gamma=0.9$. Targets use the network being trained. Before an update, its cell 3 outputs are left 5 and right 7, giving target 5.3. After the update they are left 5 and right 6.5. What is the new target for the stored move?"
+    prompt: >-
+      A robot moves right from cell 2 to cell 3, receives reward $-1$, and continues its episode. The discount factor is $\gamma=0.9$. The DQN target uses the largest next-state action value from the network being trained. Before an update, it gives left and right in cell 3 values $5$ and $7$, giving a target of $5.3$. Afterwards those values are $5$ and $6.5$. What is the new target for the stored move?
     answer: 4.85
     tolerance: { abs: 0.000001 }
     common_wrong:
@@ -626,7 +630,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A drone receives at most 1 reward per step and uses $\\gamma=0.9$, so even an endless stream of best rewards has return at most 10. Its Q-values climb into the thousands. Which diagnosis fits, and what should you check first?"
+    prompt: >-
+      A drone receives at most 1 reward per step and uses discount factor $\gamma=0.9$, so even an endless stream of best rewards has return at most 10. Its Q-values climb into the thousands. Which diagnosis fits, and what should you check first?
     options:
       - {
           id: a,

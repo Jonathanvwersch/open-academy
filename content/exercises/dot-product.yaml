@@ -420,7 +420,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A straight corridor runs in the direction of $b=(3,4)$, in metres east and north. A robot moves $a=(2,11)$ metres. How many metres has it moved along the corridor?"
+    prompt: >-
+      In (metres east, metres north) order, a straight corridor runs along the vector $b=(3,4)$ and a robot makes the displacement $a=(2,11)$. How many metres has it moved along the corridor?
     solution: "The distance along the corridor is the projection of $a$ onto $b$. The dot product is $2\\times3+11\\times4=50$ and $\\|b\\|=5$, so the projection is $50/5=10$ metres."
     tolerance: { abs: 0.000001 }
     answer: 10
@@ -700,7 +701,8 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 2
-    prompt: "A simplified house-price model uses weights $w=(2,-1,0.5)$ for area in tens of square metres, age in years, and bedroom count. Each weight is in thousand pounds per feature unit. A house has $x=(3,4,2)$ in that order. What is $w\\cdot x$, in thousand pounds?"
+    prompt: >-
+      A simplified house-price model uses weights $w=(2,-1,0.5)$ for area in tens of square metres, age in years, and bedroom count. Each weight is in thousand pounds per feature unit. A house has feature vector $x=(3,4,2)$ in that order. What is $w\cdot x$, in thousand pounds?
     answer: 3
     tolerance: { abs: 0.001 }
     solution: "$6 - 4 + 1 = 3$."

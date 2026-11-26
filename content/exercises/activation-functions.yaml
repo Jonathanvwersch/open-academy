@@ -162,12 +162,11 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 3
-    prompt: "Ten sigmoids are applied one after another, each to the previous one's output. A small change at the start is multiplied by each sigmoid's slope as it passes through. What is the largest factor the change can end up multiplied by? (Scientific notation is fine, e.g. `9.5e-7`.)"
+    prompt: "The sigmoid function is $\\sigma(z)=\\frac{1}{1+e^{-z}}$, where $z$ is the input score and $e$ is the base of the natural logarithm. Apply ten copies in sequence, each after the first taking the previous copy's output as its input. As a small change in the initial input passes through each sigmoid, it is multiplied by that sigmoid's slope. Use the maximum slope of this sigmoid for each of the ten slopes. What upper bound does this give for the slope of the final output with respect to the initial input? Give your answer to three significant figures in e-notation, such as `1.23e-4`."
     answer: 9.5367e-7
-    tolerance: { rel: 0.01 }
-    hints:
-      ["Each factor is at most the sigmoid's largest slope, at $z = 0$, where its output is 0.5."]
-    solution: "The sigmoid's largest slope is $0.5(1-0.5) = 0.25$, at $z = 0$. Each of the ten factors is at most that, so the total is at most $0.25^{10} \\approx 9.5\\times10^{-7}$. Even in the best case the change almost disappears."
+    tolerance: { abs: 0, rel: 0.01 }
+    hints: ["The sigmoid is steepest where its input score is zero."]
+    solution: "A sigmoid's maximum slope is $0.25$, so multiplying ten copies gives the upper bound $0.25^{10}$. To three significant figures, type `9.54e-7`."
   - id: act-review-deriv
     dimension: math
     type: mc

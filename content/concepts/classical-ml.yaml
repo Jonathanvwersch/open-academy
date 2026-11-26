@@ -175,7 +175,7 @@ concepts:
       [
         { id: overfitting, weight: 0 },
         { id: loss-functions, weight: 0.06 },
-        { id: train-test-split, weight: 0.2 },
+        { id: train-test-split, weight: 0.24 },
       ]
     objectives:
       - { text: "Explain i.i.d. assumptions and when they break", dimension: conceptual }

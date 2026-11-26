@@ -29,7 +29,7 @@ knowledge_points:
 
       Let's use the sentence "the cat sat on the mat". To keep the numbers small, we'll treat each word as one token, so the vocabulary is just the five words the, cat, sat, on and mat (the appears twice in the sentence), and its size is $N=5$. So here "word" and "token" mean the same thing. Real models use tens of thousands to a few hundred thousand smaller tokens, often parts of words.
 
-      A transformer turns each token into a vector, and because of the causal mask, the vector at position $t$ has seen only the tokens $x_1,\dots,x_t$, where $x_t$ is the token at position $t$. The output layer multiplies that vector by a weight matrix to give each of the $N$ tokens a score. Softmax turns those $N$ scores into next-token probabilities. Suppose that after "the cat" the output layer gives a score of $1$ for sat and $0$ for each of the other four words. The blue bars show the probabilities this gives.
+      A transformer turns each token into a vector, and because of the causal mask, the vector at position $t$ has seen only the tokens $x_1,\dots,x_t$, where $x_t$ is the token at position $t$. These input tokens up to and including position $t$ are the **prefix** for that prediction. The output layer multiplies that vector by a weight matrix to give each of the $N$ tokens a score. Softmax turns those $N$ scores into next-token probabilities. Suppose that after "the cat" the output layer gives a score of $1$ for sat and $0$ for each of the other four words. The blue bars show the probabilities this gives.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="The prefix the cat goes into the model, which gives a probability for each of the five words that could come next. The blue bars are 0.15 for the, 0.15 for cat, 0.40 for sat, 0.15 for on and 0.15 for mat, which add up to 1">
@@ -157,7 +157,7 @@ knowledge_points:
 
       ### Training on the real earlier words
 
-      Every input prefix is the real text. We could instead let the model predict from its own guesses. Feeding it the true earlier tokens, even at positions where it would have guessed wrong, is called **teacher forcing**. Because every input is known before the run starts, the causal mask can then train all positions in the same run.
+      **Teacher forcing** gives the model the true earlier tokens instead of its own guesses. One run makes all predictions, with the mask hiding later tokens from each position. The loss scores the predictions against the true next tokens for the training update.
 
       Be careful not to score position $t$ against $x_t$. The model already has $x_t$ as input, so its target is the token after it, $x_{t+1}$.
     worked: |

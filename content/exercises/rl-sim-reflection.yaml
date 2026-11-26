@@ -6,9 +6,8 @@ exercises:
     role: core
     difficulty: 1
     est_minutes: 2
-    prompt: |
-      An episode has rewards $r_1=0$, $r_2=2$, and $r_3=8$, then ends.
-      With discount $\gamma=0.5$, what is the return $G_0$?
+    prompt: >-
+      An episode gives rewards $r_1=0$, $r_2=2$ and $r_3=8$ in that order, then ends. With discount factor $\gamma=0.5$, what is the starting return $G_0$?
     answer: 3
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -27,10 +26,8 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: |
-      A sampled action has return $G_t=0.3$. The fitted state-value baseline
-      is $V(s_t)=0.7$. What advantage estimate $\hat A_t$ weights its
-      log-probability gradient in REINFORCE?
+    prompt: >-
+      At step $t$ in state $s_t$, a sampled action has return $G_t=0.3$. The fitted state-value baseline is $V(s_t)=0.7$. What advantage estimate $\hat A_t$ weights the action's log-probability gradient in REINFORCE?
     answer: -0.4
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -49,10 +46,8 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: |
-      A PPO sample has advantage $\hat A_t=-2$, ratio $\rho_t(\theta)=0.5$,
-      and clip range $c=0.2$. What is this sample's clipped surrogate value
-      before averaging over the batch?
+    prompt: >-
+      A PPO sample at step $t$ has advantage estimate $\hat A_t=-2$ and current-to-collection action probability ratio $\rho_t(\theta)=0.5$ under the current policy parameters $\theta$. The clip width is $c=0.2$. What is the sample's clipped surrogate value before averaging over the batch?
     answer: -1.6
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -71,10 +66,8 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 2
-    prompt: |
-      A PPO batch uses clip range $c=0.2$. After a parameter update, one
-      sampled action has ratio $\rho_t(\theta)=1.25$.
-      Which explanation is consistent with the clipped objective?
+    prompt: >-
+      A PPO batch uses clip width $c=0.2$. After a parameter update to $\theta$, a sampled action at step $t$ has a current-to-collection probability ratio $\rho_t(\theta)=1.25$. Which explanation is consistent with the clipped objective?
     options:
       - id: a
         text: Clipping changes the objective's slope; a finite parameter step can cross a clip boundary.

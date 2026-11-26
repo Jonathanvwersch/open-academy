@@ -6,42 +6,42 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: A friend lists what defines an MDP. Which item on the list belongs to the agent instead of the environment?
+    prompt: Two robots with identical bodies and motors are given exactly the same task on the same corridor floor. They have the same moves available. Which of the following could still differ between them?
     options:
       - id: a
-        text: The agent's policy
+        text: The rule each agent uses to choose actions
         correct: true
-        feedback: A policy tells the agent how to choose actions after the task has been specified.
+        feedback: Each agent can choose its actions differently in the same task.
       - id: b
-        text: The transition probabilities $p(s' \mid s, a)$
+        text: The chances of each next position after a given move from a given spot
         correct: false
         category: misunderstood_definition
-        feedback: They describe how actions move the environment from one state to another.
+        feedback: From the same spot, a given move has the same chances of reaching each next position for both robots.
       - id: c
-        text: The reward function
+        text: The reward rule
         correct: false
         category: misunderstood_definition
-        feedback: The reward function assigns feedback to the task's outcomes.
+        feedback: Both agents receive the same reward for the same outcome.
       - id: d
         text: The set of actions
         correct: false
         category: misunderstood_definition
         feedback: The available actions are part of the task the agent acts in.
-    solution: An MDP describes the task, including its states, actions, transitions and rewards. The policy belongs to the agent and tells it which actions to choose.
+    solution: The task sets which moves are possible, where they can lead and how they earn points. Each robot can use its own rule to choose a move.
   - id: dx-rl-1b
     dimension: conceptual
     type: mc
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot's move command sometimes fails and leaves it where it was. Which part of a Markov decision process describes how often that happens?"
+    prompt: "A robot starts in state $s$, receives move command $a$, and ends in next state $s'$. In many tests on the old floor it stayed put on about 1 in 10 tries. In equally many tests on the new floor it stayed put on about 4 in 10 tries, using the same command from the same starting spot. The robot will now operate only on the new floor. Which part of the Markov decision process should the engineer update to reflect these results?"
     options:
       - id: a
         text: "The transition probabilities $p(s' \\mid s, a)$"
         correct: true
         feedback: "They give the chance of each next state after an action, including staying put."
       - id: b
-        text: The reward function
+        text: The reward rule
         correct: false
         category: misunderstood_definition
         feedback: "It gives the reward for an outcome; transition probabilities show how often that outcome occurs."
@@ -55,7 +55,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "It lists the situations an agent can occupy. Transition probabilities describe how often each move leads to them."
-    solution: "Transition probabilities give the chance of each next state $s'$ after action $a$ in state $s$, so a failed move is a transition back to the same cell."
+    solution: "Transition probabilities give the chance of each next state $s'$ after action $a$ in state $s$. The tests show that staying in the starting state is more likely on the new floor."
   - id: mdpp-state-basics
     dimension: conceptual
     type: mc
@@ -199,7 +199,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: What does $p(s'\mid s,a)$ describe in an MDP?
+    prompt: >-
+      In a Markov decision process (MDP), an agent takes action $a$ in state $s$, and the environment determines the next state. If $s'$ is a possible next state, what does $p(s'\mid s,a)$ describe?
     options:
       - id: a
         text: The chance of choosing action $a$ after arriving in state $s'$.
@@ -300,7 +301,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A corridor motor obeys a command with probability $0.8$ and otherwise stays in place. The robot is at the left wall in cell 1 and chooses left; a successful command into a wall also stays in place. A learner assigns $p(1\mid1,\text{left})=0.2$. What went wrong?
+    prompt: >-
+      A corridor motor obeys a command with probability $0.8$ and otherwise stays in place. The robot is at the left wall in cell 1 and chooses left; a successful command into a wall also stays in place. A learner assigns transition probability $p(1\mid1,\text{left})=0.2$ to staying in cell 1 after that command. What went wrong?
     options:
       - id: a
         text: They counted only motor failure, although motor success has the same destination.
@@ -321,20 +323,20 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: An MDP has exactly two states. A learner lists $p(1\mid1,\text{right})=0.2$ and $p(2\mid1,\text{right})=0.7$. Which issue prevents this from being a complete transition rule for that state and action?
+    prompt: A robot can be in state 1 or state 2. Its model gives transition probabilities $p(1\mid1,\text{right})=0.2$ and $p(2\mid1,\text{right})=0.7$ when the robot tries to move right from state 1. What's wrong with the model for this move?
     options:
       - id: a
-        text: Each destination must have probability $0.5$ when there are two states.
+        text: The list should also include the chance of reaching state 2 by moving left.
         correct: false
-        feedback: Destinations can have unequal probabilities; their total must still be 1.
+        feedback: The listed probabilities cover moving right from state 1. For that starting state and command, they must sum to 1 on their own.
       - id: b
-        text: The listed destinations account for less than the full probability mass.
+        text: The probabilities of the listed destinations add up to less than 1.
         correct: true
         feedback: The two probabilities total $0.9$, leaving $0.1$ unassigned despite listing every possible state.
       - id: c
-        text: The chance of staying in the current state must always equal zero.
+        text: The chance of reaching state 2 should include the chance of staying in state 1.
         correct: false
-        feedback: Staying in place is a valid transition, for example after a failed move.
+        feedback: Reaching state 2 and staying in state 1 are distinct outcomes. Each has its own probability.
     solution: For a fixed current state and action, the probabilities over all next states must total 1; here they total $0.9$.
   - id: mdpp-delivery-template
     dimension: math
@@ -458,7 +460,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A reward arrives after the third command from now. With $\gamma=0.9$, a learner gives it weight $0.9$ when evaluating it from before the first command. Which timing error caused this?
+    prompt: >-
+      A reward arrives after the third command from now. The reward after the first command would have weight $1$. With discount factor $\gamma=0.9$, a learner gives it weight $0.9$ when evaluating it from before the first command. Which timing error caused this?
     options:
       - id: a
         text: They included the first command as an extra step of delay.
@@ -521,7 +524,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A charger controller receives a reward of $8$ after its third command. This task uses $\gamma=0.5$. What is the weighted amount of that reward when evaluated from before its first command?
+    prompt: >-
+      A charger controller receives a reward of $8$ after its third command. The discount factor is $\gamma=0.5$, and the reward after the first command would have weight $1$. What is the weighted amount of that reward when evaluated from before its first command?
     answer: 2
     tolerance: { abs: 0.001 }
     solution: The reward arrives two extra steps beyond the next reward, so its weighted amount is $0.5^2\times8=2$.
@@ -637,25 +641,25 @@ exercises:
     knowledge_point: mdp-transitions
     difficulty: 1
     est_minutes: 0.5
-    prompt: "The same robot command can either reach the goal or leave the robot in place. You want the average score from trying that command many times. Which part of the model gives you that average?"
+    prompt: "From a fixed starting state, a robot's command can reach the goal for a larger reward or leave it in place for a smaller reward. You know both rewards and both outcome probabilities, and staying put is more likely. Before running any trials, how should you predict the mean reward per try from that state?"
     options:
       - id: a
-        text: "The expected next reward"
+        text: "Weight each reward by the probability of its outcome and add the results"
         correct: true
-        feedback: "Average the scores of the two outcomes using their chances as weights."
+        feedback: "Each reward contributes in proportion to how often it occurs."
       - id: b
-        text: "The transition probability"
+        text: "Average the two rewards, giving more weight to the larger goal reward"
         correct: false
-        feedback: "A transition probability gives the chance of one destination. Combine it with the score for that outcome to get its contribution to the average."
+        feedback: "The weights come from the chances of each outcome. Reaching the goal is less likely even though its reward is larger."
       - id: c
-        text: "The reward rule"
+        text: "Give both outcomes' rewards equal weight"
         correct: false
-        feedback: "The reward rule gives the score of each outcome. The average also needs each outcome's chance."
+        feedback: "Equal weights only work when both outcomes are equally likely."
       - id: d
-        text: "The discounted reward"
+        text: "Use the reward of the more likely outcome"
         correct: false
-        feedback: "Discounting weights rewards by when they arrive. Both of these possible scores would arrive after one command."
-    solution: "The expected next reward combines the two scores according to how often each occurs."
+        feedback: "The less likely outcome also contributes to the mean."
+    solution: "The expected next reward weights each reward by its chance. Staying put is more likely here, so its reward gets more weight."
   - id: mdpp-recall-transitions-formula
     dimension: math
     type: expression
@@ -663,7 +667,7 @@ exercises:
     knowledge_point: mdp-transitions
     difficulty: 2
     est_minutes: 0.5
-    prompt: "A command moves the robot as intended with probability $q$ and earns reward $g$. Otherwise it leaves the robot in place and earns reward $c$. Write the command's expected next reward."
+    prompt: "A robot in cell 1 issues a command that either moves it to cell 2 for a positive reward or leaves it in cell 1 for a negative reward. Write the command's expected next reward. Use `q` for the chance of reaching cell 2, `g` for the reward in that case, and `c` for the reward for staying put, where `c` is less than zero. Type `*` for multiplication."
     answer: "q*g + (1-q)*c"
     variables: { q: [0.05, 0.95], g: [1, 20], c: [-5, -0.5] }
     solution: "Weight each reward by its chance and add: $qg+(1-q)c$."

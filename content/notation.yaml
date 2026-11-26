@@ -5,6 +5,12 @@ avoid:
   - pattern: '\b[Ll][Rr]\b'
     use: 'write "learning rate" or $\eta$'
 terms:
+  - {
+      id: python-random-seed,
+      label: "Python's random.seed",
+      match: ['\brandom\.seed\('],
+      introduced_by: [q-learning],
+    }
   - { id: real-space, label: "ℝⁿ notation", match: ['\\mathbb\s*\{?R'], introduced_by: [vectors] }
   - {
       id: sum,
@@ -239,6 +245,12 @@ terms:
       id: sim-to-real-gap,
       label: "sim-to-real gap",
       match: ["sim-to-real gap"],
+      introduced_by: [simulation-for-rl],
+    }
+  - {
+      id: rl-observation,
+      label: "observation (reinforcement learning)",
+      match: ['\*\*observation\*\*', '\bfinal observations?\b', '\bfinal_obs\b'],
       introduced_by: [simulation-for-rl],
     }
   - {
@@ -568,6 +580,12 @@ terms:
           '\$?T\$?\s+inputs give \$?T\$?\s+scored guesses with a following token\b',
         ],
       introduced_by: [causal-masking],
+    }
+  - {
+      id: token-prefix,
+      label: "Token prefix",
+      match: ['\bprefix(?:es)?\b'],
+      introduced_by: [autoregressive-lm],
     }
   - {
       id: uniform-token-sampling,

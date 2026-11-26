@@ -7,7 +7,8 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 2
-    prompt: What do $I$ and $A^{-1}$ do when $A$ is invertible?
+    prompt: >-
+      For an invertible matrix $A$, how do the identity matrix $I$ and the inverse matrix $A^{-1}$ each act on vectors?
     options:
       - id: a
         text: I leaves vectors unchanged; the inverse undoes A.
@@ -51,7 +52,8 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 2
-    prompt: Matrix $A$ has rows $(4,-2)$ and $(3,5)$. Find entry $(2,1)$ of $AI$.
+    prompt: >-
+      Matrix $A$ has rows $(4,-2)$ and $(3,5)$. Let $I$ be the $2\times2$ identity matrix. Find the entry in row 2, column 1 of $AI$.
     answer: 3
     solution: Since $AI=A$, the entry is 3.
     tolerance:
@@ -118,7 +120,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: Which matrix takes $ABx$ back to $x$ for invertible $A$ and $B$?
+    prompt: >-
+      Let $A$ and $B$ be invertible matrices and $x$ a column vector. Which matrix takes the result $ABx$ back to $x$?
     options:
       - id: a
         text: $B^{-1}A^{-1}$
@@ -139,9 +142,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt:
-      A filter maps original colour intensities $x=(r,g)$ to $b=Ax$. Matrix $A$ has rows $(2,1)$
-      and $(1,1)$. A filtered pixel is $(17,10)$. What was its original red intensity $r$?
+    prompt: >-
+      A filter maps a pixel's original intensities $x=(r,g)$ in (red, green) order to filtered intensities $b=Ax$ in the same order. The rows of $A$ are $(2,1)$ and $(1,1)$. A filtered pixel is $(17,10)$. What was its original red intensity $r$?
     answer: 7
     solution: The first row of the inverse is $(1,-1)$, so $r=17-10=7$.
     tolerance:
@@ -198,7 +200,8 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 2
-    prompt: Which pair writes $3x_1+2x_2=12$ and $x_1+4x_2=14$ as $Ax=b$ with $x=(x_1,x_2)$?
+    prompt: >-
+      Consider the equations $3x_1+2x_2=12$ and $x_1+4x_2=14$, with unknowns in the column vector $x=(x_1,x_2)$. Which coefficient matrix $A$ and right-hand-side vector $b$ write this system as $Ax=b$?
     options:
       - id: a
         text: A has rows (3,2), (1,4); b=(12,14).
@@ -237,7 +240,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: For $Ax=b$, the rows of $A^{-1}$ are $(2,-1)$ and $(-1,1)$, and $b=(7,4)$. Find $x_2$.
+    prompt: >-
+      In the system $Ax=b$, the rows of the inverse coefficient matrix $A^{-1}$ are $(2,-1)$ and $(-1,1)$. The right-hand-side vector is $b=(7,4)$. What is the second entry $x_2$ of the solution vector $x$?
     answer: -3
     solution: The second row of $A^{-1}$ dotted with $b$ gives $-7+4=-3$.
     tolerance:
@@ -335,7 +339,8 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 2
-    prompt: What does $A^\top$ do to $A$?
+    prompt: >-
+      What does transposing a matrix $A$ to obtain $A^\top$ do to its entries?
     options:
       - id: a
         text: Changes the signs of the top-right and bottom-left entries.
@@ -415,7 +420,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: If $A$ is $2\times3$ and $B$ is $3\times4$, what shape is $(AB)^\top$?
+    prompt: >-
+      Matrix $A$ is $2\times3$ and matrix $B$ is $3\times4$. What is the shape of the transpose $(AB)^\top$ of their product?
     options:
       - id: a
         text: $2\times4$
@@ -499,9 +505,8 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 5
-    prompt:
-      For invertible $A$, explain how the inverse describes the solution of $Ax=b$. Describe how
-      elimination finds the solution and how you can check it in the original system.
+    prompt: >-
+      A system of equations has invertible coefficient matrix $A$, unknown vector $x$ and right-hand-side vector $b$, with $Ax=b$. Explain how the inverse gives the solution. Describe how elimination finds it and how you can check it in the original system.
     rubric:
       - id: inverse
         criterion: Explain that the inverse undoes A, giving x = A^{-1}b.

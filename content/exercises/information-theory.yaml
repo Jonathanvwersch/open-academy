@@ -193,7 +193,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A distribution is $(1,0,0)$. How should its entropy be calculated?
+    prompt: >-
+      A probability distribution over three outcomes assigns probability $1$ to the first outcome and $0$ to the other two. How should its entropy be calculated?
     options:
       - id: a
         text: Give each outcome one third of the weight, giving positive entropy.
@@ -230,7 +231,8 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 1
-    prompt: Which probabilities are used in cross-entropy $H(p,q)$?
+    prompt: >-
+      For a true probability distribution $p$ and a forecast distribution $q$ over the same outcomes, which probabilities are used in cross-entropy $H(p,q)$?
     options:
       - id: a
         text: Actual probabilities p weight the surprises calculated from predictions q.
@@ -275,7 +277,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: Reality is $(1/4,3/4)$ and the model predicts $(1/2,1/2)$. What is the cross-entropy in bits?
+    prompt: >-
+      There are two possible outcomes, A and B. In that order, their true probabilities are $(1/4,3/4)$ and the model's predicted probabilities are $(1/2,1/2)$. What is the cross-entropy of the true distribution against the model's predictions, in bits?
     answer: 1
     tolerance:
       abs: 0.001
@@ -412,9 +415,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt:
-      On one fixed distribution, entropy is 1 bit and a prediction has cross-entropy 1.25 bits.
-      What is KL in bits?
+    prompt: >-
+      A true outcome distribution has entropy 1 bit. Its cross-entropy against a forecast distribution over the same outcomes is 1.25 bits. What is the KL divergence from the true distribution to the forecast, in bits?
     answer: 0.25
     tolerance:
       abs: 0.001
@@ -532,7 +534,8 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: Reality is $(1/4,1/4,1/2)$ and a model predicts $(1/2,1/4,1/4)$. What is cross-entropy in bits?
+    prompt: >-
+      There are three possible outcomes, A, B and C. In that order, their true probabilities are $(1/4,1/4,1/2)$ and the model's predicted probabilities are $(1/2,1/4,1/4)$. What is the cross-entropy of the true distribution against the model's predictions, in bits?
     answer: 1.75
     tolerance:
       abs: 0.001

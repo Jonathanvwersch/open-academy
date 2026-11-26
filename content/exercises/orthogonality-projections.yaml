@@ -396,7 +396,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: $Q$ is a $3\times3$ orthogonal matrix and $x=(2,3,6)$. What is the length of $Qx$?
+    prompt: >-
+      Matrix $Q$ is a $3\times3$ orthogonal matrix, and $x=(2,3,6)$ is a column vector. What is the length of $Qx$?
     answer: 7
     tolerance:
       abs: 0.001
@@ -491,7 +492,7 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 2
-    prompt: A least-squares fit has error vector $e=b-A\hat x$. Which statement is true?
+    prompt: A least-squares fit uses a matrix $A$, a vector of measurements $b$ outside the column space of $A$, and the best-fit coefficient vector $\hat x$. The fitted vector $A\hat x$ is nonzero. Which statement is true of the error vector $e=b-A\hat x$?
     options:
       - id: a
         text: "$e$ is orthogonal to every column of $A$, so $A^\\top e=0$."
@@ -501,17 +502,17 @@ exercises:
         text: "$e$ is the zero vector, because $\\hat x$ solves $A\\hat x=b$."
         correct: false
         category: misunderstood_definition
-        feedback: Least squares is used when $Ax=b$ has no solution, so the error is usually not zero.
+        feedback: Every fitted vector lies in the column space of $A$, while $b$ lies outside it. The fitted vector cannot equal $b$, so the error is nonzero.
       - id: c
         text: "$e$ is orthogonal to $b$, so $b^\\top e=0$."
         correct: false
         category: incorrect_reasoning
-        feedback: The right angle is with the columns of $A$. $b$ itself usually lies outside the column space.
+        feedback: The error is perpendicular to the fitted vector. Since $b$ is the fitted vector plus the error, $b^\top e$ equals the squared length of the error, which is positive here.
       - id: d
         text: "$e$ has the same length as $b$, because projection keeps lengths."
         correct: false
         category: misunderstood_definition
-        feedback: Projection usually shortens vectors. Keeping lengths is a property of orthogonal matrices.
+        feedback: The fitted vector and the error are perpendicular and add up to $b$. Since the fitted vector is nonzero, the error is shorter than $b$.
     solution: The best $\hat x$ makes $A\hat x$ the closest point to $b$ in the column space, so the error $e$ is orthogonal to every column of $A$. That is $A^\top e=0$.
   - id: orthp-ata-entry
     dimension: math
@@ -660,7 +661,8 @@ exercises:
     difficulty: 2
     target_seconds: 60
     est_minutes: 1
-    prompt: You fit $y=c+mt$ to five readings. The $5\times2$ matrix $A$ has rank 2. How many lines give the smallest sum of squared errors?
+    prompt: >-
+      You fit a line $y=c+mt$ to five observations of $y$ at times $t$, with intercept $c$ and slope $m$. The $5\times2$ design matrix $A$, with a column of ones and a column of times, has rank 2. How many lines give the smallest sum of squared errors?
     options:
       - id: one
         text: One line
@@ -683,7 +685,8 @@ exercises:
     difficulty: 2
     target_seconds: 60
     est_minutes: 1
-    prompt: Three readings all have $t=2$. The normal equations for $y=c+mt$ reduce to $c+2m=4$. Which two lines both give the smallest sum of squared errors?
+    prompt: >-
+      You fit a line $y=c+mt$, with intercept $c$ and slope $m$, to three readings all taken at time $t=2$. The normal equations reduce to $c+2m=4$. Which two lines both give the smallest sum of squared errors?
     options:
       - id: same-height
         text: $y=4$ and $y=2t$
@@ -705,7 +708,8 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "When $Ax=b$ has no solution, explain why the best $\\hat x$ leaves an error $b-A\\hat x$ orthogonal to every column of $A$, how that gives the normal equations, and what $\\hat x$ makes as small as possible."
+    prompt: >-
+      A system $Ax=b$ has coefficient matrix $A$, unknown vector $x$ and target vector $b$, but no exact solution. Explain why the best least-squares estimate $\hat x$ leaves an error $b-A\hat x$ orthogonal to every column of $A$, how that gives the normal equations, and what $\hat x$ makes as small as possible.
     rubric:
       - id: r1
         criterion: Explain that $A\hat x$ is the point in the column space of $A$ closest to $b$, so the error $b-A\hat x$ is orthogonal to every column, just as a projection onto a line leaves a leftover orthogonal to the line.

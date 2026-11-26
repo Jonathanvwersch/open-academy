@@ -97,8 +97,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: For heads, heads, tails, $L(2/3)\approx0.148$. A friend says this means there is a 14.8%
-      chance that the coin's true chance of heads is $2/3$. What is wrong?
+    prompt: >-
+      A coin lands heads, heads, tails. The likelihood of those flips for a guessed heads probability of $2/3$ is $L(2/3)\approx0.148$. A friend says this means there is a 14.8% chance that the coin's true heads probability is $2/3$. What is wrong?
     options:
       - id: a
         text: 0.148 is the chance of these flips if $p$ were $2/3$, not the chance that $p$ is $2/3$.
@@ -120,8 +120,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 4
-    prompt: A bent coin's flips come up heads, tails, tails, so $L(p)=p(1-p)^2=p-2p^2+p^3$. Use the
-      derivative to find the maximum likelihood estimate of $p$. Give two decimal places.
+    prompt: >-
+      A bent coin's flips come up heads, tails, tails. For a guessed heads probability $p$, the likelihood is $L(p)=p(1-p)^2=p-2p^2+p^3$. Use the derivative to find the maximum likelihood estimate of $p$. Give two decimal places.
     answer: 0.3333
     tolerance:
       abs: 0.006
@@ -316,9 +316,8 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 2
-    prompt:
-      Readings have Gaussian noise with a fixed $\sigma$ around an unknown centre $\mu$. Which $\mu$
-      has the highest likelihood?
+    prompt: >-
+      Independent readings follow a Gaussian model with fixed standard deviation $\sigma$ and unknown mean $\mu$. Which value of $\mu$ has the highest likelihood?
     options:
       - id: a
         text: The one with the smallest sum of squared distances to the readings, their mean.
@@ -413,9 +412,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt:
-      Each reading's chance is about $f(x)\,w$ for a narrow width $w$. Why can we drop $w$ when
-      comparing guesses of $\mu$?
+    prompt: >-
+      Three independent readings are recorded in narrow bins of the same width $w$. Each reading $x$ has probability about $f(x)\,w$, where $f$ is the Gaussian density with guessed mean $\mu$ and fixed standard deviation. Why can we ignore the width $w$ when comparing the likelihoods of different guesses for $\mu$?
     options:
       - id: a
         text: $w$ doesn't depend on $\mu$, so $w^3$ multiplies every guess's likelihood equally.
@@ -438,9 +436,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt:
-      For the readings 98, 101 and 104 cm, suppose the noise had $\sigma=4$ cm instead of 2 cm.
-      What would the maximum likelihood centre be?
+    prompt: >-
+      For independent Gaussian readings of 98, 101 and 104 cm, suppose the noise standard deviation $\sigma$ were 4 cm instead of 2 cm. What would the maximum likelihood mean be?
     options:
       - id: a
         text: Still 101 cm; a larger $\sigma$ flattens the peak but doesn't move it.
@@ -463,9 +460,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 4
-    prompt:
-      For the readings 98, 101 and 104 cm with $\sigma=2$ cm, how much higher is the log-likelihood
-      of $\mu=101$ than that of $\mu=99$?
+    prompt: >-
+      For independent Gaussian readings of 98, 101 and 104 cm with standard deviation $\sigma=2$ cm, how much higher is the natural-log likelihood for mean $\mu=101$ cm than for mean $\mu=99$ cm?
     answer: 1.5
     tolerance:
       abs: 0.005
@@ -600,9 +596,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt:
-      On the same 10 readings, with Gaussian noise of the same fixed $\sigma$, model P has MSE 2.4
-      and model Q has MSE 1.8. Which model has the higher likelihood?
+    prompt: >-
+      On the same 10 readings, two models assume independent Gaussian errors with the same fixed standard deviation $\sigma$. Model P has mean squared error 2.4 and model Q has mean squared error 1.8. Which model has the higher likelihood?
     options:
       - id: a
         text: Q, because lower MSE means a smaller sum of squared errors to subtract.
@@ -625,10 +620,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 4
-    prompt:
-      Two models predict where a robot arm's gripper will stop, with Gaussian noise of $\sigma=0.5$
-      cm. On four test moves, model A's errors are $0.5,-0.5,0,1$ cm and model B's are $1,1,-1,0$ cm.
-      How much higher is A's log-likelihood than B's?
+    prompt: >-
+      Two models predict where a robot arm's gripper will stop, with independent Gaussian errors across moves of standard deviation $\sigma=0.5$ cm. On four test moves, model A's errors are $0.5,-0.5,0,1$ cm and model B's are $1,1,-1,0$ cm. How much higher is A's natural-log likelihood than B's?
     answer: 3
     tolerance:
       abs: 0.005
@@ -666,10 +659,8 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 3
-    prompt: A learner fits both $\mu$ and $\sigma$ to distance readings. Each log height is
-      $\ln\frac{1}{\sigma\sqrt{2\pi}}-\frac{(x-\mu)^2}{2\sigma^2}$, and they leave out the first term
-      because it is the same for every $\mu$. They then try every $\sigma$ from 0.5 to 6 cm. Which
-      $\sigma$ gets the highest score?
+    prompt: >-
+      A learner fits a Gaussian mean $\mu$ and standard deviation $\sigma$ to distance readings. For each reading $x$, the log density is $\ln\frac{1}{\sigma\sqrt{2\pi}}-\frac{(x-\mu)^2}{2\sigma^2}$. They leave out the first term because it is the same for every $\mu$. Holding $\mu$ fixed at a value that differs from at least one reading, they try every $\sigma$ from 0.5 to 6 cm. Which $\sigma$ gets the highest score?
     options:
       - id: a
         text: 6 cm, the widest bell tried, since the remaining term only gets closer to 0 as $\sigma$ grows

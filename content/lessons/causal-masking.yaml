@@ -23,9 +23,9 @@ knowledge_points:
     explain: |
       ### Guessing the next word
 
-      A language model writes text one token at a time. A token is a piece of text, such as a word or part of one. We'll use whole words here. At position $t$, the model reads words $x_1$ to $x_t$ and gives each possible next word a probability.
+      A language model writes text one token at a time. A token is a piece of text, such as a word or part of one. We'll use whole words here. Write $x_t$ for the token ID at position $t$. Our goal is to predict the next word at each position using only IDs $x_1$ through $x_t$, the IDs up to that position.
 
-      Let's feed in "the cat sat on", the first four words of the sentence "the cat sat on the mat". We write $T$ for the number of input tokens, so here $T=4$. "The" should guess "cat", "cat" should guess "sat", "sat" should guess "on", and "on" should guess the word after it, the second "the" in the full sentence. Attention works on every input position at once, so the model makes all four guesses in one run over the input, which is called a pass.
+      Let's feed in "the cat sat on" from "the cat sat on the mat". We have $T=4$ input tokens. In one run, called a pass, attention builds a vector for each input. The model uses each vector to score possible next words. So "on" can predict the second "the" even though that "the" isn't in the input.
 
       ### The problem with looking ahead
 
@@ -216,7 +216,13 @@ knowledge_points:
 
       Add each mask entry to the score in the same row and column. Row 2 keeps its first two scores. If both are $0$, the weights in row 2 are $(1/2,1/2,0)$. The third token cannot affect the first two outputs. A model can repeat attention, using the output vectors as inputs to another round. Each round is an attention layer. Use the same mask in each layer so the first two outputs stay free of information from the third token.
 
-      The model turns each output vector into a guess for the next token. During training, the actual next tokens are the answers, called targets. The next-token targets are shifted left by one. For inputs "the cat sat" from "the cat sat on", the targets are "cat sat on": "the" guesses "cat", "cat" guesses "sat" and "sat" guesses "on". If the text ends at "sat", there is no answer for the last guess. With $T$ inputs that means $T$ guesses to check when one more token follows, or $T-1$ at the end of the text.
+      The model turns each output vector into next-token scores, then softmax gives probabilities. The next-token targets are shifted left by one: place each word one column earlier so it sits under the input that should predict it.
+
+      | Input at this position | the | cat | sat |
+      | --- | --- | --- | --- |
+      | Target for the prediction | cat | sat | on |
+
+      Here "on" is only a target, so it has no column in the mask. If the text ends at "sat", there is no answer for the last guess. With $T$ inputs that means $T$ guesses to check when one more token follows, or $T-1$ at the end of the text.
     problems:
       - cm-zero-basics
       - cm-zero-self-explain

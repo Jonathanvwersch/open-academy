@@ -14,7 +14,7 @@ where_this_fits: |
 
   Serving an LLM means running it for many users at the same time. The server takes in their requests, decides which ones the GPU works on at each moment, and streams each reply back token by token. The program that does this is called an inference engine.
 
-  A GPU that answers one user at a time leaves most of its power unused, because making one token for one user takes about as long as making one token each for dozens of users. Our example is a chat assistant serving Llama 3 8B on one NVIDIA H100 SXM GPU. We'll see how engines keep that GPU busy, how to spread the work over several GPUs, and how to stop long prompts slowing replies.
+  Generating one token each for several users can take about as long as generating one token for a single user. We'll serve Llama 3 8B, a model with 8 billion parameters, on an NVIDIA H100 SXM GPU, a module that plugs into a server board. We'll keep it busy, spread work across GPUs and stop long prompts slowing replies.
 knowledge_points:
   - id: lsv-batching
     key_prereqs: [inference-metrics, gpu-inference-basics]
@@ -27,11 +27,11 @@ knowledge_points:
     explain: |
       ### One decode step serves the whole batch
 
-      Inter-token latency (ITL), from the measuring inference lesson, is the gap between successive reply tokens. We also met **throughput**, the server's total tokens per second across all users.
+      Inter-token latency (ITL) is the gap between reply tokens. **Throughput** is the server's total tokens per second.
 
-      As the prefill and decode lesson showed, after processing the prompt, each decode step makes one reply token and reads all the model's weights from GPU memory. For Llama 3 8B the weights take about 16 GB. The H100 reads its memory at about 3.35 TB/s, its memory bandwidth, so one step takes about 4.8 ms, which we'll round to 5 ms. The maths for one token takes far less time than that.
+      Each decode step makes one reply token per request and reads the weights from GPU memory. Llama 3 8B's weights take about 16 gigabytes (GB), at $10^9$ bytes per GB. The H100 SXM's memory bandwidth, the rate at which it reads memory, is about 3.35 terabytes per second (TB/s), where 1 TB is 1,000 GB. Reading the weights takes roughly 5 milliseconds (ms), much longer than the maths.
 
-      Each request's prompt plus its reply so far is called a **sequence**. If we put several sequences into a **batch** and decode them together, the weights are read once for all of them. Ignoring KV-cache reads, the step still takes about 5 ms, so each user's ITL stays about 5 ms. A batch of 32 sequences makes 32 tokens per step.
+      Each request's prompt plus its reply so far is called a **sequence**. If we put several sequences into a **batch** and decode them together, the weights are read once for all of them. For short sequences the step still takes about 5 ms, so each user's ITL stays about 5 ms. Longer sequences have more cached keys and values to read at every step. A batch of 32 sequences makes 32 tokens per step.
 
       ### Two ways to fill the batch
 
@@ -112,9 +112,9 @@ knowledge_points:
 
       $$\text{throughput}=\frac{\text{tokens made}}{\text{steps}\times\text{time per step}}.$$
 
-      Both schedules make 12 tokens, so fewer steps means higher throughput.
+      Both schedules make 12 tokens.
 
-      Be careful not to expect continuous batching to make each step faster. Each step still takes about 5 ms. The gain comes from filling idle slots.
+      Each step still takes about 5 ms. Filling idle slots raises throughput without shortening the step.
     worked: |
       Let's work out the throughput of both schedules for the toy server, with 2 slots, replies of 6, 2, 2 and 2 tokens, and 5 ms per decode step.
 
@@ -414,7 +414,7 @@ knowledge_points:
 
       In the prefill and decode lesson, we saw that prefill handles the whole prompt at once and is limited by maths speed, while decode is limited by reading memory. A step's time is set by whichever takes longer, reading the weights or doing the maths. With continuous batching, a new request's prefill can join the same step as everyone else's decoding. What happens to those other users?
 
-      Leaving out the attention scores, prefill costs about 2 FLOPs per parameter per prompt token, because each parameter is used in one multiply and one add. The H100 does about 990 TFLOP/s, which we round to 1,000 TFLOP/s. For a 2,000-token prompt to Llama 3 8B:
+      Ignoring attention scores, each parameter does one multiply and one add per prompt token. These count as two floating-point operations (FLOPs). Floating-point numbers can represent fractions. A TFLOP/s is a trillion floating-point operations per second. The H100 does about 990 TFLOP/s, which we round to 1,000 TFLOP/s. For a 2,000-token prompt to Llama 3 8B:
 
       $$
       \begin{aligned}
@@ -474,7 +474,7 @@ knowledge_points:
 
       Here is what to try for each problem.
 
-      - **Throughput too low, ITL and TTFT fine:** bigger batches with continuous batching and paging, or more replicas.
+      - **Throughput too low, time to first token and inter-token latency (ITL) fine:** bigger batches with continuous batching and paging, or more replicas.
       - **ITL too long at every step:** tensor parallelism.
       - **ITL jumps when long prompts arrive:** chunked prefill, or separate prefill GPUs.
       - **Model too big for one GPU:** tensor parallelism, or expert parallelism for a mixture of experts.

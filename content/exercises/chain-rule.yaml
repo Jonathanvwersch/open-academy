@@ -144,7 +144,8 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 3
-    prompt: "Let $s = g(wx + b)$, where $g'(0) = 0.25$. At $w = 0$, $b = 0$, and $x = 4$, what is $\\partial s/\\partial w$?"
+    prompt: >-
+      A unit applies a differentiable activation $g$ to its score $wx+b$, where $w$ is the weight, $x$ the input and $b$ the bias. Its output is $s=g(wx+b)$, with $g'(0)=0.25$. At $w=0$, $b=0$ and $x=4$, what is $\partial s/\partial w$?
     answer: 1
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -234,7 +235,8 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 1
-    prompt: "The in-between value $u$ changes at $\\frac{du}{dx}=4$ and the output changes at $\\frac{dy}{du}=5$. Find $\\frac{dy}{dx}$."
+    prompt: >-
+      An input $x$ affects an intermediate value $u$, which in turn affects the output $y$. The rates are $du/dx=4$ and $dy/du=5$. Find $dy/dx$.
     answer: 20
     tolerance: { abs: 0.001 }
     common_wrong:

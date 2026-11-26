@@ -683,20 +683,20 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A scaled dot-product attention function processes $6$ tokens. Each query and key has width $9$, and each value has width $4$. The function computes a query–key dot product called `dot`. Which line turns `dot` into the scaled score?"
+    prompt: "A scaled dot-product attention function processes $6$ tokens. Each query and key has width $9$, and each value has width $4$. The function computes a query–key dot product called `dot`. The function `sqrt` takes a square root, and `score` holds the scaled score. Which line computes `score`?"
     options:
       - id: a
-        text: "`score = dot / 6`"
+        text: "`score = dot / sqrt(6)`"
         correct: false
-        feedback: "This divides by the number of tokens. The key width determines the scale."
+        feedback: "This uses the number of tokens under the square root. The key width determines the scale."
       - id: b
-        text: "`score = dot / 3`"
+        text: "`score = dot / sqrt(9)`"
         correct: true
         feedback: "The divisor is the square root of the key width."
       - id: c
-        text: "`score = dot / 4`"
+        text: "`score = dot / sqrt(4)`"
         correct: false
-        feedback: "This divides by the value width. Values contribute to the output after the scores become weights."
+        feedback: "This uses the value width under the square root. Values contribute to the output after the scores become weights."
     solution: 'Use the square root of the key width. The divisor is $\sqrt{9}=3$.'
   - id: attn-code-query-pair
     dimension: implementation
@@ -726,7 +726,7 @@ exercises:
     difficulty: 2
     est_minutes: 1
     prompt: |
-      An attention function processes three tokens in order: oak, pine, elm. The table shows scores for two query tokens (row labels) against all three source tokens (column labels). Which scores should the function pass together to softmax to build the output at the second token position?
+      An attention function processes three tokens in order: oak, pine, elm. Each token can use its scores for all three source tokens. The table shows scores for two query tokens (row labels) against all three source tokens (column labels). Which scores should the function pass together to softmax to build the output at the second token position?
 
       | Query / source | oak | pine | elm |
       | --- | --- | --- | --- |

@@ -182,7 +182,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "A robot's first move from its dock is $(2,-1)$ metres east and north. After a second move it is at $(5,2)$. What is the north component of the second move, in metres?"
+    prompt: >-
+      Using (metres east, metres north) coordinates relative to its dock, a robot starts at the dock and first moves by the displacement $(2,-1)$. After its second move its position is $(5,2)$. What is the north component of the second move, in metres?
     solution: "The two moves must add to $(5,2)$, so the second move's north component $n$ satisfies $-1+n=2$, giving $n=3$. The whole second move is $(3,3)$."
     answer: 3
   - id: vec-change-move-basics
@@ -530,7 +531,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "A house app compares houses $(2,5)$ and $(4,1)$, recording number of rooms and kilometres to the town centre. It switches the second component from kilometres to metres and changes nothing else. What happens to its distance comparisons?"
+    prompt: >-
+      A house app records feature vectors in (number of rooms, kilometres to the town centre) order. It compares two houses whose vectors are $(2,5)$ and $(4,1)$. It computes Euclidean distances directly from the recorded numbers, with no scaling. It converts the second component to metres and leaves the first unchanged. What happens to its distance comparisons?
     solution: "In metres, the town-centre gaps become 1,000 times larger, and their squares 1,000,000 times larger. Rescaling measurements to similar ranges stops one choice of units dominating the comparison."
     options:
       - id: a
@@ -700,7 +702,8 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "A house app records area, bedrooms and age as $(120,3,15)$. In 2–4 sentences, explain what this vector represents and why the numerical range of each measurement matters when comparing houses by distance."
+    prompt: >-
+      A house app records a house's area, bedroom count and age as the feature vector $(120,3,15)$, in square metres, bedrooms and years, respectively. In 2–4 sentences, explain what this vector represents and why the numerical range of each measurement matters when comparing these vectors by Euclidean distance without rescaling.
     rubric:
       - id: r1
         criterion: Explain that $(120,3,15)$ records one house's area, bedroom count and age in a fixed order.

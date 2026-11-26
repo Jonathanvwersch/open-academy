@@ -7,7 +7,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What does the advantage $A(s,a)$ of an action measure?"
+    prompt: >-
+      What does the advantage $A(s,a)$ of taking action $a$ in state $s$ measure?
     options:
       - id: a
         text: The reward the action earns on the very next step.
@@ -61,7 +62,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: 'A critic-based estimate gives an action the advantage $\hat A_t=-2$. What does a policy gradient update do with this action in state $s_t$?'
+    prompt: >-
+      At step $t$, a critic-based estimate gives the sampled action an advantage of $\hat A_t=-2$ in state $s_t$. What happens to this action's probability in that state if you take a small policy-gradient step using only this sample, whose log-probability gradient is nonzero?
     options:
       - id: a
         text: It makes the action less likely in that state.
@@ -89,7 +91,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'A robot in a 4-cell corridor gets reward $-1$ for each step that doesn''t reach the goal. A critic estimates $V(2)=6$ and $V(3)=8$, and $\gamma=0.9$. The robot moves left from cell 3 to cell 2. What is the one-step advantage estimate for this move?'
+    prompt: >-
+      A robot in a 4-cell corridor gets reward $-1$ for each step that doesn't reach the goal. The critic's state values are $V(2)=6$ and $V(3)=8$. The discount factor is $\gamma=0.9$. The robot moves left from cell 3 to cell 2 and the episode continues; the goal is cell 4. What is the one-step advantage estimate for this move?
     answer: -3.6
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -160,7 +163,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'A robot is in cell 1 at the left end of a corridor. It moves left into the wall, stays in cell 1 and gets reward $-1$. A critic values cell 1 at $5$, and $\gamma=0.9$. What is the one-step advantage estimate for this move?'
+    prompt: >-
+      A robot in cell 1 moves left into a wall, stays in cell 1 and gets reward $-1$ without ending the episode. A critic values cell 1 at $5$, and the discount factor is $\gamma=0.9$. What is the one-step advantage estimate for this move?
     answer: -1.5
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -205,7 +209,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'A robot arm learns to grasp. It gets reward $1$ when a grasp succeeds and $0$ on every other step. Take $\gamma=1$. After one action the grasp hasn''t happened yet, the reward is $0$, and the critic''s value for the arm''s state rises from $0.4$ to $0.7$. What does the one-step advantage estimate say about this action?'
+    prompt: >-
+      A robot arm earns reward $1$ when a grasp succeeds and $0$ on every other step. The discount factor is $\gamma=1$. One action gives reward $0$ before the grasp happens, and the critic's state value rises from $0.4$ to $0.7$. With a nonzero log-probability gradient, what is the action's one-step advantage estimate and what happens to its probability if you take a small policy-gradient step using only this sample?
     options:
       - id: a
         text: "It is $0.3$, so the action becomes more likely even though it earned nothing yet."
@@ -289,7 +294,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: 'With $\lambda=0$, what does the GAE estimate $\hat A_t$ become?'
+    prompt: >-
+      Generalised advantage estimation (GAE) uses a decay parameter $\lambda$. At step $t$, the agent moves from state $s_t$ to $s_{t+1}$, earns reward $r_{t+1}$ and continues the episode. Let $V$ be the critic's state-value estimate and $\gamma$ the discount factor. What does the advantage estimate $\hat A_t$ at step $t$ become when $\lambda=0$?
     options:
       - id: a
         text: 'The one-step error $\delta_t=r_{t+1}+\gamma V(s_{t+1})-V(s_t)$.'
@@ -317,7 +323,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'An episode has two steps, with one-step errors $\delta_0=2$ and $\delta_1=-1$. With $\gamma=0.9$ and $\lambda=0.5$, what is the GAE estimate $\hat A_0$?'
+    prompt: >-
+      An episode has two steps, with one-step TD errors $\delta_0=2$ and $\delta_1=-1$. With discount factor $\gamma=0.9$ and GAE decay parameter $\lambda=0.5$, what is the advantage estimate $\hat A_0$ for the first step?
     answer: 1.55
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -361,7 +368,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'A learner says: "Setting $\lambda=1$ in GAE always gives the best advantage estimates, because it uses real rewards instead of the critic''s guesses." What is the best reply?'
+    prompt: >-
+      A learner says: "Setting the decay parameter $\lambda=1$ in GAE always gives the best advantage estimates, because it uses real rewards instead of the critic's guesses." Assume the critic's value for the starting state is exact, but its predictions for later states can introduce bias. Full sampled returns fluctuate more than the bootstrapped estimates in this task. What is the best reply?
     options:
       - id: a
         text: "They're right: real rewards are always better than estimates."
@@ -389,7 +397,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'Early in training, a critic''s values are mostly wrong. Which choice of $\lambda$ in GAE leans least on those values, and what does it cost?'
+    prompt: >-
+      Compare repeated episodes that visit the same sequence of states. The critic's values for those states are fixed but inaccurate, and the discount factor is positive. The first reward is fixed, but rewards on later steps are random and independent of one another. For the first action, which choice of the GAE decay parameter $\lambda$ leans least on the critic's predictions for later states, and what does it cost?
     options:
       - id: a
         text: '$\lambda$ close to $1$, at the cost of noisier estimates.'
@@ -417,7 +426,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: 'A drone''s flight lasts three steps, with rewards $0$, $0$ and then $5$ when it lands. The discount is $\gamma=0.9$, and a critic values the starting state at $3$. Using GAE with $\lambda=1$, what is the advantage estimate for the first action?'
+    prompt: >-
+      A drone's flight lasts three steps, with rewards $0$, $0$ and then $5$ when it lands. The discount factor is $\gamma=0.9$, and a critic values the starting state at $3$. Using GAE with decay parameter $\lambda=1$, what is the advantage estimate for the first action?
     answer: 1.05
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -439,7 +449,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: 'What does the probability ratio $\rho_t(\theta)$ in PPO compare?'
+    prompt: >-
+      In PPO, a policy with parameters $\theta$ is evaluated on a sampled action at step $t$. What does the probability ratio $\rho_t(\theta)$ compare?
     options:
       - id: a
         text: The reward of the action under the new policy and under the old policy.
@@ -493,7 +504,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: 'During a PPO update, one sample has probability ratio $\rho_t(\theta)=1$. What does that tell you?'
+    prompt: >-
+      During a PPO update, the probability ratio for a sampled action at step $t$ is $\rho_t(\theta)=1$ under the current parameters $\theta$. What does that tell you?
     options:
       - id: a
         text: "The current policy gives the action the same probability as the policy that collected the data."
@@ -542,7 +554,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'The policy that collected a batch took an action with probability $0.4$, and its advantage estimate is $\hat A_t=-2$. The current policy gives the action probability $0.5$. What is this sample''s term $\rho_t\hat A_t$ in the surrogate objective (with no clipping)?'
+    prompt: >-
+      The policy that collected a batch took an action at step $t$ with probability $0.4$. Its advantage estimate is $\hat A_t=-2$, and the current policy gives the same action probability $0.5$. What is this sample's unclipped surrogate term $\rho_t\hat A_t$, where $\rho_t$ is the current-to-collection probability ratio?
     answer: -2.5
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -562,7 +575,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'PPO takes several gradient steps on each batch. Why does its objective weight each sample by the ratio $\pi_\theta(a_t\mid s_t)/\pi_{\theta_\text{old}}(a_t\mid s_t)$?'
+    prompt: >-
+      PPO takes several gradient steps on the same batch. For the action $a_t$ taken in state $s_t$ at step $t$, let $\pi_\theta$ be the current policy and $\pi_{\theta_\text{old}}$ the policy that collected the batch. Why does the objective weight each sample by $\pi_\theta(a_t\mid s_t)/\pi_{\theta_\text{old}}(a_t\mid s_t)$?
     options:
       - id: a
         text: "The batch came from the old policy. The ratio accounts for how much the current policy has changed each action's probability, so later steps on the same batch still make sense."
@@ -590,7 +604,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'A team climbs the plain surrogate objective, average of $\rho_t\hat A_t$ with no clipping, for 30 passes on each batch. Training improves at first and then suddenly gets much worse. What is the most likely cause?'
+    prompt: >-
+      A team maximises the average unclipped surrogate term $\rho_t\hat A_t$ for 30 passes on each batch. Here $\rho_t$ is the current-to-collection action probability ratio at step $t$ and $\hat A_t$ is the action's advantage estimate. Training improves at first and then suddenly gets much worse. What is the most likely cause?
     options:
       - id: a
         text: "The repeated passes kept pushing ratios far from $1$ on noisy advantages, so the policy moved far from the one that collected the data and fell apart."
@@ -618,7 +633,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'A language model picks one word piece (a token) at a time, so each pick is an action with a probability. It is tuned with a policy gradient method. When it wrote a reply, it picked one token with probability $0.02$. After a few gradient steps the current model gives that token probability $0.05$. The token''s advantage estimate is $0.5$. What is its surrogate term $\rho_t\hat A_t$, with no clipping?'
+    prompt: >-
+      A language model picks one token at a time. When it wrote a reply, it picked one token at step $t$ with probability $0.02$. After a few policy-gradient steps the current model gives that token probability $0.05$. The token's advantage estimate is $\hat A_t=0.5$. What is its unclipped surrogate term $\rho_t\hat A_t$, where $\rho_t$ is the current-to-original probability ratio?
     answer: 1.25
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -640,7 +656,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "In PPO's clipped objective, what does clipping the ratio to the range $1-c$ to $1+c$ do?"
+    prompt: >-
+      PPO has a clip width $c$ for the ratio of current to collection probability of a sampled action. What does clipping do to the sample's contribution when the action probability changes beyond the range $1-c$ to $1+c$ times its collection probability?
     options:
       - id: a
         text: "It forces every action probability to lie between $1-c$ and $1+c$."
@@ -694,7 +711,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: 'PPO uses clip range $c=0.2$. A sample has ratio $\rho_t=1.1$ and advantage estimate $\hat A_t=3$. What is its term in the clipped objective?'
+    prompt: >-
+      PPO uses clip width $c=0.2$. At step $t$, a sample has a current-to-collection action probability ratio $\rho_t=1.1$ and advantage estimate $\hat A_t=3$. What is its term in the clipped objective?
     answer: 3.3
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -749,7 +767,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A batch contains one lucky episode, so one action, which the old policy took with probability $0.3$, gets an inflated advantage estimate of $+8$. PPO runs 10 passes on this batch with the clipped objective and $c=0.2$. What happens to that action's probability?"
+    prompt: >-
+      A batch contains one lucky episode, so one action, which the old policy took with probability $0.3$, gets an inflated advantage estimate of $+8$. PPO uses the clipped objective with clip width $c=0.2$. Consider only this sample's contribution, and imagine the probability can rise in arbitrarily small steps. How far does this term push the probability up before it goes flat?
     options:
       - id: a
         text: "It rises until it is about $1.2$ times its old value, $0.36$. Then that sample's term goes flat and stops pushing."
@@ -777,7 +796,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'A learner says: "With $c=0.2$, PPO guarantees that after an update every ratio $\rho_t$ lies between $0.8$ and $1.2$." What is the best reply?'
+    prompt: >-
+      A learner says: "With clip width $c=0.2$, PPO guarantees that after an update each sampled action's current-to-collection probability ratio $\rho_t$ lies between $0.8$ and $1.2$." What is the best reply?
     options:
       - id: a
         text: "That's right: clipping stops any ratio from leaving the range."
@@ -805,7 +825,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'A programmer writes the clipped objective with $\max$ where PPO uses $\min$: average of $\max(\rho_t\hat A_t,\ \text{clip}(\rho_t,1-c,1+c)\,\hat A_t)$. What goes wrong?'
+    prompt: >-
+      For a sample at step $t$, let $\rho_t$ be its current-to-collection action probability ratio, $\hat A_t$ its advantage estimate and $c$ the clip width. A programmer writes PPO's clipped objective using $\max$ instead of $\min$, averaging $\max(\rho_t\hat A_t,\ \text{clip}(\rho_t,1-c,1+c)\,\hat A_t)$. What goes wrong?
     options:
       - id: a
         text: "Nothing, because the two terms are always equal."

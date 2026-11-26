@@ -100,7 +100,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: Is $b=(3,1,4)$ in the span of $(1,0,2)$ and $(0,1,1)$?
+    prompt: >-
+      Is the vector $b=(3,1,4)$ in the span of the vectors $(1,0,2)$ and $(0,1,1)$?
     options:
       - id: a
         text: Yes, amounts 3 and 1 match the required vector.
@@ -128,7 +129,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: What is the span of $(1,-2,3)$ and $(-2,4,-6)$?
+    prompt: >-
+      What is the span of the vectors $(1,-2,3)$ and $(-2,4,-6)$?
     options:
       - id: a
         text: A plane through the origin.
@@ -476,7 +478,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A $4\times3$ matrix $A$ has rank 3, and $b$ is in its column space. How many solutions does $Ax=b$ have?
+    prompt: >-
+      A $4\times3$ coefficient matrix $A$ has rank 3, and the right-hand-side vector $b$ is in its column space. How many solution vectors $x$ does $Ax=b$ have?
     options:
       - id: a
         text: Infinitely many, because there are more rows than columns.
@@ -675,7 +678,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: If $A$ is $6\times2$ and $B$ is $2\times5$, what is the largest possible rank of $AB$?
+    prompt: >-
+      Matrix $A$ is $6\times2$ and matrix $B$ is $2\times5$. What is the largest possible rank of their product $AB$?
     answer: 2
     tolerance: { abs: 0 }
     common_wrong:
@@ -734,7 +738,8 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: Explain how elimination gives the rank of $A$, and how the rank tells whether $Ax=b$ has one or infinitely many solutions when $b$ is in the column space.
+    prompt: >-
+      Let $A$ be a coefficient matrix, $x$ a vector of unknowns and $b$ a right-hand-side vector in the column space of $A$. Explain how elimination gives the rank of $A$, and how that rank tells whether $Ax=b$ has one or infinitely many solutions.
     rubric:
       - id: count-pivots
         criterion: Explain that row elimination leaves pivots and that their count is the rank, the number of independent columns.

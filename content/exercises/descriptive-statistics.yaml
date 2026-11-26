@@ -127,7 +127,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A camera processes three frames in 8, 10 and 12 milliseconds. Find the sample standard deviation in milliseconds, using division by $n-1$ for the variance.
+    prompt: >-
+      A camera processes three frames in 8, 10 and 12 milliseconds. Find the sample standard deviation in milliseconds, using division by $n-1$ for the variance, where $n$ is the number of frames.
     answer: 2
     tolerance: { abs: 0.001 }
     solution: The mean is 10, so the squared deviations add to $4+0+4=8$. The sample variance is $8/(3-1)=4$, and its square root is 2 milliseconds.
@@ -356,7 +357,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A camera has a fixed long-run average processing time. When the approximation works well, what happens to its approximate 95% intervals across many independent experiments?
+    prompt: >-
+      A camera has a fixed long-run mean processing time. Each independent experiment estimates that mean and forms an approximate 95% confidence interval for it. When the approximation works well, what happens across many experiments?
     options:
       - {
           id: a,
@@ -605,7 +607,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: Two robot versions have overlapping individual confidence intervals, but the valid approximate interval for updated minus original is 0.02 to 0.14. How should we judge improvement?
+    prompt: >-
+      Two robot versions have overlapping confidence intervals for their individual success rates. A valid approximate interval for the difference in success rates, updated minus original, is 0.02 to 0.14. How should we judge improvement?
     options:
       - {
           id: a,

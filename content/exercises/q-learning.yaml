@@ -6,7 +6,7 @@ exercises:
     role: diagnostic
     difficulty: 3
     est_minutes: 3
-    prompt: "Q-learning update with $\\eta = 0.5$, $\\gamma = 0.9$. Currently $Q(s, a) = 2$. Taking $a$ in $s$ gives reward $r = 1$ and next state $s'$ with $\\max_{a'} Q(s', a') = 5$. What is the new $Q(s, a)$?"
+    prompt: "A Q-learning agent takes action $a$ in state $s$. The table value for that state and action is $Q(s,a)=2$. It earns reward $r=1$ and reaches a state where the episode continues and the two available actions have table values of $3$ and $5$. With learning rate $\\eta=0.5$ and discount factor $\\gamma=0.9$, what is the updated value of $Q(s,a)$?"
     answer: 3.75
     tolerance: { abs: 0.005 }
     common_wrong:
@@ -16,14 +16,15 @@ exercises:
           category: misunderstood_definition,
           feedback: "5.5 is the TD target. The update only moves $Q$ a fraction $\\eta$ of the way toward it.",
         }
-    solution: "Target $= r + \\gamma \\max Q(s',\\cdot) = 1 + 4.5 = 5.5$. $Q \\leftarrow 2 + 0.5\\,(5.5 - 2) = 3.75$."
+    solution: "The larger next-state value is $5$, so the target is $1+0.9\\times5=5.5$. The new value is $2+0.5\\times(5.5-2)=3.75$."
   - id: ql-q-table-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: What does the entry $Q(s,a)$ in a Q-table hold?
+    prompt: >-
+      What does the Q-table entry $Q(s,a)$ for state $s$ and action $a$ hold?
     options:
       - id: a
         text: The reward the agent gets for that one move.
@@ -80,7 +81,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A robot's Q-table for its current state holds $Q(s,\\text{up})=3$, $Q(s,\\text{down})=-2$ and $Q(s,\\text{stay})=5$. Which action does it take if it acts greedily?"
+    prompt: >-
+      In its current state $s$, a robot's Q-table holds action values $Q(s,\text{up})=3$, $Q(s,\text{down})=-2$ and $Q(s,\text{stay})=5$. Which action does it take if it acts greedily?
     options:
       - id: a
         text: Stay, because its value is the biggest.
@@ -142,7 +144,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "On a short path, moving from A to B gives reward $-1$, and moving from B to C gives reward $+5$ and ends the episode. A and B each have only this one action. With $\\gamma=0.9$, what is the best value of moving from A?"
+    prompt: >-
+      On a short path, moving from A to B gives reward $-1$, and moving from B to C gives reward $+5$ and ends the episode. A and B each have only this one action. With discount factor $\gamma=0.9$, what is the best value of moving from A?
     answer: 3.5
     tolerance:
       abs: 0.001
@@ -163,7 +166,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot in a 4-cell corridor gets $-1$ per move and $+10$ for reaching cell 4, with $\\gamma=0.9$. Its best values say moving right from cell 2 is worth $8$, but that move only earns $-1$. A learner says the value must be wrong. What is the mistake?"
+    prompt: >-
+      A robot moves one cell at a time in a corridor numbered 1 to 4 from left to right. Reaching cell 4 pays $+10$ and ends the episode; any other move pays $-1$. The discount factor is $\gamma=0.9$. Its best values say moving right from cell 2 is worth $8$, but that move only earns $-1$. A learner says the value must be wrong. What is the mistake?
     options:
       - id: a
         text: The value also counts the discounted rewards after the move.
@@ -209,7 +213,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: In Q-learning, what is the TD target for a move from $s$ to $s'$ with reward $r$, when the episode doesn't end?
+    prompt: >-
+      In Q-learning, what is the TD target for a move from state $s$ to state $s'$ with reward $r$, when the episode doesn't end?
     options:
       - id: a
         text: $r+\gamma\max_{a'}Q(s',a')$
@@ -307,7 +312,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: An agent has $Q(s,a)=1$. Taking $a$ gives reward $4$ and ends the episode. With $\gamma=0.9$ and learning rate $\eta=0.5$, what is $Q(s,a)$ after one Q-learning update?
+    prompt: >-
+      An agent's current value for action $a$ in state $s$ is $Q(s,a)=1$. Taking $a$ gives reward $4$ and ends the episode. With discount factor $\gamma=0.9$ and learning rate $\eta=0.5$, what is $Q(s,a)$ after one Q-learning update?
     answer: 2.5
     tolerance:
       abs: 0.001
@@ -328,7 +334,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: "A robot in cell 2 moves right to cell 3 and gets reward $-1$. Its table has $Q(2,\\text{left})=1$, $Q(2,\\text{right})=2$, $Q(3,\\text{left})=0$ and $Q(3,\\text{right})=6$, and $\\gamma=0.9$. A learner writes the TD target as $-1+0.9\\times2=0.8$. What went wrong?"
+    prompt: >-
+      A robot in cell 2 moves right to cell 3 and gets reward $-1$ without ending the episode. Its action values are $Q(2,\text{left})=1$, $Q(2,\text{right})=2$, $Q(3,\text{left})=0$ and $Q(3,\text{right})=6$. The discount factor is $\gamma=0.9$. A learner writes the Q-learning TD target as $-1+0.9\times2=0.8$. What went wrong?
     options:
       - id: a
         text: They used cell 2's best value; the target uses cell 3's, giving $4.4$.
@@ -351,7 +358,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "In the Q-learning update $Q(s,a)\\leftarrow Q(s,a)+\\eta\\,\\delta$, what does one update do when the learning rate is $\\eta=1$?"
+    prompt: >-
+      A Q-learning update changes the value $Q(s,a)$ of action $a$ in state $s$ by $\eta\,\delta$, with learning rate $\eta$ and TD error $\delta$. What does one update do to that action value when $\eta=1$?
     options:
       - id: a
         text: It replaces $Q(s,a)$ with the TD target.
@@ -374,7 +382,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 4
-    prompt: "A delivery robot moves along a path B, then C, then the goal, with one action, forward, in each place. Moving into the goal gives $+6$ and ends the episode, and the move from B to C gives $-1$. Every value starts at $0$, with $\\eta=0.5$ and $\\gamma=0.9$. Episode 1 starts in C and moves to the goal. Episode 2 starts in B and moves to C, then to the goal. What is $Q(\\text{B},\\text{forward})$ at the end of episode 2? Give 2 decimal places."
+    prompt: >-
+      A delivery robot moves along a path B, then C, then the goal, with one action, forward, in each place. Moving into the goal gives $+6$ and ends the episode, and moving from B to C gives $-1$. The robot makes one tabular Q-learning update immediately after each move. All action values start at $0$. The learning rate is $\eta=0.5$ and the discount factor is $\gamma=0.9$. Episode 1 starts in C and moves to the goal. Episode 2 starts in B and moves to C, then to the goal. What is the action value $Q(\text{B},\text{forward})$ at the end of episode 2? Give two decimal places.
     answer: 0.85
     tolerance:
       abs: 0.005
@@ -449,7 +458,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A robot learns with Q-learning but always moves greedily. In one state, action A always gives reward $+1$ and ends the episode. The robot has tried A once, so $Q(s,\\text{A})=0.5$, and has never tried action B, so $Q(s,\\text{B})=0$. Action B is really much better. What happens?"
+    prompt: >-
+      A robot learns with tabular Q-learning but always moves greedily. In state $s$, action A always gives reward $+1$ and ends the episode. The robot has tried A once, so its action value is $Q(s,\text{A})=0.5$. It has never tried action B, so $Q(s,\text{B})=0$. Action B is really much better. What happens?
     options:
       - id: a
         text: It keeps choosing A, so it never learns how good B is.
@@ -499,7 +509,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: "An agent has $Q(s,a)=4$. It takes $a$, gets reward $2$ and lands in $s'$, whose two actions have values $3$ and $7$. Its next move from $s'$ will be a random one, the action with value $3$. With $\\gamma=0.9$ and learning rate $\\eta=0.5$, what is $Q(s,a)$ after the Q-learning update? Give 2 decimal places."
+    prompt: >-
+      An agent has action value $Q(s,a)=4$ for action $a$ in state $s$. It takes $a$, gets reward $2$ and lands in state $s'$, whose two actions have values $3$ and $7$. Its random next move from $s'$ will use the action with value $3$. With discount factor $\gamma=0.9$ and learning rate $\eta=0.5$, what is $Q(s,a)$ after the Q-learning update? Give two decimal places.
     answer: 6.15
     tolerance:
       abs: 0.005
@@ -542,7 +553,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A robot vacuum learned its Q-table with Q-learning, moving epsilon-greedily with $\varepsilon=0.2$. Training has finished, and now it should collect as much reward as it can. How should it choose its moves?
+    prompt: A robot vacuum finished learning its Q-table with Q-learning. During learning it moved epsilon-greedily, with exploration probability $\varepsilon=0.2$. Now it should collect as much reward as it can. How should it choose its moves?
     options:
       - id: a
         text: Greedily, because the table holds the values of acting greedily.
@@ -565,7 +576,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: In Q-learning with a table, which entries change after the agent makes one move from $s$ with action $a$?
+    prompt: >-
+      In Q-learning with a table, which entries change after the agent makes one move from state $s$ with action $a$?
     options:
       - id: a
         text: Only $Q(s,a)$, the entry for the move just made.
@@ -698,10 +710,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A robot arm's state is its joint angles, measured precisely as real numbers. Why is a Q-table a poor way to learn its action values?
+    prompt: A robot arm uses the angles reported by its joint sensors as its state. Each angle is measured in degrees to four decimal places. Why might a Q-table be a poor way to learn its action values?
     options:
       - id: a
-        text: There are far too many states, and each would almost never be seen twice.
+        text: Even similar angles get separate entries, so most entries get little practice.
         correct: true
         feedback: A table learns each entry only from its own moves, so with so many states, almost no entry gets updated.
       - id: b
@@ -714,7 +726,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: Table entries can be any number, positive or negative.
-    solution: A table needs one entry per state and action, and each entry learns only when that exact move is made. Real-valued joint angles give far too many states to store or revisit, so a model that predicts values, such as a neural network, is used instead.
+    solution: A table needs one entry per state and action, and each entry changes only when that exact move is made. Real-valued joint angles give far too many states to store or revisit, so it helps to predict values for new states from what the agent has already learned.
   - id: ql-explain-learning
     dimension: conceptual
     type: explain
@@ -769,7 +781,7 @@ exercises:
     knowledge_point: ql-q-table
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A maze robot has learned the best action values. At a fork, left is the best first move, but the robot looks up the entry for turning right. What does that entry measure?"
+    prompt: "A maze robot's Q-table holds the best action values. At a fork, state $s$, left is the best first move, but the robot looks up the table entry for turning right. What does that entry measure?"
     options:
       - id: a
         text: "The return from going right once, then choosing the best later moves"
@@ -782,7 +794,7 @@ exercises:
       - id: c
         text: "The return from choosing the best move immediately at the fork"
         correct: false
-        feedback: "The optimal state value would use left first here. This entry fixes the first move to the right."
+        feedback: "The best return from this state would start by going left. This entry fixes the first move to the right."
       - id: d
         text: "The average return over all first moves at the fork"
         correct: false
@@ -795,7 +807,7 @@ exercises:
     knowledge_point: ql-q-table
     difficulty: 2
     est_minutes: 0.5
-    prompt: "In a corridor with reliable moves, taking $a$ in $s$ earns $r$ and always lands in the same nonterminal state $s'$. Fill in the missing value in $Q^*(s,a)=r+\\gamma\\,\\underline{\\quad\\quad}$. Use symbols or words."
+    prompt: "In a corridor with reliable moves, taking action $a$ in state $s$ earns reward $r$ and always lands in the same nonterminal state $s'$. Use $a'$ for an available action in $s'$. Here $Q^*(s,a)$ is the highest expected discounted return when $a$ is the first action in $s$. This return includes the first reward $r$. With discount factor $\\gamma$, fill in the missing term in $Q^*(s,a)=r+\\gamma\\,\\underline{\\quad\\quad}$. Use symbols or words."
     accept:
       [
         "max_a' Q*(s',a')",
@@ -807,7 +819,7 @@ exercises:
         the best action value in the next state,
       ]
     regex: "^\\s*(?:(?:\\\\?max(?:imum)?\\s*(?:_\\s*(?:\\{\\s*a\\s*['’′]\\s*\\}|a\\s*['’′])\\s*|(?:over\\s+)?a\\s*['’′]\\s+)?(?:of\\s+)?q\\s*(?:\\^\\s*(?:\\{\\s*\\*\\s*\\}|\\*)|\\*)\\s*\\(\\s*s\\s*['’′]\\s*,\\s*a\\s*['’′]\\s*\\)|v\\s*(?:\\^\\s*(?:\\{\\s*\\*\\s*\\}|\\*)|\\*)\\s*\\(\\s*s\\s*['’′]\\s*\\)|(?:the\\s+)?(?:largest|highest|maximum|best|optimal)\\s+(?:action\\s+|state\\s+|q[- ]?)?value\\s+(?:of|in|for|from|at)\\s+(?:the\\s+)?(?:next\\s+state|s\\s*['’′])))\\s*$"
-    solution: "The missing term is $\\max_{a'} Q^*(s',a')$, also written $V^*(s')$. It is the best action value in the state the move reaches."
+    solution: "The missing term is $\\max_{a'} Q^*(s',a')$, the largest of the values for the available actions $a'$ in the next state $s'$. It equals $V^*(s')$, the best return achievable from that state."
   - id: ql-recall-update-rule-say
     dimension: conceptual
     type: explain
@@ -862,7 +874,7 @@ exercises:
     knowledge_point: ql-update-rule
     difficulty: 2
     est_minutes: 0.5
-    prompt: "The table holds $Q(s,a)=q$. The move earns reward $r$, the episode goes on, and the biggest table value in the new state is $m$. With learning rate $\\eta$ and discount factor $\\gamma$, write the updated $Q(s,a)$. Type `eta` for $\\eta$ and `gamma` for $\\gamma$."
+    prompt: "A robot takes action $a$ in state $s$. It earns reward $r$, the episode goes on, and the biggest table value in the new state is $m$. With learning rate $\\eta$ and discount factor $\\gamma$, write the updated table value $Q(s,a)$ for the action it just took. In your expression, type `q` for the old table value, `eta` for $\\eta$, `gamma` for $\\gamma$, and `*` for multiplication."
     answer: "q + eta*(r + gamma*m - q)"
     variables: { q: [-5, 5], r: [-5, 10], m: [-5, 10], eta: [0.05, 0.95], gamma: [0.1, 0.95] }
     solution: "$Q(s,a)\\leftarrow q+\\eta\\,(r+\\gamma m-q)$: move a fraction $\\eta$ of the TD error."
@@ -920,7 +932,7 @@ exercises:
     knowledge_point: ql-explore
     difficulty: 1
     est_minutes: 0.5
-    prompt: "A robot moves epsilon-greedily with exploration probability $\\varepsilon$. There are $k$ available actions and one has the highest value. Write the probability of taking that action. Type `eps` for $\\varepsilon$."
+    prompt: "A robot uses an epsilon-greedy rule. One action has the highest Q-value. With exploration probability $\\varepsilon$, the robot picks at random, giving every available action the same chance, including the best action. Otherwise it picks the best action. What is the probability of taking the best action? Type `k` for the number of available actions, `eps` for $\\varepsilon$, and `/` for division."
     answer: "1 - eps + eps/k"
     variables: { "eps": [0.01, 0.5], "k": { "values": [2, 5, 10] } }
     solution: "The greedy branch gives $1-\\varepsilon$, and the random pick lands on the greedy action with probability $\\varepsilon/k$, so the total is $1-\\varepsilon+\\varepsilon/k$."
@@ -975,25 +987,25 @@ exercises:
     knowledge_point: ql-full-run
     difficulty: 2
     est_minutes: 0.5
-    prompt: "Watkins and Dayan's Q-learning result assumes a finite number of states and actions, bounded rewards and $\\gamma<1$. What does it require from exploration and the learning rate?"
+    prompt: "For a task with finitely many states and actions, rewards between fixed lower and upper limits, and a discount factor $\\gamma$ below 1, what conditions on exploration and the learning rate guarantee that the estimates approach the best action values as Q-learning continues?"
     options:
       - id: a
         text: "Keep trying all actions in every state and shrink the learning rate at the right speed"
         correct: true
-        feedback: "Every state-action pair must keep being updated, and the learning rate must shrink toward zero at the right speed."
+        feedback: "The agent must keep updating the value of every action in every state, and the learning rate must shrink toward zero at the right speed."
       - id: b
         text: "Keep trying all actions in every state and leave the learning rate fixed"
         correct: false
-        feedback: "A fixed rate can work in the corridor. The general convergence result requires a suitably shrinking learning rate."
+        feedback: "A fixed rate can work in the corridor. The general result requires the learning rate to shrink toward zero at the right speed."
       - id: c
         text: "Try each action once in every state and gradually shrink the learning rate"
         correct: false
-        feedback: "One visit gives one sample. Every state-action pair needs repeated visits."
+        feedback: "One try gives only one observed outcome. The agent must keep trying every action in every state."
       - id: d
         text: "Keep visiting each state greedily and gradually shrink the learning rate"
         correct: false
         feedback: "A greedy policy can leave some actions untried, so visiting each state alone doesn't ensure every entry keeps getting updated."
-    solution: "The result requires each state-action pair to keep being visited and a learning rate that shrinks toward zero at the right speed."
+    solution: "The agent must keep trying every action in every state, and the learning rate must shrink toward zero at the right speed."
   - id: qlp-epsilon-branch-choice
     dimension: implementation
     type: code_read

@@ -6,7 +6,7 @@ recap:
   - concept: attention
     text: "Attention scores query $t$ against key $j$ with $s_{tj}=q_t\\cdot k_j/\\sqrt{d_k}$, where $d_k$ is the key width, turns each query's scores into softmax weights $a_{tj}$, and outputs the weighted sum of the values, $o_t=\\sum_j a_{tj}v_j$."
   - concept: arithmetic-intensity
-    text: "Arithmetic intensity is the FLOPs done per byte moved between GPU memory and computing units; comparing it with the GPU's ops:byte ratio predicts its bottleneck."
+    text: "Arithmetic intensity counts floating-point operations (FLOPs) per byte moved. Floating-point numbers can represent fractions. Comparing this ratio with the GPU's ops:byte ratio predicts its bottleneck."
   - concept: gpu-inference-basics
     text: "An H100 has high-bandwidth memory for weights and smaller, faster on-chip memory for calculations; moving data between them has a speed limit."
 where_this_fits: |
@@ -27,7 +27,7 @@ knowledge_points:
     explain: |
       ### Attention as three kernels
 
-      A chat assistant runs Llama 3 8B on one NVIDIA H100 SXM GPU, and a user sends a prompt of $T=1{,}000$ tokens. Each layer splits attention into 32 query heads that run in parallel, and each head's queries, keys and values have width $d_h=128$, the recap's $d_k$. Follow one head. Its queries form a matrix $Q$ with $T$ rows, one per token, and $d_h$ columns. Its keys $K$ and values $V$ have the same shape.
+      Llama 3 8B runs on an H100 SXM, the server version of the GPU. For a prompt of $T=1{,}000$ tokens, follow one of the model's 32 parallel attention heads that make queries. Each query, key and value vector has width $d_h=128$, called $d_k$ in the recap. The query matrix $Q$, key matrix $K$ and value matrix $V$ each have $T$ rows and $d_h$ columns.
 
       A **kernel** is one program that the GPU runs on many compute units at once, each working on part of the data. A kernel's on-chip memory is cleared when it finishes, so its result is written to HBM, and the next kernel reads it back from there. The usual way, which the FlashAttention paper calls standard attention, uses three kernels. The first finds the score table $S$, with $s_{tj}$ in row $t$, column $j$. The second applies softmax to each row of $S$ to give the weight table $P$, which holds the weights $a_{tj}$. The third multiplies $P$ by $V$ to give the outputs $O$, one row per token.
 
@@ -69,7 +69,7 @@ knowledge_points:
 
       ### Longer prompts stay memory-bound
 
-      Finding $S$ multiplies $Q$ by $K$ turned on its side, a $(T\times d_h)$ matrix times a $(d_h\times T)$ one. $PV$ costs the same. We leave out softmax's few FLOPs. When $T$ is much bigger than $d_h$, the tables dominate the bytes:
+      Finding $S$ multiplies $Q$ by $K$ turned on its side, a $(T\times d_h)$ matrix times a $(d_h\times T)$ one. Each of the $T^2$ scores has $d_h$ terms. Count a multiply and an add per term, about $2d_h$ operations per score. The product $PV$ has $Td_h$ outputs with $T$ terms each, so costs about the same. We ignore softmax here. When $T$ is much bigger than $d_h$, the tables dominate the bytes:
 
       $$
       \begin{aligned}
@@ -80,9 +80,9 @@ knowledge_points:
       \end{aligned}
       $$
 
-      Be careful not to expect longer prompts to be compute-bound. The FLOPs and the bytes both grow like $T^2$, so their ratio levels off near $64$, far below the H100's ratio of about $300$.
+      FLOPs and bytes both grow like $T^2$. Their ratio levels off near $64$, below the H100 SXM's ops:byte ratio of about $300$ FLOPs per byte. Longer prompts stay memory-bound.
     worked: |
-      Let's count the traffic of standard attention for our head, with $T=1{,}000$ tokens, $d_h=128$ and $b=2$ bytes per number. We'll use the H100's figures rounded to $1{,}000$ TFLOP/s and $3.35$ TB/s.
+      Let's count the traffic of standard attention for our head, with $T=1{,}000$ tokens, $d_h=128$ and $b=2$ bytes per number. A TB is $10^{12}$ bytes, and a TFLOP is $10^{12}$ floating-point operations. We'll use the H100's figures rounded to $1{,}000$ TFLOP/s and $3.35$ TB/s.
 
       1. **Find the bytes in one input.** $Q$ has $T$ rows of $d_h$ numbers, and $K$, $V$ and $O$ are the same size.
          $$1{,}000\times128\times2=256{,}000 \text{ bytes}.$$
@@ -93,7 +93,7 @@ knowledge_points:
       3. **Add up the traffic.** Each of the four inputs and outputs moves once, and each table moves twice.
          $$4\times256{,}000=1{,}024{,}000$$
          $$4\times2{,}000{,}000=8{,}000{,}000$$
-         That's $9{,}024{,}000$ bytes, about $9.0$ MB.
+         That's $9{,}024{,}000$ bytes, about $9.0$ megabytes (MB), where 1 MB is $10^6$ bytes.
 
       4. **Count the FLOPs.** Both matrix multiplies cost $2T^2d_h$.
          $$4\times1{,}000^2\times128=5.12\times10^{8}.$$
@@ -102,7 +102,7 @@ knowledge_points:
          $$I=\frac{5.12\times10^{8}}{9.024\times10^{6}}\approx56.7.$$
          That's about $56.7$ FLOPs per byte. It's below $64$ because at this $T$ the $4Td_h$ inputs and outputs still add about 11% of the bytes.
 
-      6. **Compare the two times.** To keep it simple, we time this head as if it had the whole GPU to itself. Llama 3 8B lets groups of four query heads share one set of keys and values (grouped-query attention, 8 key-value heads), but we count each query head with its own copy of $K$ and $V$. Then the other heads do the same work, so the ratio of the two times holds for the whole layer. Sharing $K$ and $V$ would change it only a little, because they are a small share of the bytes. Moving the bytes at $3.35$ TB/s takes about $2.69$ microseconds, while the maths at $1{,}000$ TFLOP/s takes $0.512$ microseconds.
+      6. **Compare the two times.** To keep it simple, we time this head as if it had the whole GPU to itself. Llama 3 8B lets groups of four query heads share one set of keys and values (grouped-query attention, 8 key-value heads), but we count each query head with its own copy of $K$ and $V$. Then the other heads do the same work, so the ratio of the two times holds for the whole layer. Sharing $K$ and $V$ would change it only a little, because they are a small share of the bytes. A microsecond is $10^{-6}$ seconds. Moving the bytes at $3.35$ TB/s takes about $2.69$ microseconds, while the maths at $1{,}000$ TFLOP/s takes $0.512$ microseconds.
          $$\frac{9.024\times10^{6}}{3.35\times10^{12}}\approx2.69\times10^{-6}\text{ s}.$$
 
       So moving the data takes about five times as long as the maths, which is what an intensity of $56.7$, well below $300$, predicts.

@@ -1333,7 +1333,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A reward checker extracts the final `Answer:` line and removes spaces around the answer and trailing full stops. It compares each extracted answer with the fixed reference `9`. One version compares the answer and reference as exact text. The other parses both as base-10 integers before comparing them. Which pair of replies gets different rewards under exact text comparison but the same reward under integer comparison?"
+    prompt: "A reward checker extracts the final `Answer:` line and removes spaces around the answer and trailing full stops. It compares the extracted text `answer` with the fixed reference text `9`. One version compares them as exact text. The other uses Python's `int(answer, 10)` to read the answer as a base-10 integer and `int('9', 10)` to do the same for the reference. A match earns $1$ and a failed comparison earns $0$. Which pair of replies gets different rewards under exact text comparison but the same reward under integer comparison?"
     options:
       - id: a
         text: "`Answer: 9` and `Answer: 9.`"

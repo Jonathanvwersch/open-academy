@@ -296,7 +296,7 @@ knowledge_points:
     explain: |
       ### The whole algorithm
 
-      We now have every piece, the table, the update and epsilon-greedy moves. Q-learning puts them together like this:
+      Q-learning puts the table, the update and epsilon-greedy moves together:
 
       1. Set every entry of the Q-table to $0$.
       2. Start an episode in cell 1.
@@ -304,21 +304,21 @@ knowledge_points:
       4. Update $Q(s,a)\leftarrow Q(s,a)+\eta\,\delta$, using the TD target from $r$ and $s'$.
       5. Make $s'$ the current state. If the episode has ended, go back to step 2, otherwise go back to step 3.
 
-      After enough episodes, the robot picks the move with the biggest value in its cell.
+      After learning, the robot picks the move with the biggest value in its cell.
 
       ### What the table ends up as
 
-      On the corridor without the charger, with $\eta=0.5$, $\varepsilon=0.1$ and $\gamma=0.9$, the code below runs 500 episodes, enough for every entry to match the best values to 2 decimals. Right is worth $6.2$, $8$ and $10$ in cells 1, 2 and 3, and left is worth $4.58$, $4.58$ and $6.2$. Once right is greedy, left values change only through exploration, so they settle last.
+      The 500-episode worked example uses the corridor without the charger, with $\eta=0.5$, $\varepsilon=0.1$, $\gamma=0.9$ and a fixed sequence of random draws. In that run, right ends up worth $6.2$, $8$ and $10$ in cells 1, 2 and 3, and left ends up worth $4.58$, $4.58$ and $6.2$, rounded to 2 decimals. Once right is greedy, left values change only through exploration, so they settle last.
 
-      Chris Watkins introduced Q-learning in his 1989 PhD thesis. In 1992, Watkins and Peter Dayan proved that it reaches the best values in any problem with a finite number of states and actions, bounded rewards and $\gamma<1$, as long as every action keeps being tried in every state and the learning rate shrinks toward $0$ at the right speed. On the corridor, a fixed rate such as $0.5$ also works.
+      Chris Watkins introduced Q-learning in his 1989 PhD thesis. In 1992, Watkins and Peter Dayan proved that it reaches the best values under certain conditions: there are finitely many states and actions, rewards stay between fixed lower and upper limits, and the discount factor $\gamma$ is below $1$. Every action must keep being tried in every state, and the learning rate must shrink toward $0$ at the right speed. On the corridor, a fixed rate such as $0.5$ also works.
 
       ### Limitations: one entry per state
 
-      A Q-table needs one entry for every state and action, and each entry only learns when that exact move is made. With 3 cells, that's only 6 entries. But a robot arm's state is its joint angles, which are real numbers, and a video game's state is the whole screen. There are far too many such states to store, and the robot would almost never see the same one twice, so nothing it learned would carry over.
+      A Q-table needs one entry for each action in each state. Cell 4 ends the episode, so it has no actions. Two actions in each of the other three cells give six entries. A robot arm whose state is its joint angles has far more to store. Even small changes in the angles give a different state. An entry only changes when the arm tries that action at those exact angles.
 
-      A later lesson on deep Q-learning replaces the table with a neural network, a model that predicts the values from the state. That is how DQN (deep Q-network) learned to play Atari video games from screen pixels (Mnih and colleagues, 2013).
+      Deep Q-learning uses a program that learns to predict action values, even in states it hasn't seen before. Researchers used this approach to play video games using the images on the screen (Mnih and colleagues, 2013).
     worked: |
-      Let's finish episode 3 from Step 3's example. The robot is in cell 2, where $Q(2,\text{left})=0$ and $Q(2,\text{right})=1.5$, and cell 3 holds $Q(3,\text{left})=0$ and $Q(3,\text{right})=7.5$. We use $\eta=0.5$ and $\gamma=0.9$.
+      Let's finish the third episode from the example of exploring the corridor. The robot is in cell 2, where $Q(2,\text{left})=0$ and $Q(2,\text{right})=1.5$, and cell 3 holds $Q(3,\text{left})=0$ and $Q(3,\text{right})=7.5$. We use $\eta=0.5$ and $\gamma=0.9$.
 
       1. **Choose in cell 2.** Right, $1.5$, beats left, $0$, so the greedy move is right. Say the robot makes it.
 
@@ -337,6 +337,8 @@ knowledge_points:
       After three episodes, right is worth $-0.2$, $3.625$ and $8.75$ in cells 1, 2 and 3, still short of the best values $6.2$, $8$ and $10$. Cell 2's target used cell 3's guess of $7.5$, which is still too low, so cell 2 keeps improving as cell 3 does.
 
       Here is the whole algorithm in Python, running 500 episodes. `Q` is a dictionary that maps a (cell, action) pair to its value, and the line that builds it makes one entry, set to $0$, for each pair. `def step(s, a)` defines a function that returns the next cell and the reward for a move. `random.random()` gives a number between $0$ and $1$, so it is below `eps` with probability $\varepsilon$, and `random.choice` picks an action at random. `lambda b: Q[(s, b)]` is a small unnamed function that gives the value of action `b`. So `max(..., key=...)` picks the action whose value is biggest. `eta` is the learning rate. The `while` loop runs one episode, and `+=` adds to a value.
+
+      The code calls the next state $s'$ by the name `s2`. `random.seed(0)` starts Python's sequence of random numbers from a fixed point, so the same code draws the same numbers on each run.
 
       ```python
       import random
@@ -383,4 +385,4 @@ summary: |
   - Epsilon-greedy picks a random action with probability $\varepsilon$, so every action keeps being tried. Because the target uses the max, Q-learning still learns the best values while it explores, which makes it off-policy.
   - Repeating this over many episodes fills the table with the best values, but a table only works when there are few enough states to visit each one many times.
 
-  **Next:** The exploration lesson looks at how much an agent should explore, and deep Q-learning replaces the table with a neural network so the same update works on huge numbers of states.
+  **Next:** The exploration lesson looks at how much an agent should explore. Deep Q-learning shows how to predict action values when there are too many states for a table.
