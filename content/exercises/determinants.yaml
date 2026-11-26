@@ -29,21 +29,21 @@ exercises:
     lesson_only: true
     difficulty: 2
     est_minutes: 2
-    prompt: One row swap and two row additions change the original matrix $A=\begin{bmatrix}0&2&1\\2&2&0\\4&6&5\end{bmatrix}$ into the triangular matrix $T=\begin{bmatrix}2&2&0\\0&2&1\\0&0&4\end{bmatrix}$. Which reasoning gives the determinant of $A$?
+    prompt: The worked example clears entries using row additions. In a two-dimensional map, subtracting twice the first row from the second sends an output point with coordinates $(x,y)$ to one with coordinates $(x,y-2x)$. Why does this row addition leave the determinant unchanged?
     options:
       - id: one-swap
-        text: Use the diagonal product of $T$ and reverse its sign for the row swap.
+        text: It slides the picture while keeping its area and orientation.
         correct: true
-        feedback: The row additions leave the determinant unchanged. The one swap accounts for the sign reversal.
+        feedback: The slide keeps the base and perpendicular height, so the area stays the same. The order of the edges also stays the same.
       - id: two-additions
-        text: Use the diagonal product of $A$, since entries below the diagonal do not affect it.
+        text: It changes entries below the diagonal, which never affect the determinant.
         correct: false
-        feedback: Entries below the diagonal can affect a determinant. The diagonal-product shortcut applies once the matrix is triangular.
+        feedback: A row addition can change any entry in that row. Entries below the diagonal can affect the determinant too.
       - id: initial-zero
-        text: Use the diagonal product of $T$ as it is, since all three row moves preserve the determinant.
+        text: It keeps each row's sum fixed, which keeps the determinant unchanged.
         correct: false
-        feedback: Row additions preserve the determinant, but a row swap reverses its sign.
-    solution: The triangular determinant is $2\times2\times4=16$. The two row additions preserve the determinant and the one swap reverses its sign, so the original determinant is $-16$.
+        feedback: Subtracting twice the first row generally changes the second row's sum. Row sums do not determine the determinant.
+    solution: Moving points vertically by an amount that depends on their horizontal coordinate slides the picture without changing its area or reversing its orientation. The signed area scale, which is the determinant in two dimensions, stays the same.
   - id: det-pivots-triangular-template
     dimension: math
     type: numeric
