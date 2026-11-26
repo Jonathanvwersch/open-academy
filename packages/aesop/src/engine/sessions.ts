@@ -94,14 +94,11 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
         const todayLocal = localDateKey(now, request.timeZone);
         const sessionStartedAt = session.startedAt ?? now;
         const sessionEndedAt = session.endedAt ?? now;
-        const [user, allEvents, todayEvents] = await Promise.all([
+        const [user, sessionEvents, todayEvents] = await Promise.all([
           repo.user(),
-          store.listXpEvents(userId, {}),
+          store.listXpEvents(userId, { since: sessionStartedAt, through: sessionEndedAt }),
           store.listXpEvents(userId, { localDate: todayLocal }),
         ]);
-        const sessionEvents = allEvents.filter(
-          (event) => event.earnedAt >= sessionStartedAt && event.earnedAt <= sessionEndedAt,
-        );
         return {
           session: sessionEvents.reduce((total, event) => total + event.amount, 0),
           today: todayEvents.reduce((total, event) => total + event.amount, 0),
