@@ -458,7 +458,7 @@ exercises:
     est_minutes: 3
     prompt: "A robot's grasp succeeds with probability 0.8 and earns a reward of 10. A failed grasp gives a reward of $-5$. What is the expected reward per attempt?"
     hints:
-      - "The reward is a random variable with two values, 10 and $-5$."
+      - "The reward is a random variable with two values, $10$ and $-5$."
       - "Failure has probability $1-0.8$."
     solution: |
       Failure is the complement of success:
@@ -473,7 +473,7 @@ exercises:
     common_wrong:
       - answer: 2.5
         category: misunderstood_definition
-        feedback: "That is the plain average of 10 and $-5$. Success is four times as likely as failure, so weight by the chances."
+        feedback: "That is the plain average of $10$ and $-5$. Success is four times as likely as failure, so weight by the chances."
       - answer: 9
         category: math_error
         feedback: "The failure reward is negative, so its term is $-5(0.2)=-1$, not $+1$."

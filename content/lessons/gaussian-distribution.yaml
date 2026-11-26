@@ -191,7 +191,7 @@ knowledge_points:
       3. **Scale the height.** We keep the unrounded factor until the end.
          $$f(102)=\frac{e^{-1/2}}{2\sqrt{2\pi}}\approx0.12\text{ per cm}$$
 
-      The peak is about 0.20 per cm. Equal narrow intervals near 102 and 100 therefore have chances in roughly the ratio $0.61$ to 1.
+      The peak is about $0.20$ per cm. Equal narrow intervals near 102 and 100 therefore have chances in roughly the ratio $0.61$ to $1$.
     problems:
       - gauss-formula-basics
       - gauss-formula-why

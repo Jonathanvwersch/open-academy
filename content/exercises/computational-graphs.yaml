@@ -408,19 +408,19 @@ exercises:
       and gets 6 for $\partial g/\partial y$. What is missing?
     options:
       - id: a
-        text: "Add 3 from the route through $b=y+z$."
+        text: "Add $3$ from the route through $b=y+z$."
         correct: true
         feedback: "The second route contributes 3, so the total is 9."
       - id: b
-        text: "Multiply by 3 from the route through $b=y+z$."
+        text: "Multiply by $3$ from the route through $b=y+z$."
         correct: false
         feedback: "Multiply local derivatives along one route, not separate route contributions."
       - id: c
-        text: "Subtract 3 from the route through $b=y+z$."
+        text: "Subtract $3$ from the route through $b=y+z$."
         correct: false
         feedback: "Both route contributions are positive here."
       - id: d
-        text: "Replace 6 with 3 from the route through $b=y+z$."
+        text: "Replace $6$ with $3$ from the route through $b=y+z$."
         correct: false
         feedback: "Both routes matter; neither replaces the other."
     solution: "The $b$ route contributes $3\\cdot1=3$ in addition to the $a$ route's 6, giving 9."

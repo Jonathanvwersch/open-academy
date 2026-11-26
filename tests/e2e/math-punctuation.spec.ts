@@ -10,7 +10,7 @@ const source = readFileSync(
   new URL('../../content/lessons/logistic-regression.yaml', import.meta.url),
   'utf8',
 );
-const slopeParagraph = source.match(/^\s+At score 0, where .+$/m)?.[0].trim();
+const slopeParagraph = source.match(/^\s+At score (?:\$0\$|0), where .+$/m)?.[0].trim();
 if (!slopeParagraph) throw new Error('The logistic regression slope paragraph was not found.');
 const longSum = Array.from({ length: 20 }, (_, index) => `x_{${index + 1}}`).join('+');
 
@@ -68,13 +68,13 @@ test('the logistic regression paragraph keeps punctuation beside its equations a
   page,
 }) => {
   await page.goto('/lessons/vectors');
-  const paragraph = page.locator('p').filter({ hasText: 'At score 0, where' });
+  const paragraph = page.locator('p').filter({ hasText: 'probability minus the label' });
   await expect(paragraph).toBeVisible();
   for (const width of [320, 375, 768, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate(() => document.fonts.ready);
     const positions = await punctuationPositions(paragraph);
-    expect(positions, `Expected all six punctuation marks at ${width}px`).toHaveLength(6);
+    expect(positions, `Expected all eight punctuation marks at ${width}px`).toHaveLength(8);
     for (const position of positions) {
       expect(
         position.punctuationTop,

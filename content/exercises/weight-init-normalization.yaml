@@ -50,14 +50,14 @@ exercises:
         feedback: A halved activation does not imply a halved loss; the local derivative supplies the factor.
         category: incorrect_reasoning
       - id: b
-        text: ReLU always halves every slope, so each backward step multiplies the slope by 0.5.
+        text: ReLU always halves every slope, so each backward step multiplies the slope by $0.5$.
         correct: false
         feedback: ReLU passes positive inputs unchanged; the weight supplies this factor.
         category: incorrect_reasoning
       - id: c
         text:
           Each layer computes $h_k=0.5h_{k-1}$, so backpropagation multiplies by its local derivative,
-          0.5.
+          $0.5$.
         correct: true
         feedback:
           Each layer multiplies its input by 0.5, giving a local derivative of 0.5. Backpropagation
@@ -515,26 +515,26 @@ exercises:
     prompt: For outputs 1, 7, 9, 15, why does LayerNorm divide the centred values by 5?
     solution:
       The centred values have average square $(49+1+1+49)/4=25$, so their standard deviation is
-      5. Dividing by 5 gives typical size 1.
+      $5$. Dividing by $5$ gives typical size $1$.
     options:
       - id: a
-        text: 5 is the average of -7, -1, 1, 7; dividing by their average makes typical size 1.
+        text: $5$ is the average of $-7$, $-1$, $1$, $7$; dividing by their average makes typical size $1$.
         correct: false
-        feedback: Those differences average to 0, not 5.
+        feedback: Those differences average to $0$, not $5$.
         category: incorrect_reasoning
       - id: b
-        text: 5 is the largest distance from the mean; dividing by that distance bounds all outputs.
+        text: $5$ is the largest distance from the mean; dividing by that distance bounds all outputs.
         correct: false
         feedback: The largest distance is 7; the standard deviation is 5.
         category: incorrect_reasoning
       - id: c
-        text: 5 is the standard deviation, the typical size of -7, -1, 1, 7; dividing makes typical size 1.
+        text: $5$ is the standard deviation, the typical size of $-7$, $-1$, $1$, $7$; dividing makes typical size $1$.
         correct: true
         feedback:
           The centred values have average square $(49+1+1+49)/4=25$, so their standard deviation is
-          5. Dividing by 5 gives typical size 1.
+          $5$. Dividing by $5$ gives typical size $1$.
       - id: d
-        text: 5 is the factor that makes the mean 0; the subtraction only sets the typical size.
+        text: $5$ is the factor that makes the mean $0$; the subtraction only sets the typical size.
         correct: false
         feedback: Subtracting the mean already made the mean 0; division sets typical size.
         category: incorrect_reasoning
@@ -871,24 +871,24 @@ exercises:
       gain 1 and shift 0, how does BatchNorm normalize them? Ignore the tiny number added in code.
     solution:
       For two distinct outputs the centred values are opposite halves of their gap, and their
-      standard deviation is half that gap. Dividing therefore gives -1 and 1 for both pairs.
+      standard deviation is half that gap. Dividing therefore gives $-1$ and $1$ for both pairs.
     options:
       - id: a
-        text: The first pair becomes -1 and 1, but the second stays at 3 and 3.1.
+        text: The first pair becomes $-1$ and $1$, but the second stays at $3$ and $3.1$.
         correct: false
         feedback: Even a small nonzero gap is divided by its own standard deviation.
         category: incorrect_reasoning
       - id: b
-        text: Both pairs become 0 and 0 because subtracting the mean removes their gap.
+        text: Both pairs become $0$ and $0$ because subtracting the mean removes their gap.
         correct: false
         feedback: Subtracting the mean preserves the gap; division rescales it.
         category: incorrect_reasoning
       - id: c
-        text: Both pairs become -1 and 1, despite their very different original gaps.
+        text: Both pairs become $-1$ and $1$, despite their very different original gaps.
         correct: true
         feedback:
           For two distinct outputs the centred values are opposite halves of their gap, and their
-          standard deviation is half that gap. Dividing therefore gives -1 and 1 for both pairs.
+          standard deviation is half that gap. Dividing therefore gives $-1$ and $1$ for both pairs.
       - id: d
         text: The first pair becomes much larger than the second because its gap is larger.
         correct: false

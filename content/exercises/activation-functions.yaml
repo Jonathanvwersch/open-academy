@@ -175,22 +175,22 @@ exercises:
     est_minutes: 1
     prompt: "What is the derivative of ReLU at $z = 3$, and at $z = -3$?"
     options:
-      - { id: a, text: "1 and 0", correct: true }
+      - { id: a, text: "$1$ and $0$", correct: true }
       - {
           id: b,
-          text: "3 and 0",
+          text: "$3$ and $0$",
           correct: false,
           category: misunderstood_definition,
           feedback: "That is the output, not the derivative.",
         }
       - {
           id: c,
-          text: "1 and -1",
+          text: "$1$ and $-1$",
           correct: false,
           category: recall_failure,
-          feedback: "ReLU is flat for negative inputs, so its slope there is not -1. Check the two linear regions on either side of zero.",
+          feedback: "ReLU is flat for negative inputs, so its slope there is not $-1$. Check the two linear regions on either side of zero.",
         }
-    solution: "ReLU has slope 1 for $z>0$ and slope 0 for $z<0$."
+    solution: "ReLU has slope $1$ for $z>0$ and slope $0$ for $z<0$."
   - id: act-explain
     dimension: conceptual
     type: explain
@@ -270,7 +270,7 @@ exercises:
           text: "A straight line with slope $4 + 3 = 7$",
           correct: false,
           category: math_error,
-          feedback: "The slopes multiply, not add: each step of $x$ adds 4 to $u$, and each step of $u$ adds 3 to $y$, so $4 \\times 3 = 12$.",
+          feedback: "The slopes multiply, not add: each step of $x$ adds $4$ to $u$, and each step of $u$ adds $3$ to $y$, so $4 \\times 3 = 12$.",
         }
     solution: "$y = 3(4x + 2) - 1 = 12x + 6 - 1 = 12x + 5$. It's one straight line, so the second rule added no bend."
   - id: actp-collapse-template
@@ -542,7 +542,7 @@ exercises:
           answer: -5,
           tolerance: { abs: 0.001 },
           category: misunderstood_definition,
-          feedback: "You skipped ReLU. $u = -2$ is negative, so ReLU gives 0 and $y = 3 \\times 0 + 1$.",
+          feedback: "You skipped ReLU. $u = -2$ is negative, so ReLU gives $0$ and $y = 3 \\times 0 + 1$.",
         }
       - {
           answer: 7,
@@ -598,26 +598,26 @@ exercises:
       - { id: a, text: "Between $-1$ and $1$, with $\\tanh(0) = 0$", correct: true }
       - {
           id: b,
-          text: "Between 0 and 1, with $\\tanh(0) = 0.5$",
+          text: "Between $0$ and $1$, with $\\tanh(0) = 0.5$",
           correct: false,
           category: recall_failure,
-          feedback: "That's the sigmoid. tanh has the same S shape but is centred on 0 and runs from $-1$ to $1$.",
+          feedback: "That's the sigmoid. tanh has the same S shape but is centred on $0$ and runs from $-1$ to $1$.",
         }
       - {
           id: c,
-          text: "From 0 upwards with no limit, with $\\tanh(0) = 0$",
+          text: "From $0$ upwards with no limit, with $\\tanh(0) = 0$",
           correct: false,
           category: recall_failure,
-          feedback: "That's ReLU. tanh levels off at $-1$ for very negative scores and at 1 for large ones.",
+          feedback: "That's ReLU. tanh levels off at $-1$ for very negative scores and at $1$ for large ones.",
         }
       - {
           id: d,
           text: "Between $-1$ and $1$, with $\\tanh(0) = 0.5$",
           correct: false,
           category: recall_failure,
-          feedback: "tanh is centred on 0: halfway between $-1$ and $1$ is 0, so $\\tanh(0) = 0$.",
+          feedback: "tanh is centred on $0$: halfway between $-1$ and $1$ is $0$, so $\\tanh(0) = 0$.",
         }
-    solution: "Both are S-shaped, but tanh is centred on 0 and runs from $-1$ to $1$, while sigmoid runs from 0 to 1 and is 0.5 at $z = 0$."
+    solution: "Both are S-shaped, but tanh is centred on $0$ and runs from $-1$ to $1$, while sigmoid runs from $0$ to $1$ and is $0.5$ at $z = 0$."
   - id: actp-relu-slope
     dimension: math
     type: mc
@@ -626,22 +626,22 @@ exercises:
     est_minutes: 1
     prompt: "What is ReLU's slope at $z = 2.5$, and at $z = -1$?"
     options:
-      - { id: a, text: "1 and 0", correct: true }
+      - { id: a, text: "$1$ and $0$", correct: true }
       - {
           id: b,
-          text: "2.5 and 0",
+          text: "$2.5$ and $0$",
           correct: false,
           category: misunderstood_definition,
-          feedback: "2.5 is ReLU's output at $z = 2.5$. Its slope there is 1: each extra unit of $z$ adds one unit of output.",
+          feedback: "$2.5$ is ReLU's output at $z = 2.5$. Its slope there is $1$: each extra unit of $z$ adds one unit of output.",
         }
       - {
           id: c,
-          text: "1 and $-1$",
+          text: "$1$ and $-1$",
           correct: false,
           category: recall_failure,
-          feedback: "For negative $z$ ReLU is flat at 0, so its slope is 0.",
+          feedback: "For negative $z$ ReLU is flat at $0$, so its slope is $0$.",
         }
-    solution: "For $z > 0$ ReLU is $z$ itself, slope 1. For $z < 0$ it's a constant 0, slope 0."
+    solution: "For $z > 0$ ReLU is $z$ itself, slope $1$. For $z < 0$ it's a constant $0$, slope $0$."
   - id: actp-sigmoid-slope-template
     dimension: math
     type: numeric
@@ -672,7 +672,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A sigmoid neuron has score $z = 0$, so it outputs 0.5 and its slope is 0.25. Its score rises by 0.2. Using the slope, estimate the new output."
+    prompt: "A sigmoid neuron has score $z = 0$, so it outputs $0.5$ and its slope is $0.25$. Its score rises by $0.2$. Using the slope, estimate the new output."
     answer: 0.55
     tolerance: { abs: 0.002 }
     common_wrong:
@@ -724,7 +724,7 @@ exercises:
           category: incorrect_reasoning,
           feedback: "The smooth flattening is precisely a small slope. There is no separate clipping step that discards the nudge.",
         }
-    solution: "The derivative is $0.999 \\times 0.001 = 0.000999$. A score increase of 0.1 therefore changes the output by roughly $0.000999 \\times 0.1 = 0.0000999$. This small response to a score change is saturation, not rounding."
+    solution: "The derivative is $0.999 \\times 0.001 = 0.000999$. A score increase of $0.1$ therefore changes the output by roughly $0.000999 \\times 0.1 = 0.0000999$. This small response to a score change is saturation, not rounding."
   - id: actp-tanh-slope
     dimension: math
     type: numeric
@@ -787,14 +787,14 @@ exercises:
     prompt: "In the worked example, $u=2x+1$ then $y=3u-4$ gives $y=6x-1$. Why is the combined slope $6$ rather than $2+3=5$?"
     options:
       - id: a
-        text: "Each unit of $x$ raises $u$ by 2, and each unit of $u$ raises $y$ by 3, so $y$ rises $2\\times3$."
+        text: "Each unit of $x$ raises $u$ by $2$, and each unit of $u$ raises $y$ by $3$, so $y$ rises $2\\times3$."
         correct: true
         feedback: "The second rule scales every change in $u$, so the two slopes multiply."
       - id: b
         text: "The second rule's intercept $-4$ adds one more unit to the slope, so $5$ becomes $6$."
         correct: false
         category: incorrect_reasoning
-        feedback: "An intercept shifts the line up or down; it never changes the slope. The 6 comes from $3\\times2$."
+        feedback: "An intercept shifts the line up or down; it never changes the slope. The $6$ comes from $3\\times2$."
       - id: c
         text: "Stacking two layers always doubles the larger of the two slopes, and $3$ doubled is $6$."
         correct: false
@@ -844,7 +844,7 @@ exercises:
     prompt: "In the worked example, why is $\\sigma(2)$ about $0.881$ rather than $1$, even though $2$ is a fairly large score?"
     options:
       - id: a
-        text: "$e^{-2}$ is about $0.135$, not $0$, so the fraction is $1/1.135$, which is below 1."
+        text: "$e^{-2}$ is about $0.135$, not $0$, so the fraction is $1/1.135$, which is below $1$."
         correct: true
         feedback: "The sigmoid only gets close to 1 once $e^{-z}$ is close to 0, which needs a larger score."
       - id: b
@@ -853,7 +853,7 @@ exercises:
         category: misunderstood_definition
         feedback: "The sigmoid does no rounding; $1/(1+e^{-z})$ changes smoothly with the score."
       - id: c
-        text: "The sigmoid subtracts $e^{-2}$ from 1, and $1-0.135$ comes to about $0.881$."
+        text: "The sigmoid subtracts $e^{-2}$ from $1$, and $1-0.135$ comes to about $0.881$."
         correct: false
         category: math_error
         feedback: "$1-0.135=0.865$, not $0.881$. The sigmoid divides: $1/(1+0.135)\\approx0.881$."
@@ -861,8 +861,8 @@ exercises:
         text: "Sigmoid outputs are capped at $0.881$, the largest value the curve can reach."
         correct: false
         category: recall_failure
-        feedback: "There is no cap below 1: larger scores get closer to 1, for example $\\sigma(4)\\approx0.982$."
-    solution: "$\\sigma(2)=1/(1+e^{-2})$ and $e^{-2}\\approx0.135$ is still clearly above 0, so the result is $1/1.135\\approx0.881$. The output approaches 1 only as the score grows further."
+        feedback: "There is no cap below $1$: larger scores get closer to $1$, for example $\\sigma(4)\\approx0.982$."
+    solution: "$\\sigma(2)=1/(1+e^{-2})$ and $e^{-2}\\approx0.135$ is still clearly above $0$, so the result is $1/1.135\\approx0.881$. The output approaches $1$ only as the score grows further."
   - id: actp-nudge-self-explain
     lesson_only: true
     dimension: conceptual
@@ -1036,7 +1036,7 @@ exercises:
       - id: c
         text: "ReLU"
         correct: true
-        feedback: "ReLU has slope 1 at every positive score, so the rise in its output matches the rise in the score."
+        feedback: "ReLU has slope $1$ at every positive score, so the rise in its output matches the rise in the score."
       - id: d
         text: "Step"
         correct: false

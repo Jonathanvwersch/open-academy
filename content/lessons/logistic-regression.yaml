@@ -313,7 +313,7 @@ knowledge_points:
       </svg>
       ```
 
-      At score 0, where $p=0.5$, the orange line shows a slope of $-0.5$. A small nudge checks this: raising the score from 0 to $0.1$ lowers the loss from $0.69$ to $0.64$. At score 2, where $p=0.88$, the slope is only $-0.12$. In both cases the slope is $p-1$, the probability minus the label. Working out the derivative, which we'll skip here, shows that this holds for every score and for label 0 too, so
+      At score $0$, where $p=0.5$, the orange line shows a slope of $-0.5$. A small nudge checks this: raising the score from $0$ to $0.1$ lowers the loss from $0.69$ to $0.64$. At score $2$, where $p=0.88$, the slope is only $-0.12$. In both cases the slope is $p-1$, the probability minus the label. Working out the derivative, which we'll skip here, shows that this holds for every score and for label 0 too, so
 
       $$\frac{\partial L}{\partial z}=p-y.$$
 
@@ -333,7 +333,7 @@ knowledge_points:
 
       $$w_{\text{new}}=w-\eta\,(p-y)\,x,\qquad b_{\text{new}}=b-\eta\,(p-y).$$
 
-      Be careful with an input of 0. The weight slope is then 0, so the weight doesn't move, but the bias still does.
+      Be careful with an input of $0$. The weight slope is then $0$, so the weight doesn't move, but the bias still does.
     worked: |
       Let's take one gradient descent step for the new house with 2 viewings, which sold, so $x=2$ and $y=1$, starting from $w=1$ and $b=-4$ with a learning rate of $\eta=0.5$. Its score is $-2$ and its probability is $0.12$.
 

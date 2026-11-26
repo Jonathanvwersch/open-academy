@@ -78,16 +78,16 @@ knowledge_points:
     worked: |
       Let's find the signed area scale for $A=\begin{bmatrix}2&0\\0&4\end{bmatrix}$ and then change its first entry to $-2$.
 
-      1. **Find the output area.** The unit square becomes a rectangle of width 2 and height 4.
+      1. **Find the output area.** The unit square becomes a rectangle of width $2$ and height $4$.
          $$\text{output area}=2\times4=8$$
 
       2. **Check the order of the edges.** The first edge points right and the second up, so their order stays counterclockwise.
          $$\det(A)=8$$
 
-      3. **Flip the first edge.** Changing 2 to $-2$ sends the first edge left. The width stays 2, while the order becomes clockwise.
+      3. **Flip the first edge.** Changing $2$ to $-2$ sends the first edge left. The width stays $2$, while the order becomes clockwise.
          $$\det\!\begin{pmatrix}-2&0\\0&4\end{pmatrix}=-8$$
 
-      Both maps multiply area by 8; their signs tell us which one flips the picture.
+      Both maps multiply area by $8$; their signs tell us which one flips the picture.
     problems:
       - det-area-basics
       - det-area-self-explain

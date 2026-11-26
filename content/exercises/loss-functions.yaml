@@ -468,21 +468,21 @@ exercises:
       absolute error with respect to the prediction?
     options:
       - id: a
-        text: −1, because raising the prediction reduces the distance
+        text: $−1$, because raising the prediction reduces the distance
         correct: true
       - id: b
-        text: +1, because absolute error is always positive
+        text: $+1$, because absolute error is always positive
         correct: false
         category: incorrect_reasoning
         feedback: The loss is positive, but its slope is negative below the target.
       - id: c
-        text: −18, because twice the error gives the slope
+        text: $−18$, because twice the error gives the slope
         correct: false
         category: incorrect_reasoning
         feedback: Twice the error is the squared-error derivative, not the absolute-error derivative.
     solution:
       Below the target, raising the prediction by one unit removes one unit of absolute error,
-      so the derivative is −1.
+      so the derivative is $−1$.
   - id: lossp-corner
     dimension: conceptual
     type: mc

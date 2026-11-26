@@ -156,12 +156,12 @@ exercises:
         category: incorrect_reasoning
         feedback: A positive miss means the prediction is too high, and raising $w$ would push it even higher.
       - id: c
-        text: Change the area to 45 m², because $4\times45=180$
+        text: Change the area to $45$ m², because $4\times45=180$
         correct: false
         category: misunderstood_definition
         feedback: The area is part of the example and stays fixed; only the weight is adjusted.
       - id: d
-        text: Keep $w$ at 4, because one sale is too few to change the rule
+        text: Keep $w$ at $4$, because one sale is too few to change the rule
         correct: false
         category: incorrect_reasoning
         feedback: Every sale the rule misses is evidence to adjust it, and this one shows the rule predicts too high.

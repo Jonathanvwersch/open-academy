@@ -470,20 +470,20 @@ exercises:
       is zero. What is the mistake?
     options:
       - id: a
-        text: Nothing; errors of +20 and −20 balance, so the model is accurate on average.
+        text: Nothing; errors of $+20$ and $−20$ balance, so the model is accurate on average.
         correct: false
-        feedback: A zero signed average hides two misses of 20; it does not mean accurate individual predictions.
+        feedback: A zero signed average hides two misses of $20$; it does not mean accurate individual predictions.
       - id: b
         text: Opposite signed errors cancel even when both predictions miss.
         correct: true
-        feedback: Both predictions miss by 20, so both error scores are 20.
+        feedback: Both predictions miss by $20$, so both error scores are $20$.
       - id: c
         text: They should average the predictions, which would differ from the average actual price.
         correct: false
         feedback: With signed errors summing to zero, the two averages are equal. Measure each miss before averaging.
     solution:
       Signed error averages can cancel overpricing against underpricing. Absolute or squared errors reveal
-      both misses, giving MAE = RMSE = 20.
+      both misses, giving MAE = RMSE = $20$.
   - id: evm-units
     dimension: conceptual
     type: mc
