@@ -118,7 +118,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: 'What does $\pi(\text{right}\mid2)=0.7$ mean for repeated choices in cell 2?'
+    prompt: >-
+      A robot's policy is $\pi$, and its entry for choosing right in cell 2 is $\pi(\text{right}\mid2)=0.7$. What does that mean for repeated choices in cell 2?
     options:
       - {
           id: a,
@@ -140,7 +141,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'Left and right are the only actions. A learner writes $\pi(\text{left}\mid s)=0.4$ and $\pi(\text{right}\mid s)=0.8$. What is wrong with this policy row?'
+    prompt: >-
+      Left and right are the only actions in state $s$. A learner assigns policy probabilities $\pi(\text{left}\mid s)=0.4$ and $\pi(\text{right}\mid s)=0.8$. What is wrong with this policy row?
     options:
       - { id: a, text: The two probabilities total more than one., correct: true }
       - {
@@ -162,7 +164,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: 'A deterministic policy has $\pi(3)=\text{left}$. What is $\pi(\text{right}\mid3)$ when left and right are the only actions?'
+    prompt: >-
+      A deterministic policy $\pi$ chooses left in cell 3, written $\pi(3)=\text{left}$. If left and right are the only actions, what is the probability $\pi(\text{right}\mid3)$ of choosing right there?
     answer: 0
     tolerance: { abs: 0.000001 }
     solution: The rule always chooses left in cell 3, so the probability of right is $0$.
@@ -194,7 +197,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: What does $G_t$ describe in a finite episode?
+    prompt: >-
+      In a finite episode, $t$ is the number of actions already taken. What does the return $G_t$ measure?
     options:
       - {
           id: a,
@@ -248,7 +252,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "An episode has rewards $r_1,r_2,r_3$ and then ends. Which expression gives $G_1$?"
+    prompt: >-
+      An episode gives rewards $r_1,r_2,r_3$ after its first, second and third actions, then ends. With discount factor $\gamma$, which expression gives the return $G_1$ after the first action?
     options:
       - {
           id: a,
@@ -295,7 +300,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'An episode gives $r_1=-2$, $r_2=-1$, $r_3=8$ and then ends. With $\gamma=0.9$, what is $G_1$?'
+    prompt: >-
+      An episode gives rewards $r_1=-2$, $r_2=-1$ and $r_3=8$ after its first three actions, then ends. With discount factor $\gamma=0.9$, what is the return $G_1$ just after the first action?
     answer: 6.2
     tolerance: { abs: 0.005 }
     common_wrong:
@@ -314,7 +320,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'Two actions earn $r_1=2$ and $r_2=6$, then the episode ends. A learner writes $G_0=0.5(2)+0.5^2(6)$ for $\gamma=0.5$. What went wrong?'
+    prompt: >-
+      Two actions earn rewards $r_1=2$ and $r_2=6$, then the episode ends. With discount factor $\gamma=0.5$, a learner writes the starting return as $G_0=0.5(2)+0.5^2(6)$. What went wrong?
     options:
       - {
           id: a,
@@ -336,7 +343,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "An episode ends at time $T=3$. What does $G_3=0$ tell us?"
+    prompt: >-
+      An episode ends after its third action. What does it mean that the return just after that action is $G_3=0$?
     options:
       - {
           id: a,
@@ -358,7 +366,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'A delivery robot earns $0$, $-2$, then $8$ on three successive actions before its episode ends. With $\gamma=0.5$, what is its return before the first action?'
+    prompt: >-
+      A delivery robot earns $0$, $-2$, then $8$ on three successive actions before its episode ends. With discount factor $\gamma=0.5$, what is its return before the first action?
     answer: 1
     tolerance: { abs: 0.000001 }
     solution: "The return is $0+0.5(-2)+0.5^2(8)=-1+2=1$."
@@ -368,7 +377,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: What does increasing $\gamma$ from $0.5$ to $0.9$ do to the weight on the third reward in a three-action episode?
+    prompt: >-
+      What does increasing the discount factor $\gamma$ from $0.5$ to $0.9$ do to the weight on the third reward in a three-action episode, measured from the start?
     options:
       - {
           id: a,
@@ -463,7 +473,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: 'An episode earns $r_1=-3$, $r_2=2$, $r_3=9$ and ends. What is $G_0$ when $\gamma=0$?'
+    prompt: >-
+      An episode earns rewards $r_1=-3$, $r_2=2$ and $r_3=9$ in that order and ends. What is the starting return $G_0$ when the discount factor is $\gamma=0$?
     answer: -3
     tolerance: { abs: 0.000001 }
     solution: With zero discount, only the next reward counts, so $G_0=r_1=-3$.
@@ -473,7 +484,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'An episode earns $0$, then $-8$, and ends. A learner says raising $\gamma$ from $0.6$ to $0.8$ must increase $G_0$. What actually happens?'
+    prompt: >-
+      An episode earns $0$, then $-8$, and ends. A learner says raising the discount factor $\gamma$ from $0.6$ to $0.8$ must increase the starting return $G_0$. What actually happens?
     options:
       - { id: a, text: The return falls because the later penalty gets more weight., correct: true }
       - {
@@ -517,7 +529,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: 'Why can choosing $\gamma=1$ cause a problem for a task that keeps earning $+1$ each step and never ends?'
+    prompt: >-
+      Why can choosing discount factor $\gamma=1$ cause a problem for a task that keeps earning $+1$ each step and never ends?
     options:
       - { id: a, text: The total keeps growing without a finite limit., correct: true }
       - {
@@ -578,7 +591,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: 'A game offers an immediate $4$-point finish or a three-action route earning $-2$, $-1$, then $12$ before ending. At $\gamma=0.5$, by how many points does the immediate finish exceed the route in return?'
+    prompt: >-
+      A game offers an immediate $4$-point finish or a three-action route earning $-2$, $-1$, then $12$ before ending. With discount factor $\gamma=0.5$, by how many points does the immediate finish exceed the route in return?
     answer: 3.5
     tolerance: { abs: 0.005 }
     solution: "The route scores $(-2)+0.5(-1)+0.25(12)=0.5$, so the immediate finish exceeds it by $4-0.5=3.5$."
@@ -588,7 +602,8 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 3
-    prompt: "A robot chooses left or right in cells $1$ to $3$ of a corridor; cell $4$ ends a trip. Describe a deterministic policy and a stochastic policy. A trip earns $-1$, $-1$, then $10$ and ends: explain how to find its starting return with $\\gamma=0.9$."
+    prompt: >-
+      A robot chooses left or right in cells $1$ to $3$ of a corridor; cell $4$ ends a trip. Describe a deterministic policy and a stochastic policy. A trip earns $-1$, $-1$, then $10$ and ends: explain how to find its starting return with discount factor $\gamma=0.9$.
     rubric:
       - id: policy
         criterion: Describe one fixed action for each nonterminal cell as a deterministic policy.

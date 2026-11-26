@@ -23,7 +23,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: What does the entry $Q(s,a)$ in a Q-table hold?
+    prompt: >-
+      What does the Q-table entry $Q(s,a)$ for state $s$ and action $a$ hold?
     options:
       - id: a
         text: The reward the agent gets for that one move.
@@ -80,7 +81,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A robot's Q-table for its current state holds $Q(s,\\text{up})=3$, $Q(s,\\text{down})=-2$ and $Q(s,\\text{stay})=5$. Which action does it take if it acts greedily?"
+    prompt: >-
+      In its current state $s$, a robot's Q-table holds action values $Q(s,\text{up})=3$, $Q(s,\text{down})=-2$ and $Q(s,\text{stay})=5$. Which action does it take if it acts greedily?
     options:
       - id: a
         text: Stay, because its value is the biggest.
@@ -142,7 +144,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "On a short path, moving from A to B gives reward $-1$, and moving from B to C gives reward $+5$ and ends the episode. A and B each have only this one action. With $\\gamma=0.9$, what is the best value of moving from A?"
+    prompt: >-
+      On a short path, moving from A to B gives reward $-1$, and moving from B to C gives reward $+5$ and ends the episode. A and B each have only this one action. With discount factor $\gamma=0.9$, what is the best value of moving from A?
     answer: 3.5
     tolerance:
       abs: 0.001
@@ -163,7 +166,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot in a 4-cell corridor gets $-1$ per move and $+10$ for reaching cell 4, with $\\gamma=0.9$. Its best values say moving right from cell 2 is worth $8$, but that move only earns $-1$. A learner says the value must be wrong. What is the mistake?"
+    prompt: >-
+      A robot moves one cell at a time in a corridor numbered 1 to 4 from left to right. Reaching cell 4 pays $+10$ and ends the episode; any other move pays $-1$. The discount factor is $\gamma=0.9$. Its best values say moving right from cell 2 is worth $8$, but that move only earns $-1$. A learner says the value must be wrong. What is the mistake?
     options:
       - id: a
         text: The value also counts the discounted rewards after the move.
@@ -209,7 +213,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: In Q-learning, what is the TD target for a move from $s$ to $s'$ with reward $r$, when the episode doesn't end?
+    prompt: >-
+      In Q-learning, what is the TD target for a move from state $s$ to state $s'$ with reward $r$, when the episode doesn't end?
     options:
       - id: a
         text: $r+\gamma\max_{a'}Q(s',a')$
@@ -307,7 +312,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: An agent has $Q(s,a)=1$. Taking $a$ gives reward $4$ and ends the episode. With $\gamma=0.9$ and learning rate $\eta=0.5$, what is $Q(s,a)$ after one Q-learning update?
+    prompt: >-
+      An agent's current value for action $a$ in state $s$ is $Q(s,a)=1$. Taking $a$ gives reward $4$ and ends the episode. With discount factor $\gamma=0.9$ and learning rate $\eta=0.5$, what is $Q(s,a)$ after one Q-learning update?
     answer: 2.5
     tolerance:
       abs: 0.001
@@ -328,7 +334,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: "A robot in cell 2 moves right to cell 3 and gets reward $-1$. Its table has $Q(2,\\text{left})=1$, $Q(2,\\text{right})=2$, $Q(3,\\text{left})=0$ and $Q(3,\\text{right})=6$, and $\\gamma=0.9$. A learner writes the TD target as $-1+0.9\\times2=0.8$. What went wrong?"
+    prompt: >-
+      A robot in cell 2 moves right to cell 3 and gets reward $-1$ without ending the episode. Its action values are $Q(2,\text{left})=1$, $Q(2,\text{right})=2$, $Q(3,\text{left})=0$ and $Q(3,\text{right})=6$. The discount factor is $\gamma=0.9$. A learner writes the Q-learning TD target as $-1+0.9\times2=0.8$. What went wrong?
     options:
       - id: a
         text: They used cell 2's best value; the target uses cell 3's, giving $4.4$.
@@ -351,7 +358,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "In the Q-learning update $Q(s,a)\\leftarrow Q(s,a)+\\eta\\,\\delta$, what does one update do when the learning rate is $\\eta=1$?"
+    prompt: >-
+      A Q-learning update changes the value $Q(s,a)$ of action $a$ in state $s$ by $\eta\,\delta$, with learning rate $\eta$ and TD error $\delta$. What does one update do to that action value when $\eta=1$?
     options:
       - id: a
         text: It replaces $Q(s,a)$ with the TD target.
@@ -374,7 +382,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 4
-    prompt: "A delivery robot moves along a path B, then C, then the goal, with one action, forward, in each place. Moving into the goal gives $+6$ and ends the episode, and the move from B to C gives $-1$. Every value starts at $0$, with $\\eta=0.5$ and $\\gamma=0.9$. Episode 1 starts in C and moves to the goal. Episode 2 starts in B and moves to C, then to the goal. What is $Q(\\text{B},\\text{forward})$ at the end of episode 2? Give 2 decimal places."
+    prompt: >-
+      A delivery robot moves along a path B, then C, then the goal, with one action, forward, in each place. Moving into the goal gives $+6$ and ends the episode, and moving from B to C gives $-1$. The robot makes one tabular Q-learning update immediately after each move. All action values start at $0$. The learning rate is $\eta=0.5$ and the discount factor is $\gamma=0.9$. Episode 1 starts in C and moves to the goal. Episode 2 starts in B and moves to C, then to the goal. What is the action value $Q(\text{B},\text{forward})$ at the end of episode 2? Give two decimal places.
     answer: 0.85
     tolerance:
       abs: 0.005
@@ -449,7 +458,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A robot learns with Q-learning but always moves greedily. In one state, action A always gives reward $+1$ and ends the episode. The robot has tried A once, so $Q(s,\\text{A})=0.5$, and has never tried action B, so $Q(s,\\text{B})=0$. Action B is really much better. What happens?"
+    prompt: >-
+      A robot learns with tabular Q-learning but always moves greedily. In state $s$, action A always gives reward $+1$ and ends the episode. The robot has tried A once, so its action value is $Q(s,\text{A})=0.5$. It has never tried action B, so $Q(s,\text{B})=0$. Action B is really much better. What happens?
     options:
       - id: a
         text: It keeps choosing A, so it never learns how good B is.
@@ -499,7 +509,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: "An agent has $Q(s,a)=4$. It takes $a$, gets reward $2$ and lands in $s'$, whose two actions have values $3$ and $7$. Its next move from $s'$ will be a random one, the action with value $3$. With $\\gamma=0.9$ and learning rate $\\eta=0.5$, what is $Q(s,a)$ after the Q-learning update? Give 2 decimal places."
+    prompt: >-
+      An agent has action value $Q(s,a)=4$ for action $a$ in state $s$. It takes $a$, gets reward $2$ and lands in state $s'$, whose two actions have values $3$ and $7$. Its random next move from $s'$ will use the action with value $3$. With discount factor $\gamma=0.9$ and learning rate $\eta=0.5$, what is $Q(s,a)$ after the Q-learning update? Give two decimal places.
     answer: 6.15
     tolerance:
       abs: 0.005
@@ -565,7 +576,8 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: In Q-learning with a table, which entries change after the agent makes one move from $s$ with action $a$?
+    prompt: >-
+      In Q-learning with a table, which entries change after the agent makes one move from state $s$ with action $a$?
     options:
       - id: a
         text: Only $Q(s,a)$, the entry for the move just made.

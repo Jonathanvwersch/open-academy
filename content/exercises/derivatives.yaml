@@ -49,7 +49,8 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "The central-difference slope is $(f(a+h)-f(a-h))/(2h)$. For $f(x)=x^3$, find this slope at $a=1$ with $h=0.5$."
+    prompt: >-
+      To estimate the slope of a function $f$ at input $a$, a central difference uses a positive input step $h$ and computes $(f(a+h)-f(a-h))/(2h)$. For $f(x)=x^3$, find this estimate at $a=1$ with $h=0.5$.
     answer: 3.25
     tolerance: { abs: 0.001 }
     hints: ["Find the two function values before dividing by the distance between the inputs."]
@@ -301,7 +302,8 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "A model's prediction-error score is $L(w)=4w^2-24w+36$. Find its derivative, evaluate it at $w=2$, and explain what a small positive change in $w$ near $2$ does to the score."
+    prompt: >-
+      A model's prediction-error score for weight $w$ is $L(w)=4w^2-24w+36$. Find its derivative with respect to $w$, evaluate it at $w=2$, and explain what a small positive change in $w$ near $2$ does to the score.
     rubric:
       - id: derivative
         criterion: Differentiate to obtain $L'(w)=8w-24$.
@@ -433,7 +435,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "In $\\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}$, why don't you simply put $h = 0$?"
+    prompt: >-
+      The derivative of a function $f$ at input $x$ is $\lim_{h\to0}\frac{f(x+h)-f(x)}{h}$, where $h$ is the change in the input. Why don't you simply put $h=0$ in the fraction?
     options:
       - id: a
         text: "The ratio becomes $0/0$, which has no value, so you watch what it approaches instead"
