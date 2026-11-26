@@ -705,7 +705,7 @@ exercises:
         text: "`scores[t][j] = dot(queries[t], keys[t]) / scale`"
         correct: false
         feedback: "This uses the output position's own key for every source."
-    solution: "Use the query indexed by the row and the key indexed by the source column. `scale` is the square root of the key width."
+    solution: "Use the query at position `t` and the key at source `j`. Divide their dot product by `scale`."
   - id: attn-code-softmax-axis
     dimension: implementation
     type: mc
