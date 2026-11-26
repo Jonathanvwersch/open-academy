@@ -155,6 +155,10 @@ function AppSidebarView({
   const currentCourseId = useCurrentCourseId();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { isMobile, state, setOpenMobile } = useSidebar();
+  const isQuiz = pathname.startsWith('/quizzes/');
+  useEffect(() => {
+    if (isQuiz) setOpenMobile(false);
+  }, [isQuiz, setOpenMobile]);
   const showCourseSection = state !== 'collapsed' || isMobile;
   const activeCourseGroups =
     courses?.subjects
@@ -291,7 +295,7 @@ function AppSidebarView({
   return (
     <Sidebar
       side="left"
-      collapsible="icon"
+      collapsible={isQuiz ? 'offcanvas' : 'icon'}
       mobileWidth="18rem"
       role="navigation"
       aria-label="Main navigation"
@@ -480,9 +484,16 @@ function AppSidebar() {
   );
 }
 
-function MobileAppHeader() {
+function MobileAppHeader({ hidden = false }: { hidden?: boolean } = {}) {
   return (
-    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-card px-3 md:hidden">
+    <header
+      data-testid="mobile-app-header"
+      aria-hidden={hidden}
+      inert={hidden}
+      className={`sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-card px-3 transition-[height,opacity] duration-200 ease-out motion-reduce:transition-none md:hidden ${
+        hidden ? 'pointer-events-none h-0 overflow-hidden opacity-0' : 'h-14 border-b opacity-100'
+      }`}
+    >
       <SidebarTrigger aria-label="Open navigation" title="Open navigation" />
       <Link to="/" aria-label="Open Academy home" className="min-w-0">
         <BrandLockup size="sm" />
@@ -567,28 +578,23 @@ function ApplicationShell({ me, pathname }: { me: AuthPayload | undefined; pathn
   const { sidebarOpen, updateSidebarOpen } = useAppSidebarOpenState();
   const isPaperReader = pathname.startsWith('/papers/');
   const isQuiz = pathname.startsWith('/quizzes/');
-  if (isQuiz) {
-    return (
-      <TutorContextProvider routeAllowed={false}>
-        <main ref={contentRef} data-page-frame className={pageFrameClassName(pathname)}>
-          <Outlet />
-        </main>
-      </TutorContextProvider>
-    );
-  }
   return (
     <TooltipProvider>
-      <SidebarProvider open={sidebarOpen} onOpenChange={updateSidebarOpen} disableKeyboardShortcut>
+      <SidebarProvider
+        open={isQuiz ? false : sidebarOpen}
+        onOpenChange={isQuiz ? () => undefined : updateSidebarOpen}
+        disableKeyboardShortcut
+      >
         <AppSidebar />
         <SidebarInset
           className={isPaperReader ? 'h-dvh min-h-0 min-w-0 overflow-hidden' : 'min-w-0'}
         >
-          <MobileAppHeader />
+          <MobileAppHeader hidden={isQuiz} />
           <TutorContextProvider
-            routeAllowed={!pathname.startsWith('/placement')}
+            routeAllowed={!isQuiz && !pathname.startsWith('/placement')}
             pushSidebar={isPaperReader}
           >
-            {me?.demo ? (
+            {!isQuiz && me?.demo ? (
               <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground sm:px-6">
                 Demo: your progress stays in this browser for {me.demo.ttlHours} hours, then it's
                 deleted.{' '}
@@ -605,7 +611,7 @@ function ApplicationShell({ me, pathname }: { me: AuthPayload | undefined; pathn
             </div>
           </TutorContextProvider>
         </SidebarInset>
-        <AppToaster />
+        {!isQuiz ? <AppToaster /> : null}
       </SidebarProvider>
     </TooltipProvider>
   );
