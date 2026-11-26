@@ -570,6 +570,12 @@ terms:
       introduced_by: [causal-masking],
     }
   - {
+      id: token-prefix,
+      label: "Token prefix",
+      match: ['\bprefix(?:es)?\b'],
+      introduced_by: [autoregressive-lm],
+    }
+  - {
       id: uniform-token-sampling,
       label: "Uniform draws over next-token probability intervals",
       match:
