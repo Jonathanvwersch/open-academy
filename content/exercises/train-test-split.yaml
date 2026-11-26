@@ -1441,18 +1441,18 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 2
-    prompt: A bird-call team has three separate groups of recordings. They use Cedar to fit each candidate model, Birch to compare the candidates and choose one, and Maple to score the chosen model for their report. A colleague proposes changing the chosen model in response to a low score in the report. Which group would no longer provide an independent final evaluation?
+    prompt: A bird-call team has three separate sets of recordings called Cedar, Birch and Maple. They use Cedar to fit several models and Birch to choose one. They report the chosen model's error on all three sets. After seeing the error on Maple, they change a model setting to try to lower it. What role has Maple played for the revised model?
     options:
       - id: a
-        text: Cedar
+        text: It became a training set.
         correct: false
-        feedback: Cedar already informed training, so its scores were never the independent final evaluation.
+        feedback: The team used the score to choose a setting. They used Cedar's recordings to fit the model.
       - id: b
-        text: Birch
+        text: It remained a test set.
         correct: false
-        feedback: Birch already informed model selection. The report's final score came from Maple.
+        feedback: Once the team uses the score to choose a setting, it can no longer provide an independent test of that choice.
       - id: c
-        text: Maple
+        text: It became a validation set.
         correct: true
-        feedback: Using Maple's score to change the model would make Maple part of model selection.
-    solution: Maple served as the test set. If its scores guide another model change, evaluate the resulting model on recordings that played no part in that decision.
+        feedback: A score used to tune a setting plays the role of validation.
+    solution: Maple became validation data when its score guided a change to the model. The revised model needs an independent test on unused recordings.

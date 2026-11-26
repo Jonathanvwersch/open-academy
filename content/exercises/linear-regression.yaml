@@ -933,7 +933,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: Each row of $X=\begin{bmatrix}2&5\\4&3\\6&1\end{bmatrix}$ is one example. A linear model has weights $(3,-2)$ in feature order and bias $4$. What prediction does it give for row 2?
+    prompt: The feature matrix $X=\begin{bmatrix}2&5\\4&3\\6&1\end{bmatrix}$ has one example per row and one feature per column. A linear regression model uses the weight vector $(3,-2)$ in column order and has bias $4$. What prediction does it give for row 2?
     answer: 10
     tolerance: { abs: 0.001 }
     solution: Use the second row $(4,3)$ with the weights and add the bias to get $3\times4-2\times3+4=10$.

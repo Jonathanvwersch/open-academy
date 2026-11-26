@@ -819,7 +819,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 2
-    prompt: A Gaussian model for a measurement has mean 40 and standard deviation 2. What is the ratio of the density at 38 to the density at 44? Give the density at 38 divided by the density at 44, to two decimal places. Round only at the end.
+    prompt: A Gaussian model for a measured length has mean 40 cm and standard deviation 2 cm. Divide the model's density at 38 cm by its density at 44 cm. Give the ratio to two decimal places and round only at the end.
     answer: 4.48
     tolerance: { abs: 0.005 }
     solution: The standardised distances are $-1$ and $2$. The front factor in both densities is the same, so the ratio is $e^{-1/2}/e^{-2}=e^{1.5}\approx4.48$.

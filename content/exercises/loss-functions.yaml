@@ -1047,7 +1047,7 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 2
-    prompt: A library compares two models on the same three checkout wait times. In minutes, model A's signed errors are $(0,4,0)$ and model B's are $(-2,2,1)$. Staff want every minute of error to cost the same, whether the prediction is early or late. Which ranking fits that policy?
+    prompt: A library compares two models on the same three checkout wait times. Each signed error is the predicted wait minus the observed wait, in minutes. The three errors for model A are $(0,4,0)$ and for model B are $(-2,2,1)$. Staff want every minute of error to cost the same, whether the prediction is too high or too low. Which ranking fits that policy?
     options:
       - id: a
         text: A has lower error because its total absolute error is smaller.

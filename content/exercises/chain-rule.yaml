@@ -662,7 +662,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: An output $f$ depends on $u$ and $v$, and both depend on $x$. At one point the slope of $u$ with respect to $x$ is zero. The slope of $v$ with respect to $x$ and the two partial derivatives of $f$ are all nonzero. What does this tell you about the slope of $f$ with respect to $x$ at that point?
+    prompt: An input $x$ determines two intermediate values $u$ and $v$, which determine the output $f$. At one input value, the slope of $u$ with respect to $x$ is zero and the slope of $v$ with respect to $x$ is nonzero. Both partial derivatives of $f$, with respect to $u$ and $v$, are nonzero there. What does this tell you about the slope of $f$ with respect to $x$ at that input value?
     options:
       - id: a
         text: It is zero because one route has a zero slope.

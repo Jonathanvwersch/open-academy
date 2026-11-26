@@ -788,7 +788,7 @@ exercises:
     difficulty: 1
     target_seconds: 30
     est_minutes: 0.5
-    prompt: A Python classifier has computed the raw logistic regression score `z`. It predicts label 1 when the sigmoid probability is at least $0.5$. Fill the blank with a single comparison between `z` and a number.
+    prompt: A Python classifier has computed the raw logistic regression score `z`. It predicts label 1 when the sigmoid probability is at least $0.5$. Fill the blank with a single comparison between `z` and an integer cutoff.
     code: |
       if ____:
           label = 1
@@ -800,10 +800,14 @@ exercises:
         "0 <= z",
         "z >= 0.0",
         "0.0 <= z",
+        "z >= 0.00",
+        "0.00 <= z",
         "(z >= 0)",
         "(0 <= z)",
         "(z >= 0.0)",
         "(0.0 <= z)",
+        "(z >= 0.00)",
+        "(0.00 <= z)",
       ]
     solution: The sigmoid is increasing and gives $0.5$ at score zero, so `z >= 0` gives the same decisions.
   - id: logreg-review-sigmoid-code
@@ -812,7 +816,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A Python program uses `p = 1 / (1 + exp(z))` for its sigmoid, where `z` is the logistic regression score and `exp(t)` returns $e^t$. How does this output respond to a rising score compared with the intended sigmoid?
+    prompt: A Python program uses `p = 1 / (1 + exp(z))` to compute `p`, its probability of label 1. Here `z` is the logistic regression score and `exp` is the exponential function. How does this output respond to a rising score compared with the intended sigmoid?
     options:
       - id: a
         text: This output falls, while the intended sigmoid rises.
@@ -833,7 +837,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 1
-    prompt: A Python function is meant to compute binary cross-entropy, but it returns `-log(p)` for both labels. Here `p` is the model's probability of label 1, `y` is the observed label and `log` is the natural logarithm. At `p = 0.8`, which observed label exposes the bug? Fill the blank with the label's integer value.
+    prompt: A Python function named `loss` is meant to compute binary cross-entropy, but it returns `-log(p)` for both observed labels. Here `p` is the model's probability of label 1, `y` is the observed label and `log` is the natural logarithm. At a predicted probability of 0.8 for label 1, which observed label exposes the bug? Fill the blank with the label's integer value.
     code: |
       loss(p=0.8, y=____)
     accept: ["0", "(0)"]
@@ -845,7 +849,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: |
-      This Python code takes one gradient descent step on binary cross-entropy for a logistic regression example. Here `p` is the probability of label 1, `y` is the observed label, `x` is the feature, and `lr` is the learning rate. Which line should replace the last line to correct the bias update?
+      This Python code takes one gradient descent step on binary cross-entropy for a logistic regression example. Here `p` is the predicted probability of label 1, `y` is the observed label and `x` is the input feature. The model has weight `w` and bias `b`. The variable `dw` holds the loss slope for the weight, and `lr` is the learning rate. Which line should replace the last line to correct the bias update?
 
       ```python
       dw = (p - y) * x
