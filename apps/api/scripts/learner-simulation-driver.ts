@@ -30,13 +30,24 @@ export function httpRequestFor(operation: SimulatorOperation): SimulatorHttpRequ
     case 'setActiveCourse':
       return { method: 'PUT', path: '/course/active', body: operation.body };
     case 'startCourse':
-      return { method: 'POST', path: `/courses/${operation.courseId}/start`, body: operation.body };
+      return {
+        method: 'POST',
+        path:
+          operation.courseId === undefined
+            ? '/course/start'
+            : `/courses/${operation.courseId}/start`,
+        body: operation.body,
+      };
     case 'createSession':
       return { method: 'POST', path: '/sessions', body: operation.body };
     case 'session':
       return { method: 'GET', path: `/sessions/${operation.sessionId}` };
     case 'replanSession':
-      return { method: 'POST', path: `/sessions/${operation.sessionId}/replan` };
+      return {
+        method: 'POST',
+        path: `/sessions/${operation.sessionId}/replan`,
+        ...(operation.body === undefined ? {} : { body: operation.body }),
+      };
     case 'endSession':
       return { method: 'POST', path: `/sessions/${operation.sessionId}/end` };
     case 'activityProgress':

@@ -6,31 +6,18 @@ import {
   isTemplate,
 } from '@academy/aesop/course/templates';
 import type { ContentIndex, IndexedExercise, IndexedLesson } from '@academy/aesop/course/types';
+import type { EngineHasTutorReply, EngineResult } from '@academy/aesop/engine/create-engine';
 import { answerDisplay, answerText } from '@academy/aesop/lessons/answer-display';
 import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
-import { gradeExercise } from '@academy/aesop/lessons/grading/index';
 import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '@academy/aesop/lessons/grading/multiple-choice';
-import {
-  answerLessonProblem,
-  answerLessonQuiz,
-  type LessonGrader,
-  practiceLessonPoint,
-  resolveLessonExercise,
-  startLessonQuiz,
-  startLessonRun,
-  submitLessonQuiz,
-} from '@academy/aesop/lessons/run-commands';
+import { resolveLessonExercise } from '@academy/aesop/lessons/run-commands';
 import type { LessonRuntime } from '@academy/aesop/lessons/run-recovery';
 import { readLessonState } from '@academy/aesop/lessons/run-state';
-import type { applyMastery } from '@academy/aesop/memory/mastery-service';
 import type { LessonRun } from '@academy/aesop/store/lesson-store';
-import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
-import type { Database } from '../../db/client.js';
 import { drizzleLearnerStore, readPassedLessonQuizItems } from '../../db/learner-store.js';
-import type { LearnerRepository } from '../../db/repository.js';
 import {
   lessonProblems,
   lessonQuizAttempts,
@@ -38,18 +25,13 @@ import {
   lessonRuns,
   tutorMessages,
 } from '../../db/schema.js';
-import type { ApiEnv } from '../../http/context.js';
+import type { ApiEnv, ApiServices } from '../../http/context.js';
 import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
 import { resolveLessonCourse } from './course-context.js';
 
 type LessonContext = Context<ApiEnv>;
-
-const gradeLessonAnswer: LessonGrader = (exercise, answer, { random, requireAnswer }) => {
-  const feedback = requireAnswer ? emptyAnswerMessage(exercise.type, answer) : null;
-  return feedback
-    ? Promise.resolve({ status: 'invalid', feedback, graded_by: 'deterministic' })
-    : gradeExercise(exercise, answer, { random });
-};
+const send = (context: LessonContext, result: EngineResult) =>
+  context.json(result.body, result.status);
 
 function correctAnswerDisplay(exercise: IndexedExercise): string {
   if (exercise.type === 'mc') {
@@ -73,18 +55,7 @@ function correctAnswerDisplay(exercise: IndexedExercise): string {
   return '';
 }
 
-type MasteryApplier = typeof applyMastery;
-
-export function registerLessonRunRoutes(
-  api: Hono<ApiEnv>,
-  deps: {
-    db: Database;
-    content: () => Promise<ContentIndex>;
-    withRepo: (context: LessonContext) => LearnerRepository;
-    requestNow: (context: LessonContext) => Date;
-    applyMastery: MasteryApplier;
-  },
-) {
+export function registerLessonRunRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
   const store = drizzleLearnerStore(deps.db);
   const runtime = (context: LessonContext): LessonRuntime => ({
     now: () => deps.requestNow(context),
@@ -92,16 +63,25 @@ export function registerLessonRunRoutes(
     newId: () => crypto.randomUUID(),
     enableFsrsFuzz: fsrsFuzzEnabled(),
   });
-  const command = (
-    context: LessonContext,
-    conceptId: string,
-    resolved: { index: ContentIndex; lesson: IndexedLesson },
-  ) => ({ userId: context.get('userId'), timeZone: context.get('timeZone'), conceptId, resolved });
   const lessonFor = async (conceptId: string) => {
     const index = await deps.content();
     const lesson = index.lessonsByConcept.get(conceptId);
     if (!lesson?.knowledge_points?.length) return undefined;
     return { index, lesson };
+  };
+  const hasTutorReply: EngineHasTutorReply = async (tx, learnerId, problemId) => {
+    const [reply] = await (tx as ReturnType<typeof drizzleLearnerStore>).connection
+      .select({ id: tutorMessages.id })
+      .from(tutorMessages)
+      .where(
+        and(
+          eq(tutorMessages.userId, learnerId),
+          eq(tutorMessages.lessonProblemId, problemId),
+          sql`${tutorMessages.role} = 'assistant'`,
+        ),
+      )
+      .limit(1);
+    return !!reply;
   };
 
   const runState = async (
@@ -214,23 +194,6 @@ export function registerLessonRunRoutes(
     };
   };
 
-  const verifyActivity = async (
-    context: LessonContext,
-    activityId: string | undefined,
-    conceptId: string,
-  ) => {
-    if (!activityId) return { activity: undefined, session: undefined };
-    const [activityRow] = await store.listActivities(context.get('userId'), { ids: [activityId] });
-    const session = activityRow
-      ? await deps.withRepo(context).session(activityRow.sessionId)
-      : undefined;
-    const activity = session?.activities.find((item) => item.id === activityId);
-    if (activity?.kind !== 'learn' || activity.conceptId !== conceptId) {
-      return undefined;
-    }
-    return { activity, session };
-  };
-
   api.get('/lessons/:conceptId/run', async (context) => {
     const conceptId = context.req.param('conceptId');
     const resolved = await lessonFor(conceptId);
@@ -251,8 +214,8 @@ export function registerLessonRunRoutes(
 
   api.post('/lessons/:conceptId/run', async (context) => {
     const conceptId = context.req.param('conceptId');
-    const resolved = await lessonFor(conceptId);
-    if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
+    if (!(await lessonFor(conceptId)))
+      return context.json({ error: 'Knowledge-point lesson not found' }, 404);
     const body = z
       .object({
         activityId: z.string().uuid().optional(),
@@ -260,35 +223,18 @@ export function registerLessonRunRoutes(
       })
       .safeParse(await context.req.json().catch(() => ({})));
     if (!body.success) return context.json({ error: 'Invalid lesson run request' }, 400);
-    const activity = await verifyActivity(context, body.data.activityId, conceptId);
-    if (!activity) return context.json({ error: 'Learn activity not found' }, 403);
-    const run = await startLessonRun(store, runtime(context), {
-      ...command(context, conceptId, resolved),
-      reconcileProgress: body.data.reconcileProgress,
-    });
-    if (run.kind === 'retry_tomorrow') {
-      return context.json({ error: 'This lesson comes back tomorrow.' }, 409);
-    }
-    if (run.kind === 'review_first') {
-      return context.json({ error: `Review ${run.titles.join(' and ')} first.` }, 409);
-    }
-    return context.json({
-      course: await resolveLessonCourse(
-        deps.db,
-        deps.withRepo(context),
-        resolved.index,
-        context.get('userId'),
+    return send(
+      context,
+      await deps.learner(context).startLessonRun({
         conceptId,
-        body.data.activityId,
-      ),
-      run: await runState(context, resolved.lesson, resolved.index, run.run),
-    });
+        body: body.data,
+      }),
+    );
   });
-
   api.post('/lessons/:conceptId/run/practice', async (context) => {
     const conceptId = context.req.param('conceptId');
-    const resolved = await lessonFor(conceptId);
-    if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
+    if (!(await lessonFor(conceptId)))
+      return context.json({ error: 'Knowledge-point lesson not found' }, 404);
     const body = z
       .object({
         pointId: z.string().min(1),
@@ -297,40 +243,18 @@ export function registerLessonRunRoutes(
       })
       .safeParse(await context.req.json().catch(() => ({})));
     if (!body.success) return context.json({ error: 'Invalid practice request' }, 400);
-    const activity = await verifyActivity(context, body.data.activityId, conceptId);
-    if (!activity) return context.json({ error: 'Learn activity not found' }, 403);
-    const result = await practiceLessonPoint(store, runtime(context), {
-      ...command(context, conceptId, resolved),
-      ...body.data,
-    });
-    if (result.kind === 'not_found') return context.json({ error: 'Lesson step not found' }, 404);
-    if (result.kind === 'not_passed') {
-      return context.json({ error: 'Only a passed step can be practised again' }, 409);
-    }
-    if (result.kind === 'review_complete') {
-      return context.json({ error: 'Quiz practice is complete for this step' }, 409);
-    }
-    if (result.kind === 'no_problem') {
-      return context.json({ error: 'No practice question is available' }, 409);
-    }
-    const run = await store.getLessonRun(context.get('userId'), { runId: result.run.id });
-    return context.json({
-      course: await resolveLessonCourse(
-        deps.db,
-        deps.withRepo(context),
-        resolved.index,
-        context.get('userId'),
+    return send(
+      context,
+      await deps.learner(context).practiceLessonPoint({
         conceptId,
-        body.data.activityId,
-      ),
-      run: run ? await runState(context, resolved.lesson, resolved.index, run) : null,
-    });
+        body: body.data,
+      }),
+    );
   });
-
   api.post('/lessons/:conceptId/run/answer', async (context) => {
     const conceptId = context.req.param('conceptId');
-    const resolved = await lessonFor(conceptId);
-    if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
+    if (!(await lessonFor(conceptId)))
+      return context.json({ error: 'Knowledge-point lesson not found' }, 404);
     const body = z
       .object({
         problemId: z.string().uuid(),
@@ -340,107 +264,34 @@ export function registerLessonRunRoutes(
       })
       .safeParse(await context.req.json().catch(() => ({})));
     if (!body.success) return context.json({ error: 'Invalid lesson answer' }, 400);
-    const activity = await verifyActivity(context, body.data.activityId, conceptId);
-    if (!activity) return context.json({ error: 'Learn activity not found' }, 403);
-    const userId = context.get('userId');
-    const options = runtime(context);
-    const result = await answerLessonProblem(
-      store,
-      options,
-      {
-        ...command(context, conceptId, resolved),
-        ...body.data,
-        sessionId: activity.activity ? activity.session?.id : undefined,
-      },
-      {
-        applyMastery: deps.applyMastery,
-        grade: gradeLessonAnswer,
-        async hasTutorReply(tx, learnerId, problemId) {
-          const [reply] = await tx.connection
-            .select({ id: tutorMessages.id })
-            .from(tutorMessages)
-            .where(
-              and(
-                eq(tutorMessages.userId, learnerId),
-                eq(tutorMessages.lessonProblemId, problemId),
-                sql`${tutorMessages.role} = 'assistant'`,
-              ),
-            )
-            .limit(1);
-          return !!reply;
-        },
-      },
+    return send(
+      context,
+      await deps.learner(context, undefined, hasTutorReply).answerLessonProblem({
+        conceptId,
+        body: body.data,
+      }),
     );
-    if (result.kind === 'not_found')
-      return context.json({ error: 'Lesson problem not found' }, 404);
-    if (result.kind === 'invalid') return context.json({ error: 'Invalid answer' }, 422);
-    if (result.kind === 'conflict') {
-      const run = await store.getLessonRun(userId, { runId: result.runId });
-      return context.json(
-        {
-          error: 'Lesson problem has already been answered.',
-          state:
-            run && resolved ? await runState(context, resolved.lesson, resolved.index, run) : null,
-        },
-        409,
-      );
-    }
-    const run = await store.getLessonRun(userId, { runId: result.runId });
-    const state =
-      run && resolved ? await runState(context, resolved.lesson, resolved.index, run) : null;
-    return context.json({
-      correct: result.correct,
-      feedback: result.feedback,
-      solution: result.solution,
-      xpAwarded: result.xpAwarded,
-      state,
-    });
   });
-
   api.post('/lessons/:conceptId/quiz/start', async (context) => {
     const conceptId = context.req.param('conceptId');
-    const resolved = await lessonFor(conceptId);
-    if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
+    if (!(await lessonFor(conceptId)))
+      return context.json({ error: 'Knowledge-point lesson not found' }, 404);
     const body = z
       .object({ activityId: z.string().uuid().optional() })
       .safeParse(await context.req.json().catch(() => ({})));
     if (!body.success) return context.json({ error: 'Invalid quiz request' }, 400);
-    const activity = await verifyActivity(context, body.data.activityId, conceptId);
-    if (!activity) return context.json({ error: 'Learn activity not found' }, 403);
-    const userId = context.get('userId');
-    const result = await startLessonQuiz(
-      store,
-      runtime(context),
-      command(context, conceptId, resolved),
-    );
-    if (result.kind === 'not_found') return context.json({ error: 'Lesson run not found' }, 404);
-    if (result.kind === 'steps_incomplete') {
-      return context.json({ error: 'Finish every lesson step before starting the quiz' }, 409);
-    }
-    if (result.kind === 'review_required') {
-      return context.json({ error: 'Review the steps you missed before retaking the quiz' }, 409);
-    }
-    if (result.kind === 'no_questions') {
-      return context.json({ error: 'No lesson quiz questions are available' }, 409);
-    }
-    const run = await store.getLessonRun(userId, { runId: result.runId });
-    return context.json({
-      course: await resolveLessonCourse(
-        deps.db,
-        deps.withRepo(context),
-        resolved.index,
-        context.get('userId'),
+    return send(
+      context,
+      await deps.learner(context).startLessonQuiz({
         conceptId,
-        body.data.activityId,
-      ),
-      run: run ? await runState(context, resolved.lesson, resolved.index, run) : null,
-    });
+        body: body.data,
+      }),
+    );
   });
-
   api.post('/lessons/:conceptId/quiz/answer', async (context) => {
     const conceptId = context.req.param('conceptId');
-    const resolved = await lessonFor(conceptId);
-    if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
+    if (!(await lessonFor(conceptId)))
+      return context.json({ error: 'Knowledge-point lesson not found' }, 404);
     const body = z
       .object({
         itemId: z.string().uuid(),
@@ -450,80 +301,29 @@ export function registerLessonRunRoutes(
       })
       .safeParse(await context.req.json().catch(() => ({})));
     if (!body.success) return context.json({ error: 'Invalid quiz answer' }, 400);
-    const activity = await verifyActivity(context, body.data.activityId, conceptId);
-    if (!activity) return context.json({ error: 'Learn activity not found' }, 403);
-    const userId = context.get('userId');
-    const result = await answerLessonQuiz(
-      store,
-      runtime(context),
-      { ...command(context, conceptId, resolved), ...body.data },
-      gradeLessonAnswer,
-    );
-    if (result.kind === 'not_found') return context.json({ error: 'Quiz item not found' }, 404);
-    if (result.kind === 'invalid') return context.json({ error: 'Invalid answer' }, 422);
-    if (result.kind === 'conflict') {
-      return context.json({ error: 'Quiz item has already been answered.' }, 409);
-    }
-    const run = await store.getLessonRun(userId, { runId: result.runId });
-    return context.json({
-      saved: true,
-      course: await resolveLessonCourse(
-        deps.db,
-        deps.withRepo(context),
-        resolved.index,
-        context.get('userId'),
+    return send(
+      context,
+      await deps.learner(context).answerLessonQuiz({
         conceptId,
-        body.data.activityId,
-      ),
-      run: run ? await runState(context, resolved.lesson, resolved.index, run) : null,
-    });
+        body: body.data,
+      }),
+    );
   });
-
   api.post('/lessons/:conceptId/quiz/submit', async (context) => {
     const conceptId = context.req.param('conceptId');
-    const resolved = await lessonFor(conceptId);
-    if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
+    if (!(await lessonFor(conceptId)))
+      return context.json({ error: 'Knowledge-point lesson not found' }, 404);
     const body = z
       .object({ activityId: z.string().uuid().optional() })
       .safeParse(await context.req.json().catch(() => ({})));
     if (!body.success) return context.json({ error: 'Invalid quiz submission' }, 400);
-    const activity = await verifyActivity(context, body.data.activityId, conceptId);
-    if (!activity) return context.json({ error: 'Learn activity not found' }, 403);
-    const userId = context.get('userId');
-    const result = await submitLessonQuiz(
-      store,
-      runtime(context),
-      {
-        ...command(context, conceptId, resolved),
-        ...body.data,
-        sessionId: activity.activity ? activity.session?.id : undefined,
-      },
-      {
-        grade: gradeLessonAnswer,
-        applyMastery: deps.applyMastery,
-      },
-    );
-    if (result.kind === 'not_found') return context.json({ error: 'Lesson quiz not found' }, 404);
-    if (result.kind === 'unanswered') {
-      return context.json({ error: 'Answer every quiz question before submitting' }, 409);
-    }
-    if (result.kind === 'invalid_answer') {
-      return context.json({ error: 'A saved quiz answer could not be graded' }, 422);
-    }
-    const run = await store.getLessonRun(userId, { runId: result.runId });
-    const state = run ? await runState(context, resolved.lesson, resolved.index, run) : null;
-    return context.json({
-      run: state,
-      course: await resolveLessonCourse(
-        deps.db,
-        deps.withRepo(context),
-        resolved.index,
-        context.get('userId'),
+    return send(
+      context,
+      await deps.learner(context).submitLessonQuiz({
         conceptId,
-        body.data.activityId,
-      ),
-      xpAwarded: result.kind === 'submitted' ? result.xpAwarded : 0,
-    });
+        body: body.data,
+      }),
+    );
   });
 
   api.get('/lessons/:conceptId/quiz/:attemptId/review', async (context) => {

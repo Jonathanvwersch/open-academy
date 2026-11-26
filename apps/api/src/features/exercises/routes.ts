@@ -1,7 +1,14 @@
-import type { Hono } from 'hono';
+import type { EngineGrade, EngineResult } from '@academy/aesop/engine/create-engine';
+import { gradeExercise } from '@academy/aesop/lessons/grading/index';
+import type { Context, Hono } from 'hono';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
 import { featureRequest } from '../../http/feature-service.js';
-import { getExercisesById, postAttempts, postHints } from './service.js';
+import { scoreRubric } from '../tutor/scoring.js';
+import { getExercisesById, postHints } from './service.js';
+
+const send = (context: Context<ApiEnv>, result: EngineResult) =>
+  context.json(result.body, result.status);
+
 export function registerExercisesRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
   api.get('/exercises/:id', async (context) => {
     const response = await getExercisesById(deps, featureRequest(context, deps));
@@ -15,10 +22,50 @@ export function registerExercisesRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
     return context.json(response.body, response.status);
   });
   api.post('/attempts', async (context) => {
-    const response = await postAttempts(
-      deps,
-      featureRequest(context, deps, await context.req.json().catch(() => ({}))),
+    const tutor = deps.tutor(context);
+    const grade: EngineGrade = async (exercise, answer, { random }) => {
+      if (
+        exercise.type === 'explain' &&
+        deps.tutorProvider &&
+        typeof answer === 'object' &&
+        answer !== null &&
+        'text' in answer &&
+        typeof answer.text === 'string'
+      ) {
+        const judged = tutor
+          ? await tutor.gradeExplanation({
+              question: exercise.prompt,
+              rubric: exercise.rubric,
+              exemplar: exercise.exemplar,
+              answer: answer.text,
+            })
+          : { status: 'fallback' as const };
+        if (judged.status === 'ok' && judged.value) {
+          const score = scoreRubric(exercise.rubric, judged.value);
+          return {
+            status: 'graded',
+            correct: score.score,
+            feedback: score.feedback,
+            graded_by: 'llm',
+            rubric: exercise.rubric.map((criterion) => ({
+              id: criterion.id,
+              criterion: criterion.criterion,
+              required: criterion.required,
+              judgement:
+                judged.value?.criteria.find((entry) => entry.id === criterion.id)?.judgement ??
+                'missing',
+            })),
+            exemplar: exercise.exemplar,
+          };
+        }
+      }
+      return gradeExercise(exercise, answer, { random });
+    };
+    return send(
+      context,
+      await deps.learner(context, grade).exerciseAttempt({
+        body: await context.req.json().catch(() => ({})),
+      }),
     );
-    return context.json(response.body, response.status);
   });
 }

@@ -1,4 +1,9 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
+import type {
+  EngineGrade,
+  EngineHasTutorReply,
+  EngineLearner,
+} from '@academy/aesop/engine/create-engine';
 import type { Context } from 'hono';
 import type { Database } from '../db/client.js';
 import type { LearnerRepository } from '../db/repository.js';
@@ -15,4 +20,9 @@ export interface ApiServices {
   withRepo: (context: Context<ApiEnv>) => LearnerRepository;
   tutor: (context: Context<ApiEnv>) => TutorService | null;
   requestNow: (context: Context<ApiEnv>) => Date;
+  learner: (
+    context: Context<ApiEnv>,
+    grade?: EngineGrade,
+    hasTutorReply?: EngineHasTutorReply,
+  ) => EngineLearner;
 }

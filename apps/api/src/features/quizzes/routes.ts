@@ -1,44 +1,65 @@
-import type { Hono } from 'hono';
+import type { EngineResult } from '@academy/aesop/engine/create-engine';
+import type { Context, Hono } from 'hono';
+import { z } from 'zod';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
-import { featureRequest } from '../../http/feature-service.js';
-import {
-  answerQuiz,
-  finalizeQuiz,
-  getQuiz,
-  startQuiz,
-  startQuizFollowUps,
-  startQuizRetake,
-} from './service.js';
 
+const send = (context: Context<ApiEnv>, result: EngineResult) =>
+  context.json(result.body, result.status);
 export function registerQuizRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
   api.post('/quizzes/start', async (context) => {
-    const response = await startQuiz(
-      deps,
-      featureRequest(context, deps, await context.req.json().catch(() => ({}))),
+    const body = z
+      .object({ sessionId: z.string().uuid(), activityId: z.string().uuid() })
+      .safeParse(await context.req.json().catch(() => ({})));
+    if (!body.success) return context.json({ error: 'Invalid quiz activity' }, 400);
+    return send(
+      context,
+      await deps.learner(context).startTimedQuiz({
+        body: body.data,
+      }),
     );
-    return context.json(response.body, response.status);
   });
   api.get('/quizzes/:id', async (context) => {
-    const response = await getQuiz(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    const quizId = context.req.param('id');
+    if (!z.string().uuid().safeParse(quizId).success)
+      return context.json({ error: 'Quiz not found' }, 404);
+    return send(context, await deps.learner(context).timedQuiz({ quizId }));
   });
   api.post('/quizzes/:id/answer', async (context) => {
-    const response = await answerQuiz(
-      deps,
-      featureRequest(context, deps, await context.req.json().catch(() => ({}))),
+    const body = z
+      .object({
+        position: z.number().int().nonnegative(),
+        questionId: z.string().min(1).optional(),
+        answer: z.unknown(),
+      })
+      .safeParse(await context.req.json().catch(() => ({})));
+    if (!body.success) return context.json({ error: 'Invalid quiz answer' }, 400);
+    const quizId = context.req.param('id');
+    if (!z.string().uuid().safeParse(quizId).success)
+      return context.json({ error: 'Quiz not found' }, 404);
+    return send(
+      context,
+      await deps.learner(context).answerTimedQuiz({
+        quizId,
+        body: body.data,
+      }),
     );
-    return context.json(response.body, response.status);
   });
   api.post('/quizzes/:id/finalize', async (context) => {
-    const response = await finalizeQuiz(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    const quizId = context.req.param('id');
+    if (!z.string().uuid().safeParse(quizId).success)
+      return context.json({ error: 'Quiz not found' }, 404);
+    return send(context, await deps.learner(context).finalizeTimedQuiz({ quizId }));
   });
   api.post('/quizzes/:id/follow-ups', async (context) => {
-    const response = await startQuizFollowUps(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    const quizId = context.req.param('id');
+    if (!z.string().uuid().safeParse(quizId).success)
+      return context.json({ error: 'Quiz not found' }, 404);
+    return send(context, await deps.learner(context).timedQuizFollowUps({ quizId }));
   });
   api.post('/quizzes/:id/retake', async (context) => {
-    const response = await startQuizRetake(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    const quizId = context.req.param('id');
+    if (!z.string().uuid().safeParse(quizId).success)
+      return context.json({ error: 'Quiz not found' }, 404);
+    return send(context, await deps.learner(context).retakeTimedQuiz({ quizId }));
   });
 }

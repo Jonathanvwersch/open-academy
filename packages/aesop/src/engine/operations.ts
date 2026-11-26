@@ -3,10 +3,12 @@ import {
   getCourseCatalog,
   getCourseDetail,
   setActiveCourse,
+  startActiveCourseFromBeginning,
   startCourseFromBeginning,
 } from '../course/course-reads.js';
 import { getLearnHome } from '../course/learn-home.js';
 import { serializeExercise } from '../course/serialize.js';
+import type { GradeResult } from '../lessons/grading/types.js';
 import {
   getPlacementRun,
   placementNext,
@@ -64,21 +66,32 @@ export async function runEngineOperation(
       return payload ? respond(payload) : respond({ error: 'Course not found' }, 404);
     }
     case 'setActiveCourse': {
-      const courseId = operation.body.courseId;
+      const body = z.record(z.string(), z.unknown()).safeParse(operation.body);
+      const courseId = body.success ? body.data.courseId : undefined;
       if (typeof courseId !== 'string') return respond({ error: 'Invalid courseId' }, 400);
       if (!content.coursesById.has(courseId)) return respond({ error: 'Unknown course' }, 404);
       return respond(await setActiveCourse(store, userId, courseId));
     }
     case 'startCourse': {
-      if (!content.coursesById.has(operation.courseId)) {
+      if (operation.courseId !== undefined && !content.coursesById.has(operation.courseId)) {
         return respond({ error: 'Course not found' }, 404);
       }
-      if (operation.body.method !== 'beginning') {
+      const body = z
+        .object({ method: z.unknown().optional(), courseId: z.unknown().optional() })
+        .safeParse(operation.body);
+      if (!body.success || body.data.method !== 'beginning') {
         return respond({ error: 'Invalid course start method' }, 400);
       }
-      return respond(
-        await startCourseFromBeginning(store, await courseInput(request), operation.courseId),
-      );
+      const input = await courseInput(request);
+      if (operation.courseId === undefined) {
+        const start = await startActiveCourseFromBeginning(
+          store,
+          input,
+          typeof body.data.courseId === 'string' ? body.data.courseId : undefined,
+        );
+        return start ? respond(start) : respond({ error: 'No active course' }, 404);
+      }
+      return respond(await startCourseFromBeginning(store, input, operation.courseId));
     }
     case 'createSession':
       return createSessionOperation(request, operation.body);
@@ -92,7 +105,7 @@ export async function runEngineOperation(
         operation.body,
       );
     case 'replanSession':
-      return replanSessionOperation(request, operation.sessionId);
+      return replanSessionOperation(request, operation.sessionId, operation.body);
     case 'endSession': {
       const previous = await repo.session(operation.sessionId);
       if (!previous) return respond({ error: 'Session not found' }, 404);
@@ -110,11 +123,14 @@ export async function runEngineOperation(
     case 'exerciseAttempt':
       return exerciseAttempt(request, operation.body);
     case 'startPlacement': {
-      const courseId = operation.body.courseId;
+      const body =
+        operation.body && typeof operation.body === 'object'
+          ? (operation.body as { courseId?: unknown })
+          : null;
       const result = await startPlacement(
         store,
         placementCommand(request),
-        typeof courseId === 'string' ? courseId : undefined,
+        typeof body?.courseId === 'string' ? body.courseId : undefined,
         async () => content,
       );
       if (result.kind === 'no_course') return respond({ error: 'No active course' }, 404);
@@ -137,8 +153,13 @@ export async function runEngineOperation(
       const result = await placementResults(store, placementCommand(request), run, content);
       return result ? respond(result) : respond({ error: 'Placement course not found' }, 404);
     }
-    case 'startTimedQuiz':
-      return quizResponse(await startQuiz(store, quizContext(request), operation.body));
+    case 'startTimedQuiz': {
+      const body = z
+        .object({ sessionId: z.string(), activityId: z.string() })
+        .safeParse(operation.body);
+      if (!body.success) return respond({ error: 'Invalid quiz activity' }, 400);
+      return quizResponse(await startQuiz(store, quizContext(request), body.data));
+    }
     case 'timedQuiz':
       return quizResponse(
         await getQuiz(store, userId, operation.quizId, async () => content, request.now),
@@ -152,8 +173,10 @@ export async function runEngineOperation(
         })
         .safeParse(operation.body);
       if (!body.success) return respond({ error: 'Invalid quiz answer' }, 400);
+      const grade = async (...args: Parameters<typeof request.grade>) =>
+        (await request.grade(...args)) as GradeResult;
       return quizResponse(
-        await answerQuiz(store, quizContext(request), operation.quizId, body.data, request.grade),
+        await answerQuiz(store, quizContext(request), operation.quizId, body.data, grade),
       );
     }
     case 'finalizeTimedQuiz':

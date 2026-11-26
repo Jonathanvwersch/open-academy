@@ -1,5 +1,6 @@
 import type { ContentIndex } from '../course/types.js';
 import type { gradeExercise } from '../lessons/grading/index.js';
+import type { GradeResult } from '../lessons/grading/types.js';
 import type { CourseStore } from '../store/course-store.js';
 import type { EngineLearnerRepository } from './repository.js';
 
@@ -13,41 +14,64 @@ export type EngineOperation =
   | { kind: 'learn' }
   | { kind: 'courseCatalog' }
   | { kind: 'course'; courseId: string }
-  | { kind: 'setActiveCourse'; body: Record<string, unknown> }
-  | { kind: 'startCourse'; courseId: string; body: Record<string, unknown> }
-  | { kind: 'createSession'; body: Record<string, unknown> }
+  | { kind: 'setActiveCourse'; body: unknown }
+  | { kind: 'startCourse'; courseId?: string; body: unknown }
+  | { kind: 'createSession'; body: unknown }
   | { kind: 'session'; sessionId: string }
-  | { kind: 'replanSession'; sessionId: string }
+  | { kind: 'replanSession'; sessionId: string; body?: Record<string, unknown> }
   | { kind: 'endSession'; sessionId: string }
   | {
       kind: 'activityProgress';
       sessionId: string;
       activityId: string;
-      body: Record<string, unknown>;
+      body: unknown;
     }
-  | { kind: 'startLessonRun'; conceptId: string; body: { activityId: string } }
-  | { kind: 'practiceLessonPoint'; conceptId: string; body: Record<string, unknown> }
-  | { kind: 'answerLessonProblem'; conceptId: string; body: Record<string, unknown> }
-  | { kind: 'startLessonQuiz'; conceptId: string; body: { activityId: string } }
-  | { kind: 'answerLessonQuiz'; conceptId: string; body: Record<string, unknown> }
-  | { kind: 'submitLessonQuiz'; conceptId: string; body: { activityId: string } }
-  | { kind: 'exerciseAttempt'; body: Record<string, unknown> }
-  | { kind: 'startPlacement'; body: Record<string, unknown> }
+  | { kind: 'startLessonRun'; conceptId: string; body: unknown }
+  | { kind: 'practiceLessonPoint'; conceptId: string; body: unknown }
+  | { kind: 'answerLessonProblem'; conceptId: string; body: unknown }
+  | { kind: 'startLessonQuiz'; conceptId: string; body: unknown }
+  | { kind: 'answerLessonQuiz'; conceptId: string; body: unknown }
+  | { kind: 'submitLessonQuiz'; conceptId: string; body: unknown }
+  | { kind: 'exerciseAttempt'; body: unknown }
+  | { kind: 'startPlacement'; body: unknown }
   | { kind: 'placementNext'; placementId: string }
-  | { kind: 'placementAnswer'; placementId: string; body: Record<string, unknown> }
+  | { kind: 'placementAnswer'; placementId: string; body: unknown }
   | { kind: 'placementResults'; placementId: string }
-  | { kind: 'startTimedQuiz'; body: { sessionId: string; activityId: string } }
+  | { kind: 'startTimedQuiz'; body: unknown }
   | { kind: 'timedQuiz'; quizId: string }
-  | { kind: 'answerTimedQuiz'; quizId: string; body: Record<string, unknown> }
+  | { kind: 'answerTimedQuiz'; quizId: string; body: unknown }
   | { kind: 'finalizeTimedQuiz'; quizId: string }
   | { kind: 'retakeTimedQuiz'; quizId: string }
   | { kind: 'timedQuizFollowUps'; quizId: string };
+
+export type EngineGradeResult =
+  | GradeResult
+  | {
+      status: 'graded';
+      correct: number;
+      feedback: string;
+      graded_by: 'llm';
+      mistake_category?: string;
+      rubric: Array<{
+        id: string;
+        criterion: string;
+        judgement: 'met' | 'partial' | 'missing';
+        required: boolean;
+      }>;
+      exemplar: string;
+    };
 
 export type EngineGrade = (
   exercise: Parameters<typeof gradeExercise>[0],
   answer: unknown,
   options: { random: () => number },
-) => ReturnType<typeof gradeExercise>;
+) => EngineGradeResult | Promise<EngineGradeResult>;
+
+export type EngineHasTutorReply = (
+  store: CourseStore,
+  learnerId: string,
+  problemId: string,
+) => Promise<boolean>;
 
 export type EngineRequest = {
   store: CourseStore;
@@ -58,6 +82,7 @@ export type EngineRequest = {
   random: () => number;
   newId: () => string;
   grade: EngineGrade;
+  hasTutorReply: EngineHasTutorReply;
   fsrsFuzz: boolean;
   tutorEnabled: boolean;
   repo: EngineLearnerRepository;

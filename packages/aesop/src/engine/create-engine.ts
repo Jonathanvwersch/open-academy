@@ -1,11 +1,21 @@
 import type { ContentIndex } from '../course/types.js';
 import { gradeExercise } from '../lessons/grading/index.js';
+import type { Settings } from '../store/core-store.js';
 import type { CourseStore } from '../store/course-store.js';
 import { runEngineOperation } from './operations.js';
 import { EngineLearnerRepository, engineUser } from './repository.js';
-import type { EngineGrade, EngineLearner, EngineOperation, EngineResult } from './types.js';
+import type {
+  EngineGrade,
+  EngineHasTutorReply,
+  EngineLearner,
+  EngineOperation,
+  EngineResult,
+} from './types.js';
 
 export type {
+  EngineGrade,
+  EngineGradeResult,
+  EngineHasTutorReply,
   EngineLearner,
   EngineOperation,
   EngineResult,
@@ -25,6 +35,9 @@ export type EngineLearnerOptions = {
   timeZone: string;
   now: () => Date;
   random: () => number;
+  grade?: EngineGrade;
+  hasTutorReply?: EngineHasTutorReply;
+  settings?: Settings;
 };
 
 export function createEngine(options: CreateEngineOptions) {
@@ -36,37 +49,47 @@ export function createEngine(options: CreateEngineOptions) {
   const tutorEnabled = options.tutorEnabled ?? false;
 
   return {
-    learner({ id, timeZone, now, random }: EngineLearnerOptions): EngineLearner {
+    learner({
+      id,
+      timeZone,
+      now,
+      random,
+      grade: learnerGrade,
+      hasTutorReply = async () => false,
+      settings,
+    }: EngineLearnerOptions): EngineLearner {
       const contentPromise = options.content();
-      const requestPromise = Promise.all([contentPromise, options.store.getSettings(id)]).then(
-        ([content, settings]) => ({
-          store: options.store,
-          userId: id,
-          timeZone,
-          now,
-          content,
-          random,
-          newId,
-          grade,
+      const requestPromise = Promise.all([
+        contentPromise,
+        settings ? Promise.resolve(settings) : options.store.getSettings(id),
+      ]).then(([content, settings]) => ({
+        store: options.store,
+        userId: id,
+        timeZone,
+        now,
+        content,
+        random,
+        newId,
+        grade: learnerGrade ?? grade,
+        hasTutorReply,
+        fsrsFuzz,
+        tutorEnabled,
+        repo: new EngineLearnerRepository(
+          options.store,
+          id,
+          engineUser(id, settings),
+          { load: () => contentPromise, now },
           fsrsFuzz,
-          tutorEnabled,
-          repo: new EngineLearnerRepository(
-            options.store,
+        ),
+        freshRepo: (store: CourseStore, withSessionContent: boolean) =>
+          new EngineLearnerRepository(
+            store,
             id,
-            engineUser(id, settings),
-            { load: () => contentPromise, now },
+            undefined,
+            withSessionContent ? { load: () => contentPromise, now } : undefined,
             fsrsFuzz,
           ),
-          freshRepo: (store: CourseStore, withSessionContent: boolean) =>
-            new EngineLearnerRepository(
-              store,
-              id,
-              undefined,
-              withSessionContent ? { load: () => contentPromise, now } : undefined,
-              fsrsFuzz,
-            ),
-        }),
-      );
+      }));
       const call = (operation: EngineOperation): Promise<EngineResult> =>
         requestPromise.then((request) => runEngineOperation(request, operation));
 
