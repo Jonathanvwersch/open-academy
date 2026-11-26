@@ -141,7 +141,5 @@ test('planner facts read full exercise recency in one grouped query', async () =
   const attemptReads = statements.filter((query) => query.includes('from "attempts"'));
   expect(attemptReads).toHaveLength(2);
   expect(attemptReads[0]).toMatch(/limit/);
-  expect(attemptReads[1]).toMatch(
-    /max\("attempts"\."created_at"\).*group by "attempts"\."exercise_id"/,
-  );
+  expect(attemptReads[1]).toMatch(/max\("created_at"\).*group by "attempts"\."exercise_id"/);
 });
