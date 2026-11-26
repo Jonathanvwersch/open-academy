@@ -42,8 +42,8 @@ concepts:
     prereqs: [{ id: supervised-learning }, { id: dot-product }, { id: matrices }]
     encompassings:
       [
-        { id: supervised-learning, weight: 0.21 },
-        { id: dot-product, weight: 0.19 },
+        { id: supervised-learning, weight: 0 },
+        { id: dot-product, weight: 0.21 },
         { id: matrices, weight: 0.11 },
       ]
     objectives:
@@ -59,7 +59,7 @@ concepts:
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: supervised-learning }, { id: derivatives }]
-    encompassings: [{ id: supervised-learning, weight: 0.17 }, { id: derivatives, weight: 0.07 }]
+    encompassings: [{ id: supervised-learning, weight: 0.15 }, { id: derivatives, weight: 0.06 }]
     objectives:
       - { text: "Compute MSE and MAE for a set of predictions", dimension: math }
       - { text: "Explain how MSE's squaring treats outliers", dimension: conceptual }
@@ -75,12 +75,12 @@ concepts:
     prereqs: [{ id: gradients }, { id: loss-functions }, { id: linear-regression }]
     encompassings:
       [
-        { id: gradients, weight: 0.14 },
-        { id: loss-functions, weight: 0.14 },
-        { id: linear-regression, weight: 0.08 },
-        { id: derivatives, weight: 0.11 },
-        { id: partial-derivatives, weight: 0.25 },
-        { id: vectors, weight: 0.05 },
+        { id: gradients, weight: 0.02 },
+        { id: loss-functions, weight: 0.13 },
+        { id: linear-regression, weight: 0.04 },
+        { id: derivatives, weight: 0.05 },
+        { id: partial-derivatives, weight: 0.10 },
+        { id: vectors, weight: 0.04 },
       ]
     objectives:
       - { text: "Perform gradient-descent updates by hand", dimension: math }
@@ -99,7 +99,7 @@ concepts:
     prereqs: [{ id: supervised-learning }, { id: gradient-descent }]
     encompassings:
       [
-        { id: supervised-learning, weight: 0.22 },
+        { id: supervised-learning, weight: 0.14 },
         { id: gradient-descent, weight: 0 },
         { id: linear-regression, weight: 0 },
         { id: loss-functions, weight: 0.02 },
@@ -119,13 +119,13 @@ concepts:
     prereqs: [{ id: linear-regression }, { id: gradient-descent }, { id: probability-basics }]
     encompassings:
       [
-        { id: linear-regression, weight: 0.12 },
-        { id: gradient-descent, weight: 0.06 },
-        { id: probability-basics, weight: 0.06 },
-        { id: derivatives, weight: 0.1 },
+        { id: linear-regression, weight: 0.07 },
+        { id: gradient-descent, weight: 0.02 },
+        { id: probability-basics, weight: 0.05 },
+        { id: derivatives, weight: 0.07 },
         { id: loss-functions, weight: 0.01 },
-        { id: partial-derivatives, weight: 0.09 },
-        { id: supervised-learning, weight: 0.07 },
+        { id: partial-derivatives, weight: 0.06 },
+        { id: supervised-learning, weight: 0.01 },
       ]
     confused_with: [classification-softmax]
     objectives:
