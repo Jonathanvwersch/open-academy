@@ -46,6 +46,7 @@ function plannerState(
     cards: options.cards ?? [],
     reviewedTodayConceptIds: [],
     recentAttempts: [],
+    exerciseLastSeen: new Map(),
     remediationFlags: [],
     projectProgress: [],
     completedPaperIds: [],

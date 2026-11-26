@@ -23,6 +23,7 @@ import {
   recordLessonViewed,
 } from '@academy/aesop/memory/mastery';
 import { initialMastery } from '@academy/aesop/memory/types';
+import { loadSchedulerState } from '@academy/aesop/planner/load-scheduler-state';
 import { reviewTopicsForActivity } from '@academy/aesop/planner/review-topics';
 import type { Candidate, PlannedActivity, SchedulerState } from '@academy/aesop/planner/scheduler';
 import {
@@ -37,6 +38,7 @@ import {
   replan,
   SCHEDULER_CONFIG,
 } from '@academy/aesop/planner/scheduler';
+import { memoryStore } from '@academy/aesop/store/memory-store';
 import { fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
 import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
@@ -186,6 +188,7 @@ function emptyState(): SchedulerState {
     cards: [],
     reviewedTodayConceptIds: [],
     recentAttempts: [],
+    exerciseLastSeen: new Map(),
     remediationFlags: [],
     projectProgress: [],
     completedPaperIds: [],
@@ -2658,11 +2661,111 @@ test('due review prefers a fresh practice exercise over a recent review exercise
       createdAt: '2026-01-13T12:00:00.000Z',
     },
   ];
+  state.exerciseLastSeen = new Map([[reviewExercise.id, Date.parse('2026-01-13T12:00:00Z')]]);
 
   const review = planSession(state, reviewContent, now, 60).activities.find(
     (activity) => activity.kind === 'review' && activity.conceptId === 'vectors',
   );
   expect(review?.exerciseIds[0]).toBe(practiceExercise.id);
+});
+
+test('due reviews use the last attempt even after 120 answers on other exercises', async () => {
+  const example = required(content.exercisesById.get('vectors-magnitude'), 'vectors exercise');
+  const a = { ...example, id: 'vectors-a', role: 'review' as const };
+  const b = { ...a, id: 'vectors-b' };
+  const c = { ...a, id: 'vectors-c' };
+  const reviewContent: ContentIndex = {
+    ...content,
+    exercisesByConcept: new Map(content.exercisesByConcept).set('vectors', [a, c, b]),
+    exercisesById: new Map(content.exercisesById).set(a.id, a).set(b.id, b).set(c.id, c),
+  };
+  const store = memoryStore();
+  const learnerId = 'review-history-learner';
+  const answer = (exerciseId: string, n: number, conceptId: string, createdAt: string) =>
+    store.insertAttempt(learnerId, {
+      id: `history-${n}`,
+      sessionId: null,
+      activityId: null,
+      exerciseId,
+      exerciseVersion: '1',
+      conceptId,
+      dimension: 'math',
+      mode: 'practice',
+      answer: 1,
+      correct: 1,
+      credit: 1,
+      hintsUsed: 0,
+      attemptNo: 1,
+      gradedBy: 'deterministic',
+      feedback: {},
+      mistakeCategory: null,
+      durationMs: null,
+      createdAt: new Date(createdAt),
+    });
+  await answer(a.id, 0, 'vectors', '2026-01-12T12:00:00Z');
+  for (let n = 1; n <= 120; n += 1) {
+    await answer('other-exercise', n, 'derivatives', '2026-01-13T12:00:00Z');
+  }
+  const state = () =>
+    loadSchedulerState(store, learnerId, reviewContent, now, {
+      studyCourseIds: ['fixture-course'],
+    });
+  const review = (state: SchedulerState) =>
+    buildReviewActivityForConcept(state, reviewContent, now, 'vectors', [
+      { conceptId: 'vectors', dimension: 'math', dueAt: '2026-01-13T00:00:00Z' },
+    ]);
+  const initial = await state();
+  expect(initial.recentAttempts).toHaveLength(100);
+  expect(initial.recentAttempts.some(({ exerciseId }) => exerciseId === a.id)).toBe(false);
+  expect(review(initial)?.exerciseIds).toEqual([b.id, c.id, a.id]);
+
+  await answer(b.id, 121, 'vectors', '2026-01-13T12:00:00Z');
+  await answer(c.id, 122, 'vectors', '2026-01-11T12:00:00Z');
+  expect(review(await state())?.exerciseIds).toEqual([c.id, a.id, b.id]);
+});
+
+test('spaced reviews cycle through review and practice questions with eight-day gaps', () => {
+  const example = required(content.exercisesById.get('vectors-magnitude'), 'vectors exercise');
+  const exercises = [
+    { ...example, id: 'vectors-review-a', role: 'review' as const },
+    { ...example, id: 'vectors-review-b', role: 'review' as const },
+    { ...example, id: 'vectors-practice-a', role: 'practice' as const },
+    { ...example, id: 'vectors-practice-b', role: 'practice' as const },
+    { ...example, id: 'vectors-practice-c', role: 'practice' as const },
+  ];
+  const reviewContent: ContentIndex = {
+    ...content,
+    exercisesByConcept: new Map(content.exercisesByConcept).set(
+      'vectors',
+      [...exercises].reverse(),
+    ),
+    exercisesById: new Map([
+      ...content.exercisesById,
+      ...exercises.map((item) => [item.id, item] as const),
+    ]),
+  };
+  const state = emptyState();
+  const lastSeen = new Map<string, number>();
+  state.exerciseLastSeen = lastSeen;
+  const selected = Array.from({ length: 6 }, (_, n) => {
+    const date = new Date(now.getTime() + n * 8 * 86_400_000);
+    const review = buildReviewActivityForConcept(
+      state,
+      reviewContent,
+      date,
+      'vectors',
+      (['math', 'conceptual', 'transfer'] as const).map((dimension) => ({
+        conceptId: 'vectors',
+        dimension,
+        dueAt: date.toISOString(),
+      })),
+    );
+    expect(review?.exerciseIds).toHaveLength(1);
+    const id = required(review?.exerciseIds[0], 'selected review question');
+    lastSeen.set(id, date.getTime());
+    return id;
+  });
+  expect(selected).toEqual([...exercises.map(({ id }) => id), exercises[0]?.id]);
 });
 
 test('due reviews can select a basics exercise', () => {
@@ -2720,6 +2823,7 @@ test('due review falls back to a recent exercise when no fresh choice exists', (
       createdAt: '2026-01-13T12:00:00.000Z',
     },
   ];
+  state.exerciseLastSeen = new Map([[reviewExercise.id, Date.parse('2026-01-13T12:00:00Z')]]);
 
   const review = planSession(state, reviewContent, now, 60).activities.find(
     (activity) => activity.kind === 'review' && activity.conceptId === 'vectors',
@@ -3541,6 +3645,7 @@ test('Exercise assignment avoids items seen within seven days', () => {
       createdAt: '2026-01-13T12:00:00.000Z',
     },
   ];
+  state.exerciseLastSeen = new Map([['vectors-magnitude', Date.parse('2026-01-13T12:00:00Z')]]);
   const plan = planSession(state, content, now, 60);
   const vectors = plan.activities.find(
     (activity) => activity.kind === 'learn' && activity.conceptId === 'vectors',

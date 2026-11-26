@@ -435,6 +435,7 @@ function planCoversDueConcept(
     })),
     reviewedTodayConceptIds: [],
     recentAttempts: [],
+    exerciseLastSeen: new Map(),
     remediationFlags: [],
     projectProgress: [],
     completedPaperIds: [],
