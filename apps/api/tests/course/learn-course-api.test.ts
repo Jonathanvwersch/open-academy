@@ -3066,6 +3066,8 @@ test('Up next does not forecast lessons Today when no learn tasks are planned', 
 
   expect(learn.activeSessionId).toBeNull();
   expect(learnTaskConceptIds).toEqual([]);
+  expect(learn.upNext.upcoming.length).toBeGreaterThan(0);
+  expect(learn.upNext.upcoming[0]?.dayLabel).not.toBe('Today');
   expect(todayConceptIds).toEqual(learnTaskConceptIds);
 });
 
