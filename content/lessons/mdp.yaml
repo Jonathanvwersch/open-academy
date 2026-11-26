@@ -170,7 +170,7 @@ knowledge_points:
     explain: |
       ### Rewards arrive at different times
 
-      An expected next reward averages the outcomes of one command. A task also needs to specify how much reward timing matters. **Discounting** gives later rewards smaller weights when we prefer progress sooner. Use the reliable corridor again: three right moves from cell 1 reach the goal in cell 4. Its reward $+10$ arrives after the third command.
+      An expected next reward averages the outcomes of one command. **Discounting** gives later rewards smaller weights when we prefer progress sooner. In the reliable corridor, three right moves from cell 1 reach cell 4. The goal reward $+10$ arrives on the third move.
 
       At time $t$, we are about to take an action. A reward's **weight** is the number we multiply it by when evaluating it from that time. The next reward, after the first command, has weight 1. The goal reward has two extra steps of delay beyond that next reward.
 
@@ -207,13 +207,13 @@ knowledge_points:
 
       A **Markov decision process**, or **MDP**, describes such a task as a five-item list, $(S,A,p,R,\gamma)$:
 
-      - $S$ contains every possible state $s$; here $S=\{1,2,3,4\}$.
+      - $S$ contains every possible state $s$. Here $S=\{1,2,3,4\}$: the braces list the members of the set.
       - $A$ lists available actions. Here we allow left and right until the episode ends.
       - $p$ gives next-state probabilities. In this reliable version, the movement rule selects one next cell with probability 1. Every other cell has probability 0.
       - $R$ is the rule producing each reward $r$; here $10$ on entry to 4 and $-1$ otherwise.
       - $\gamma$ weights rewards by delay; here it is $0.9$.
 
-      For an episodic task, we also specify how to start and end a run. Here we start in cell 1 and mark cell 4 terminal, with no available actions.
+      When a task runs in episodes, we also specify how each run starts and ends. Here we start in cell 1 and mark cell 4 terminal, with no available actions.
     worked: |
       Let's weight the goal reward and one step cost for three reliable right moves from cell 1, using $\gamma=0.9$ and viewing the rewards from before the first command.
 

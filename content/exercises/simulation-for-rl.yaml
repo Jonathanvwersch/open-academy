@@ -23,7 +23,7 @@ exercises:
         category: misunderstood_definition
         feedback: That is what step does. reset takes no action and starts a new episode.
       - id: d
-        text: It wipes what the agent has learned, so training starts from scratch.
+        text: It wipes what the agent has learned, so the agent has to learn it all again.
         correct: false
         category: incorrect_reasoning
         feedback: reset only restarts the environment's task. The agent keeps what it has learned.
@@ -144,7 +144,7 @@ exercises:
     prompt: A robot simulator has a slippery floor, so the same actions give different episodes on each run. A bug shows up only sometimes, which makes it hard to study. What makes a run repeat exactly?
     options:
       - id: a
-        text: Fix the random seed, so the random-number generator gives the same numbers on every run.
+        text: Fix the random seed, so the code draws the same sequence of random numbers on every run.
         correct: true
         feedback: With the same seed, the same draws decide every slip, so the run repeats.
       - id: b
@@ -157,14 +157,14 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: reset puts the robot back at the start, but the slips still come from new random numbers each run.
-    solution: Each slip is decided by a random number. Fixing the seed, the number the generator starts from, makes it produce the same numbers each run, so the same actions give the same episode.
+    solution: Each slip is decided by a random draw. The seed sets where the sequence of draws starts. With the same seed and the same actions, the episode repeats.
   - id: sim-slip-template
     dimension: implementation
     type: numeric
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Reaching cell 4 ends the episode. The floor is slippery: each move works with probability {{=p}}, and otherwise the robot stays where it is. The robot always moves right. What is the probability that the episode lasts exactly 4 steps? Give your answer to 3 decimal places."
+    prompt: "A robot moves in a corridor of 4 cells, numbered 1 to 4 from left to right, and starts in cell 1. Reaching cell 4 ends the episode. The robot always tries to move right. Each attempt independently moves it one cell right with probability {{=p}}. Otherwise it slips and stays put. What is the probability that the episode lasts exactly 4 steps? Give your answer to 3 decimal places."
     params:
       p:
         min: 0.5
@@ -187,28 +187,28 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "A team trains a chat model with reinforcement learning by making an environment: reset returns a user's prompt, the action is the model's whole reply, and step scores the reply with a separate scoring model, then ends the episode. Which statement about this environment is right?"
+    prompt: "An agent learns to answer written questions. The environment's reset returns a new question. The agent sends one complete answer to step, which returns a grade as the reward. Then the agent calls reset for the next question. Which statement about this environment is right?"
     options:
       - id: a
-        text: "Each episode is one step long: reset gives the prompt, and one step takes the reply and returns the score with the episode ended."
+        text: "Each episode takes one step: reset gives the question, and step grades the answer and ends the episode."
         correct: true
-        feedback: The whole reply is a single action, so one step ends each episode.
+        feedback: The complete answer is one action, and step returns its grade before the next reset.
       - id: b
-        text: The scoring model is the rule that picks actions, because it decides the reward.
+        text: The grading rule chooses the agent's answer, because it decides the reward.
         correct: false
         category: misunderstood_definition
-        feedback: The chat model is the rule that picks actions. The scoring model is part of the environment and supplies the reward.
+        feedback: The agent chooses the answer. The grading rule is part of the environment and supplies the reward.
       - id: c
         text: step must leave the episode running, because an episode always lasts many steps.
         correct: false
         category: incorrect_reasoning
         feedback: An episode lasts until it ends, which can be after one step.
       - id: d
-        text: reset should return the score of the previous reply, so the model can learn from it.
+        text: reset should return the grade for the previous answer, so the agent can learn from it.
         correct: false
         category: misunderstood_definition
-        feedback: reset starts a new episode and returns its start state, here a prompt. The score comes back from step.
-    solution: reset returns the start state, a prompt. The rule that picks actions is the chat model, and it picks one action, a reply. step returns the reward from the scoring model and reports that the episode has ended. So each episode is one step.
+        feedback: reset starts a new episode by returning a question. The grade comes back from step.
+    solution: reset returns a question. One call to step takes the agent's whole answer, returns its grade as the reward and ends the episode.
   - id: sim-loop-basics
     dimension: conceptual
     type: mc
@@ -331,10 +331,10 @@ exercises:
     tolerance:
       abs: 0.001
     common_wrong:
-      - answer_expr: "k + 3 <= n ? -n : 8 - k"
+      - answer_expr: "k + 3 <= n ? -n : goal - k - 2"
         category: incorrect_reasoning
         feedback: Count the steps first. The robot needs {{=k+3}} steps to reach cell 4, and the time limit is {{=n}} steps. Compare the two to see whether the task ends or the time limit cuts it off.
-      - answer_expr: "k + 3 <= n ? 7 - k : 11 - n"
+      - answer_expr: "k + 3 <= n ? goal - k - 3 : goal - n"
         category: misunderstood_definition
         feedback: Check the last step. Reaching cell 4 gives $+{{=goal}}$ and no $-1$. A time-limit cutoff gives no goal reward, just the usual $-1$.
     solution: "The robot needs {{=k}} steps bumping the left wall plus 3 steps right, so {{=k+3}} steps, to reach cell 4. The time limit is {{=n}} steps. If the robot needs no more steps than the limit, it reaches cell 4 and the episode terminates: {{=k+2}} steps at $-1$ and one at $+{{=goal}}$ give ${{=goal}}-{{=k+2}}={{=goal-k-2}}$. Otherwise the time limit truncates the episode after {{=n}} steps, all at $-1$, giving ${{=-n}}$. Here the robot needs {{=k+3}} steps and the limit is {{=n}}, so the total is ${{=k + 3 <= n ? goal - k - 2 : -n}}$."
@@ -770,11 +770,11 @@ exercises:
         category: incorrect_reasoning
         feedback: No simulator matches the real world exactly, so a score can drop on the real robot.
       - id: c
-        text: A top score means the policy is overtrained, so it should be trained for less time.
+        text: A top score means the agent spent too long learning in the simulator, so it should stop learning sooner.
         correct: false
         category: misapplied_technique
         feedback: Training less doesn't fix a mismatch between simulator and world.
-    solution: A policy can earn its top score by using a flaw in the simulator, like a jump that never fails there. Training across varied simulated settings can improve transfer. Testing on the real robot measures how well the policy actually works there.
+    solution: A policy can earn its top score by using a flaw in the simulator, like a jump that never fails there. Training across varied settings can help the policy work on the real robot, and testing there shows how well it works.
   - id: sim-range-outside
     dimension: conceptual
     type: mc
@@ -1084,7 +1084,7 @@ exercises:
     knowledge_point: sim-to-real
     difficulty: 3
     est_minutes: 0.5
-    prompt: "A simulator picks one of two floor settings with equal chance at every reset. Under the first setting a jump works with probability $a$, and under the second it works with probability $b$. A successful jump gives an episode total of $9$ and a fall gives $-10$. Write the expected total for a robot that always jumps."
+    prompt: "A simulator picks one of two floor settings with equal chance at every reset. A robot always jumps. A successful jump gives a total reward of $9$ for the episode, and a failed jump gives $-10$. Write the expected total reward. In your expression, use `a` for the probability of a successful jump on the first floor and `b` for that probability on the second floor. Type `*` for multiplication and `/` for division."
     answer: "(9*a - 10*(1-a) + 9*b - 10*(1-b))/2"
     variables: { a: [0, 1], b: [0, 1] }
     solution: "The overall chance of success is $(a+b)/2$. Weight the totals $9$ and $-10$ by success and failure to get $19(a+b)/2-10$."

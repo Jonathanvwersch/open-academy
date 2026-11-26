@@ -5,6 +5,12 @@ avoid:
   - pattern: '\b[Ll][Rr]\b'
     use: 'write "learning rate" or $\eta$'
 terms:
+  - {
+      id: python-random-seed,
+      label: "Python's random.seed",
+      match: ['\brandom\.seed\('],
+      introduced_by: [q-learning],
+    }
   - { id: real-space, label: "ℝⁿ notation", match: ['\\mathbb\s*\{?R'], introduced_by: [vectors] }
   - {
       id: sum,

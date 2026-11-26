@@ -6,28 +6,28 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: A friend lists what defines an MDP. Which item on the list belongs to the agent instead of the environment?
+    prompt: Two agents face the same task, described by the same Markov decision process. Which item can differ between the agents while the task stays the same?
     options:
       - id: a
-        text: The agent's policy
+        text: The rule each agent uses to choose actions
         correct: true
-        feedback: A policy tells the agent how to choose actions after the task has been specified.
+        feedback: Each agent can choose its actions differently in the same task.
       - id: b
         text: The transition probabilities $p(s' \mid s, a)$
         correct: false
         category: misunderstood_definition
-        feedback: They describe how actions move the environment from one state to another.
+        feedback: For any given state and action, the chances of each next state are the same for both agents.
       - id: c
-        text: The reward function
+        text: The reward rule
         correct: false
         category: misunderstood_definition
-        feedback: The reward function assigns feedback to the task's outcomes.
+        feedback: Both agents receive the same reward for the same outcome.
       - id: d
         text: The set of actions
         correct: false
         category: misunderstood_definition
         feedback: The available actions are part of the task the agent acts in.
-    solution: An MDP describes the task, including its states, actions, transitions and rewards. The policy belongs to the agent and tells it which actions to choose.
+    solution: The task sets the available actions, transition probabilities and rewards. Each agent can use its own rule to choose among the available actions.
   - id: dx-rl-1b
     dimension: conceptual
     type: mc
@@ -41,7 +41,7 @@ exercises:
         correct: true
         feedback: "They give the chance of each next state after an action, including staying put."
       - id: b
-        text: The reward function
+        text: The reward rule
         correct: false
         category: misunderstood_definition
         feedback: "It gives the reward for an outcome; transition probabilities show how often that outcome occurs."
@@ -328,7 +328,7 @@ exercises:
         correct: false
         feedback: Destinations can have unequal probabilities; their total must still be 1.
       - id: b
-        text: The listed destinations account for less than the full probability mass.
+        text: The probabilities of the listed destinations add up to less than 1.
         correct: true
         feedback: The two probabilities total $0.9$, leaving $0.1$ unassigned despite listing every possible state.
       - id: c
@@ -652,9 +652,9 @@ exercises:
         correct: false
         feedback: "The reward rule gives the score of each outcome. The average also needs each outcome's chance."
       - id: d
-        text: "The discounted reward"
+        text: "The reward of the more likely outcome"
         correct: false
-        feedback: "Discounting weights rewards by when they arrive. Both of these possible scores would arrive after one command."
+        feedback: "The more likely outcome gives one of the two scores. The average includes both scores."
     solution: "The expected next reward combines the two scores according to how often each occurs."
   - id: mdpp-recall-transitions-formula
     dimension: math
@@ -663,7 +663,7 @@ exercises:
     knowledge_point: mdp-transitions
     difficulty: 2
     est_minutes: 0.5
-    prompt: "A command moves the robot as intended with probability $q$ and earns reward $g$. Otherwise it leaves the robot in place and earns reward $c$. Write the command's expected next reward."
+    prompt: "A command moves the robot as intended with probability $q$ and earns reward $g$. Otherwise it leaves the robot in place and earns reward $c$. Write the command's expected next reward. Type `*` for multiplication."
     answer: "q*g + (1-q)*c"
     variables: { q: [0.05, 0.95], g: [1, 20], c: [-5, -0.5] }
     solution: "Weight each reward by its chance and add: $qg+(1-q)c$."
