@@ -4691,8 +4691,40 @@ async function auditCompressionPlan(
   day: number,
   courseId: string,
   activities: SimActivity[],
+  phase: 'home' | 'replan' = 'home',
 ): Promise<number> {
   const state = await new LearnerRepository(db, userId).schedulerState(now, content);
+  const { coveredSkips, redundantReviews } = compressionPlanEvidence(
+    state,
+    content,
+    now,
+    activities,
+    phase,
+  );
+  for (const [conceptId, coveringConceptId] of redundantReviews) {
+    addViolation(runtime, day, 'P12', conceptId, [], {
+      courseId,
+      conceptId,
+      details: `explicit review was planned with covering task ${coveringConceptId}`,
+    });
+  }
+  return coveredSkips;
+}
+
+export function compressionPlanEvidence(
+  state: SchedulerState,
+  content: ContentIndex,
+  now: Date,
+  executionActivities: readonly Pick<
+    SimActivity,
+    'kind' | 'conceptId' | 'exerciseIds' | 'status'
+  >[],
+  phase: 'home' | 'replan',
+) {
+  const activities =
+    phase === 'replan'
+      ? executionActivities.filter(({ status }) => status === 'planned')
+      : executionActivities;
   const dueConceptIds = new Set(
     state.cards
       .filter((card) => isDueToday(card.dueAt, now, state.timezone ?? 'UTC'))
@@ -4737,6 +4769,7 @@ async function auditCompressionPlan(
     ]),
   );
   let coveredSkips = 0;
+  const redundantReviews = new Map<string, string>();
   for (const dueConceptId of dueConceptIds) {
     const coveringConceptIds = [...coverageByTask]
       .filter(([conceptId, covered]) => conceptId !== dueConceptId && covered.has(dueConceptId))
@@ -4751,22 +4784,15 @@ async function auditCompressionPlan(
           ([conceptId, covered]) => conceptId !== dueConceptId && covered.has(reviewTopicId),
         ),
       );
-      if (
-        !remediationConceptIds.has(dueConceptId) &&
-        reviewIsRedundant &&
-        coveringConceptIds.length > 0
-      ) {
-        addViolation(runtime, day, 'P12', dueConceptId, [], {
-          courseId,
-          conceptId: dueConceptId,
-          details: `explicit review was planned with covering task ${coveringConceptIds[0]}`,
-        });
+      const coveringConceptId = coveringConceptIds[0];
+      if (!remediationConceptIds.has(dueConceptId) && reviewIsRedundant && coveringConceptId) {
+        redundantReviews.set(dueConceptId, coveringConceptId);
       }
     } else if (coveringConceptIds.length > 0) {
       coveredSkips += 1;
     }
   }
-  return coveredSkips;
+  return { coveredSkips, redundantReviews };
 }
 
 export function retryDecisionEvidence(
@@ -5875,6 +5901,7 @@ async function simulateProfile(
             day,
             courseId,
             newActivities,
+            'replan',
           );
           daily.offers.push(...newActivities.map(sessionOffer));
           for (const activity of newActivities) {
