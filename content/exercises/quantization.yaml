@@ -1105,12 +1105,12 @@ exercises:
     prompt: A GPU program uses weight-only INT8 quantisation for a model with FP16 (16-bit floating-point) activations. Which sequence does it use for a matrix multiply?
     options:
       - id: a
-        text: Read INT8 weights from main memory, turn them back into FP16 in on-chip memory, then multiply by the FP16 activations.
+        text: Read INT8 weights from main memory, apply their scales in on-chip memory to get FP16 weights, then multiply by the FP16 activations.
         correct: true
       - id: b
-        text: Read INT8 weights from main memory, turn them back into FP16 and write them to main memory, then read them back to multiply by the FP16 activations.
+        text: Read INT8 weights from main memory, convert them to FP16 in on-chip memory without using their scales, then multiply by the FP16 activations.
         correct: false
-        feedback: Writing and reading the FP16 weights in main memory adds traffic that weight-only quantisation avoids.
+        feedback: Changing the number format preserves the integer values. Dequantising also multiplies by their scales to recover approximate weights.
       - id: c
         text: Read INT8 weights from main memory, convert the activations to INT8 in on-chip memory, then multiply the INT8 weights and activations.
         correct: false
