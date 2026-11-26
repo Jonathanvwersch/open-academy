@@ -203,7 +203,11 @@ export async function directOperation(
       );
     case 'answerTimedQuiz': {
       const body = z
-        .object({ position: z.number().int().nonnegative(), answer: z.unknown() })
+        .object({
+          position: z.number().int().nonnegative(),
+          questionId: z.string().min(1).optional(),
+          answer: z.unknown(),
+        })
         .safeParse(operation.body);
       if (!body.success) return respond({ error: 'Invalid quiz answer' }, 400);
       return quizResponse(
