@@ -1196,7 +1196,7 @@ test('a fresh started learner sees outline order and prerequisite needs', async 
   await expect(
     weekOneProject.getByRole('link', { name: 'Linear regression in NumPy' }),
   ).toHaveCount(0);
-  await expect(weekOneProject).toContainText('Project coming soon');
+  await expect(weekOneProject).toContainText('Waiting on prerequisites');
   const weekTwoProject = projectSections.nth(1);
   const stubProjectTitle = weekTwoProject
     .locator('.text-muted-foreground')
