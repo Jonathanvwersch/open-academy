@@ -55,7 +55,7 @@ knowledge_points:
 
       $$r=W_R x.$$
 
-      Softmax gives probability $p_i$ for expert $i$:
+      Softmax gives probability $p_i$ for expert $i$. The router still picks the highest scores, without drawing at random. It uses the probabilities to weight the chosen outputs and, during training, to help spread work across experts:
 
       $$p_i=\frac{e^{r_i}}{\sum_{j=1}^{n}e^{r_j}}.$$
 
@@ -88,8 +88,8 @@ knowledge_points:
     title: Count parameters stored and used
     tldr: |
       - All experts need storage even when only a few run for one token.
-      - Count every expert for storage, and only the selected experts for the work per token.
-      - Adding more experts grows storage, but the work per token stays the same as long as each token still uses the same number of experts.
+      - For work per token, count the router and the selected experts.
+      - Adding equal-sized experts grows storage and router work. Expert work stays the same if each token still uses the same number of experts.
     explain: |
       ### Parameters we store and use
 
@@ -182,17 +182,17 @@ knowledge_points:
 
       ### A penalty for uneven routing
 
-      A **load-balancing loss** encourages work to spread across experts. A batch is the group of tokens processed together in one training step. Let $f_i$ be the fraction of batch tokens assigned to expert $i$, and $P_i$ its mean router probability across all batch tokens. With $n$ experts, one penalty is
+      A **load-balancing loss** encourages work to spread across experts. A batch is the group of tokens processed together in one training step. For expert $i$, divide its assigned token count by the batch token count to get $f_i$. Average its probabilities across the whole batch to get $P_i$. With $n$ experts, one penalty is
 
       $$L_{\text{aux}}=n\sum_{i=1}^{n}f_iP_i.$$
 
-      “Aux” means auxiliary, or extra. A **gradient** tells how much the loss changes when a weight is nudged. Gradient descent uses it to adjust weights. The count behind $f_i$ changes only when a token switches experts, so its gradient is zero between switches.
+      “Aux” means extra. The product $f_iP_i$ makes a rise in $P_i$ cost more for an expert with more assignments. A **gradient** tells how much the loss changes when a parameter is nudged. The gradient through $f_i$ is zero while the router's parameters change too little to switch any assignments.
 
-      But $P_i$ moves with the weights. In $f_iP_i$, lowering $P_i$ reduces the penalty more when $f_i$ is large. The penalty's slope passes back through the batch average and the softmax to the router's scores and weights $W_R$. Its gradient pushes the most-used experts' scores down, so later tokens can choose others. This spreads work.
+      The router's learned parameters $W_R$ can change $P_i$ through the scores and softmax. Shifting probability from a busy expert to a less-used one lowers the penalty. Training can move their scores far enough that later tokens choose a different expert.
 
-      We use probabilities before selection. An unchosen expert's weight stays at 0 if a small score change leaves the chosen set unchanged, so that weight gives zero gradient.
+      The penalty uses probabilities before selection. An expert's output mixing weight stays zero while it remains unchosen, so that mixing weight gives no gradient.
 
-      With top-1 routing, perfect balance gives each expert $f_i=1/n$. If the mean probabilities are also uniform, then each $P_i=1/n$. Substitute these fractions to find the penalty:
+      With top-1 routing, perfect balance gives each expert $f_i=1/n$. The mean probabilities need not be equal, but if they are, each $P_i=1/n$. The factor $n$ makes this example's penalty 1 regardless of the number of experts:
       $$
       \begin{aligned}
       f_iP_i&=\frac1n\frac1n=\frac1{n^2} &&\text{multiply the uniform fractions}\\
