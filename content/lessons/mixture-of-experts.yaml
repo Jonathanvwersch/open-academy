@@ -190,7 +190,7 @@ knowledge_points:
 
       But $P_i$ moves with the weights. In $f_iP_i$, lowering $P_i$ reduces the penalty more when $f_i$ is large. The penalty's slope passes back through the batch average and the softmax to the router's scores and weights $W_R$. Its gradient pushes the most-used experts' scores down, so later tokens can choose others. This spreads work.
 
-      We use probabilities before selection. Afterward, unchosen experts have weight 0 regardless of score. Nudging their scores leaves those weights unchanged, so they give zero gradient for adjusting those scores.
+      We use probabilities before selection. An unchosen expert's weight stays at 0 if a small score change leaves the chosen set unchanged, so that weight gives zero gradient.
 
       Under perfect balance, each $f_i=1/n$ and each $P_i=1/n$. We call this uniform. Substitute those fractions to check the penalty's size:
       $$
