@@ -2315,7 +2315,7 @@ test('lesson review dimensions require a non-template schedulable exercise', asy
   );
 });
 
-test('multiple-choice options do not mix plain and maths numbers', async () => {
+test('multiple-choice options format numbers consistently', async () => {
   const optionIssues = async (text: string) => {
     const data = await notationFixture();
     const exercise = required(
@@ -2326,8 +2326,7 @@ test('multiple-choice options do not mix plain and maths numbers', async () => {
     const option = required(exercise.value.options[0], 'multiple-choice option');
     option.text = text;
     return validateContent(data).filter(
-      ({ id, message }) =>
-        id === exercise.value.id && message.includes('mixes plain and maths numbers'),
+      ({ id, message }) => id === exercise.value.id && message.startsWith('option "'),
     );
   };
 
@@ -2335,6 +2334,8 @@ test('multiple-choice options do not mix plain and maths numbers', async () => {
     ['3 and $-2$', '3 and $-2$'],
     ['3, $-2$ and $-1$', '3, $-2$'],
     ['$-1$ or 4', '$-1$ or 4'],
+    ['$-1$ or 4.', '$-1$ or 4'],
+    ['$-2$, $-1$, and 3', '$-1$, and 3'],
   ]) {
     expect(await optionIssues(text)).toEqual([
       expect.objectContaining({
@@ -2343,11 +2344,23 @@ test('multiple-choice options do not mix plain and maths numbers', async () => {
     ]);
   }
 
+  expect(await optionIssues('1 and -1')).toEqual([
+    expect.objectContaining({
+      message: expect.stringContaining(
+        'option "a" writes a negative number in plain text ("-1"); write it in maths, e.g. "$-1$"',
+      ),
+    }),
+  ]);
+
   for (const text of [
     '$3$ and $-2$',
     '3 and 4',
     '$p$ and $d$',
     '$W$ is $8 \\times 5$ and $b$ has 1 entry',
+    'top-1 accuracy',
+    'pages 5-10',
+    '`x = -1`',
+    '$f(-1)$',
   ]) {
     expect(await optionIssues(text)).toEqual([]);
   }
