@@ -782,3 +782,44 @@ exercises:
     answer: "a+b"
     variables: { "a": [0.5, 5], "b": [0.5, 5] }
     solution: "For independent contributions, variances add: $a+b$."
+  - id: gauss-review-mirrored-density
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A Gaussian model for a measured length has mean 30 cm. At what length below 30 cm is its density equal to its density at 37 cm? Give your answer in centimetres.
+    answer: 23
+    tolerance: { abs: 0.001 }
+    solution: The bell has equal heights at equal distances on either side of the mean. Since $37-30=7$, the matching length is $30-7=23$ cm.
+  - id: gauss-review-one-tail
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A Gaussian model for filling a bottle has mean 500 mL and standard deviation 4 mL. About what percentage of bottles contain more than 508 mL? Give a percentage number, for example 10 for 10%.
+    answer: 2.5
+    tolerance: { abs: 0.23 }
+    solution: The cutoff is two standard deviations above the mean. About $5\%$ lies outside the central $95\%$, and symmetry puts half of that, $2.5\%$, in the upper tail.
+  - id: gauss-review-add-noise
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: Two independent measurement errors have standard deviations of 3 mm and 4 mm. What is the standard deviation of their sum, in millimetres?
+    answer: 5
+    tolerance: { abs: 0.001 }
+    solution: The independent errors' variances add to $3^2+4^2=25$ square millimetres. Taking the square root gives 5 mm.
+  - id: gauss-review-density-ratio
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: A Gaussian model for a measurement has mean 40 and standard deviation 2. What is the ratio of the density at 38 to the density at 44? Give the density at 38 divided by the density at 44, to two decimal places. Round only at the end.
+    answer: 4.48
+    tolerance: { abs: 0.005 }
+    solution: The standardised distances are $-1$ and $2$. The front factor in both densities is the same, so the ratio is $e^{-1/2}/e^{-2}=e^{1.5}\approx4.48$.

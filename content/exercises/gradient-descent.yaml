@@ -1258,3 +1258,75 @@ exercises:
         correct: false
         feedback: A rate that is too large overshoots further each step, so the loss goes up.
     solution: A loss that creeps down slowly from the start and is still high is the sign of a learning rate that is too small.
+  - id: gd-review-square-loss-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A Python training loop for linear regression stores the signed prediction error for one example in `e`. Which line computes the squared-error loss for that example?
+    options:
+      - id: a
+        text: "`loss = 2 * e`"
+        correct: false
+        feedback: This computes the slope of squared error with respect to the prediction.
+      - id: b
+        text: "`loss = e ** 2`"
+        correct: true
+        feedback: Squaring the signed miss gives the loss for this example.
+      - id: c
+        text: "`loss = abs(e)`"
+        correct: false
+        feedback: This measures the size of the error before squaring.
+    solution: Use `e ** 2` to turn the signed miss into a squared error.
+  - id: gd-review-stale-error-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: |
+      This Python loop trains a model with weight `w` and squared-error loss. The input `x`, target `y` and learning rate `lr` stay fixed. Which edit makes the loop use the current loss slope on every pass?
+
+      ```python
+      e = w * x - y
+      for step in range(4):
+          dw = 2 * e * x
+          w = w - lr * dw
+      ```
+    options:
+      - id: a
+        text: Move the assignment to `e` inside the loop before the assignment to `dw`.
+        correct: true
+        feedback: The loop then recomputes the error using the weight at the start of each pass.
+      - id: b
+        text: Move the assignment to `dw` outside the loop just after the assignment to `e`.
+        correct: false
+        feedback: Computing the slope once makes every pass reuse the starting slope.
+      - id: c
+        text: Move the assignment to `w` outside the loop just after the assignment to `dw`.
+        correct: false
+        feedback: The model would only update once, after repeatedly computing the same slope.
+    solution: Recompute the prediction error inside the loop before finding the slope. Each update changes the weight used on the next pass.
+  - id: gd-review-average-slopes-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: A Python program stores the two examples' squared-error slopes for one weight in `dw_a` and `dw_b`. Both were calculated at the current weight `w`. Which line takes one gradient descent step on the mean squared error with learning rate `lr`?
+    options:
+      - id: a
+        text: "`w = w - lr * (dw_a + dw_b)`"
+        correct: false
+        feedback: The sum makes the step twice as large as the mean slope calls for.
+      - id: b
+        text: "`w = w + lr * (dw_a + dw_b) / 2`"
+        correct: false
+        feedback: Adding the scaled slope steps uphill when the mean slope is nonzero.
+      - id: c
+        text: "`w = w - lr * (dw_a + dw_b) / 2`"
+        correct: true
+        feedback: This subtracts the learning rate times the average slope.
+    solution: Take the mean of the two slopes, multiply by the learning rate and subtract that amount from the weight.

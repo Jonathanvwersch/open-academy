@@ -1009,3 +1009,45 @@ exercises:
         - 6
         - 12
     solution: The best constant under MSE is the mean, $(y_1+y_2+y_3)/3$.
+  - id: loss-review-balanced-misses
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: Two predictions have signed errors $-3$ and $3$. What is their mean squared error?
+    answer: 9
+    tolerance: { abs: 0.001 }
+    solution: Each squared error is $9$. Their average is $9$.
+  - id: loss-review-mean-improvement
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: A model predicts the same value for the targets $2$, $5$ and $8$. Its current prediction is $3$. By how much would the mean squared error fall if it switched to the best constant prediction?
+    answer: 4
+    tolerance: { abs: 0.001 }
+    solution: The best constant is the mean, $5$, with MSE $(9+0+9)/3=6$. The current MSE is $(1+4+25)/3=10$, so it falls by $4$.
+  - id: loss-review-wait-time
+    dimension: transfer
+    type: mc
+    role: transfer
+    difficulty: 3
+    est_minutes: 2
+    prompt: A library is comparing two models of checkout wait times. Staff want a two-minute overestimate and a two-minute underestimate to cost the same, and one four-minute miss to cost as much as two two-minute misses across the same set of checkouts. Which measure of average error fits?
+    options:
+      - id: a
+        text: The average squared error
+        correct: false
+        feedback: Squaring makes one four-minute miss contribute $16$ while two two-minute misses contribute $8$ together.
+      - id: b
+        text: The average signed error
+        correct: false
+        feedback: A two-minute overestimate and a two-minute underestimate have opposite signs, so they cancel when averaged.
+      - id: c
+        text: The average absolute error
+        correct: true
+        feedback: Both two-minute errors contribute $2$, so together they cost as much as one four-minute error.
+    solution: Absolute error counts the size of each miss, so the sign makes no difference and $2+2=4$.

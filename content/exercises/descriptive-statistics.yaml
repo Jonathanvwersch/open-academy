@@ -868,3 +868,44 @@ exercises:
     answer: "sqrt(a^2+b^2)"
     variables: { "a": [0.01, 0.1], "b": [0.01, 0.1] }
     solution: "Add squared standard errors and take the square root: $\\sqrt{a^2+b^2}$."
+  - id: ds-review-missing-mean-value
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: Four tasks took an average of 8 seconds each. Three of the times were 5, 7 and 9 seconds. How many seconds did the fourth task take?
+    answer: 11
+    tolerance: { abs: 0.001 }
+    solution: The four times total $4\times8=32$ seconds. The three known times total 21 seconds, so the fourth took 11 seconds.
+  - id: ds-review-fourfold-count
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: An experiment increases from 25 to 100 independent trials. The sample standard deviation stays the same. The original mean had a standard error of 0.6 seconds. What is the new mean's standard error, in seconds?
+    answer: 0.3
+    tolerance: { abs: 0.001 }
+    solution: The standard error divides the standard deviation by the square root of the trial count. That divisor doubles from 5 to 10, so the new standard error is 0.3 seconds.
+  - id: ds-review-rate-se
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A sorting robot succeeds on 300 out of 400 independent trials. What is the estimated standard error of the success rate? Give it as a proportion to three decimal places. Round only at the end.
+    answer: 0.022
+    tolerance: { abs: 0.0005 }
+    solution: The observed rate is $300/400=0.75$. Its estimated standard error is $\sqrt{0.75(1-0.75)/400}\approx0.022$.
+  - id: ds-review-rate-difference-endpoint
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: In large, independent tests under comparable conditions, a robot succeeds 70% of the time before an update and 86% after it. The estimated standard errors are 3 percentage points before the update and 4 after it. What is the lower endpoint of the approximate 95% confidence interval for the change in success rate (after minus before)? Give a number in percentage points.
+    answer: 6
+    tolerance: { abs: 0.001 }
+    solution: The observed increase is $86-70=16$ percentage points, and the standard error of the difference is $\sqrt{3^2+4^2}=5$ points. The lower endpoint is $16-2\times5=6$ percentage points.

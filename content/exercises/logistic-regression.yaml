@@ -749,3 +749,135 @@ exercises:
         "eta": [0.01, 0.2],
       }
     solution: "Subtract the scaled weight slope: $w_{\\text{new}}=w-\\eta(p-y)x$."
+  - id: logreg-review-loss-gap
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: A logistic regression model assigns probability $p=0.8$ to label 1 on two examples. Example A has observed label 0 and example B has observed label 1. Find the binary cross-entropy loss for A minus the loss for B, to two decimal places. Round only at the end.
+    answer: 1.39
+    tolerance: { abs: 0.005 }
+    solution: The observed labels received probabilities $0.2$ and $0.8$ respectively. Their loss difference is $-\ln(0.2)+\ln(0.8)\approx1.39$.
+  - id: logreg-review-score-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A Python function for logistic regression receives one feature `x`, its weight `w` and the bias `b`. Which line computes the score that goes into the sigmoid?
+    options:
+      - id: a
+        text: "`z = w * x + b`"
+        correct: true
+        feedback: The score adds the bias to the weighted input.
+      - id: b
+        text: "`z = w * (x + b)`"
+        correct: false
+        feedback: This scales the bias by the weight as well as scaling the feature.
+      - id: c
+        text: "`z = (w + b) * x`"
+        correct: false
+        feedback: This scales the bias by the feature, though the bias should add a fixed amount.
+    solution: The score is `w * x + b`. Only the input is multiplied by the weight.
+  - id: logreg-review-threshold-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A Python classifier has computed the raw logistic regression score `z`. It predicts label 1 when the sigmoid probability is at least $0.5$. Which condition can it check directly on `z` to decide when to output 1?
+    options:
+      - id: a
+        text: "`z >= 0.5`"
+        correct: false
+        feedback: This applies the probability cutoff to the raw score.
+      - id: b
+        text: "`z >= 0`"
+        correct: true
+        feedback: The sigmoid maps zero to $0.5$ and rises as the score rises.
+      - id: c
+        text: "`z <= 0`"
+        correct: false
+        feedback: Negative scores give probabilities below $0.5$, so this comparison reverses the decision away from zero.
+    solution: The sigmoid is increasing and gives $0.5$ at score zero, so `z >= 0` gives the same decisions.
+  - id: logreg-review-sigmoid-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A Python program has calculated the logistic regression score `z`. It has a function `exp(t)` that returns $e^t$. Which line converts the score to the probability of label 1?
+    options:
+      - id: a
+        text: "`p = 1 / (1 + exp(z))`"
+        correct: false
+        feedback: This produces a probability that falls as the score rises.
+      - id: b
+        text: "`p = 1 / (1 - exp(-z))`"
+        correct: false
+        feedback: Subtracting the exponential makes the denominator zero at score zero.
+      - id: c
+        text: "`p = 1 / (1 + exp(-z))`"
+        correct: true
+        feedback: This adds one to the exponential of the negative score and takes the reciprocal.
+    solution: The sigmoid is `1 / (1 + exp(-z))`. Its probability of label 1 rises with the score.
+  - id: logreg-review-observed-label-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: |
+      A Python function computes binary cross-entropy for one example. Here `p` is the model's probability of label 1, `y` is the observed label, and `log(q)` is the natural log of `q`. Which expression fills the blank?
+
+      ```python
+      if y == 1:
+          loss = -log(p)
+      else:
+          loss = ____
+      ```
+    options:
+      - id: a
+        text: "`-log(1 - p)`"
+        correct: true
+        feedback: This branch handles label 0, which received probability `1 - p`.
+      - id: b
+        text: "`-log(p)`"
+        correct: false
+        feedback: This measures the probability given to label 1 in both branches.
+      - id: c
+        text: "`1 - log(p)`"
+        correct: false
+        feedback: The probability of label 0 is found before taking the log.
+    solution: When `y` is zero, binary cross-entropy takes the negative log of `1 - p`.
+  - id: logreg-review-bias-update-code
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: |
+      This Python code takes one gradient descent step on binary cross-entropy for a logistic regression example. Here `p` is the probability of label 1, `y` is the observed label, `x` is the feature, and `lr` is the learning rate. Which line should replace the last line to correct the bias update?
+
+      ```python
+      dw = (p - y) * x
+      w = w - lr * dw
+      b = b - lr * dw
+      ```
+    options:
+      - id: a
+        text: "`b = b - lr * (y - p)`"
+        correct: false
+        feedback: Reversing the probability and the label reverses the direction of the step.
+      - id: b
+        text: "`b = b - lr * (p - y)`"
+        correct: true
+        feedback: The bias's slope is the probability minus the observed label.
+      - id: c
+        text: "`b = b - lr * (p - y) * w`"
+        correct: false
+        feedback: The score changes by one unit per unit of bias, so the bias slope has no factor of `w`.
+    solution: The bias adds directly to the score, so its slope is `p - y`. Subtract that slope times `lr`.

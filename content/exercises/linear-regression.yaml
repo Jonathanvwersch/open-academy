@@ -895,3 +895,44 @@ exercises:
     accept: [ones vector, vector of ones, "a vector of ones", "n ones"]
     regex: '^\s*(?:\(\s*1\s*,\s*(?:1\s*,\s*)*(?:\.{3}|…)\s*,\s*1(?:\s*,\s*1)*\s*\)|\[\s*1\s*,\s*(?:1\s*,\s*)*(?:\.{3}|…)\s*,\s*1(?:\s*,\s*1)*\s*\])\s*$'
     solution: Multiply $b$ by the vector of $n$ ones to add it to every prediction.
+  - id: linreg-review-bias-from-reading
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    target_seconds: 30
+    est_minutes: 0.5
+    prompt: A linear regression model uses input $x$ with weight $3$. When $x=4$, its prediction is $17$. What is the bias?
+    answer: 5
+    tolerance: { abs: 0.001 }
+    solution: The input contributes $3\times4=12$. The bias supplies the rest, $17-12=5$.
+  - id: linreg-review-two-input-change
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: A linear regression model has weights $4$ and $-3$ for its first and second inputs. The first input rises by $2$ and the second rises by $5$. What is the signed change in the prediction?
+    answer: -7
+    tolerance: { abs: 0.001 }
+    solution: The changes contribute $4\times2=8$ and $(-3)\times5=-15$. Together they change the prediction by $8-15=-7$.
+  - id: linreg-review-batch-row
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: Each row of $X=\begin{bmatrix}2&5\\4&3\\6&1\end{bmatrix}$ is one example. A linear model has weights $(3,-2)$ in feature order and bias $4$. What prediction does it give for row 2?
+    answer: 10
+    tolerance: { abs: 0.001 }
+    solution: Use the second row $(4,3)$ with the weights and add the bias to get $3\times4-2\times3+4=10$.
+  - id: linreg-review-offset-weight
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 3
+    est_minutes: 2
+    prompt: A linear regression model has weight $-2$ for its first input. When the first input rises by $6$ and the second rises by $3$, the prediction stays the same. What is the weight for the second input?
+    answer: 4
+    tolerance: { abs: 0.001 }
+    solution: The first change subtracts $12$ from the prediction. The second must add $12$ across $3$ units, so its weight is $4$.

@@ -1435,3 +1435,24 @@ exercises:
         correct: true
         feedback: "Related records share details and usually have similar prices, so they stay together."
     solution: "Keep related records in one set to protect the held-out estimate."
+  - id: tts-review-audio-final-score
+    dimension: transfer
+    type: mc
+    role: transfer
+    difficulty: 3
+    est_minutes: 2
+    prompt: A team trains several models to recognise bird calls and chooses the one with the lowest error on a held-out set of recordings. They want an error estimate for the chosen model on new recordings of the same kind. How should they get it?
+    options:
+      - id: a
+        text: Score the chosen model on a fresh set once.
+        correct: true
+        feedback: The fresh recordings played no part in training or choosing the model.
+      - id: b
+        text: Score the chosen model on the selection set again.
+        correct: false
+        feedback: Those recordings helped choose the model, so their error does not give an independent final check.
+      - id: c
+        text: Score the chosen model on its training set again.
+        correct: false
+        feedback: The model already fit these recordings, so their error can be lower than on new ones.
+    solution: The recordings used to choose the model served as validation data. Use a fresh test set for the final score.
