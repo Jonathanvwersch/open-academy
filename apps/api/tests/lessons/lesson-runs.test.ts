@@ -216,6 +216,14 @@ test('recovery can replace a deleted problem while its answer waits for the run 
   expect(await answer).toEqual({ kind: 'not_found' });
   expect(recovered?.derived.pending?.exerciseId).not.toBe(stale.exerciseId);
   expect(recovered?.derived.pending).toBeDefined();
+  expect(await store.listLessonProblems(userId, run.id)).toEqual([
+    expect.objectContaining({
+      id: recovered?.derived.pending?.id,
+      exerciseId: recovered?.derived.pending?.exerciseId,
+      answeredAt: null,
+    }),
+  ]);
+  expect(recovered?.derived.pending?.id).not.toBe(stale.id);
   expect(await store.listAttempts(userId, {})).toEqual([]);
 });
 
