@@ -1242,22 +1242,23 @@ exercises:
     role: recall
     knowledge_point: gd-training-loop
     difficulty: 1
+    target_seconds: 30
     est_minutes: 0.5
-    prompt: A training loop's loss has fallen by a small amount on every pass since the start, and it is still high. What does this most likely show?
+    prompt: A model trains with gradient descent. Its loss stays high and falls only a little on each pass. Its weights and bias also change only a little. What could explain these small updates?
     options:
       - id: a
-        text: The learning rate is too small.
+        text: A small learning rate or small loss slopes.
         correct: true
-        feedback: Tiny steps make the loss creep down slowly, so a larger rate would make faster progress.
+        feedback: Either factor can give small updates because the learning rate multiplies the loss slopes.
       - id: b
-        text: Training has finished.
+        text: A large learning rate or steep loss slopes.
         correct: false
-        feedback: We stop once a pass barely lowers a loss that has already fallen. A loss that is still high has further to go.
+        feedback: Increasing either factor while keeping the other fixed makes the updates larger.
       - id: c
-        text: The learning rate is too large.
+        text: A high starting loss or a high current loss.
         correct: false
-        feedback: A rate that is too large overshoots further each step, so the loss goes up.
-    solution: A loss that creeps down slowly from the start and is still high is the sign of a learning rate that is too small.
+        feedback: The update uses the slope of the loss for each parameter. The loss value alone does not set the size of the update.
+    solution: Gradient descent multiplies each loss slope by the learning rate to get the size and sign of the amount it subtracts. A small learning rate or small slopes can make the updates small even when the loss is high.
   - id: gd-review-square-loss-code
     dimension: implementation
     type: mc
