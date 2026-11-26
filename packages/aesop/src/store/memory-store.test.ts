@@ -17,6 +17,23 @@ describeLearnerStoreContract('memoryStore', async (options) => {
     prefs: {},
   };
   const store = memoryStore({
+    schedulerProjections: options?.seedCourseProgress
+      ? new Map([
+          [
+            learnerId,
+            {
+              projectProgress: [
+                { projectId: 'z', status: 'in_progress' },
+                { projectId: 'a', status: 'completed' },
+              ],
+              paperProgress: [
+                { paperId: 'z', completedAt: null },
+                { paperId: 'a', completedAt: new Date('2026-01-17T12:00:00Z') },
+              ],
+            },
+          ],
+        ])
+      : undefined,
     settings: new Map([
       [learnerId, settings],
       [otherLearnerId, settings],

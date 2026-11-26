@@ -2,7 +2,6 @@ import type { ContentIndex } from '../course/types.js';
 import { effectiveGrantStates } from '../placement/grants.js';
 import type { FlowStore, TimedQuizRun } from '../store/flow-store.js';
 import type { PlacementReviewStore } from '../store/placement-review-store.js';
-import type { SessionStore } from '../store/session-store.js';
 import {
   nextQuizDifficulty,
   QUIZ_XP_INTERVAL,
@@ -32,33 +31,6 @@ export async function confirmedPlacementTopicIds(
   );
 }
 
-async function eligibleXp(store: SessionStore, learnerId: string, now: Date) {
-  const events = await store.listXpEvents(learnerId, { through: now });
-  const prefix = 'activity:';
-  const ids = [
-    ...new Set(
-      events
-        .filter(({ kind, sourceKey }) => kind === 'activity' && sourceKey.startsWith(prefix))
-        .map(({ sourceKey }) => sourceKey.slice(prefix.length)),
-    ),
-  ];
-  const activities = ids.length ? await store.listActivities(learnerId, { ids }) : [];
-  const activityKeys = new Set(
-    activities
-      .filter(({ kind }) => kind === 'learn' || kind === 'review')
-      .map(({ id }) => `${prefix}${id}`),
-  );
-  return events.reduce(
-    (total, { kind, amount, sourceKey }) =>
-      kind === 'knowledge_point' ||
-      kind === 'review' ||
-      (kind === 'activity' && activityKeys.has(sourceKey))
-        ? total + amount
-        : total,
-    0,
-  );
-}
-
 export async function quizOffer(
   store: FlowStore,
   learnerId: string,
@@ -77,12 +49,17 @@ export async function quizOffer(
     accommodation: number;
   };
 }> {
-  const [xp, originals, [active]] = await Promise.all([
-    eligibleXp(store, learnerId, now),
+  const [originals, [active]] = await Promise.all([
     store.listTimedQuizRuns(learnerId, { original: true, finalizedThrough: now }),
     store.listTimedQuizRuns(learnerId, { active: true }),
   ]);
-  const xpBalance = quizXpBalance(xp, originals.length);
+  const previous = originals.at(-1);
+  const { throughLastQuiz, sinceLastQuiz } = await store.sumQuizEligibleXp(
+    learnerId,
+    now,
+    previous?.finalizedAt ?? undefined,
+  );
+  const xpBalance = quizXpBalance(throughLastQuiz + sinceLastQuiz, originals.length);
   if (active) return { xpBalance, active, plannedMinutes: active.plannedMinutes };
   if (xpBalance < QUIZ_XP_INTERVAL) return { xpBalance };
 
@@ -90,17 +67,14 @@ export async function quizOffer(
     store.listLessonRuns(learnerId),
     confirmedPlacementTopicIds(store, learnerId),
     store.listTimedQuizRuns(learnerId, {}).then(async (runs) => {
-      const items = await store.listTimedQuizItems(
+      const { items, missedRunIds } = await store.listTimedQuizItemKeys(
         learnerId,
         runs.map(({ id }) => id),
       );
-      const originalIds = new Set(
-        runs.filter(({ retakeOf }) => retakeOf === null).map(({ id }) => id),
-      );
       const missedOriginals = new Set(
-        items
-          .filter(({ runId, correct }) => correct === false && originalIds.has(runId))
-          .map(({ runId }) => runId),
+        runs
+          .filter(({ id, retakeOf }) => retakeOf === null && missedRunIds.has(id))
+          .map(({ id }) => id),
       );
       return { items, missedOriginals };
     }),
@@ -114,13 +88,14 @@ export async function quizOffer(
       )
       .map(({ conceptId }) => conceptId),
   );
-  const usedKeys = new Set(history.items.map(({ question }) => question.key));
+  const usedKeys = new Set(history.items.map(({ questionKey }) => questionKey));
   const exposure = new Map<string, number>();
   for (const item of history.items) {
     exposure.set(item.conceptId, (exposure.get(item.conceptId) ?? 0) + 1);
-    if (item.reserve && history.missedOriginals.has(item.runId)) usedKeys.add(item.reserve.key);
+    if (item.reserveKey !== null && history.missedOriginals.has(item.runId)) {
+      usedKeys.add(item.reserveKey);
+    }
   }
-  const previous = originals.at(-1);
   const difficulty = nextQuizDifficulty(
     previous?.score == null
       ? undefined

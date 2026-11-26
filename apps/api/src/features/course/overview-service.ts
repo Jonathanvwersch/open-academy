@@ -1,3 +1,7 @@
+import {
+  courseTopicState,
+  placedOutConceptsFromGrants,
+} from '@academy/aesop/course/course-payload';
 import { serializeConcept } from '@academy/aesop/course/serialize';
 import {
   activeCourseFor,
@@ -10,7 +14,6 @@ import type { StudyMapPayload } from '@academy/contracts/course';
 import { eq } from 'drizzle-orm';
 import { lessonRuns, placementGrants } from '../../db/schema.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
-import { courseTopicState, placedOutConceptsFromGrants } from './service.js';
 
 export async function getStudyMap(deps: FeatureServices, request: FeatureRequest) {
   const index = await deps.content();

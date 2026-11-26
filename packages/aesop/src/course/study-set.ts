@@ -42,12 +42,14 @@ export async function studyCourseIds(
   content: ContentIndex,
   now: () => Date,
   settings: Settings | undefined,
+  loadEnrollments = (_refresh: boolean) => store.listEnrollments(learnerId),
 ) {
   if (!settings) return [];
   let enrollments: Enrollment[] | undefined;
+  let refresh = false;
   if (!settings.studySetInitializedAt) {
     const [existing, mastery, runs] = await Promise.all([
-      store.listEnrollments(learnerId),
+      loadEnrollments(false),
       store.listMastery(learnerId),
       store.listLessonRuns(learnerId),
     ]);
@@ -66,9 +68,10 @@ export async function studyCourseIds(
         })),
       });
       enrollments = undefined;
+      refresh = true;
     }
     await store.patchSettings(learnerId, { studySetInitializedAt: now() });
   }
-  enrollments ??= await store.listEnrollments(learnerId);
+  enrollments ??= await loadEnrollments(refresh);
   return activeStudyCourseIds(content, enrollments);
 }
