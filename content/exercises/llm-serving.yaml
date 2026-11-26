@@ -1043,20 +1043,20 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 1
-    prompt: A live translation service uses PagedAttention. The block table lists memory block IDs in token order, starting with the block that holds the earliest tokens. For one translation, the list is currently `[5, 2]`, and the last block has room for one more token. The model adds two tokens to the cache. The server assigns the empty memory block with ID 1 if another block is needed. What list of block IDs should the table contain after both tokens are added?
+    prompt: A live translation service uses PagedAttention. One translation has six cached tokens, and its block table lists the memory block IDs `[5, 2]`. Each block has four token slots. A program tries to read six consecutive slots starting at block 5. How should it read the six tokens in order without moving any cache entries?
     options:
       - id: a
-        text: "`[5, 2]`"
+        text: Read four slots from block 5, then two from block 6.
         correct: false
         category: implementation_error
-        feedback: Only the first new token fits in the last block. The second needs a new block.
+        feedback: The next block in memory is not necessarily the next block in the sequence. Use the block table to find it.
       - id: b
-        text: "`[5, 2, 1]`"
+        text: Read four slots from block 5, then two from block 2.
         correct: true
-        feedback: The new block holds the latest token, so its ID goes at the end of the list.
+        feedback: The first block is full. The table points to block 2 for the last two tokens.
       - id: c
-        text: "`[1, 2, 5]`"
+        text: Read two slots from block 5, then four from block 2.
         correct: false
         category: implementation_error
-        feedback: Sorting by block ID would put the newest block first, even though it holds the latest token.
-    solution: The first new token fills the last slot in block 2. The second goes into block 1, so the table appends 1 after 5 and 2.
+        feedback: PagedAttention does not add a second block until the first is full.
+    solution: Follow the block table rather than consecutive memory addresses. The first four tokens fill block 5, so the last two are at the start of block 2.
