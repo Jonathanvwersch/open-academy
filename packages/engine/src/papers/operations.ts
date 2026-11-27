@@ -110,7 +110,6 @@ export async function submitPaperSummary(
   if (!body.success) return respond({ error: 'Invalid paper summary' }, 400);
 
   let activity: Activity | undefined;
-  let activities: Activity[] = [];
   if (body.data.activityId) {
     [activity] = await request.store.listActivities(request.userId, {
       ids: [body.data.activityId],
@@ -118,9 +117,6 @@ export async function submitPaperSummary(
     if (activity?.kind !== 'paper') {
       return respond({ error: 'Paper activity not found' }, 404);
     }
-    activities = await request.store.listActivities(request.userId, {
-      sessionIds: [activity.sessionId],
-    });
   }
 
   const now = request.now();
@@ -143,6 +139,9 @@ export async function submitPaperSummary(
       updatedAt: now,
     });
     if (activity) {
+      const activities = await store.listActivities(request.userId, {
+        sessionIds: [activity.sessionId],
+      });
       await updateActivityAndAdvance(store, {
         activityId: activity.id,
         completed: true,
