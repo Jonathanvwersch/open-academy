@@ -96,36 +96,32 @@ test('hints and quiz reviews accept memory-issued activity and attempt IDs', asy
   });
 });
 
-test('session uses the derived lesson run status after the lesson gains a knowledge point', async () => {
+test('a completed lesson is unpinned when its content gains a knowledge point', async () => {
   const originalIndex = await content;
-  const fixture = [...originalIndex.lessonsByConcept.entries()].flatMap(([conceptId, lesson]) =>
-    (lesson.knowledge_points ?? []).flatMap((point) => {
-      const exercises = point.problems.flatMap((id) => {
-        const exercise = originalIndex.exercisesById.get(id);
-        return exercise && exercise.role !== 'recall' ? [exercise] : [];
-      });
-      return exercises.length >= 2
-        ? [{ conceptId, lesson, point, exercises: exercises.slice(0, 2) }]
-        : [];
-    }),
-  )[0];
-  if (!fixture) throw new Error('Missing lesson point with two progression problems');
-  const [firstProblem, secondProblem] = fixture.exercises;
-  if (!firstProblem || !secondProblem) throw new Error('Missing lesson progression problems');
-  const { conceptId, lesson, point } = fixture;
-  const knowledgePoints = lesson.knowledge_points ?? [];
-  const expandedIndex = {
+  const fixture = [...originalIndex.lessonsByConcept.entries()].flatMap(([conceptId, lesson]) => {
+    const progression = (lesson.knowledge_points ?? []).map((point) => ({
+      point,
+      exercises: point.problems
+        .flatMap((id) => {
+          const exercise = originalIndex.exercisesById.get(id);
+          return exercise && exercise.role !== 'recall' ? [exercise] : [];
+        })
+        .slice(0, 2),
+    }));
+    return progression.length === 3 && progression.every(({ exercises }) => exercises.length === 2)
+      ? [{ conceptId, lesson, progression }]
+      : [];
+  })[0];
+  if (!fixture) throw new Error('Missing three-point lesson fixture');
+  const { conceptId, lesson, progression } = fixture;
+  const points = progression.map(({ point }) => point);
+  const firstPoint = points[0];
+  const firstProblem = progression[0]?.exercises[0];
+  if (!firstPoint || !firstProblem) throw new Error('Missing lesson progression problems');
+  const contentIndex = {
     ...originalIndex,
     lessonsByConcept: new Map(originalIndex.lessonsByConcept),
   };
-  expandedIndex.lessonsByConcept.set(conceptId, {
-    ...lesson,
-    knowledge_points: [
-      ...knowledgePoints,
-      { ...point, id: `${point.id}-added`, title: `${point.title} added` },
-    ],
-  });
-
   const learnerId = 'learner';
   const now = new Date('2026-01-17T12:00:00Z');
   const store = memoryStore();
@@ -139,21 +135,13 @@ test('session uses the derived lesson run status after the lesson gains a knowle
       conceptId,
       exerciseIds: [lesson.final ?? firstProblem.id],
       status: 'completed',
-      progress: {
-        lessonRunnerContinued: true,
-        finalQuestionContinued: true,
-        completedExerciseIds: [lesson.final ?? firstProblem.id],
-      },
-      startedAt: now,
-      completedAt: now,
+      progress: { lessonRunnerContinued: true, finalQuestionContinued: true },
     }),
     activityRow(1, {
       conceptId,
       kind: 'practice',
       exerciseIds: [firstProblem.id],
       status: 'in_progress',
-      startedAt: now,
-      progress: {},
     }),
   ]);
   if (!completedActivity || !nextActivity) throw new Error('Session activities did not insert');
@@ -171,24 +159,28 @@ test('session uses the derived lesson run status after the lesson gains a knowle
     haltCount: 0,
   });
   if (!run) throw new Error('Lesson run did not insert');
-  for (const [position, exercise] of [firstProblem, secondProblem].entries()) {
-    await store.insertLessonProblem(learnerId, run.id, {
-      knowledgePointId: point.id,
-      round: 1,
-      position,
-      exerciseId: exercise.id,
-      seed: null,
-      practiceOnly: false,
-      assisted: false,
-      servedAt: new Date(now.getTime() + position),
-      answeredAt: new Date(now.getTime() + position),
-      correct: 1,
-      attemptId: null,
-    });
-  }
+  await Promise.all(
+    progression.flatMap(({ point, exercises }) =>
+      exercises.map((exercise, position) =>
+        store.insertLessonProblem(learnerId, run.id, {
+          knowledgePointId: point.id,
+          round: 1,
+          position,
+          exerciseId: exercise.id,
+          seed: null,
+          practiceOnly: false,
+          assisted: false,
+          servedAt: now,
+          answeredAt: now,
+          correct: 1,
+          attemptId: null,
+        }),
+      ),
+    ),
+  );
 
   const learner = createEngine({
-    content: async () => expandedIndex,
+    content: async () => contentIndex,
     store,
     fsrsFuzz: false,
   }).learner({
@@ -197,17 +189,29 @@ test('session uses the derived lesson run status after the lesson gains a knowle
     now: () => now,
     random: () => 0.5,
   });
-  const result = await learner.session({ sessionId: session.id });
-  expect(result.status).toBe(200);
-  const body = result.body as {
-    current: { activityId?: string; openableIds: string[] };
-    activities: Array<{ id: string; lessonRunner?: boolean; lessonQuiz?: boolean }>;
+  const readSession = async () => {
+    const result = await learner.session({ sessionId: session.id });
+    expect(result.status).toBe(200);
+    return result.body as {
+      current: { activityId?: string; openableIds: string[] };
+      activities: Array<{ id: string; lessonRunner?: boolean; lessonQuiz?: boolean }>;
+    };
   };
-  expect(body.current).toEqual({
+  expect((await readSession()).current).toEqual({
+    activityId: completedActivity.id,
+    openableIds: [],
+  });
+
+  contentIndex.lessonsByConcept.set(conceptId, {
+    ...lesson,
+    knowledge_points: [...points, { ...firstPoint, id: `${firstPoint.id}-added` }],
+  });
+  const changed = await readSession();
+  expect(changed.current).toEqual({
     activityId: nextActivity.id,
     openableIds: [completedActivity.id, nextActivity.id],
   });
-  expect(body.activities.find(({ id }) => id === completedActivity.id)).toMatchObject({
+  expect(changed.activities.find(({ id }) => id === completedActivity.id)).toMatchObject({
     lessonRunner: true,
     lessonQuiz: false,
   });
