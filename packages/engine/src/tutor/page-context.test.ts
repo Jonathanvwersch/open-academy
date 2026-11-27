@@ -1,9 +1,11 @@
+import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
-import { loadContent } from '../../src/content/load.js';
-import {
-  buildTutorPageContent,
-  sanitizePageContent,
-} from '../../src/features/tutor/page-context.js';
+import { loadContentFromDirectory } from '../course/load.js';
+import { buildTutorPageContent, sanitizePageContent } from './page-context.js';
+
+const fixtureContent = loadContentFromDirectory(
+  fileURLToPath(new URL('../../../../tests/fixtures/content', import.meta.url)),
+);
 
 test('page content truncation leaves the required suffix within the size bound', () => {
   const content = sanitizePageContent('x'.repeat(12_001));
@@ -55,7 +57,7 @@ test('diagram labels have a bounded allowance separate from lesson text', () => 
 });
 
 test('lesson, session, and map tutor context include prerequisite recap facts', async () => {
-  const index = await loadContent('tests/fixtures/content');
+  const index = await fixtureContent;
   const lesson = index.lessonsByConcept.get('derivatives');
   const point = lesson?.knowledge_points?.[0];
   if (!lesson || !point) throw new Error('Missing derivatives fixture');
@@ -77,7 +79,7 @@ test('lesson, session, and map tutor context include prerequisite recap facts', 
 });
 
 test('Explain-it tutor context separates the current question from completed lesson steps', async () => {
-  const index = await loadContent('tests/fixtures/content');
+  const index = await fixtureContent;
   const lesson = index.lessonsByConcept.get('vectors');
   const secondStep = lesson?.knowledge_points?.[1];
   if (!lesson || !secondStep) throw new Error('Missing vectors lesson steps');
@@ -105,7 +107,7 @@ test('Explain-it tutor context separates the current question from completed les
 });
 
 test('paper tutor context is ordered, omits empty notes, includes adjacent pages, and preserves selection', async () => {
-  const index = await loadContent('tests/fixtures/content');
+  const index = await fixtureContent;
   const paper = index.papers[0];
   if (!paper) throw new Error('Missing paper fixture');
   const content = buildTutorPageContent({

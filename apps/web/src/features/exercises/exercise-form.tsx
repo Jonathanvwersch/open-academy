@@ -1,6 +1,6 @@
-import { onScreenOptions } from '@academy/shared/shuffle';
 import { emptyAnswerMessage } from '@open-academy/engine/api/answer-validation';
 import type { AnswerOptions, ClientExercise } from '@open-academy/engine/api/exercises';
+import { onScreenOptions } from '@open-academy/engine/course/option-order';
 import { Check, X } from 'lucide-react';
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';

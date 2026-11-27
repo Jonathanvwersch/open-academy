@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs';
-import { onScreenOptions } from '@academy/shared/shuffle';
+import { onScreenOptions } from '@open-academy/engine/course/option-order';
 import type { IndexedExercise } from '@open-academy/engine/course/types';
 import { courseFoundations } from '@open-academy/engine/graph/prerequisites';
 import { expect, type Page, test } from '@playwright/test';

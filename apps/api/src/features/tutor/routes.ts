@@ -1,41 +1,21 @@
-import { onScreenOptions } from '@academy/shared/shuffle';
 import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '@academy/shared/tutor';
-import { tutorLessonStages } from '@open-academy/engine/api/tutor';
-import { buildCoursePayload } from '@open-academy/engine/course/course-payload';
-import { serializedOptionOrder } from '@open-academy/engine/course/serialize';
-import { instantiateExercise, isTemplate } from '@open-academy/engine/course/templates';
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import type { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
-import { courseFoundationIds } from '@open-academy/engine/graph/prerequisites';
-import { attemptAllowsRetry } from '@open-academy/engine/memory/retry';
+import { type TutorTurn, tutorLessonStages } from '@open-academy/engine/api/tutor';
+import type { EngineTutorPaper } from '@open-academy/engine/engine/create-engine';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
 import {
-  attempts,
-  lessonProblems,
-  lessonRuns,
   paperFiles,
   paperPages,
   paperProgress,
-  sessionActivities,
-  studySessions,
   tutorMessages,
   tutorThreads,
   users,
 } from '../../db/schema.js';
-import type { ApiEnv } from '../../http/context.js';
+import type { ApiEnv, ApiServices } from '../../http/context.js';
 import { extractPaperPages } from '../papers/service.js';
-import {
-  formatGraderFeedback,
-  graderVerdictFor,
-  tutorAnswerFor,
-  tutorAnswerKeyFor,
-  tutorSolutionFor,
-} from './feedback-context.js';
-import { buildTutorPageContent } from './page-context.js';
-import { type TutorService, tutorFailureDetails } from './service.js';
+import { tutorFailureDetails } from './service.js';
 
 type Ctx = Context<ApiEnv>;
 const optionalNullable = <T extends z.ZodTypeAny>(schema: T) =>
@@ -90,15 +70,41 @@ function threadTitleFromMessages() {
   )`;
 }
 
+function loadTutorPaper(db: Database, userId: string): EngineTutorPaper {
+  return async (paperId, pageNumber) => {
+    const [progress] = await db
+      .select()
+      .from(paperProgress)
+      .where(and(eq(paperProgress.paperId, paperId), eq(paperProgress.userId, userId)))
+      .limit(1);
+    const [file] = await db
+      .select({ bytes: paperFiles.bytes })
+      .from(paperFiles)
+      .where(eq(paperFiles.paperId, paperId))
+      .limit(1);
+    if (file) await extractPaperPages(db, paperId, file.bytes);
+    const pages = await db
+      .select({ page: paperPages.page, text: paperPages.text })
+      .from(paperPages)
+      .where(
+        and(
+          eq(paperPages.paperId, paperId),
+          sql`${paperPages.page} between ${pageNumber} and ${pageNumber + 1}`,
+        ),
+      )
+      .orderBy(asc(paperPages.page));
+    return {
+      notes: progress?.notes ?? {},
+      summary: progress?.summary,
+      feedback: progress?.summaryJudgement,
+      pages,
+    };
+  };
+}
+
 export function registerTutorThreadRoutes(
   api: Hono<ApiEnv>,
-  deps: {
-    db: Database;
-    content: () => Promise<ContentIndex>;
-    withRepo: (context: Ctx) => EngineLearnerRepository;
-    tutor: (context: Ctx) => TutorService | null;
-    requestNow: (context: Ctx) => Date;
-  },
+  deps: Pick<ApiServices, 'db' | 'content' | 'tutor' | 'requestNow' | 'learner'>,
 ) {
   const { db } = deps;
   api.get('/tutor/status', (context) =>
@@ -191,211 +197,26 @@ export function registerTutorThreadRoutes(
           .limit(1)
       : [];
     if (requestedThreadId && !thread) return c.json({ error: 'Thread not found' }, 404);
+    const turnResult = await deps
+      .learner(c, { tutorPaper: loadTutorPaper(db, c.get('userId')) })
+      .tutorContext({
+        page: input.page,
+        conceptId: input.conceptId,
+        activityId: input.activityId,
+        exerciseId: input.exerciseId,
+        lessonProblemId: input.lessonProblemId,
+        knowledgePointId: input.knowledgePointId,
+        lessonStage: input.lessonStage,
+        questionLabel: input.questionLabel,
+        paperId: input.paperId,
+        pageNumber: input.pageNumber,
+        selection: input.selection,
+        threadConceptId: thread?.conceptId,
+      });
+    if (turnResult.status !== 200) return c.json(turnResult.body, turnResult.status);
+    const turn = turnResult.body as TutorTurn;
+    const { conceptId, activityId, exerciseId } = turn;
     const index = await deps.content();
-    if (input.page === 'paper' && !input.paperId) {
-      return c.json({ error: 'Paper id is required for paper context' }, 400);
-    }
-    if (input.page === 'paper' && !index.papersById.has(input.paperId ?? '')) {
-      return c.json({ error: 'Paper not found' }, 404);
-    }
-    let exerciseId = input.exerciseId;
-    let lessonProblem: typeof lessonProblems.$inferSelect | undefined;
-    let currentAttempt: typeof attempts.$inferSelect | undefined;
-    let activityId = input.activityId;
-    let status: 'unanswered' | 'retrying' | 'answered' | 'none' = 'none';
-    if (input.lessonProblemId) {
-      const [row] = await db
-        .select({ problem: lessonProblems, userId: lessonRuns.userId })
-        .from(lessonProblems)
-        .innerJoin(lessonRuns, eq(lessonProblems.runId, lessonRuns.id))
-        .where(eq(lessonProblems.id, input.lessonProblemId))
-        .limit(1);
-      if (!row || row.userId !== c.get('userId'))
-        return c.json({ error: 'Problem not found' }, 404);
-      if (input.exerciseId && input.exerciseId !== row.problem.exerciseId) {
-        return c.json({ error: 'Lesson problem does not match the exercise.' }, 403);
-      }
-      lessonProblem = row.problem;
-      exerciseId = row.problem.exerciseId;
-      status = row.problem.answeredAt ? 'answered' : 'unanswered';
-      const [attempt] = row.problem.attemptId
-        ? await db.select().from(attempts).where(eq(attempts.id, row.problem.attemptId)).limit(1)
-        : [];
-      currentAttempt = attempt;
-      activityId = attempt?.activityId ?? activityId;
-    } else if (input.exerciseId) {
-      if (!input.activityId) return c.json({ error: 'Activity required' }, 400);
-      const [activity] = await db
-        .select()
-        .from(sessionActivities)
-        .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
-        .where(
-          and(
-            eq(sessionActivities.id, input.activityId),
-            eq(studySessions.userId, c.get('userId')),
-          ),
-        )
-        .limit(1);
-      if (
-        !activity ||
-        !['learn', 'practice', 'remediate', 'transfer', 'teachback'].includes(
-          activity.session_activities.kind,
-        )
-      )
-        return c.json({ error: 'Tutor unavailable for this activity' }, 403);
-      const [attempt] = await db
-        .select()
-        .from(attempts)
-        .where(
-          and(
-            eq(attempts.userId, c.get('userId')),
-            eq(attempts.activityId, input.activityId),
-            eq(attempts.exerciseId, input.exerciseId),
-          ),
-        )
-        .orderBy(desc(attempts.attemptNo))
-        .limit(1);
-      currentAttempt = attempt;
-      status = !attempt ? 'unanswered' : attemptAllowsRetry(attempt) ? 'retrying' : 'answered';
-    }
-    let exercise = exerciseId ? index.exercisesById.get(exerciseId) : undefined;
-    if (exercise && isTemplate(exercise)) {
-      if (!lessonProblem)
-        return c.json({ error: 'Template exercises require a lesson problem.' }, 400);
-      const template = exercise;
-      const concrete = instantiateExercise(template, lessonProblem.seed ?? 0).exercise;
-      exercise = {
-        ...concrete,
-        concept: template.concept,
-        contentVersion: template.contentVersion,
-      };
-    }
-    if (exercise?.role === 'recall')
-      return c.json({ error: 'Review recall exercises are not available to the tutor.' }, 403);
-    if (exercise?.role === 'diagnostic')
-      return c.json({ error: 'Placement check exercises do not allow tutor answers.' }, 403);
-    if (activityId) {
-      const [activity] = await db
-        .select({ kind: sessionActivities.kind })
-        .from(sessionActivities)
-        .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
-        .where(and(eq(sessionActivities.id, activityId), eq(studySessions.userId, c.get('userId'))))
-        .limit(1);
-      if (
-        !activity ||
-        !['learn', 'practice', 'remediate', 'transfer', 'teachback'].includes(activity.kind)
-      )
-        return c.json({ error: 'Tutor unavailable for this activity' }, 403);
-    }
-    if (exerciseId && !exercise) return c.json({ error: 'Exercise not found' }, 404);
-    const conceptId = exercise?.concept ?? input.conceptId ?? thread?.conceptId ?? null;
-    const concept = conceptId ? index.conceptsById.get(conceptId) : undefined;
-    const lesson = conceptId ? index.lessonsByConcept.get(conceptId) : undefined;
-    const pageConceptId = exercise?.concept ?? input.conceptId ?? null;
-    const courseState =
-      input.page === 'course'
-        ? await deps.withRepo(c).schedulerState(deps.requestNow(c), index)
-        : undefined;
-    const matchingCourseIds =
-      input.page === 'paper' && input.paperId
-        ? index.courses
-            .filter((candidate) =>
-              candidate.units.some((unit) => unit.papers?.includes(input.paperId ?? '')),
-            )
-            .map((candidate) => candidate.id)
-        : pageConceptId
-          ? index.courses
-              .filter((candidate) =>
-                candidate.units.some((unit) => unit.concepts.includes(pageConceptId)),
-              )
-              .map((candidate) => candidate.id)
-          : [];
-    const contextCourseId = courseState
-      ? (courseState.studyCourseIds.find(
-          (courseId) =>
-            matchingCourseIds.includes(courseId) ||
-            (pageConceptId && courseFoundationIds(index, courseId).has(pageConceptId)),
-        ) ??
-        matchingCourseIds[0] ??
-        courseState.studyCourseIds[0] ??
-        courseState.activeCourseId)
-      : undefined;
-    const courseUnits = courseState
-      ? buildCoursePayload(
-          index,
-          contextCourseId,
-          courseState.mastery,
-          await db
-            .select()
-            .from(lessonRuns)
-            .where(eq(lessonRuns.userId, c.get('userId'))),
-        ).units
-      : undefined;
-    const pageContent = buildTutorPageContent({
-      page: input.page,
-      index,
-      conceptId: pageConceptId,
-      knowledgePointId: lessonProblem?.knowledgePointId ?? input.knowledgePointId,
-      lessonStage: input.lessonStage,
-      exerciseId,
-      exercisePrompt: exercise?.prompt,
-      questionLabel: input.questionLabel,
-      courseUnits,
-      ...(input.page === 'paper'
-        ? await (async () => {
-            const paper = input.paperId ? index.papersById.get(input.paperId) : undefined;
-            if (!paper) return { paper: undefined };
-            const [progress] = await db
-              .select()
-              .from(paperProgress)
-              .where(
-                and(eq(paperProgress.paperId, paper.id), eq(paperProgress.userId, c.get('userId'))),
-              )
-              .limit(1);
-            const [file] = await db
-              .select({ bytes: paperFiles.bytes })
-              .from(paperFiles)
-              .where(eq(paperFiles.paperId, paper.id))
-              .limit(1);
-            if (file) await extractPaperPages(db, paper.id, file.bytes);
-            const pageNumber = input.pageNumber ?? 1;
-            const pages = await db
-              .select({ page: paperPages.page, text: paperPages.text })
-              .from(paperPages)
-              .where(
-                and(
-                  eq(paperPages.paperId, paper.id),
-                  sql`${paperPages.page} between ${pageNumber} and ${pageNumber + 1}`,
-                ),
-              )
-              .orderBy(asc(paperPages.page));
-            return {
-              selection: input.selection,
-              paper: {
-                title: paper.title,
-                authors: paper.authors,
-                year: paper.year,
-                whyThisWeek: paper.why_this_week,
-                questions: paper.questions,
-                notes: progress?.notes ?? {},
-                summary: progress?.summary,
-                feedback: progress?.summaryJudgement,
-                pages,
-              },
-            };
-          })()
-        : {}),
-    });
-    const correct = currentAttempt?.correct ?? lessonProblem?.correct;
-    const optionTexts =
-      exercise?.type === 'mc'
-        ? onScreenOptions(
-            serializedOptionOrder(exercise.options, c.get('userId'), exercise.id),
-            exercise.id,
-          )
-        : exercise?.type === 'debug'
-          ? onScreenOptions(exercise.fix_options, exercise.id)
-          : [];
     const service = deps.tutor(c);
     if (!service) return c.json({ error: 'Tutor unavailable' }, 503);
 
@@ -662,44 +483,8 @@ export function registerTutorThreadRoutes(
     let result: Awaited<ReturnType<typeof service.respond>>;
     try {
       result = await service.respond(
-        {
-          conceptTitle: concept?.title ?? 'General',
-          objectives: concept?.objectives.map((o) => o.text) ?? [],
-          lessonSummary:
-            lesson?.blocks
-              .filter((b) => b.kind === 'summary')
-              .map((b) => b.md)
-              .join('\n') ?? '',
-          exercisePrompt: exercise?.prompt ?? '',
-          exerciseLabel: exercise ? input.questionLabel || 'Current question' : '',
-          exerciseOptions: optionTexts.map(
-            ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
-          ),
-          answerKey: tutorAnswerKeyFor(exercise, optionTexts),
-          learnerAnswer:
-            (status === 'retrying' || status === 'answered') && currentAttempt && exercise
-              ? tutorAnswerFor(exercise, currentAttempt.answer)
-              : '',
-          graderVerdict:
-            status === 'retrying' || status === 'answered' ? graderVerdictFor(correct) : '',
-          graderFeedback:
-            (status === 'retrying' || status === 'answered') && currentAttempt
-              ? formatGraderFeedback(currentAttempt.feedback, status === 'retrying')
-              : '',
-          hintLevel: 0,
-          authoredHints:
-            status === 'unanswered' || status === 'retrying' ? (exercise?.hints ?? []) : [],
-          solution:
-            status === 'unanswered' || status === 'retrying' ? '' : tutorSolutionFor(exercise),
-          recentMistakes: [],
-          question: input.question,
-          mode: 'practice',
-          history: request.history,
-          problem_status: status,
-          page: input.page ?? 'none',
-          page_content: pageContent,
-        },
-        status === 'unanswered' ? 'nudge' : status === 'retrying' ? 'hint' : 'worked_step',
+        { ...turn.prompt, question: input.question, history: request.history },
+        turn.level,
         index,
         signal,
       );

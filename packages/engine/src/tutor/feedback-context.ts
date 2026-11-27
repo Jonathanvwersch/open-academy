@@ -1,5 +1,5 @@
-import type { IndexedExercise } from '@open-academy/engine/course/types';
-import { answerDisplay } from '@open-academy/engine/lessons/answer-display';
+import type { IndexedExercise } from '../course/types.js';
+import { answerDisplay } from '../lessons/answer-display.js';
 
 export function graderVerdictFor(correct: number | null | undefined): string {
   if (correct === null || correct === undefined) return '';

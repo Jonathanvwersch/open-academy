@@ -7,7 +7,6 @@
   },
   "exports": {
     "./markdown": "./src/markdown.ts",
-    "./shuffle": "./src/shuffle.ts",
     "./tutor": "./src/tutor.ts"
   },
   "dependencies": {},

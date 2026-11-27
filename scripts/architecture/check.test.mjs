@@ -166,18 +166,26 @@ test('forbids browser imports of engine', () => {
     (errors) =>
       assert.ok(
         errors.some((error) =>
-          error.includes('apps/web can import only @open-academy/engine/api/*'),
+          error.includes('apps/web can import only browser-safe public engine exports'),
         ),
         errors.join('\n'),
       ),
   );
 });
 
-test('permits only API contract imports from engine in the web app', () => {
+test('permits browser-safe imports from engine in the web app', () => {
   fixture(
     {
       'apps/web/src/features/lessons/page.ts':
         "import type {Lesson} from '@open-academy/engine/api/lessons'; export type {Lesson};",
+    },
+    (errors) => assert.deepEqual(errors, []),
+  );
+  fixture(
+    {
+      'apps/web/src/features/exercises/exercise-form.tsx':
+        "import {onScreenOptions} from '@open-academy/engine/course/option-order'; export {onScreenOptions};",
+      'packages/engine/src/course/option-order.ts': 'export function onScreenOptions() {};',
     },
     (errors) => assert.deepEqual(errors, []),
   );
@@ -189,7 +197,7 @@ test('permits only API contract imports from engine in the web app', () => {
     (errors) =>
       assert.ok(
         errors.some((error) =>
-          error.includes('apps/web can import only @open-academy/engine/api/*'),
+          error.includes('apps/web can import only browser-safe public engine exports'),
         ),
         errors.join('\n'),
       ),

@@ -1,5 +1,5 @@
-import type { TutorLessonStage } from '@open-academy/engine/api/tutor';
-import type { ContentIndex, IndexedLesson } from '@open-academy/engine/course/types';
+import type { TutorLessonStage } from '../api/tutor.js';
+import type { ContentIndex, IndexedLesson } from '../course/types.js';
 
 export interface CourseOutlineUnit {
   unit: number;

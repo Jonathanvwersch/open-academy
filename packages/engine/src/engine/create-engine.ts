@@ -11,6 +11,7 @@ import type {
   EngineLearner,
   EngineOperation,
   EngineResult,
+  EngineTutorPaper,
 } from './types.js';
 
 export type {
@@ -22,6 +23,7 @@ export type {
   EngineLearner,
   EngineOperation,
   EngineResult,
+  EngineTutorPaper,
 } from './types.js';
 
 export type CreateEngineOptions = {
@@ -41,6 +43,7 @@ export type EngineLearnerOptions = {
   grade?: EngineGrade;
   hasTutorReply?: EngineHasTutorReply;
   generateHint?: EngineGenerateHint;
+  tutorPaper?: EngineTutorPaper;
   settings?: Settings;
 };
 
@@ -61,6 +64,7 @@ export function createEngine(options: CreateEngineOptions) {
       grade: learnerGrade,
       hasTutorReply = async () => false,
       generateHint,
+      tutorPaper,
       settings,
     }: EngineLearnerOptions): EngineLearner {
       const contentPromise = options.content();
@@ -78,6 +82,7 @@ export function createEngine(options: CreateEngineOptions) {
         grade: learnerGrade ?? grade,
         hasTutorReply,
         ...(generateHint ? { generateHint } : {}),
+        ...(tutorPaper ? { tutorPaper } : {}),
         fsrsFuzz,
         tutorEnabled,
         repo: new EngineLearnerRepository(
@@ -127,6 +132,7 @@ export function createEngine(options: CreateEngineOptions) {
         lessonReview: (input) => call({ kind: 'lessonReview', ...input }),
         exercise: (input) => call({ kind: 'exercise', ...input }),
         hint: (input) => call({ kind: 'hint', ...input }),
+        tutorContext: (input) => call({ kind: 'tutorContext', ...input }),
         activeSession: () => call({ kind: 'activeSession' }),
         lessonRun: (input) => call({ kind: 'lessonRun', ...input }),
         lessonQuizReview: (input) => call({ kind: 'lessonQuizReview', ...input }),
