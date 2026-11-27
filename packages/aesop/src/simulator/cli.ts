@@ -1,5 +1,6 @@
-import { access, mkdir, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadContentFromDirectory } from '@academy/aesop/course/load';
 import type { SimulatorDriverFactory } from './driver.js';
 import { directMemoryDriver } from './memory-driver.js';
@@ -10,6 +11,8 @@ import {
   simulateLearners,
   simulationProfiles,
 } from './simulator.js';
+
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 function argumentsMap(argv: string[]): Map<string, string> {
   const args = new Map<string, string>();
@@ -42,22 +45,6 @@ function parsePositiveInteger(value: string | undefined, fallback: number): numb
   return parsed;
 }
 
-async function repositoryRoot(contentDir: string): Promise<string> {
-  for (const start of [contentDir, process.cwd()]) {
-    let directory = resolve(start);
-    while (true) {
-      try {
-        await access(resolve(directory, 'tests/fixtures/content/curriculum.yaml'));
-        return directory;
-      } catch {}
-      const parent = resolve(directory, '..');
-      if (parent === directory) break;
-      directory = parent;
-    }
-  }
-  throw new Error('Could not find tests/fixtures/content from the content directory');
-}
-
 export async function runSimulateCli(
   argv: string[],
   options: { contentDir: string; drivers: Record<string, SimulatorDriverFactory> },
@@ -82,9 +69,7 @@ export async function runSimulateCli(
   const scenarioContent = profiles.some((profile) =>
     scriptedScenarioProfiles.includes(profile as (typeof scriptedScenarioProfiles)[number]),
   )
-    ? await loadContentFromDirectory(
-        resolve(await repositoryRoot(options.contentDir), 'tests/fixtures/content'),
-      )
+    ? await loadContentFromDirectory(resolve(repositoryRoot, 'tests/fixtures/content'))
     : undefined;
   const report = await simulateLearners(driver, content, {
     profiles,

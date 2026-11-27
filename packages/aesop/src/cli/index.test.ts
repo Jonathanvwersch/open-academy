@@ -108,7 +108,7 @@ describe('academy CLI', () => {
           '--days',
           '1',
           '--profiles',
-          'average',
+          'average,scenario-p14-fallback',
           '--courses',
           'fixture-course',
           '--out',

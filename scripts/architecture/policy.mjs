@@ -76,4 +76,4 @@ export const cliBuiltins = new Set([
 ]);
 
 // Only the simulator CLI writes reports; keep filesystem access out of simulator drivers.
-export const simulatorBuiltins = new Set(['node:fs/promises', 'node:path']);
+export const simulatorBuiltins = new Set(['node:fs/promises', 'node:path', 'node:url']);
