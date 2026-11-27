@@ -113,27 +113,27 @@ function invocationDirectory(): string {
   return process.env.INIT_CWD ?? process.cwd();
 }
 
-function packPath(positionals: string[], pack?: string): string {
-  return resolve(
-    invocationDirectory(),
-    pack ?? positionals[0] ?? process.env.CONTENT_DIR ?? 'content',
+function defaultPackDirectory(): string {
+  return (
+    process.env.CONTENT_DIR ??
+    (existsSync(join(invocationDirectory(), 'curriculum.yaml')) ? '.' : 'content')
   );
 }
 
-async function loadContent(
-  directory = process.env.CONTENT_DIR ?? 'content',
-): Promise<ContentIndex> {
-  return loadContentFromDirectory(resolve(repoRoot, directory));
+function packPath(positionals: string[], pack?: string): string {
+  return resolve(invocationDirectory(), pack ?? positionals[0] ?? defaultPackDirectory());
 }
 
-async function loadContentUnchecked(
-  directory = process.env.CONTENT_DIR ?? 'content',
-): Promise<ContentIndex> {
-  return loadContentUncheckedFromDirectory(resolve(repoRoot, directory));
+async function loadContent(directory = defaultPackDirectory()): Promise<ContentIndex> {
+  return loadContentFromDirectory(resolve(invocationDirectory(), directory));
 }
 
-async function loadContentReport(directory = process.env.CONTENT_DIR ?? 'content') {
-  return loadContentReportFromDirectory(resolve(repoRoot, directory));
+async function loadContentUnchecked(directory = defaultPackDirectory()): Promise<ContentIndex> {
+  return loadContentUncheckedFromDirectory(resolve(invocationDirectory(), directory));
+}
+
+async function loadContentReport(directory = defaultPackDirectory()) {
+  return loadContentReportFromDirectory(resolve(invocationDirectory(), directory));
 }
 
 function fail(message: string): never {
@@ -712,7 +712,7 @@ async function init(directory: string, title: string) {
   writeFileSync(join(directory, 'sources', '.gitignore'), '*\n!index.yaml\n!.gitignore\n');
   writeFileSync(
     join(directory, 'README.md'),
-    `This folder is a course pack for ${title}.\nRun \`academy dev\` from the Open Academy source checkout to launch this pack.\nRun \`academy check\` to validate the pack.\nRun the CLI from this folder with \`npx academy\`, for example \`npx academy check .\`.\nUse a separate database per pack, or give every topic an ID that's unique across your packs.\n`,
+    `This folder is a course pack for ${title}.\nRun \`academy dev\` from the Open Academy source checkout to launch this pack.\nRun \`academy check\` to validate the pack.\nInstall the CLI once with \`npm i -D @open-academy/engine\` in this folder, then run \`npx academy check\`.\nUse a separate database per pack, or give every topic an ID that's unique across your packs.\n`,
   );
   if ((await check(directory)) !== 0) fail('Generated course pack did not pass academy check.');
 }
