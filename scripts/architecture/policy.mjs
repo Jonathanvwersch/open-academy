@@ -54,12 +54,12 @@ export const browserForbiddenPackages = new Set(['@academy/aesop']);
 
 export const sharedPackageDependencies = new Set(['zod', '@academy/shared']);
 
+// tsx launches the Academy CLI bin, so it stays out of the source dependency allowlist.
 export const aesopDependencies = new Set([
   '@academy/aesop',
   '@academy/shared',
   'mathjs',
   'ts-fsrs',
-  'tsx',
   'yaml',
   'zod',
 ]);

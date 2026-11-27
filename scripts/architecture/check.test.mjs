@@ -108,6 +108,23 @@ test('forbids Node builtins outside approved Aesop modules', () => {
   );
 });
 
+test('forbids importing the CLI launcher as an Aesop source dependency', () => {
+  fixture(
+    {
+      'packages/aesop/src/simulator/driver.ts': "import 'tsx';",
+    },
+    (errors) =>
+      assert.ok(
+        errors.some((error) =>
+          error.includes(
+            'packages/aesop/src/simulator/driver.ts: tsx does not belong in a browser-safe shared package',
+          ),
+        ),
+        errors.join('\n'),
+      ),
+  );
+});
+
 test('forbids browser imports of Aesop', () => {
   fixture(
     {
