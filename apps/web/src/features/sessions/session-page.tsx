@@ -1,6 +1,6 @@
 import type { AnswerOptions, AttemptResponse } from '@open-academy/engine/api/exercises';
 import type { SessionActivity } from '@open-academy/engine/api/sessions';
-import { useQueries, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
@@ -23,11 +23,6 @@ import { projectQueryOptions } from '../projects/queries.js';
 import { QuizStart } from '../quizzes/quiz-start.js';
 import { renderTutorSvgCodeBlock, TutorLauncher, useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { sessionActivityLabel } from './activity-label.js';
-import {
-  selectSessionActivity,
-  sessionActivityCandidates,
-  usesLessonRunner,
-} from './activity-selection.js';
 import { InlineLessonCheck } from './inline-lesson-check.js';
 import { PaperActivity } from './paper-activity.js';
 import { sessionQueryOptions, todayQueryOptions } from './queries.js';
@@ -103,40 +98,21 @@ export function SessionPage() {
     }
   }, [sessionQuery.data?.serverNow]);
   const activities = sessionQuery.data.activities;
-  const lessonRunActivities = new Map<string, string>();
-  for (const item of sessionActivityCandidates(activities, requestedActivityId)) {
-    if (
-      item.kind === 'learn' &&
-      item.conceptId &&
-      item.lessonAvailable &&
-      !lessonRunActivities.has(item.conceptId)
-    )
-      lessonRunActivities.set(item.conceptId, item.id);
-  }
-  const lessonRunConceptIds = [...lessonRunActivities.keys()];
-  const lessonRunQueries = useQueries({
-    queries: lessonRunConceptIds.map((conceptId) => ({
-      ...lessonRunQueryOptions(conceptId, lessonRunActivities.get(conceptId)),
-      retry: false,
-    })),
-  });
-  const lessonRunsByConcept = new Map(
-    lessonRunConceptIds.map((conceptId, index) => [conceptId, lessonRunQueries[index]?.data?.run]),
-  );
-  const lessonRunsPending = lessonRunQueries.some((query) => query.isPending);
-  const selectedActivity = selectSessionActivity(
-    activities,
-    lessonRunsByConcept,
-    requestedActivityId,
-  );
-  const { completedFinal, requestedCompletedActivity } = selectedActivity;
+  const current = sessionQuery.data.current;
+  const activitiesById = new Map(activities.map((item) => [item.id, item] as const));
+  const requested = requestedActivityId ? activitiesById.get(requestedActivityId) : undefined;
+  const requestedCompletedActivity = requested?.status === 'completed' ? requested : undefined;
+  const completedFinal = current.completedFinalId
+    ? activitiesById.get(current.completedFinalId)
+    : undefined;
   const shownActivity = shown ? activities.find((item) => item.id === shown.activityId) : undefined;
-  const activity = shownActivity ?? selectedActivity.activity;
-  const showingLessonQuiz =
-    activity?.kind === 'learn' &&
-    Boolean(activity.conceptId) &&
-    !activity.progress?.quizContinued &&
-    lessonRunsByConcept.get(activity.conceptId ?? '')?.status === 'quiz';
+  const activity =
+    shownActivity ??
+    (!current.pinned && requested && current.openableIds.includes(requested.id)
+      ? requested
+      : undefined) ??
+    (current.activityId ? activitiesById.get(current.activityId) : undefined);
+  const lessonQuizActive = activity?.lessonQuiz ?? false;
   const navigateToLessonStep = useCallback(
     (nextStep?: string, replace = false) => {
       const stepValue = nextStep && /^\d+$/.test(nextStep) ? Number(nextStep) : nextStep;
@@ -166,13 +142,22 @@ export function SessionPage() {
     }
   }, [activities, activity, queryClient]);
   const showingRequestedCompletedActivity = Boolean(
-    activity && activity.id === requestedCompletedActivity?.id && !showingLessonQuiz,
+    activity && activity.id === requestedCompletedActivity?.id && !lessonQuizActive,
   );
   const showingCompletedFinal = activity?.id === completedFinal?.id;
   const labProjectId = activity?.kind === 'lab' ? activity.projectId : undefined;
   const labProjectQuery = useQuery({
     ...projectQueryOptions(labProjectId ?? ''),
     enabled: Boolean(labProjectId),
+  });
+  const lessonRunConceptId =
+    activity?.kind === 'learn' && activity.conceptId && activity.lessonAvailable
+      ? activity.conceptId
+      : null;
+  const lessonRunQuery = useQuery({
+    ...lessonRunQueryOptions(lessonRunConceptId, activity?.id),
+    enabled: Boolean(lessonRunConceptId),
+    retry: false,
   });
   const exerciseId =
     shownActivity && shown
@@ -195,10 +180,10 @@ export function SessionPage() {
     ),
   );
   const lesson = lessonQuery.data;
-  const lessonRunnerActive = usesLessonRunner(activity, lesson);
+  const lessonRunnerActive = activity?.lessonRunner ?? false;
   const recapStepIndex = step !== undefined && /^\d+$/.test(step) ? Number(step) - 1 : -1;
   const recapPointId = lesson?.knowledge_points?.[recapStepIndex]?.id;
-  const recapRun = activity?.conceptId ? lessonRunsByConcept.get(activity.conceptId) : undefined;
+  const recapRun = lessonRunQuery.data?.run;
   const recapPoint =
     !lessonRunnerActive &&
     activity?.kind === 'learn' &&
@@ -674,8 +659,6 @@ export function SessionPage() {
     }
   };
 
-  if (lessonRunsPending && !shownActivity) return <SessionSkeleton />;
-
   if (!activity) {
     return (
       <SessionCompletion
@@ -753,10 +736,7 @@ export function SessionPage() {
     (currentResult.followUp === true && currentResult.retryAllowed === true) ||
     (Number(currentResult.correct) === 0 && currentResult.retryAllowed === true);
   const isExplainQuestion = activity.kind === 'learn' && lesson?.final === exerciseId;
-  const explainRun =
-    isExplainQuestion && activity.conceptId
-      ? lessonRunsByConcept.get(activity.conceptId)
-      : undefined;
+  const explainRun = isExplainQuestion && activity.conceptId ? lessonRunQuery.data?.run : undefined;
   const triesLeft = Math.max(0, 2 - Number(currentResult?.attemptNo ?? 1));
   const helpActions =
     mode !== 'assessment' ? (

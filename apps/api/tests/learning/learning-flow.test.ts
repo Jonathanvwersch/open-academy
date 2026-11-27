@@ -907,6 +907,15 @@ test('practice answers expose selected options and reveal correct ids only after
       body: JSON.stringify({ exerciseId, activityId: activity.id, answer, mode: 'practice' }),
     });
 
+  const activeSession = await app.request(`/api/sessions/${session.id}`, {
+    headers: headersAt(now),
+  });
+  expect((await activeSession.json()).current).toEqual({
+    activityId: activity.id,
+    pinned: false,
+    openableIds: [activity.id],
+  });
+
   const first = await submit(wrongIds[0] ?? '');
   const firstResult = await first.json();
   expect(firstResult).toMatchObject({

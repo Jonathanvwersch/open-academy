@@ -7,10 +7,6 @@ import { exerciseQueryOptions } from '../features/exercises/queries.js';
 import { lessonQueryOptions, lessonRunQueryOptions } from '../features/lessons/queries.js';
 import { papersQueryOptions } from '../features/papers/queries.js';
 import { projectQueryOptions } from '../features/projects/queries.js';
-import {
-  sessionActivityCandidates,
-  usesLessonRunner,
-} from '../features/sessions/activity-selection.js';
 import { sessionQueryOptions, todayQueryOptions } from '../features/sessions/queries.js';
 
 export const Route = createFileRoute('/session/$id')({
@@ -23,8 +19,22 @@ export const Route = createFileRoute('/session/$id')({
   loader: async ({ context, params, deps }) => {
     const session = await context.queryClient.ensureQueryData(sessionQueryOptions(params.id));
     const queryClient = context.queryClient;
-    const candidates = sessionActivityCandidates(session.activities, deps.activity);
-    const loadLessons = candidates.map(async (activity) => {
+    const activitiesById = new Map(
+      session.activities.map((activity) => [activity.id, activity] as const),
+    );
+    const currentActivity = session.current.activityId
+      ? activitiesById.get(session.current.activityId)
+      : undefined;
+    const requested = deps.activity ? activitiesById.get(deps.activity) : undefined;
+    const requestedActivity =
+      !session.current.pinned && requested && session.current.openableIds.includes(requested.id)
+        ? requested
+        : undefined;
+    const activitiesToPrefetch = new Map<string, (typeof session.activities)[number]>();
+    if (currentActivity) activitiesToPrefetch.set(currentActivity.id, currentActivity);
+    if (requestedActivity) activitiesToPrefetch.set(requestedActivity.id, requestedActivity);
+    const activities = [...activitiesToPrefetch.values()];
+    const loadLessons = activities.map(async (activity) => {
       if (
         !['learn', 'practice', 'remediate', 'transfer'].includes(activity.kind) ||
         !activity.conceptId ||
@@ -43,7 +53,7 @@ export const Route = createFileRoute('/session/$id')({
           : Promise.resolve(null),
       ]);
       await Promise.all([
-        ...(usesLessonRunner(activity, lesson)
+        ...(activity.lessonRunner
           ? []
           : activity.exerciseIds.map((id) =>
               queryClient.ensureQueryData(exerciseQueryOptions(id)),
@@ -60,12 +70,12 @@ export const Route = createFileRoute('/session/$id')({
     });
     await Promise.all([
       ...loadLessons,
-      ...candidates
+      ...activities
         .filter((activity) => activity.kind === 'lab' && activity.projectId)
         .map((activity) =>
           queryClient.ensureQueryData(projectQueryOptions(activity.projectId ?? '')),
         ),
-      ...(candidates.some((activity) => activity.kind === 'paper')
+      ...(activities.some((activity) => activity.kind === 'paper')
         ? [
             queryClient.ensureQueryData(papersQueryOptions()),
             queryClient.ensureQueryData(todayQueryOptions()),

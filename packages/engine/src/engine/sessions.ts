@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { SessionActivity, SessionPayload } from '../api/sessions.js';
 import { replanSessionActivities as replanCourseSession } from '../course/progress-commands.js';
 import { sessionActivityIsInContent } from '../graph/content-filters.js';
 import { labActivityReady, masteryKey } from '../graph/prerequisites.js';
@@ -58,6 +59,101 @@ async function createSessionRequest(request: EngineRequest, input: unknown) {
     : respond({ error: outcome.error }, outcome.kind === 'not_found' ? 404 : 409);
 }
 
+type SessionContent = {
+  lessonsByConcept: ReadonlyMap<string, { knowledge_points?: readonly unknown[] }>;
+};
+
+type SessionRunStatuses = ReadonlyMap<string, { status: string } | undefined>;
+
+type ActivityForSelection = Pick<
+  SessionActivity,
+  'id' | 'kind' | 'status' | 'conceptId' | 'exerciseIds'
+> & { progress?: unknown };
+type ActivityWithLessonState = Pick<SessionActivity, 'lessonRunner' | 'lessonQuiz'>;
+
+const selectionProgress = (item: ActivityForSelection): SessionActivity['progress'] =>
+  item.progress && typeof item.progress === 'object'
+    ? (item.progress as SessionActivity['progress'])
+    : {};
+
+const uncontinuedLesson = (item: ActivityForSelection) => {
+  const progress = selectionProgress(item);
+  return (
+    item.kind === 'learn' &&
+    item.status === 'completed' &&
+    Boolean(item.conceptId) &&
+    !progress.quizContinued
+  );
+};
+
+const completedFinal = (item: ActivityForSelection) => {
+  const progress = selectionProgress(item);
+  return (
+    item.kind === 'learn' &&
+    (item.status === 'completed' || item.status === 'in_progress') &&
+    progress.lessonRunnerContinued &&
+    !progress.finalQuestionContinued &&
+    (progress.completedExerciseIds ?? []).some((id) => item.exerciseIds.includes(id))
+  );
+};
+
+function activeActivity(activities: ActivityForSelection[]) {
+  return (
+    activities.find((item) => item.status === 'in_progress') ??
+    activities.find((item) => item.status === 'planned')
+  );
+}
+
+export function currentActivity<T extends ActivityForSelection>(
+  activities: T[],
+  runStatuses: SessionRunStatuses,
+  content: SessionContent,
+): { activities: Array<T & ActivityWithLessonState>; current: SessionPayload['current'] } {
+  const withLessonState: Array<T & ActivityWithLessonState> = activities.map((activity) => {
+    if (activity.kind !== 'learn') return activity;
+    const lesson = activity.conceptId
+      ? content.lessonsByConcept.get(activity.conceptId)
+      : undefined;
+    const runStatus = activity.conceptId ? runStatuses.get(activity.conceptId)?.status : undefined;
+    const progress = selectionProgress(activity);
+    return {
+      ...activity,
+      lessonRunner: Boolean(
+        activity.conceptId &&
+          lesson?.knowledge_points?.length &&
+          (!progress.lessonRunnerContinued ||
+            (progress.finalQuestionContinued && !progress.quizContinued)),
+      ),
+      lessonQuiz: Boolean(activity.conceptId && !progress.quizContinued && runStatus === 'quiz'),
+    };
+  });
+  const lesson = withLessonState.find((item) => {
+    if (!uncontinuedLesson(item) || !item.conceptId) return false;
+    const runStatus = runStatuses.get(item.conceptId)?.status;
+    const progress = selectionProgress(item);
+    return (
+      runStatus === 'completed' ||
+      (runStatus === 'quiz' && (progress.finalQuestionContinued || item.exerciseIds.length === 0))
+    );
+  });
+  const final = withLessonState.find(completedFinal);
+  const active = activeActivity(withLessonState);
+  const selected = lesson ?? final ?? active;
+  return {
+    activities: withLessonState,
+    current: {
+      ...(selected ? { activityId: selected.id } : {}),
+      pinned: Boolean(lesson || final),
+      ...(final ? { completedFinalId: final.id } : {}),
+      openableIds: active
+        ? withLessonState
+            .filter((item) => ['completed', 'in_progress', 'planned'].includes(item.status))
+            .map((item) => item.id)
+        : [],
+    },
+  };
+}
+
 export async function sessionById(request: EngineRequest, sessionId: string) {
   const { store, userId, repo } = request;
   const index = request.content;
@@ -73,6 +169,9 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
     ]),
   );
   const runs = runRows.map(({ conceptId, status }) => ({ conceptId, status }));
+  const runStatuses = new Map(
+    runRows.map(({ conceptId, status }) => [conceptId, { status }] as const),
+  );
   const activities =
     session?.activities.filter(
       (activity) =>
@@ -107,11 +206,8 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
       })()
     : undefined;
   if (!session) return respond({ error: 'Session not found' }, 404);
-  return respond({
-    ...session,
-    quizFollowUp: (session.plan as { quizFollowUp?: string }).quizFollowUp,
-    xp,
-    activities: activities.map((activity) => ({
+  const sessionActivities = currentActivity(
+    activities.map((activity) => ({
       ...withReviewTopics(
         {
           ...activity,
@@ -165,6 +261,15 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
           };
         })[0],
     })),
+    runStatuses,
+    index,
+  );
+  return respond({
+    ...session,
+    quizFollowUp: (session.plan as { quizFollowUp?: string }).quizFollowUp,
+    xp,
+    activities: sessionActivities.activities,
+    current: sessionActivities.current,
     serverNow: request.now(),
     tutorEnabled: request.tutorEnabled,
   });

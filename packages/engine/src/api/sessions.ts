@@ -47,6 +47,8 @@ export interface SessionActivity {
   plannedMinutes: number;
   status: string;
   lessonAvailable?: boolean;
+  lessonRunner?: boolean;
+  lessonQuiz?: boolean;
   lastAttempt?: {
     exerciseId?: string;
     status?: string;
@@ -79,6 +81,12 @@ export interface ActiveSessionPayload {
 
 export interface SessionPayload {
   activities: SessionActivity[];
+  current: {
+    activityId?: string;
+    pinned: boolean;
+    completedFinalId?: string;
+    openableIds: string[];
+  };
   quizFollowUp?: string;
   plannedMinutes: number;
   startedAt?: string;

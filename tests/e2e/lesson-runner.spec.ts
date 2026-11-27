@@ -1672,6 +1672,12 @@ test('session inline checks remove Submit after the final retry', async ({ page 
     lesson.blocks = [{ kind: 'worked', md: 'Inline check fixture.', exercise: 'sl-explain-setup' }];
     await route.fulfill({ response, json: lesson });
   });
+  await page.route(`**/api/sessions/${session.id}`, async (route) => {
+    const response = await route.fetch();
+    const payload = await response.json();
+    payload.activities[0].lessonRunner = false;
+    await route.fulfill({ response, json: payload });
+  });
   await page.goto(`/session/${session.id}`);
 
   const answer = page.getByLabel('Your answer');
