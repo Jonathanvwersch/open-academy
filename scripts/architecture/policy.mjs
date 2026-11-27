@@ -54,10 +54,9 @@ export const browserForbiddenPackages = new Set(['@open-academy/engine']);
 
 export const sharedPackageDependencies = new Set(['zod', '@academy/shared']);
 
-// tsx launches the Academy CLI bin, so it stays out of the source dependency allowlist.
+// The root Academy script launches the CLI with tsx.
 export const engineDependencies = new Set([
   '@open-academy/engine',
-  '@academy/shared',
   'mathjs',
   'ts-fsrs',
   'yaml',

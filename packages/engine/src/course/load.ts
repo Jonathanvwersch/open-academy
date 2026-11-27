@@ -1,5 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { join, posix, relative } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
 import { buildContentIndex } from './index.js';
@@ -55,26 +55,36 @@ export class ContentValidationError extends Error {
 }
 
 export async function loadContentFromDirectory(directory: string): Promise<ContentIndex> {
-  return buildContentIndex(await loadContentData(directory));
+  const { files, readIssues } = await readContentFiles(directory);
+  return buildContentIndex(parseContentData(files, {}, readIssues));
 }
 
 export async function loadContentUncheckedFromDirectory(directory: string): Promise<ContentIndex> {
-  return buildContentIndex(await loadContentData(directory, { validate: false }));
+  const { files, readIssues } = await readContentFiles(directory);
+  return buildContentIndex(parseContentData(files, { validate: false }, readIssues));
 }
 
 export async function loadContentReportFromDirectory(
   directory: string,
 ): Promise<{ content: ContentIndex; warnings: ContentIssue[] }> {
-  const data = await loadContentData(directory);
+  const { files, readIssues } = await readContentFiles(directory);
+  const data = parseContentData(files, {}, readIssues);
   const content = buildContentIndex(data);
   return { content, warnings: contentWarnings(data, content) };
 }
 
-async function loadContentData(
-  directory: string,
+export function parseCourses(
+  files: Record<string, string>,
   { validate = true }: { validate?: boolean } = {},
-): Promise<ContentSourceData> {
-  const root = directory;
+): ContentIndex {
+  return buildContentIndex(parseContentData(files, { validate }));
+}
+
+function parseContentData(
+  files: Record<string, string>,
+  { validate = true }: { validate?: boolean } = {},
+  readIssues: ReadonlyMap<string, ContentIssue> = new Map(),
+): ContentSourceData {
   const data: ContentSourceData = {
     concepts: [],
     courses: [],
@@ -86,7 +96,7 @@ async function loadContentData(
   const issues: ContentIssue[] = [];
   const lessonInputs: Array<{ value: LessonInput; file: string }> = [];
 
-  const curriculumRaw = await readYaml(join(root, 'curriculum.yaml'), 'curriculum.yaml', issues);
+  const curriculumRaw = readYaml(files, 'curriculum.yaml', issues, readIssues);
   if (curriculumRaw !== undefined) {
     const parsed = CurriculumSchema.safeParse(curriculumRaw);
     if (parsed.success) {
@@ -96,11 +106,7 @@ async function loadContentData(
     }
   }
 
-  const sourceIndexRaw = await readYaml(
-    join(root, 'sources', 'index.yaml'),
-    'sources/index.yaml',
-    issues,
-  );
+  const sourceIndexRaw = readYaml(files, 'sources/index.yaml', issues, readIssues);
   if (sourceIndexRaw !== undefined) {
     const parsed = SourceIndexSchema.safeParse(sourceIndexRaw);
     if (parsed.success) {
@@ -110,9 +116,8 @@ async function loadContentData(
     }
   }
 
-  for (const file of await yamlFiles(join(root, 'courses'))) {
-    const displayFile = toContentRelative(root, file);
-    const raw = await readYaml(file, displayFile, issues);
+  for (const displayFile of yamlFiles(files, readIssues, 'courses')) {
+    const raw = readYaml(files, displayFile, issues, readIssues);
     const parsed = CourseSchema.safeParse(raw);
     if (parsed.success) {
       data.courses.push({ value: parsed.data, file: displayFile });
@@ -121,9 +126,8 @@ async function loadContentData(
     }
   }
 
-  for (const file of await yamlFiles(join(root, 'concepts'))) {
-    const displayFile = toContentRelative(root, file);
-    const raw = await readYaml(file, displayFile, issues);
+  for (const displayFile of yamlFiles(files, readIssues, 'concepts')) {
+    const raw = readYaml(files, displayFile, issues, readIssues);
     const header = ConceptHeaderSchema.safeParse(raw);
     if (!header.success) {
       addZodIssues(issues, displayFile, raw, header.error);
@@ -147,9 +151,8 @@ async function loadContentData(
     });
   }
 
-  for (const file of await yamlFiles(join(root, 'lessons'))) {
-    const displayFile = toContentRelative(root, file);
-    const raw = await readYaml(file, displayFile, issues);
+  for (const displayFile of yamlFiles(files, readIssues, 'lessons')) {
+    const raw = readYaml(files, displayFile, issues, readIssues);
     const parsed = LessonSchema.safeParse(raw);
     if (parsed.success) {
       lessonInputs.push({ value: parsed.data, file: displayFile });
@@ -158,9 +161,8 @@ async function loadContentData(
     }
   }
 
-  for (const file of await yamlFiles(join(root, 'exercises'))) {
-    const displayFile = toContentRelative(root, file);
-    const raw = await readYaml(file, displayFile, issues);
+  for (const displayFile of yamlFiles(files, readIssues, 'exercises')) {
+    const raw = readYaml(files, displayFile, issues, readIssues);
     const header = ExerciseHeaderSchema.safeParse(raw);
     if (!header.success) {
       addZodIssues(issues, displayFile, raw, header.error);
@@ -209,7 +211,7 @@ async function loadContentData(
     });
   }
 
-  const notationRaw = await readYaml(join(root, 'notation.yaml'), 'notation.yaml', issues);
+  const notationRaw = readYaml(files, 'notation.yaml', issues, readIssues);
   if (notationRaw !== undefined) {
     const parsed = NotationSchema.safeParse(notationRaw);
     if (parsed.success) {
@@ -225,9 +227,8 @@ async function loadContentData(
     });
   }
 
-  for (const file of await yamlFiles(join(root, 'projects'))) {
-    const displayFile = toContentRelative(root, file);
-    const raw = await readYaml(file, displayFile, issues);
+  for (const displayFile of yamlFiles(files, readIssues, 'projects')) {
+    const raw = readYaml(files, displayFile, issues, readIssues);
     const parsed = ProjectSchema.safeParse(raw);
     if (parsed.success) {
       data.projects.push({ value: parsed.data, file: displayFile });
@@ -236,9 +237,8 @@ async function loadContentData(
     }
   }
 
-  for (const file of await yamlFiles(join(root, 'papers'))) {
-    const displayFile = toContentRelative(root, file);
-    const raw = await readYaml(file, displayFile, issues);
+  for (const displayFile of yamlFiles(files, readIssues, 'papers')) {
+    const raw = readYaml(files, displayFile, issues, readIssues);
     const parsed = PaperSchema.safeParse(raw);
     if (parsed.success) {
       data.papers.push({ value: parsed.data, file: displayFile });
@@ -256,7 +256,49 @@ async function loadContentData(
   return data;
 }
 
-async function yamlFiles(directory: string): Promise<string[]> {
+async function readContentFiles(root: string): Promise<{
+  files: Record<string, string>;
+  readIssues: Map<string, ContentIssue>;
+}> {
+  const files: Record<string, string> = {};
+  const readIssues = new Map<string, ContentIssue>();
+  const paths = [
+    'curriculum.yaml',
+    'sources/index.yaml',
+    ...(await directoryYamlFiles(join(root, 'courses'))).map((file) =>
+      toContentRelative(root, file),
+    ),
+    ...(await directoryYamlFiles(join(root, 'concepts'))).map((file) =>
+      toContentRelative(root, file),
+    ),
+    ...(await directoryYamlFiles(join(root, 'lessons'))).map((file) =>
+      toContentRelative(root, file),
+    ),
+    ...(await directoryYamlFiles(join(root, 'exercises'))).map((file) =>
+      toContentRelative(root, file),
+    ),
+    'notation.yaml',
+    ...(await directoryYamlFiles(join(root, 'projects'))).map((file) =>
+      toContentRelative(root, file),
+    ),
+    ...(await directoryYamlFiles(join(root, 'papers'))).map((file) =>
+      toContentRelative(root, file),
+    ),
+  ];
+
+  for (const file of paths) {
+    try {
+      files[file] = await readFile(join(root, ...file.split('/')), 'utf8');
+    } catch (error) {
+      if (!isMissingFile(error)) {
+        readIssues.set(file, { file, id: '<file>', message: messageOf(error) });
+      }
+    }
+  }
+  return { files, readIssues };
+}
+
+async function directoryYamlFiles(directory: string): Promise<string[]> {
   try {
     const entries = await readdir(directory, { withFileTypes: true });
     return entries
@@ -271,23 +313,30 @@ async function yamlFiles(directory: string): Promise<string[]> {
   }
 }
 
-async function readYaml(
-  fullPath: string,
+function yamlFiles(
+  files: Record<string, string>,
+  readIssues: ReadonlyMap<string, ContentIssue>,
+  directory: string,
+): string[] {
+  return [...new Set([...Object.keys(files), ...readIssues.keys()])]
+    .filter((file) => posix.dirname(file) === directory && file.endsWith('.yaml'))
+    .sort();
+}
+
+function readYaml(
+  files: Record<string, string>,
   displayFile: string,
   issues: ContentIssue[],
-): Promise<unknown | undefined> {
-  let source: string;
-  try {
-    source = await readFile(fullPath, 'utf8');
-  } catch (error) {
-    if (isMissingFile(error)) {
-      return undefined;
-    }
-    issues.push({ file: displayFile, id: '<file>', message: messageOf(error) });
+  readIssues: ReadonlyMap<string, ContentIssue>,
+): unknown | undefined {
+  const readIssue = readIssues.get(displayFile);
+  if (readIssue) {
+    issues.push(readIssue);
     return undefined;
   }
+  if (!Object.hasOwn(files, displayFile)) return undefined;
   try {
-    return parseYaml(source);
+    return parseYaml(files[displayFile]);
   } catch (error) {
     issues.push({ file: displayFile, id: '<file>', message: messageOf(error) });
     return undefined;

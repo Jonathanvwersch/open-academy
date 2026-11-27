@@ -1,4 +1,4 @@
-import { emptyAnswerMessage } from '@academy/shared/answer-validation';
+import { emptyAnswerMessage } from '@open-academy/engine/api/answer-validation';
 import { Rating } from 'ts-fsrs';
 import { serializeExercise } from '../course/serialize.js';
 import { studyCourseIds } from '../course/study-set.js';

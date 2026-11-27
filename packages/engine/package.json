@@ -1,11 +1,17 @@
 {
   "name": "@open-academy/engine",
-  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
-  "bin": {
-    "academy": "./src/cli/index.ts"
-  },
+  "files": [
+    "dist",
+    "README.md",
+    "HOW-IT-WORKS.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm build",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "exports": {
@@ -23,10 +29,65 @@
     "./quizzes/*": "./src/quizzes/*.ts",
     "./simulator/*": "./src/simulator/*.ts"
   },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      "./api/*": {
+        "types": "./dist/api/*.d.ts",
+        "import": "./dist/api/*.js"
+      },
+      "./course/*": {
+        "types": "./dist/course/*.d.ts",
+        "import": "./dist/course/*.js"
+      },
+      "./engine/*": {
+        "types": "./dist/engine/*.d.ts",
+        "import": "./dist/engine/*.js"
+      },
+      "./graph/*": {
+        "types": "./dist/graph/*.d.ts",
+        "import": "./dist/graph/*.js"
+      },
+      "./memory/*": {
+        "types": "./dist/memory/*.d.ts",
+        "import": "./dist/memory/*.js"
+      },
+      "./planner/*": {
+        "types": "./dist/planner/*.d.ts",
+        "import": "./dist/planner/*.js"
+      },
+      "./lessons/*": {
+        "types": "./dist/lessons/*.d.ts",
+        "import": "./dist/lessons/*.js"
+      },
+      "./lessons/grading/*": {
+        "types": "./dist/lessons/grading/*.d.ts",
+        "import": "./dist/lessons/grading/*.js"
+      },
+      "./placement/*": {
+        "types": "./dist/placement/*.d.ts",
+        "import": "./dist/placement/*.js"
+      },
+      "./progress/*": {
+        "types": "./dist/progress/*.d.ts",
+        "import": "./dist/progress/*.js"
+      },
+      "./store/*": {
+        "types": "./dist/store/*.d.ts",
+        "import": "./dist/store/*.js"
+      },
+      "./quizzes/*": {
+        "types": "./dist/quizzes/*.d.ts",
+        "import": "./dist/quizzes/*.js"
+      },
+      "./simulator/*": {
+        "types": "./dist/simulator/*.d.ts",
+        "import": "./dist/simulator/*.js"
+      }
+    }
+  },
   "dependencies": {
-    "@academy/shared": "workspace:*",
     "mathjs": "15.2.0",
-    "tsx": "4.23.15",
     "ts-fsrs": "6.0.0",
     "yaml": "2.9.1",
     "zod": "4.6.7"
