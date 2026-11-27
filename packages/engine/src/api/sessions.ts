@@ -42,7 +42,7 @@ export interface SessionActivity {
   conceptTitle?: string | null;
   reviewTopics?: Array<{ conceptId: string; title: string }>;
   allReviewTopics?: Array<{ conceptId: string; title: string }>;
-  projectId?: string;
+  projectId?: string | null;
   exerciseIds: string[];
   plannedMinutes: number;
   status: string;
@@ -63,7 +63,7 @@ export interface SessionActivity {
     yourAnswer?: string;
     answerOptions?: AnswerOptions;
   } | null;
-  startedAt?: string;
+  startedAt?: string | null;
   progress: {
     lessonViewed?: boolean;
     lessonRunnerContinued?: boolean;
@@ -83,7 +83,6 @@ export interface SessionPayload {
   activities: SessionActivity[];
   current: {
     activityId?: string;
-    pinned: boolean;
     completedFinalId?: string;
     openableIds: string[];
   };

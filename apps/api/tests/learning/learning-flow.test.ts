@@ -912,7 +912,6 @@ test('practice answers expose selected options and reveal correct ids only after
   });
   expect((await activeSession.json()).current).toEqual({
     activityId: activity.id,
-    pinned: false,
     openableIds: [activity.id],
   });
 

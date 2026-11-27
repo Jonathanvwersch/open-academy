@@ -25,7 +25,7 @@ import { renderTutorSvgCodeBlock, TutorLauncher, useTutorSidebar } from '../tuto
 import { sessionActivityLabel } from './activity-label.js';
 import { InlineLessonCheck } from './inline-lesson-check.js';
 import { PaperActivity } from './paper-activity.js';
-import { sessionQueryOptions, todayQueryOptions } from './queries.js';
+import { chosenActivity, sessionQueryOptions, todayQueryOptions } from './queries.js';
 import { QuestionProgress, type QuestionState } from './question-progress.js';
 import { SessionActivityHeader } from './session-activity-header.js';
 import { SessionCompletion } from './session-completion.js';
@@ -97,8 +97,9 @@ export function SessionPage() {
       });
     }
   }, [sessionQuery.data?.serverNow]);
-  const activities = sessionQuery.data.activities;
-  const current = sessionQuery.data.current;
+  const session = sessionQuery.data;
+  const activities = session.activities;
+  const current = session.current;
   const activitiesById = new Map(activities.map((item) => [item.id, item] as const));
   const requested = requestedActivityId ? activitiesById.get(requestedActivityId) : undefined;
   const requestedCompletedActivity = requested?.status === 'completed' ? requested : undefined;
@@ -106,12 +107,7 @@ export function SessionPage() {
     ? activitiesById.get(current.completedFinalId)
     : undefined;
   const shownActivity = shown ? activities.find((item) => item.id === shown.activityId) : undefined;
-  const activity =
-    shownActivity ??
-    (!current.pinned && requested && current.openableIds.includes(requested.id)
-      ? requested
-      : undefined) ??
-    (current.activityId ? activitiesById.get(current.activityId) : undefined);
+  const activity = shownActivity ?? chosenActivity(session, requestedActivityId);
   const lessonQuizActive = activity?.lessonQuiz ?? false;
   const navigateToLessonStep = useCallback(
     (nextStep?: string, replace = false) => {

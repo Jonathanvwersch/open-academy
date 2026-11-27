@@ -15,10 +15,19 @@ const activity = (id: string, overrides: Partial<SessionActivity> = {}): Session
   ...overrides,
 });
 
+const lesson = {
+  concept: 'lesson',
+  version: 1,
+  blocks: [],
+  fast_path: [],
+  contentVersion: '1',
+  knowledge_points: [{ id: 'point', title: 'Point', explain: '', worked: '', problems: [] }],
+};
+
 const content = {
   lessonsByConcept: new Map([
-    ['lesson', { knowledge_points: [{}] }],
-    ['quiz', { knowledge_points: [{}] }],
+    ['lesson', lesson],
+    ['quiz', { ...lesson, concept: 'quiz' }],
   ]),
 };
 
@@ -32,7 +41,6 @@ test('uses the active activity unless a completed lesson or final is pinned', ()
 
   expect(result.current).toEqual({
     activityId: 'current',
-    pinned: false,
     openableIds: ['current', 'later', 'project'],
   });
   expect(result.activities[2]).not.toHaveProperty('lessonRunner');
@@ -42,7 +50,7 @@ test('has no openable activities when there is no active activity', () => {
   expect(
     currentActivity([activity('done', { kind: 'practice', status: 'completed' })], noRuns, content)
       .current,
-  ).toEqual({ pinned: false, openableIds: [] });
+  ).toEqual({ openableIds: [] });
 });
 
 test('a completed final question keeps priority over the next planned lesson', () => {
@@ -54,9 +62,8 @@ test('a completed final question keeps priority over the next planned lesson', (
 
   expect(currentActivity([final, next], noRuns, content).current).toEqual({
     activityId: 'final',
-    pinned: true,
     completedFinalId: 'final',
-    openableIds: ['final', 'next'],
+    openableIds: [],
   });
 });
 
@@ -67,7 +74,6 @@ test('completed deep links stay openable without changing the current activity',
 
   expect(currentActivity([prior, current, later], noRuns, content).current).toEqual({
     activityId: 'current',
-    pinned: false,
     openableIds: ['prior', 'current', 'later'],
   });
 });
@@ -78,7 +84,6 @@ test('planned lesson deep links stay openable while another activity is active',
 
   expect(currentActivity([lesson, project], noRuns, content).current).toEqual({
     activityId: 'project',
-    pinned: false,
     openableIds: ['lesson', 'project'],
   });
 });
@@ -90,12 +95,14 @@ test('an uncontinued completed quiz keeps priority until its Continue action is 
   });
   const current = activity('current');
   const statuses = new Map([['quiz', { status: 'completed' }]]);
-  expect(currentActivity([quiz, current], statuses, content).current.activityId).toBe('quiz');
+  expect(currentActivity([quiz, current], statuses, content).current).toEqual({
+    activityId: 'quiz',
+    openableIds: [],
+  });
 
   const continued = { ...quiz, progress: { ...quiz.progress, quizContinued: true } };
   expect(currentActivity([continued, current], statuses, content).current).toEqual({
     activityId: 'current',
-    pinned: false,
     openableIds: ['quiz', 'current'],
   });
 });

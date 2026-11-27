@@ -7,7 +7,11 @@ import { exerciseQueryOptions } from '../features/exercises/queries.js';
 import { lessonQueryOptions, lessonRunQueryOptions } from '../features/lessons/queries.js';
 import { papersQueryOptions } from '../features/papers/queries.js';
 import { projectQueryOptions } from '../features/projects/queries.js';
-import { sessionQueryOptions, todayQueryOptions } from '../features/sessions/queries.js';
+import {
+  chosenActivity,
+  sessionQueryOptions,
+  todayQueryOptions,
+} from '../features/sessions/queries.js';
 
 export const Route = createFileRoute('/session/$id')({
   pendingComponent: SessionSkeleton,
@@ -19,20 +23,12 @@ export const Route = createFileRoute('/session/$id')({
   loader: async ({ context, params, deps }) => {
     const session = await context.queryClient.ensureQueryData(sessionQueryOptions(params.id));
     const queryClient = context.queryClient;
-    const activitiesById = new Map(
-      session.activities.map((activity) => [activity.id, activity] as const),
-    );
-    const currentActivity = session.current.activityId
-      ? activitiesById.get(session.current.activityId)
-      : undefined;
-    const requested = deps.activity ? activitiesById.get(deps.activity) : undefined;
-    const requestedActivity =
-      !session.current.pinned && requested && session.current.openableIds.includes(requested.id)
-        ? requested
-        : undefined;
+    const currentActivity = chosenActivity(session);
+    const requestedActivity = chosenActivity(session, deps.activity);
     const activitiesToPrefetch = new Map<string, (typeof session.activities)[number]>();
-    if (currentActivity) activitiesToPrefetch.set(currentActivity.id, currentActivity);
-    if (requestedActivity) activitiesToPrefetch.set(requestedActivity.id, requestedActivity);
+    for (const activity of [currentActivity, requestedActivity]) {
+      if (activity) activitiesToPrefetch.set(activity.id, activity);
+    }
     const activities = [...activitiesToPrefetch.values()];
     const loadLessons = activities.map(async (activity) => {
       if (
