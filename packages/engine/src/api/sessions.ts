@@ -42,11 +42,13 @@ export interface SessionActivity {
   conceptTitle?: string | null;
   reviewTopics?: Array<{ conceptId: string; title: string }>;
   allReviewTopics?: Array<{ conceptId: string; title: string }>;
-  projectId?: string;
+  projectId?: string | null;
   exerciseIds: string[];
   plannedMinutes: number;
   status: string;
   lessonAvailable?: boolean;
+  lessonRunner?: boolean;
+  lessonQuiz?: boolean;
   lastAttempt?: {
     exerciseId?: string;
     status?: string;
@@ -61,7 +63,7 @@ export interface SessionActivity {
     yourAnswer?: string;
     answerOptions?: AnswerOptions;
   } | null;
-  startedAt?: string;
+  startedAt?: string | null;
   progress: {
     lessonViewed?: boolean;
     lessonRunnerContinued?: boolean;
@@ -79,6 +81,11 @@ export interface ActiveSessionPayload {
 
 export interface SessionPayload {
   activities: SessionActivity[];
+  current: {
+    activityId?: string;
+    completedFinalId?: string;
+    openableIds: string[];
+  };
   quizFollowUp?: string;
   plannedMinutes: number;
   startedAt?: string;

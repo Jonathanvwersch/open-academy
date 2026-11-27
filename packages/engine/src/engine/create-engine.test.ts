@@ -95,3 +95,127 @@ test('hints and quiz reviews accept memory-issued activity and attempt IDs', asy
     },
   });
 });
+
+test('a completed lesson is unpinned when its content gains a knowledge point', async () => {
+  const originalIndex = await content;
+  const fixture = [...originalIndex.lessonsByConcept.entries()].flatMap(([conceptId, lesson]) => {
+    const progression = (lesson.knowledge_points ?? []).map((point) => ({
+      point,
+      exercises: point.problems
+        .flatMap((id) => {
+          const exercise = originalIndex.exercisesById.get(id);
+          return exercise && exercise.role !== 'recall' ? [exercise] : [];
+        })
+        .slice(0, 2),
+    }));
+    return progression.length === 3 && progression.every(({ exercises }) => exercises.length === 2)
+      ? [{ conceptId, lesson, progression }]
+      : [];
+  })[0];
+  if (!fixture) throw new Error('Missing three-point lesson fixture');
+  const { conceptId, lesson, progression } = fixture;
+  const points = progression.map(({ point }) => point);
+  const firstPoint = points[0];
+  const firstProblem = progression[0]?.exercises[0];
+  if (!firstPoint || !firstProblem) throw new Error('Missing lesson progression problems');
+  const contentIndex = {
+    ...originalIndex,
+    lessonsByConcept: new Map(originalIndex.lessonsByConcept),
+  };
+  const learnerId = 'learner';
+  const now = new Date('2026-01-17T12:00:00Z');
+  const store = memoryStore();
+  const session = await store.insertSession(learnerId, {
+    ...sessionRow(now),
+    status: 'completed',
+    endedAt: now,
+  });
+  const [completedActivity, nextActivity] = await store.insertActivities(learnerId, session.id, [
+    activityRow(0, {
+      conceptId,
+      exerciseIds: [lesson.final ?? firstProblem.id],
+      status: 'completed',
+      progress: { lessonRunnerContinued: true, finalQuestionContinued: true },
+    }),
+    activityRow(1, {
+      conceptId,
+      kind: 'practice',
+      exerciseIds: [firstProblem.id],
+      status: 'in_progress',
+    }),
+  ]);
+  if (!completedActivity || !nextActivity) throw new Error('Session activities did not insert');
+  const run = await store.insertLessonRunIfAbsent(learnerId, {
+    conceptId,
+    status: 'completed',
+    startedAt: now,
+    updatedAt: now,
+    completedAt: now,
+    quizPassedAt: now,
+    attempt: 1,
+    haltedAt: null,
+    retryAfter: null,
+    haltedPointIndex: null,
+    haltCount: 0,
+  });
+  if (!run) throw new Error('Lesson run did not insert');
+  await Promise.all(
+    progression.flatMap(({ point, exercises }) =>
+      exercises.map((exercise, position) =>
+        store.insertLessonProblem(learnerId, run.id, {
+          knowledgePointId: point.id,
+          round: 1,
+          position,
+          exerciseId: exercise.id,
+          seed: null,
+          practiceOnly: false,
+          assisted: false,
+          servedAt: now,
+          answeredAt: now,
+          correct: 1,
+          attemptId: null,
+        }),
+      ),
+    ),
+  );
+
+  const learner = createEngine({
+    content: async () => contentIndex,
+    store,
+    fsrsFuzz: false,
+  }).learner({
+    id: learnerId,
+    timeZone: 'UTC',
+    now: () => now,
+    random: () => 0.5,
+  });
+  const readSession = async () => {
+    const result = await learner.session({ sessionId: session.id });
+    expect(result.status).toBe(200);
+    return result.body as {
+      current: { activityId?: string; openableIds: string[] };
+      activities: Array<{ id: string; lessonRunner?: boolean; lessonQuiz?: boolean }>;
+    };
+  };
+  expect((await readSession()).current).toEqual({
+    activityId: completedActivity.id,
+    openableIds: [],
+  });
+
+  contentIndex.lessonsByConcept.set(conceptId, {
+    ...lesson,
+    knowledge_points: [...points, { ...firstPoint, id: `${firstPoint.id}-added` }],
+  });
+  const changed = await readSession();
+  expect(changed.current).toEqual({
+    activityId: nextActivity.id,
+    openableIds: [completedActivity.id, nextActivity.id],
+  });
+  expect(changed.activities.find(({ id }) => id === completedActivity.id)).toMatchObject({
+    lessonRunner: true,
+    lessonQuiz: false,
+  });
+  expect(await store.getLessonRun(learnerId, { runId: run.id })).toMatchObject({
+    status: 'completed',
+  });
+});

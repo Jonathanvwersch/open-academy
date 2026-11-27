@@ -5,6 +5,17 @@ import type {
 } from '@open-academy/engine/api/sessions';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
+
+export function chosenActivity(
+  session: Pick<SessionPayload, 'activities' | 'current'>,
+  requestedId?: string,
+) {
+  const requested = session.activities.find((activity) => activity.id === requestedId);
+  return requested && session.current.openableIds.includes(requested.id)
+    ? requested
+    : session.activities.find((activity) => activity.id === session.current.activityId);
+}
+
 export const activeSessionQueryOptions = () =>
   queryOptions({
     queryKey: ['session', 'active'] as const,

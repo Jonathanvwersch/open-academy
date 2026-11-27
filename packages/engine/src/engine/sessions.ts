@@ -1,10 +1,12 @@
 import { z } from 'zod';
+import type { SessionActivity, SessionPayload } from '../api/sessions.js';
 import { replanSessionActivities as replanCourseSession } from '../course/progress-commands.js';
 import { sessionActivityIsInContent } from '../graph/content-filters.js';
 import { labActivityReady, masteryKey } from '../graph/prerequisites.js';
 import { answerDisplay } from '../lessons/answer-display.js';
 import { answerOptionsFor } from '../lessons/answer-options.js';
 import { initialLearnProgress } from '../lessons/initial-learn-progress.js';
+import { readLessonReviewStatus } from '../lessons/run-state.js';
 import { attemptAllowsRetry } from '../memory/retry.js';
 import { withReviewTopics } from '../planner/home-plan.js';
 import { attemptedExerciseIdsByActivity } from '../planner/review-topics.js';
@@ -58,6 +60,77 @@ async function createSessionRequest(request: EngineRequest, input: unknown) {
     : respond({ error: outcome.error }, outcome.kind === 'not_found' ? 404 : 409);
 }
 
+const uncontinuedLesson = (item: SessionActivity) =>
+  item.kind === 'learn' &&
+  item.status === 'completed' &&
+  Boolean(item.conceptId) &&
+  !item.progress?.quizContinued;
+
+const completedFinal = (item: SessionActivity) =>
+  item.kind === 'learn' &&
+  (item.status === 'completed' || item.status === 'in_progress') &&
+  item.progress?.lessonRunnerContinued &&
+  !item.progress.finalQuestionContinued &&
+  (item.progress.completedExerciseIds ?? []).some((id) => item.exerciseIds.includes(id));
+
+function activeActivity(activities: SessionActivity[]) {
+  return (
+    activities.find((item) => item.status === 'in_progress') ??
+    activities.find((item) => item.status === 'planned')
+  );
+}
+
+export function currentActivity(
+  activities: SessionActivity[],
+  runStatuses: ReadonlyMap<string, { status: string } | undefined>,
+  content: Pick<EngineRequest['content'], 'lessonsByConcept'>,
+): { activities: SessionActivity[]; current: SessionPayload['current'] } {
+  const withLessonState: SessionActivity[] = activities.map((activity) => {
+    if (activity.kind !== 'learn') return activity;
+    const lesson = activity.conceptId
+      ? content.lessonsByConcept.get(activity.conceptId)
+      : undefined;
+    const runStatus = activity.conceptId ? runStatuses.get(activity.conceptId)?.status : undefined;
+    return {
+      ...activity,
+      lessonRunner: Boolean(
+        activity.conceptId &&
+          lesson?.knowledge_points?.length &&
+          (!activity.progress?.lessonRunnerContinued ||
+            (activity.progress.finalQuestionContinued && !activity.progress.quizContinued)),
+      ),
+      lessonQuiz: Boolean(
+        activity.conceptId && !activity.progress?.quizContinued && runStatus === 'quiz',
+      ),
+    };
+  });
+  const lesson = withLessonState.find((item) => {
+    if (!uncontinuedLesson(item) || !item.conceptId) return false;
+    const runStatus = runStatuses.get(item.conceptId)?.status;
+    return (
+      runStatus === 'completed' ||
+      (runStatus === 'quiz' &&
+        (item.progress?.finalQuestionContinued || item.exerciseIds.length === 0))
+    );
+  });
+  const final = withLessonState.find(completedFinal);
+  const active = activeActivity(withLessonState);
+  const selected = lesson ?? final ?? active;
+  return {
+    activities: withLessonState,
+    current: {
+      ...(selected ? { activityId: selected.id } : {}),
+      ...(final ? { completedFinalId: final.id } : {}),
+      openableIds:
+        active && !lesson && !final
+          ? withLessonState
+              .filter((item) => ['completed', 'in_progress', 'planned'].includes(item.status))
+              .map((item) => item.id)
+          : [],
+    },
+  };
+}
+
 export async function sessionById(request: EngineRequest, sessionId: string) {
   const { store, userId, repo } = request;
   const index = request.content;
@@ -73,6 +146,7 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
     ]),
   );
   const runs = runRows.map(({ conceptId, status }) => ({ conceptId, status }));
+  const runsByConcept = new Map(runRows.map((run) => [run.conceptId, run] as const));
   const activities =
     session?.activities.filter(
       (activity) =>
@@ -80,6 +154,20 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
         ((activity.status !== 'planned' && activity.status !== 'in_progress') ||
           labActivityReady(activity, masteryByKey, runs, index)),
     ) ?? [];
+  const runStatuses = new Map<string, { status: string }>();
+  await Promise.all(
+    activities.map(async (activity) => {
+      if (activity.kind !== 'learn' || !activity.conceptId) return;
+      const run = runsByConcept.get(activity.conceptId);
+      const lesson = index.lessonsByConcept.get(activity.conceptId);
+      if (!run || !lesson?.knowledge_points?.length) return;
+      const status =
+        run.status === 'needs_retry'
+          ? run.status
+          : await readLessonReviewStatus(store, userId, run, lesson, index);
+      if (status) runStatuses.set(activity.conceptId, { status });
+    }),
+  );
   const activityIds = activities.map((activity) => activity.id);
   const activityAttempts = activityIds.length
     ? (await store.listAttempts(userId, { activityIds })).sort(
@@ -107,64 +195,76 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
       })()
     : undefined;
   if (!session) return respond({ error: 'Session not found' }, 404);
+  const serializedActivities: SessionActivity[] = activities.map((activity) => ({
+    ...withReviewTopics(
+      {
+        ...activity,
+        conceptTitle: activity.conceptId
+          ? index.conceptsById.get(activity.conceptId)?.title
+          : undefined,
+      },
+      index,
+      attemptedByActivity.get(activity.id),
+    ),
+    progress: activity.progress as SessionActivity['progress'],
+    lessonAvailable: activity.conceptId ? index.lessonsByConcept.has(activity.conceptId) : false,
+    startedAt: activity.startedAt === null ? null : activity.startedAt?.toISOString(),
+    lastAttempt: activityAttempts
+      .filter(
+        (attempt) =>
+          attempt.activityId === activity.id && activity.exerciseIds.includes(attempt.exerciseId),
+      )
+      .map((attempt) => {
+        const feedback = attempt.feedback as Record<string, unknown>;
+        const answer = attempt.answer;
+        const followUp = feedback.followUp === true;
+        const retryAllowed = attemptAllowsRetry(attempt);
+        const answerWithheld = retryAllowed;
+        const exercise = index.exercisesById.get(attempt.exerciseId);
+        const answerOptions = exercise
+          ? answerOptionsFor(exercise, answer, !answerWithheld)
+          : undefined;
+        return {
+          exerciseId: attempt.exerciseId,
+          status: (feedback.status ?? 'graded') as string,
+          correct: attempt.correct,
+          attemptNo: attempt.attemptNo,
+          retryAllowed,
+          ...(followUp ? { followUp: true } : {}),
+          ...(answerOptions ? { answerOptions } : {}),
+          feedback: (feedback.message ?? '') as string,
+          rubric: feedback.rubric as NonNullable<SessionActivity['lastAttempt']>['rubric'],
+          ...(!answerWithheld
+            ? {
+                exemplar: feedback.exemplar as NonNullable<
+                  SessionActivity['lastAttempt']
+                >['exemplar'],
+                solution: feedback.solution as NonNullable<
+                  SessionActivity['lastAttempt']
+                >['solution'],
+              }
+            : {}),
+          yourAnswer:
+            (typeof feedback.yourAnswer === 'string' && feedback.yourAnswer) ||
+            (typeof answer === 'object' &&
+            answer !== null &&
+            !Array.isArray(answer) &&
+            'text' in answer &&
+            typeof answer.text === 'string'
+              ? answer.text
+              : exercise
+                ? answerDisplay(exercise, answer)
+                : undefined),
+        };
+      })[0],
+  }));
+  const sessionActivities = currentActivity(serializedActivities, runStatuses, request.content);
   return respond({
     ...session,
     quizFollowUp: (session.plan as { quizFollowUp?: string }).quizFollowUp,
     xp,
-    activities: activities.map((activity) => ({
-      ...withReviewTopics(
-        {
-          ...activity,
-          conceptTitle: activity.conceptId
-            ? index.conceptsById.get(activity.conceptId)?.title
-            : undefined,
-        },
-        index,
-        attemptedByActivity.get(activity.id),
-      ),
-      lessonAvailable: activity.conceptId ? index.lessonsByConcept.has(activity.conceptId) : false,
-      lastAttempt: activityAttempts
-        .filter(
-          (attempt) =>
-            attempt.activityId === activity.id && activity.exerciseIds.includes(attempt.exerciseId),
-        )
-        .map((attempt) => {
-          const feedback = attempt.feedback as Record<string, unknown>;
-          const answer = attempt.answer;
-          const followUp = feedback.followUp === true;
-          const retryAllowed = attemptAllowsRetry(attempt);
-          const answerWithheld = retryAllowed;
-          const exercise = index.exercisesById.get(attempt.exerciseId);
-          const answerOptions = exercise
-            ? answerOptionsFor(exercise, answer, !answerWithheld)
-            : undefined;
-          return {
-            exerciseId: attempt.exerciseId,
-            status: feedback.status ?? 'graded',
-            correct: attempt.correct,
-            attemptNo: attempt.attemptNo,
-            retryAllowed,
-            ...(followUp ? { followUp: true } : {}),
-            ...(answerOptions ? { answerOptions } : {}),
-            feedback: feedback.message ?? '',
-            rubric: feedback.rubric,
-            ...(!answerWithheld
-              ? { exemplar: feedback.exemplar, solution: feedback.solution }
-              : {}),
-            yourAnswer:
-              (typeof feedback.yourAnswer === 'string' && feedback.yourAnswer) ||
-              (typeof answer === 'object' &&
-              answer !== null &&
-              !Array.isArray(answer) &&
-              'text' in answer &&
-              typeof answer.text === 'string'
-                ? answer.text
-                : exercise
-                  ? answerDisplay(exercise, answer)
-                  : undefined),
-          };
-        })[0],
-    })),
+    activities: sessionActivities.activities,
+    current: sessionActivities.current,
     serverNow: request.now(),
     tutorEnabled: request.tutorEnabled,
   });
