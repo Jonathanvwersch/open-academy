@@ -1,12 +1,16 @@
 import { emptyAnswerMessage } from '@open-academy/engine/api/answer-validation';
 import { z } from 'zod';
 import { isTemplate } from '../course/templates.js';
+import type { IndexedExercise } from '../course/types.js';
 import { answerOptionsFor } from '../lessons/answer-options.js';
-import { rubricFeedbackWithScoredFlags } from '../lessons/grading/rubric-score.js';
+import {
+  rubricFeedbackWithScoredFlags,
+  scoreRubricCriteria,
+} from '../lessons/grading/rubric-score.js';
 import type { GradeResult } from '../lessons/grading/types.js';
 import { prepareExerciseAttempt, recordExerciseAttempt } from '../memory/exercise-attempts.js';
 import { answerPlacement, preparePlacementAnswer } from '../placement/diagnostic-commands.js';
-import { type EngineRequest, type EngineResult, respond } from './types.js';
+import { type EngineGradeResult, type EngineRequest, type EngineResult, respond } from './types.js';
 
 export async function exerciseAttempt(
   request: EngineRequest,
@@ -40,7 +44,7 @@ export async function exerciseAttempt(
       prepared.kind === 'not_found' ? 404 : prepared.kind === 'conflict' ? 409 : 400,
     );
   }
-  const result = await request.grade(exercise, body.data.answer, { random: request.random });
+  const result = await gradeAttempt(request, exercise, body.data.answer, body.data.mode);
   const rubricForFeedback =
     exercise.type === 'explain' && 'rubric' in result && Array.isArray(result.rubric)
       ? rubricFeedbackWithScoredFlags(exercise.rubric, result.rubric)
@@ -112,6 +116,53 @@ export async function exerciseAttempt(
         }
       : {}),
   });
+}
+
+async function gradeAttempt(
+  request: EngineRequest,
+  exercise: IndexedExercise,
+  answer: unknown,
+  mode: 'practice' | 'assessment' | 'diagnostic' | 'review',
+): Promise<EngineGradeResult> {
+  const text =
+    answer && typeof answer === 'object' && 'text' in answer && typeof answer.text === 'string'
+      ? answer.text
+      : undefined;
+  if (
+    exercise.type === 'explain' &&
+    (mode === 'practice' || mode === 'assessment') &&
+    text !== undefined
+  ) {
+    const judged = request.judgeExplanation
+      ? await request.judgeExplanation({
+          question: exercise.prompt,
+          rubric: exercise.rubric,
+          exemplar: exercise.exemplar,
+          answer: text,
+        })
+      : { reason: 'Tutor grading is disabled.' };
+    if ('judgement' in judged) {
+      const judgement = judged.judgement as {
+        criteria: Array<{ id: string; judgement: 'met' | 'partial' | 'missing' }>;
+        feedback_md: string;
+      };
+      const criteria = new Map(judgement.criteria.map((entry) => [entry.id, entry.judgement]));
+      return {
+        status: 'graded',
+        correct: scoreRubricCriteria(exercise.rubric, criteria),
+        feedback: judgement.feedback_md,
+        graded_by: 'llm',
+        rubric: exercise.rubric.map((criterion) => ({
+          id: criterion.id,
+          criterion: criterion.criterion,
+          required: criterion.required,
+          judgement: criteria.get(criterion.id) ?? 'missing',
+        })),
+        exemplar: exercise.exemplar,
+      };
+    }
+  }
+  return request.grade(exercise, answer, { random: request.random });
 }
 
 export function placementCommand(request: EngineRequest) {

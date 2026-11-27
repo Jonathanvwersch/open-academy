@@ -19,11 +19,10 @@ export const publicFeatureModules = {
     'features/reviews/queries.ts',
   ]),
   api: new Set([
-    'features/course/service.ts',
     'features/papers/service.ts',
     'features/tutor/provider.ts',
+    'features/tutor/judge-explanation.ts',
     'features/tutor/schemas.ts',
-    'features/tutor/scoring.ts',
     'features/tutor/service.ts',
   ]),
 };

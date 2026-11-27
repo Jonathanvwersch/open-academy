@@ -1,7 +1,9 @@
+import { updateActivityAndAdvance } from '@open-academy/engine/planner/activity-advance';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, expect, test } from 'vitest';
 import { env } from '../../src/config.js';
 import { createDb } from '../../src/db/client.js';
+import { drizzleLearnerStore } from '../../src/db/learner-store.js';
 import {
   attempts,
   sessionActivities,
@@ -9,7 +11,6 @@ import {
   users,
   xpEvents,
 } from '../../src/db/schema.js';
-import { updateActivityAndAdvance } from '../../src/learning/activity-completion.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000091';
@@ -93,8 +94,8 @@ test('awards mean correctness XP once when an activity is completed repeatedly',
     userId,
     timeZone: 'America/Los_Angeles',
   };
-  await updateActivityAndAdvance(db, completion);
-  await updateActivityAndAdvance(db, completion);
+  await updateActivityAndAdvance(drizzleLearnerStore(db), completion);
+  await updateActivityAndAdvance(drizzleLearnerStore(db), completion);
 
   const events = await db
     .select()
@@ -111,7 +112,7 @@ test('awards mean correctness XP once when an activity is completed repeatedly',
 
 test('skips XP for activities with no attempts and for knowledge-point lessons', async () => {
   const activity = await createActivity();
-  await updateActivityAndAdvance(db, {
+  await updateActivityAndAdvance(drizzleLearnerStore(db), {
     activityId: activity.id,
     completed: true,
     now: new Date('2026-01-02T12:00:00.000Z'),
@@ -119,7 +120,7 @@ test('skips XP for activities with no attempts and for knowledge-point lessons',
     timeZone: 'UTC',
   });
   const lessonActivity = await createActivity();
-  await updateActivityAndAdvance(db, {
+  await updateActivityAndAdvance(drizzleLearnerStore(db), {
     activityId: lessonActivity.id,
     completed: true,
     now: new Date('2026-01-02T12:00:00.000Z'),
@@ -152,7 +153,7 @@ test('does not award activity XP for completed lab activities', async () => {
     gradedBy: 'deterministic',
   });
 
-  await updateActivityAndAdvance(db, {
+  await updateActivityAndAdvance(drizzleLearnerStore(db), {
     activityId: activity.id,
     completed: true,
     now: new Date('2026-01-02T12:00:00.000Z'),
@@ -183,7 +184,7 @@ test('advancing an abandoned session activity does not reactivate its parent ses
     .set({ status: 'abandoned' })
     .where(eq(studySessions.id, activity.sessionId));
 
-  await updateActivityAndAdvance(db, {
+  await updateActivityAndAdvance(drizzleLearnerStore(db), {
     activityId: activity.id,
     completed: true,
     now: new Date('2026-01-02T12:00:00.000Z'),
