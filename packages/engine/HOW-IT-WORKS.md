@@ -260,7 +260,7 @@ A _withdrawn_ grant gives no credit.
 
 ## 12. Tutor context
 
-[Ours] The engine prepares context for Fable. Fable cannot see recall questions or placement questions. Before a final answer, Fable gets authored hints and no solution. After a final answer, Fable gets the learner's answer, verdict, feedback, and solution. Fable sees options in the same order as they appear on the screen.
+[Ours] The engine prepares context for Fable. Fable cannot see recall questions or placement questions. Before a final answer, Fable gets the authored hints and no solution. After a wrong answer with a retry left, Fable also gets the learner's answer, the verdict and the feedback. After a final answer, Fable gets the learner's answer, the verdict, the feedback and the solution, and no hints. Fable sees options in the same order as they appear on the screen.
 
 ## 13. What the engine does not do
 
