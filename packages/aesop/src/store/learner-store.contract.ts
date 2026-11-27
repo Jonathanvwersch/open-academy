@@ -1323,6 +1323,27 @@ export function describeLearnerStoreContract(
       ]);
     });
 
+    it('filters XP events by an inclusive earned-at window', async () => {
+      const { store, learnerId } = await makeStore();
+      const start = new Date(date);
+      const end = new Date(later);
+      const events = [
+        xpEvent('before-window', new Date(start.getTime() - 1)),
+        xpEvent('at-window-start', start),
+        xpEvent('inside-window', new Date((start.getTime() + end.getTime()) / 2)),
+        xpEvent('at-window-end', end),
+        xpEvent('after-window', new Date(end.getTime() + 1)),
+      ];
+      for (const event of events) await store.insertXpEventOnce(learnerId, event);
+
+      const rows = await store.listXpEvents(learnerId, { since: start, through: end });
+      expect(rows.map(({ sourceKey }) => sourceKey).sort()).toEqual([
+        'at-window-end',
+        'at-window-start',
+        'inside-window',
+      ]);
+    });
+
     it('sums quiz-eligible XP on either side of the last quiz and excludes ineligible events', async () => {
       const { store, learnerId, otherLearnerId } = await makeStore();
       const session = await store.insertSession(learnerId, sessionRow(date));

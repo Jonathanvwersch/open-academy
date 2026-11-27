@@ -1,5 +1,5 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
-import { applyMastery } from '@academy/aesop/memory/mastery-service';
+import type { EngineGrade, EngineHasTutorReply } from '@academy/aesop/engine/create-engine';
 import { localDateKey } from '@academy/aesop/progress/xp';
 import { asc, eq } from 'drizzle-orm';
 import type { Context } from 'hono';
@@ -30,6 +30,7 @@ import {
 import { registerTutorThreadRoutes } from '../features/tutor/routes.js';
 import { TutorService } from '../features/tutor/service.js';
 import type { ApiEnv } from './context.js';
+import { createApiEngine } from './engine.js';
 import { isValidTimeZone, requestNow } from './request-context.js';
 export function createApiRoutes(deps: {
   db: Database;
@@ -96,32 +97,46 @@ export function createApiRoutes(deps: {
       env.TUTOR_DAILY_CALL_CAP,
       context.get('timeZone'),
     );
+  const engine = createApiEngine({ db, content, tutorEnabled: tutorProvider !== null });
+  const learner = (
+    context: Context<ApiEnv>,
+    grade?: EngineGrade,
+    hasTutorReply?: EngineHasTutorReply,
+  ) =>
+    engine.learner({
+      id: context.get('userId'),
+      timeZone: context.get('timeZone'),
+      now: () => requestNow(context),
+      random: Math.random,
+      settings: {
+        activeCourseId: context.get('user').activeCourseId,
+        studySetInitializedAt: context.get('user').studySetInitializedAt,
+        startDate: context.get('user').startDate,
+        timeZone: context.get('timeZone'),
+        prefs: context.get('user').prefs as Record<string, unknown>,
+      },
+      ...(grade ? { grade } : {}),
+      ...(hasTutorReply ? { hasTutorReply } : {}),
+    });
+  const services = { db, content, withRepo, tutor, requestNow, learner, tutorProvider };
   registerLessonRunRoutes(api, {
-    db,
-    content,
-    withRepo,
-    requestNow,
-    applyMastery,
+    ...services,
   });
-  registerLearnCourseRoutes(api, { db, content, withRepo, requestNow });
-  registerTutorThreadRoutes(api, { db, content, withRepo, tutor, requestNow });
+  registerLearnCourseRoutes(api, services);
+  registerTutorThreadRoutes(api, services);
   registerPaperRoutes(api, {
-    db,
-    content,
-    withRepo,
-    tutor,
+    ...services,
     paperFetcher: deps.paperFetcher,
-    requestNow,
   });
-  registerSessionsRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
-  registerExercisesRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
-  registerLessonsRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
-  registerPlacementRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
-  registerCourseRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
-  registerSettingsRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
-  registerProjectsRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
-  registerProgressRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
-  registerReviewsRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
-  registerQuizRoutes(api, { db, content, withRepo, tutor, requestNow, tutorProvider });
+  registerSessionsRoutes(api, services);
+  registerExercisesRoutes(api, services);
+  registerLessonsRoutes(api, services);
+  registerPlacementRoutes(api, services);
+  registerCourseRoutes(api, services);
+  registerSettingsRoutes(api, services);
+  registerProjectsRoutes(api, services);
+  registerProgressRoutes(api, services);
+  registerReviewsRoutes(api, services);
+  registerQuizRoutes(api, services);
   return api;
 }

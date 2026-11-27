@@ -1,3 +1,4 @@
+import { createEngine } from '@academy/aesop/engine/create-engine';
 import { fsrsScheduler, newReviewCard } from '@academy/aesop/memory/fsrs';
 import { type QuizQuestion, quizTargetSeconds } from '@academy/aesop/quizzes/mixed-quiz';
 import { confirmedPlacementTopicIds, quizOffer } from '@academy/aesop/quizzes/quiz-offer';
@@ -8,7 +9,6 @@ import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
 import { drizzleLearnerStore } from '../../src/db/learner-store.js';
-import { LearnerRepository } from '../../src/db/repository.js';
 import {
   attempts,
   diagnosticRuns,
@@ -23,15 +23,17 @@ import {
   users,
   xpEvents,
 } from '../../src/db/schema.js';
-import {
-  answerQuiz,
-  finalizeQuiz,
-  startQuizFollowUps,
-  startQuizRetake,
-} from '../../src/features/quizzes/service.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const learners: string[] = [];
+
+function quizLearner(userId: string, content: Awaited<ReturnType<typeof loadContent>>, now: Date) {
+  return createEngine({
+    content: async () => content,
+    store: drizzleLearnerStore(db),
+    tutorEnabled: false,
+  }).learner({ id: userId, timeZone: 'UTC', now: () => now, random: () => 0 });
+}
 
 async function createLearner() {
   const [{ id }] = await db
@@ -167,33 +169,27 @@ test('concurrent finalization and retake requests use one original result and on
     question,
     reserve: question,
   });
-  const deps = { db, content: async () => content, tutorProvider: null };
-  const request = {
-    userId,
-    timeZone: 'UTC',
-    params: { id: run.id },
-    query: {},
-    body: undefined,
-    repo: new LearnerRepository(db, userId),
-    tutor: null,
-    now: () => now,
-  };
-  const results = await Promise.all([finalizeQuiz(deps, request), finalizeQuiz(deps, request)]);
+  const learner = quizLearner(userId, content, now);
+  const results = await Promise.all([
+    learner.finalizeTimedQuiz({ quizId: run.id }),
+    learner.finalizeTimedQuiz({ quizId: run.id }),
+  ]);
   expect(results[0]).toEqual(results[1]);
   expect(results[0]).toMatchObject({ status: 200, body: { result: { score: 0 } } });
   expect(await db.select().from(xpEvents).where(eq(xpEvents.userId, userId))).toHaveLength(1);
-  const followUp = await startQuizFollowUps(deps, request);
+  const followUp = await learner.timedQuizFollowUps({ quizId: run.id });
   expect(followUp.status).toBe(201);
-  if (!('sessionId' in followUp.body)) throw new Error('Missing follow-up session');
+  const followUpBody = followUp.body as { sessionId?: string };
+  if (!followUpBody.sessionId) throw new Error('Missing follow-up session');
   const [review] = await db
     .select()
     .from(sessionActivities)
-    .where(eq(sessionActivities.sessionId, followUp.body.sessionId));
+    .where(eq(sessionActivities.sessionId, followUpBody.sessionId));
   const store = drizzleLearnerStore(db);
   await store.linkTimedQuizFollowUps(userId, ['vectors'], review.id);
   const retakes = await Promise.all([
-    startQuizRetake(deps, request),
-    startQuizRetake(deps, request),
+    learner.retakeTimedQuiz({ quizId: run.id }),
+    learner.retakeTimedQuiz({ quizId: run.id }),
   ]);
   expect(retakes.map(({ status }) => status).sort()).toEqual([200, 201]);
   expect(retakes[0].body).toEqual(retakes[1].body);
@@ -261,25 +257,13 @@ test.each([false, true])(
       },
       { runId: run.id, position: 1, conceptId: 'derivatives', question: active },
     ]);
-    const deps = { db, content: async () => content, tutorProvider: null };
-    const request = {
-      userId,
-      timeZone: 'UTC',
-      params: { id: run.id },
-      query: {},
-      body: undefined,
-      repo: new LearnerRepository(db, userId),
-      tutor: null,
-      now: () => now,
-    };
-
-    const blank = await answerQuiz(deps, {
-      ...request,
+    const learner = quizLearner(userId, content, now);
+    const blank = await quizLearner(userId, content, startedAt).answerTimedQuiz({
+      quizId: run.id,
       body: { position: 1, questionId: active.exercise.id, answer: '' },
-      now: () => startedAt,
     });
     expect(blank.status).toBe(422);
-    const finalized = await finalizeQuiz(deps, request);
+    const finalized = await learner.finalizeTimedQuiz({ quizId: run.id });
     expect(finalized.status).toBe(200);
     expect(finalized.body).toMatchObject({ result: { score: correct ? 0.5 : 0 } });
     const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
@@ -291,7 +275,7 @@ test.each([false, true])(
       .from(reviewLogs)
       .where(inArray(reviewLogs.cardId, [suspendedCard.id, otherDimension.id, activeCard.id]));
     expect(logs).toEqual([{ cardId: activeCard.id }]);
-    expect(await finalizeQuiz(deps, request)).toEqual(finalized);
+    expect(await learner.finalizeTimedQuiz({ quizId: run.id })).toEqual(finalized);
     expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toEqual([
       expect.objectContaining({ conceptId: 'vectors', correct: Number(correct) }),
     ]);
@@ -304,13 +288,14 @@ test.each([false, true])(
       }),
     ]);
 
-    const followUps = await startQuizFollowUps(deps, request);
+    const followUps = await learner.timedQuizFollowUps({ quizId: run.id });
     expect(followUps.status).toBe(201);
-    if (!('sessionId' in followUps.body)) throw new Error('Missing follow-up session');
+    const followUpBody = followUps.body as { sessionId?: string };
+    if (!followUpBody.sessionId) throw new Error('Missing follow-up session');
     const activities = await db
       .select({ conceptId: sessionActivities.conceptId })
       .from(sessionActivities)
-      .where(eq(sessionActivities.sessionId, followUps.body.sessionId));
+      .where(eq(sessionActivities.sessionId, followUpBody.sessionId));
     expect(activities).toEqual([{ conceptId: 'derivatives' }]);
   },
 );
@@ -346,19 +331,10 @@ test.each([false, true])(
         key: exercise.prompt.trim().replace(/\s+/g, ' '),
       },
     });
-    const result = await answerQuiz(
-      { db, content: async () => content, tutorProvider: null },
-      {
-        userId,
-        timeZone: 'UTC',
-        params: { id: run.id },
-        query: {},
-        body: { position: 0, answer: exercise.options[0].id },
-        repo: new LearnerRepository(db, userId),
-        tutor: null,
-        now: () => now,
-      },
-    );
+    const result = await quizLearner(userId, content, now).answerTimedQuiz({
+      quizId: run.id,
+      body: { position: 0, answer: exercise.options[0].id },
+    });
     const [saved] = await db.select().from(quizItems).where(eq(quizItems.runId, run.id));
     if (deleted) {
       expect(result).toMatchObject({
@@ -410,19 +386,9 @@ test.each([1, 1.6])(
       submission: { answer: 'submitted', correct: 1, gradedBy: 'deterministic' },
     });
 
-    const response = await finalizeQuiz(
-      { db, content: async () => content, tutorProvider: null },
-      {
-        userId,
-        timeZone: 'UTC',
-        params: { id: run.id },
-        query: {},
-        body: undefined,
-        repo: new LearnerRepository(db, userId),
-        tutor: null,
-        now: () => now,
-      },
-    );
+    const response = await quizLearner(userId, content, now).finalizeTimedQuiz({
+      quizId: run.id,
+    });
     expect(response.status).toBe(200);
     const [card] = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
     const [log] = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id));

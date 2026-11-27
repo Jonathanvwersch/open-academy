@@ -17,7 +17,7 @@ import { type EngineRequest, type EngineResult, respond } from './types.js';
 
 export function createSessionOperation(
   request: EngineRequest,
-  input: Record<string, unknown>,
+  input: unknown,
 ): Promise<EngineResult> {
   return request.store.transaction(async (tx) => {
     await tx.lockLearner(request.userId, 'no_key_update');
@@ -28,7 +28,7 @@ export function createSessionOperation(
   });
 }
 
-async function createSessionRequest(request: EngineRequest, input: Record<string, unknown>) {
+async function createSessionRequest(request: EngineRequest, input: unknown) {
   const body = z
     .object({
       kind: z.enum(['weekday', 'saturday', 'sunday', 'custom']).optional(),
@@ -94,14 +94,11 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
         const todayLocal = localDateKey(now, request.timeZone);
         const sessionStartedAt = session.startedAt ?? now;
         const sessionEndedAt = session.endedAt ?? now;
-        const [user, allEvents, todayEvents] = await Promise.all([
+        const [user, sessionEvents, todayEvents] = await Promise.all([
           repo.user(),
-          store.listXpEvents(userId, {}),
+          store.listXpEvents(userId, { since: sessionStartedAt, through: sessionEndedAt }),
           store.listXpEvents(userId, { localDate: todayLocal }),
         ]);
-        const sessionEvents = allEvents.filter(
-          (event) => event.earnedAt >= sessionStartedAt && event.earnedAt <= sessionEndedAt,
-        );
         return {
           session: sessionEvents.reduce((total, event) => total + event.amount, 0),
           today: todayEvents.reduce((total, event) => total + event.amount, 0),
@@ -183,7 +180,7 @@ export function activityProgressOperation(
   request: EngineRequest,
   sessionId: string,
   activityId: string,
-  body: Record<string, unknown>,
+  body: unknown,
 ): Promise<EngineResult> {
   return request.store.transaction(async (tx) => {
     const session = await tx.lockSession(request.userId, sessionId);
@@ -202,17 +199,19 @@ async function activityProgress(
   request: EngineRequest,
   sessionId: string,
   activityId: string,
-  body: Record<string, unknown>,
+  body: unknown,
   locked: Parameters<EngineLearnerRepository['session']>[1],
 ) {
   const { store, userId, repo } = request;
+  const parsedBody = z.record(z.string(), z.unknown()).safeParse(body);
+  if (!parsedBody.success) return respond({ error: 'Invalid progress' }, 400);
   let loaded = locked;
   const result = await updateSessionProgress(
     store,
     userId,
     sessionId,
     activityId,
-    body,
+    parsedBody.data,
     request.now,
     request.timeZone,
     request.fsrsFuzz,
@@ -246,6 +245,7 @@ async function activityProgress(
 export function replanSessionOperation(
   request: EngineRequest,
   sessionId: string,
+  input: unknown = {},
 ): Promise<EngineResult> {
   return request.store.transaction(async (tx) => {
     const session = await tx.lockSession(request.userId, sessionId);
@@ -253,7 +253,7 @@ export function replanSessionOperation(
     return replanSession(
       { ...request, store: tx, repo: request.freshRepo(tx, true) },
       sessionId,
-      {},
+      input,
       locked,
     );
   });
@@ -262,7 +262,7 @@ export function replanSessionOperation(
 async function replanSession(
   request: EngineRequest,
   sessionId: string,
-  input: Record<string, unknown>,
+  input: unknown,
   locked: Parameters<EngineLearnerRepository['session']>[1],
 ) {
   const { store, userId, repo } = request;

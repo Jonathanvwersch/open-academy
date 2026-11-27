@@ -1,23 +1,13 @@
 import { serializedOptionOrder, serializeExercise } from '@academy/aesop/course/serialize';
 import { isTemplate } from '@academy/aesop/course/templates';
 import type { IndexedExercise } from '@academy/aesop/course/types';
-import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
-import { gradeExercise } from '@academy/aesop/lessons/grading/index';
-import { rubricFeedbackWithScoredFlags } from '@academy/aesop/lessons/grading/rubric-score';
-import {
-  prepareExerciseAttempt,
-  recordExerciseAttempt,
-} from '@academy/aesop/memory/exercise-attempts';
 import { hintsSincePreviousAttempt } from '@academy/aesop/memory/hint-evidence';
 import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
-import type { AttemptResponse } from '@academy/contracts/exercises';
-import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { onScreenOptions } from '@academy/shared/shuffle';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { sessionActivities } from '../../db/schema.js';
-import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import {
   formatGraderFeedback,
@@ -26,22 +16,6 @@ import {
   tutorAnswerKeyFor,
   tutorSolutionFor,
 } from '../tutor/feedback-context.js';
-import { scoreRubric } from '../tutor/scoring.js';
-
-type TutorGradeResult = {
-  status: 'graded';
-  correct: number;
-  feedback: string;
-  graded_by: 'llm';
-  mistake_category?: string;
-  rubric: Array<{
-    id: string;
-    criterion: string;
-    judgement: 'met' | 'partial' | 'missing';
-    required: boolean;
-  }>;
-  exemplar: string;
-};
 
 export async function getExercisesById(deps: FeatureServices, request: FeatureRequest) {
   const { content } = deps;
@@ -232,157 +206,4 @@ export async function postHints(deps: FeatureServices, request: FeatureRequest) 
     revealedSolution: false,
     hintEventId: event?.id,
   });
-}
-
-export async function postAttempts(deps: FeatureServices, request: FeatureRequest) {
-  const { db, content, tutorProvider } = deps;
-  const body = z
-    .object({
-      exerciseId: z.string(),
-      activityId: z.string().uuid().optional(),
-      answer: z.unknown(),
-      mode: z.enum(['practice', 'assessment', 'diagnostic', 'review']).default('practice'),
-      durationMs: z.number().int().nonnegative().optional(),
-    })
-    .safeParse(request.body);
-  if (!body.success) {
-    return serviceResult({ error: 'Invalid attempt' }, 400);
-  }
-  const index = await content();
-  const exercise = index.exercisesById.get(body.data.exerciseId);
-  if (!exercise) {
-    return serviceResult({ error: 'Exercise not found' }, 404);
-  }
-  const emptyMessage = emptyAnswerMessage(exercise.type, body.data.answer);
-  if (emptyMessage) return serviceResult({ error: emptyMessage }, 422);
-  if (isTemplate(exercise)) {
-    return serviceResult(
-      { error: 'Template exercises must be answered through a lesson run.' },
-      400,
-    );
-  }
-  const { repo, userId, timeZone } = request;
-  const store = drizzleLearnerStore(db);
-  const prepared = await prepareExerciseAttempt(store, userId, index, exercise, body.data, (id) =>
-    repo.session(id),
-  );
-  if (prepared.kind !== 'ready') {
-    return serviceResult(
-      prepared.body,
-      prepared.kind === 'not_found' ? 404 : prepared.kind === 'conflict' ? 409 : 400,
-    );
-  }
-  const random = () => Math.random();
-  let result: Awaited<ReturnType<typeof gradeExercise>> | TutorGradeResult;
-  if (
-    exercise.type === 'explain' &&
-    tutorProvider &&
-    typeof body.data.answer === 'object' &&
-    body.data.answer !== null &&
-    'text' in body.data.answer &&
-    typeof body.data.answer.text === 'string'
-  ) {
-    const tutorService = request.tutor;
-    const judged = tutorService
-      ? await tutorService.gradeExplanation({
-          question: exercise.prompt,
-          rubric: exercise.rubric,
-          exemplar: exercise.exemplar,
-          answer: body.data.answer.text,
-        })
-      : { status: 'fallback' as const };
-    if (judged.status === 'ok' && judged.value) {
-      const score = scoreRubric(exercise.rubric, judged.value);
-      result = {
-        status: 'graded' as const,
-        correct: score.score,
-        feedback: score.feedback,
-        graded_by: 'llm' as const,
-        rubric: exercise.rubric.map((criterion) => ({
-          id: criterion.id,
-          criterion: criterion.criterion,
-          required: criterion.required,
-          judgement:
-            judged.value?.criteria.find((entry) => entry.id === criterion.id)?.judgement ??
-            'missing',
-        })),
-        exemplar: exercise.exemplar,
-      };
-    } else {
-      result = await gradeExercise(exercise, body.data.answer, { random });
-    }
-  } else {
-    result = await gradeExercise(exercise, body.data.answer, { random });
-  }
-  const rubricForFeedback =
-    exercise.type === 'explain' && 'rubric' in result && Array.isArray(result.rubric)
-      ? rubricFeedbackWithScoredFlags(exercise.rubric, result.rubric)
-      : undefined;
-  if (result.status !== 'graded') {
-    return serviceResult(
-      exercise.type === 'explain' && result.status === 'self_check_required'
-        ? {
-            ...result,
-            ...(rubricForFeedback ? { rubric: rubricForFeedback } : {}),
-            ...(typeof body.data.answer === 'object' &&
-            body.data.answer !== null &&
-            'text' in body.data.answer &&
-            typeof body.data.answer.text === 'string'
-              ? { yourAnswer: body.data.answer.text }
-              : {}),
-            exemplar: exercise.exemplar,
-            ...(exercise.solution ? { solution: exercise.solution } : {}),
-          }
-        : result,
-      result.status === 'invalid' ? 422 : 200,
-    );
-  }
-  const { step, followUp, ...attempt } = await recordExerciseAttempt(
-    store,
-    {
-      now: request.now,
-      newId: () => crypto.randomUUID(),
-      enableFsrsFuzz: fsrsFuzzEnabled(),
-      schedulerState: (now, content) => repo.schedulerState(now, content),
-      session: (id) => repo.session(id),
-    },
-    prepared,
-    {
-      correct: result.correct,
-      feedback: result.feedback,
-      gradedBy: result.graded_by,
-      mistakeCategory: result.mistake_category,
-      ...('yourAnswer' in result ? { yourAnswer: result.yourAnswer } : {}),
-      ...('rubric' in result ? { rubric: rubricForFeedback ?? result.rubric } : {}),
-    },
-    timeZone,
-  );
-  const answerWithheld = attempt.retryAllowed;
-  const answerOptions = answerOptionsFor(exercise, body.data.answer, !answerWithheld);
-  const resultForResponse: Record<string, unknown> = { ...result };
-  if (answerWithheld) {
-    delete resultForResponse.exemplar;
-    delete resultForResponse.solution;
-  }
-  return serviceResult({
-    ...resultForResponse,
-    ...attempt,
-    ...(step ? { step } : {}),
-    ...(followUp ? { followUp: true } : {}),
-    ...(answerOptions ? { answerOptions } : {}),
-    ...(!answerWithheld && exercise.type !== 'explain' && exercise.solution
-      ? { solution: exercise.solution }
-      : {}),
-    ...(exercise.type === 'explain'
-      ? {
-          ...(!answerWithheld
-            ? {
-                exemplar: exercise.exemplar,
-                ...(exercise.solution ? { solution: exercise.solution } : {}),
-              }
-            : {}),
-          ...('rubric' in result ? { rubric: rubricForFeedback ?? result.rubric } : {}),
-        }
-      : {}),
-  } satisfies AttemptResponse);
 }

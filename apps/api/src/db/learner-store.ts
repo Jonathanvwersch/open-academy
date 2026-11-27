@@ -325,6 +325,7 @@ export function drizzleLearnerStore(
           and(
             eq(xpEvents.userId, learnerId),
             query.localDate === undefined ? undefined : eq(xpEvents.localDate, query.localDate),
+            query.since === undefined ? undefined : gte(xpEvents.earnedAt, query.since),
             query.through === undefined ? undefined : lte(xpEvents.earnedAt, query.through),
             query.sourcePrefix === undefined
               ? undefined

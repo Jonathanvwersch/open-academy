@@ -1,34 +1,41 @@
-import type { Hono } from 'hono';
+import type { EngineResult } from '@academy/aesop/engine/create-engine';
+import type { Context, Hono } from 'hono';
+import { z } from 'zod';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
-import { featureRequest } from '../../http/feature-service.js';
-import {
-  getPlacementNext,
-  getPlacementResults,
-  postPlacement,
-  postPlacementAnswer,
-} from './service.js';
 
+const send = (context: Context<ApiEnv>, result: EngineResult) =>
+  context.json(result.body, result.status);
 export function registerPlacementRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
   api.post('/placement', async (context) => {
-    const response = await postPlacement(
-      deps,
-      featureRequest(context, deps, await context.req.json().catch(() => null)),
+    return send(
+      context,
+      await deps.learner(context).startPlacement({
+        body: await context.req.json().catch(() => null),
+      }),
     );
-    return context.json(response.body, response.status);
   });
   api.get('/placement/:id/next', async (context) => {
-    const response = await getPlacementNext(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    const placementId = context.req.param('id');
+    if (!z.string().uuid().safeParse(placementId).success)
+      return context.json({ error: 'Placement not found' }, 404);
+    return send(context, await deps.learner(context).placementNext({ placementId }));
   });
   api.post('/placement/:id/answer', async (context) => {
-    const response = await postPlacementAnswer(
-      deps,
-      featureRequest(context, deps, await context.req.json().catch(() => null)),
+    const placementId = context.req.param('id');
+    if (!z.string().uuid().safeParse(placementId).success)
+      return context.json({ error: 'Placement not found' }, 404);
+    return send(
+      context,
+      await deps.learner(context).placementAnswer({
+        placementId,
+        body: await context.req.json().catch(() => null),
+      }),
     );
-    return context.json(response.body, response.status);
   });
   api.get('/placement/:id/results', async (context) => {
-    const response = await getPlacementResults(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    const placementId = context.req.param('id');
+    if (!z.string().uuid().safeParse(placementId).success)
+      return context.json({ error: 'Placement not found' }, 404);
+    return send(context, await deps.learner(context).placementResults({ placementId }));
   });
 }

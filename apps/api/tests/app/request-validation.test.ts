@@ -1,6 +1,7 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
+import { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import { eq } from 'drizzle-orm';
-import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
+import { afterAll, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
@@ -66,6 +67,21 @@ test('unknown activity ids are rejected before recording an attempt', async () =
   expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(0);
 });
 
+test('empty activity ids are rejected before recording an attempt', async () => {
+  const response = await app.request('/api/attempts', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      exerciseId: 'vectors-magnitude',
+      activityId: '',
+      answer: '5',
+    }),
+  });
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({ error: 'Invalid attempt' });
+  expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(0);
+});
+
 test('settings reject impossible dates before changing learner preferences', async () => {
   for (const startDate of ['garbage', '2026-02-30']) {
     const response = await app.request('/api/settings', {
@@ -128,13 +144,6 @@ test('invalid replan budgets do not replace the existing plan', async () => {
 });
 
 test('replanning cannot delete an activity after a successful progress write', async () => {
-  const [
-    { LearnerRepository },
-    { postSessionsByIdReplan, postSessionsByIdActivitiesByAidProgress },
-  ] = await Promise.all([
-    import('../../src/db/repository.js'),
-    import('../../src/features/sessions/service.js'),
-  ]);
   const [session] = await db
     .insert(studySessions)
     .values({ userId, plannedMinutes: 60, status: 'active' })
@@ -153,54 +162,48 @@ test('replanning cannot delete an activity after a successful progress write', a
   const blocked = new Promise<void>((resolve) => {
     release = resolve;
   });
-  const request = {
-    userId,
-    timeZone: 'UTC',
-    params: { id: session.id, aid: activity.id },
-    query: {},
-    body: {},
-    repo: new LearnerRepository(db, userId),
-    tutor: null,
-    now: () => new Date(headers['X-Now']),
-  };
-  const replanning = postSessionsByIdReplan(
-    {
-      db,
-      tutorProvider: null,
-      content: async () => {
+  let paused = false;
+  const originalSchedulerState = EngineLearnerRepository.prototype.schedulerState;
+  const schedulerStateSpy = vi
+    .spyOn(EngineLearnerRepository.prototype, 'schedulerState')
+    .mockImplementation(async function (this: EngineLearnerRepository, now, contentIndex, loaded) {
+      if (!paused) {
+        paused = true;
         snapshotRead();
         await blocked;
-        return content;
-      },
-    },
-    request,
-  );
-  await read;
-  let finished = false;
-  const progressing = postSessionsByIdActivitiesByAidProgress(
-    { db, tutorProvider: null, content: async () => content },
-    {
-      ...request,
-      body: { answerDraft: 'keep my work' },
-    },
-  ).finally(() => {
-    finished = true;
+      }
+      return originalSchedulerState.call(this, now, contentIndex, loaded);
+    });
+  const replanning = app.request(`/api/sessions/${session.id}/replan`, {
+    method: 'POST',
+    headers,
+    body: '{}',
   });
+  await read;
+  const progressing = Promise.resolve(
+    app.request(`/api/sessions/${session.id}/activities/${activity.id}/progress`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ answerDraft: 'keep my work' }),
+    }),
+  );
   try {
     const deadline = Date.now() + 5000;
-    while (!finished) {
-      const waiting = await db.$client<{ waiting: number }[]>`
+    let waitingForSessionLock = false;
+    while (!waitingForSessionLock) {
+      const [waiting] = await db.$client<{ waiting: number }[]>`
         select count(*)::int as waiting from pg_stat_activity
         where datname = current_database() and wait_event_type = 'Lock'
         and query like '%study_sessions%'
       `;
-      if ((waiting[0]?.waiting ?? 0) > 0) break;
-      if (Date.now() > deadline)
-        throw new Error('Progress neither completed nor waited for the session lock');
+      waitingForSessionLock = (waiting?.waiting ?? 0) > 0;
+      if (!waitingForSessionLock && Date.now() > deadline)
+        throw new Error('Progress did not wait for the session lock');
       await new Promise((resolve) => setTimeout(resolve, 5));
     }
   } finally {
     release();
+    schedulerStateSpy.mockRestore();
   }
   const [replanned, progressed] = await Promise.all([replanning, progressing]);
   expect(replanned.status).toBe(200);
@@ -212,6 +215,6 @@ test('replanning cannot delete an activity after a successful progress write', a
     expect(saved?.progress).toMatchObject({ answerDraft: 'keep my work' });
     expect(saved?.status).toBe('in_progress');
   } else {
-    expect(progressed.status).toBe(404);
+    expect([404, 409]).toContain(progressed.status);
   }
 });

@@ -443,6 +443,7 @@ function scopedStore(
         [...(data.learners.get(learnerId)?.xpEvents.values() ?? [])].filter(
           (row) =>
             (query.localDate === undefined || row.localDate === query.localDate) &&
+            (query.since === undefined || row.earnedAt >= query.since) &&
             (!query.through || row.earnedAt <= query.through) &&
             (query.sourcePrefix === undefined || row.sourceKey.startsWith(query.sourcePrefix)) &&
             (query.sourceKey === undefined || row.sourceKey === query.sourceKey),

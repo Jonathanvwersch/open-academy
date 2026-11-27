@@ -1,4 +1,5 @@
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
+import { z } from 'zod';
 import { getLessonPrerequisites } from '../course/index.js';
 import { serializeExercise } from '../course/serialize.js';
 import { formatTemplateNumber } from '../course/templates.js';
@@ -7,6 +8,7 @@ import { lessonCourseContext } from '../graph/lesson-course-context.js';
 import { answerDisplay, answerText } from '../lessons/answer-display.js';
 import { answerOptionsFor } from '../lessons/answer-options.js';
 import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../lessons/grading/multiple-choice.js';
+import type { GradeResult } from '../lessons/grading/types.js';
 import {
   answerLessonProblem,
   answerLessonQuiz,
@@ -234,8 +236,53 @@ export async function lessonOperation(
     | 'answerLessonQuiz'
     | 'submitLessonQuiz',
   conceptId: string,
-  body: LessonBody,
+  input: unknown,
 ): Promise<EngineResult> {
+  const parsed = {
+    startLessonRun: z
+      .object({
+        activityId: z.string().optional(),
+        reconcileProgress: z.boolean().optional(),
+      })
+      .safeParse(input),
+    practiceLessonPoint: z
+      .object({
+        pointId: z.string().min(1),
+        activityId: z.string().optional(),
+        warmup: z.boolean().optional(),
+      })
+      .safeParse(input),
+    answerLessonProblem: z
+      .object({
+        problemId: z.string(),
+        answer: z.unknown(),
+        activityId: z.string().optional(),
+        durationMs: z.number().int().nonnegative().optional(),
+      })
+      .safeParse(input),
+    startLessonQuiz: z.object({ activityId: z.string().optional() }).safeParse(input),
+    answerLessonQuiz: z
+      .object({
+        itemId: z.string(),
+        answer: z.unknown(),
+        activityId: z.string().optional(),
+        durationMs: z.number().int().nonnegative().optional(),
+      })
+      .safeParse(input),
+    submitLessonQuiz: z.object({ activityId: z.string().optional() }).safeParse(input),
+  }[kind];
+  if (!parsed.success) {
+    const errors = {
+      startLessonRun: 'Invalid lesson run request',
+      practiceLessonPoint: 'Invalid practice request',
+      answerLessonProblem: 'Invalid lesson answer',
+      startLessonQuiz: 'Invalid quiz request',
+      answerLessonQuiz: 'Invalid quiz answer',
+      submitLessonQuiz: 'Invalid quiz submission',
+    };
+    return respond({ error: errors[kind] }, 400);
+  }
+  const body = parsed.data as LessonBody;
   const { store, userId, timeZone } = request;
   const index = request.content;
   const lesson = index.lessonsByConcept.get(conceptId);
@@ -252,11 +299,11 @@ export async function lessonOperation(
   };
   const course = () => lessonCourse(request, conceptId, body.activityId);
   const sessionId = activity.activity ? activity.session?.id : undefined;
-  const grade: LessonGrader = (exercise, answer, { random, requireAnswer }) => {
+  const grade: LessonGrader = async (exercise, answer, { random, requireAnswer }) => {
     const feedback = requireAnswer ? emptyAnswerMessage(exercise.type, answer) : null;
     return feedback
-      ? Promise.resolve({ status: 'invalid', feedback, graded_by: 'deterministic' })
-      : request.grade(exercise, answer, { random });
+      ? { status: 'invalid', feedback, graded_by: 'deterministic' }
+      : ((await request.grade(exercise, answer, { random })) as GradeResult);
   };
   switch (kind) {
     case 'startLessonRun': {
@@ -306,7 +353,7 @@ export async function lessonOperation(
           }),
           sessionId,
         },
-        { applyMastery, grade, hasTutorReply: async () => false },
+        { applyMastery, grade, hasTutorReply: request.hasTutorReply },
       );
       if (result.kind === 'not_found') return respond({ error: 'Lesson problem not found' }, 404);
       if (result.kind === 'invalid') return respond({ error: 'Invalid answer' }, 422);

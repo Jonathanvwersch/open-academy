@@ -1,6 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
 import type { ContentIndex } from '@academy/aesop/course/types';
+import { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import { buildEncompassingIndex } from '@academy/aesop/graph/encompassing';
 import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
 import {
@@ -1807,10 +1808,10 @@ test('double Again extends a planned mixed review with a newly due prerequisite 
   const originalPlannedMinutes = plannedActivity.plannedMinutes;
 
   const paceRatio = 1.3;
-  const originalSchedulerState = LearnerRepository.prototype.schedulerState;
+  const originalSchedulerState = EngineLearnerRepository.prototype.schedulerState;
   const schedulerStateSpy = vi
-    .spyOn(LearnerRepository.prototype, 'schedulerState')
-    .mockImplementation(async function (this: LearnerRepository, now, contentIndex, loaded) {
+    .spyOn(EngineLearnerRepository.prototype, 'schedulerState')
+    .mockImplementation(async function (this: EngineLearnerRepository, now, contentIndex, loaded) {
       const state = await originalSchedulerState.call(this, now, contentIndex, loaded);
       return { ...state, actualEstimateRatio: paceRatio };
     });

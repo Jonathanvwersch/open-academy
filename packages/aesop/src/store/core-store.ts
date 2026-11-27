@@ -55,6 +55,7 @@ export type XpEvent = {
 
 export type XpQuery = {
   localDate?: DayKey;
+  since?: Date;
   through?: Date;
   sourcePrefix?: string;
   sourceKey?: string;

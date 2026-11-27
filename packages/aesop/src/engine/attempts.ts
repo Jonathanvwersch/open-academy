@@ -10,7 +10,7 @@ import { type EngineRequest, type EngineResult, respond } from './types.js';
 
 export async function exerciseAttempt(
   request: EngineRequest,
-  input: Record<string, unknown>,
+  input: unknown,
 ): Promise<EngineResult> {
   const body = z
     .object({
@@ -133,7 +133,7 @@ const placementAnswerBody = z.union([
 export async function placementAnswer(
   request: EngineRequest,
   placementId: string,
-  input: Record<string, unknown>,
+  input: unknown,
 ): Promise<EngineResult> {
   return request.store.transaction(async (tx) => {
     const prepared = await preparePlacementAnswer(
@@ -154,7 +154,9 @@ export async function placementAnswer(
     if ('answer' in answer) {
       const emptyMessage = emptyAnswerMessage(exercise.type, answer.answer);
       if (emptyMessage) return respond({ error: emptyMessage }, 422);
-      grade = await request.grade(exercise, answer.answer, { random: request.random });
+      grade = (await request.grade(exercise, answer.answer, {
+        random: request.random,
+      })) as GradeResult;
     } else {
       grade = { status: 'graded', correct: 0, credit: 0, feedback: '', graded_by: 'self' };
     }

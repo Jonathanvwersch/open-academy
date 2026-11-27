@@ -1,22 +1,15 @@
-import {
-  getCourse,
-  getCourseCatalog,
-  getCourseDetail,
-  setActiveCourse,
-  startActiveCourseFromBeginning,
-  startCourseFromBeginning,
-} from '@academy/aesop/course/course-reads';
-import { getLearnHome } from '@academy/aesop/course/learn-home';
 import type { ContentIndex } from '@academy/aesop/course/types';
+import type { EngineResult } from '@academy/aesop/engine/create-engine';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
-import { drizzleLearnerStore } from '../../db/learner-store.js';
 import type { LearnerRepository } from '../../db/repository.js';
-import type { ApiEnv } from '../../http/context.js';
+import type { ApiEnv, ApiServices } from '../../http/context.js';
 import { restartTopic, updateLearningFocus } from './service.js';
 
 type RouteContext = Context<ApiEnv>;
+const send = (context: RouteContext, result: EngineResult) =>
+  context.json(result.body, result.status);
 
 export function registerLearnCourseRoutes(
   api: Hono<ApiEnv>,
@@ -25,31 +18,15 @@ export function registerLearnCourseRoutes(
     content: () => Promise<ContentIndex>;
     withRepo: (context: RouteContext) => LearnerRepository;
     requestNow: (context: RouteContext) => Date;
+    learner: ApiServices['learner'];
   },
 ) {
-  async function courseUseCase(context: RouteContext, content: ContentIndex) {
-    const timeZone = context.get('timeZone');
-    return {
-      store: drizzleLearnerStore(deps.db, { schedulerTimezone: timeZone }),
-      input: {
-        userId: context.get('userId'),
-        content,
-        timeZone,
-        settings: (await deps.withRepo(context).settings()) ?? null,
-        now: () => deps.requestNow(context),
-        enableFsrsFuzz: process.env.NODE_ENV !== 'test',
-      },
-    };
-  }
-
   api.get('/learn', async (context) => {
-    const { store, input } = await courseUseCase(context, await deps.content());
-    return context.json(await getLearnHome(store, input));
+    return send(context, await deps.learner(context).learn());
   });
 
   api.get('/courses', async (context) => {
-    const { store, input } = await courseUseCase(context, await deps.content());
-    return context.json(await getCourseCatalog(store, input));
+    return send(context, await deps.learner(context).courseCatalog());
   });
 
   api.put('/focus', async (context) => {
@@ -79,30 +56,22 @@ export function registerLearnCourseRoutes(
   });
 
   api.get('/courses/:id', async (context) => {
-    const content = await deps.content();
-    const courseId = context.req.param('id');
-    if (!content.coursesById.has(courseId)) return context.json({ error: 'Course not found' }, 404);
-    const { store, input } = await courseUseCase(context, content);
-    const payload = await getCourseDetail(store, input, courseId);
-    return payload ? context.json(payload) : context.json({ error: 'Course not found' }, 404);
+    return send(context, await deps.learner(context).course({ courseId: context.req.param('id') }));
   });
 
   api.get('/course', async (context) => {
-    const { store, input } = await courseUseCase(context, await deps.content());
-    return context.json(await getCourse(store, input, context.req.query('course')));
+    return send(
+      context,
+      await deps.learner(context).course({ course: context.req.query('course') }),
+    );
   });
 
   api.put('/course/active', async (context) => {
-    const content = await deps.content();
-    const body = (await context.req.json().catch(() => null)) as { courseId?: unknown } | null;
-    if (!body || typeof body.courseId !== 'string') {
-      return context.json({ error: 'Invalid courseId' }, 400);
-    }
-    if (!content.coursesById.has(body.courseId)) {
-      return context.json({ error: 'Unknown course' }, 404);
-    }
-    return context.json(
-      await setActiveCourse(drizzleLearnerStore(deps.db), context.get('userId'), body.courseId),
+    return send(
+      context,
+      await deps.learner(context).setActiveCourse({
+        body: await context.req.json().catch(() => null),
+      }),
     );
   });
 
@@ -137,31 +106,21 @@ export function registerLearnCourseRoutes(
   });
 
   api.post('/courses/:id/start', async (context) => {
-    const content = await deps.content();
-    const courseId = context.req.param('id');
-    if (!content.coursesById.has(courseId)) return context.json({ error: 'Course not found' }, 404);
-    const body = (await context.req.json().catch(() => null)) as { method?: unknown } | null;
-    if (body?.method !== 'beginning') {
-      return context.json({ error: 'Invalid course start method' }, 400);
-    }
-    const { store, input } = await courseUseCase(context, content);
-    return context.json(await startCourseFromBeginning(store, input, courseId));
+    return send(
+      context,
+      await deps.learner(context).startCourse({
+        courseId: context.req.param('id'),
+        body: await context.req.json().catch(() => null),
+      }),
+    );
   });
 
   api.post('/course/start', async (context) => {
-    const body = (await context.req.json().catch(() => null)) as {
-      method?: unknown;
-      courseId?: unknown;
-    } | null;
-    if (body?.method !== 'beginning') {
-      return context.json({ error: 'Invalid course start method' }, 400);
-    }
-    const { store, input } = await courseUseCase(context, await deps.content());
-    const start = await startActiveCourseFromBeginning(
-      store,
-      input,
-      typeof body.courseId === 'string' ? body.courseId : undefined,
+    return send(
+      context,
+      await deps.learner(context).startCourse({
+        body: await context.req.json().catch(() => null),
+      }),
     );
-    return start ? context.json(start) : context.json({ error: 'No active course' }, 404);
   });
 }
