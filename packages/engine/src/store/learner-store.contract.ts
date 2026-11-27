@@ -222,7 +222,7 @@ export function describeLearnerStoreContract(
 
     it('reads recent project submissions in descending time with limits and ownership', async () => {
       const { store, learnerId, otherLearnerId } = await makeStore({ seedCourseProgress: true });
-      expect(await store.listProjectSubmissions(learnerId)).toEqual([
+      expect(await store.listProjectSubmissions(learnerId)).toMatchObject([
         {
           projectId: 'a',
           results: { tests: [{ id: 'newer', passed: true }] },
@@ -234,14 +234,96 @@ export function describeLearnerStoreContract(
           createdAt: date,
         },
       ]);
-      expect(await store.listProjectSubmissions(learnerId, { limit: 1 })).toEqual([
+      const latest = await store.listProjectSubmissions(learnerId, { limit: 1 });
+      expect(latest).toMatchObject([
         {
           projectId: 'a',
           results: { tests: [{ id: 'newer', passed: true }] },
           createdAt: later,
         },
       ]);
+      expect(latest[0]).toMatchObject({
+        id: expect.any(String),
+        userId: learnerId,
+        passed: 1,
+        total: 1,
+        metrics: {},
+      });
       expect(await store.listProjectSubmissions(otherLearnerId)).toEqual([]);
+    });
+
+    it('adds project submissions and upserts project progress for the learner', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      const submission = await store.addProjectSubmission(learnerId, {
+        projectId: 'new-project',
+        results: { tests: [{ id: 'check', passed: true }] },
+        passed: 1,
+        total: 1,
+        metrics: { score: 2 },
+        createdAt: later,
+      });
+      expect(submission).toMatchObject({
+        id: expect.any(String),
+        userId: learnerId,
+        projectId: 'new-project',
+        results: { tests: [{ id: 'check', passed: true }] },
+        passed: 1,
+        total: 1,
+        metrics: { score: 2 },
+        createdAt: later,
+      });
+      expect(await store.listProjectSubmissions(learnerId, { limit: 1 })).toEqual([submission]);
+
+      await store.setProjectProgress(learnerId, {
+        projectId: 'new-project',
+        status: 'in_progress',
+        completedAt: null,
+      });
+      await store.setProjectProgress(learnerId, {
+        projectId: 'new-project',
+        status: 'completed',
+        completedAt: later,
+      });
+      expect(await store.listProjectProgress(learnerId)).toContainEqual({
+        projectId: 'new-project',
+        status: 'completed',
+      });
+      expect(await store.listProjectProgress(otherLearnerId)).toEqual([]);
+    });
+
+    it('reads and upserts paper progress while merging notes for the learner', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      expect(await store.getPaperProgress(learnerId, 'paper')).toBeUndefined();
+      await store.savePaperProgress(learnerId, {
+        paperId: 'paper',
+        lastPage: 2,
+        notes: { claim: 'First note.' },
+        updatedAt: date,
+      });
+      const saved = await store.savePaperProgress(learnerId, {
+        paperId: 'paper',
+        notes: { method: 'Second note.' },
+        summary: 'A concise summary.',
+        summaryJudgement: { score: 0.8 },
+        completedAt: later,
+        updatedAt: later,
+      });
+      expect(saved).toMatchObject({
+        userId: learnerId,
+        paperId: 'paper',
+        lastPage: 2,
+        notes: { claim: 'First note.', method: 'Second note.' },
+        summary: 'A concise summary.',
+        summaryJudgement: { score: 0.8 },
+        completedAt: later,
+        updatedAt: later,
+      });
+      expect(await store.getPaperProgress(learnerId, 'paper')).toEqual(saved);
+      expect(await store.getPaperProgress(otherLearnerId, 'paper')).toBeUndefined();
+      expect(await store.listPaperProgress(learnerId)).toContainEqual({
+        paperId: 'paper',
+        completedAt: later,
+      });
     });
 
     it('orders tied course activity and lesson evidence by semantic keys', async () => {

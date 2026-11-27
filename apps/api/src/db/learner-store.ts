@@ -930,17 +930,35 @@ export function drizzleLearnerStore(
         .where(eq(projectProgress.userId, learnerId))
         .orderBy(projectProgress.projectId);
     },
+    async setProjectProgress(learnerId, input) {
+      await db
+        .insert(projectProgress)
+        .values({
+          userId: learnerId,
+          projectId: input.projectId,
+          status: input.status,
+          completedAt: input.completedAt,
+        })
+        .onConflictDoUpdate({
+          target: [projectProgress.userId, projectProgress.projectId],
+          set: { status: input.status, completedAt: input.completedAt },
+        });
+    },
     async listProjectSubmissions(learnerId, query = {}) {
       const rows = db
-        .select({
-          projectId: projectSubmissions.projectId,
-          results: projectSubmissions.results,
-          createdAt: projectSubmissions.createdAt,
-        })
+        .select()
         .from(projectSubmissions)
         .where(eq(projectSubmissions.userId, learnerId))
         .orderBy(desc(projectSubmissions.createdAt));
       return query.limit === undefined ? rows : rows.limit(query.limit);
+    },
+    async addProjectSubmission(learnerId, submission) {
+      const [saved] = await db
+        .insert(projectSubmissions)
+        .values({ ...submission, userId: learnerId })
+        .returning();
+      if (!saved) throw new Error('Project submission insert returned no row');
+      return saved;
     },
     async listPaperProgress(learnerId) {
       return db
@@ -948,6 +966,46 @@ export function drizzleLearnerStore(
         .from(paperProgress)
         .where(eq(paperProgress.userId, learnerId))
         .orderBy(paperProgress.paperId);
+    },
+    async getPaperProgress(learnerId, paperId) {
+      const [progress] = await db
+        .select()
+        .from(paperProgress)
+        .where(and(eq(paperProgress.userId, learnerId), eq(paperProgress.paperId, paperId)))
+        .limit(1);
+      return progress;
+    },
+    async savePaperProgress(learnerId, patch) {
+      const [saved] = await db
+        .insert(paperProgress)
+        .values({
+          userId: learnerId,
+          paperId: patch.paperId,
+          lastPage: patch.lastPage ?? 1,
+          notes: patch.notes ?? {},
+          summary: patch.summary ?? null,
+          summaryJudgement: (patch.summaryJudgement ?? null) as never,
+          completedAt: patch.completedAt ?? null,
+          updatedAt: patch.updatedAt,
+        })
+        .onConflictDoUpdate({
+          target: [paperProgress.userId, paperProgress.paperId],
+          set: {
+            ...(patch.lastPage !== undefined ? { lastPage: patch.lastPage } : {}),
+            ...(patch.notes !== undefined
+              ? { notes: sql`${paperProgress.notes} || ${JSON.stringify(patch.notes)}::jsonb` }
+              : {}),
+            ...(patch.summary !== undefined ? { summary: patch.summary } : {}),
+            ...(patch.summaryJudgement !== undefined
+              ? { summaryJudgement: patch.summaryJudgement as never }
+              : {}),
+            ...(patch.completedAt !== undefined ? { completedAt: patch.completedAt } : {}),
+            updatedAt: patch.updatedAt,
+          },
+        })
+        .returning();
+      if (!saved) throw new Error('Paper progress upsert returned no row');
+      return saved;
     },
     async listCompletedActivities(learnerId, since) {
       const rows = await db

@@ -104,7 +104,7 @@ export function createApiRoutes(deps: {
   const engine = createApiEngine({ db, content, tutorEnabled: tutorProvider !== null });
   const learner = (
     context: Context<ApiEnv>,
-    { grade, hasTutorReply, generateHint, tutorPaper }: LearnerOptions = {},
+    { grade, hasTutorReply, generateHint, tutorPaper, judgeSummary }: LearnerOptions = {},
   ) =>
     engine.learner({
       id: context.get('userId'),
@@ -122,6 +122,7 @@ export function createApiRoutes(deps: {
       ...(hasTutorReply ? { hasTutorReply } : {}),
       ...(generateHint ? { generateHint } : {}),
       ...(tutorPaper ? { tutorPaper } : {}),
+      ...(judgeSummary ? { judgeSummary } : {}),
     });
   const services = { db, content, withRepo, tutor, requestNow, learner, tutorProvider };
   registerLessonRunRoutes(api, {

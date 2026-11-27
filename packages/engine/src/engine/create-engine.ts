@@ -8,6 +8,7 @@ import type {
   EngineGenerateHint,
   EngineGrade,
   EngineHasTutorReply,
+  EngineJudgeSummary,
   EngineLearner,
   EngineOperation,
   EngineResult,
@@ -20,6 +21,7 @@ export type {
   EngineGradeResult,
   EngineHasTutorReply,
   EngineHintContext,
+  EngineJudgeSummary,
   EngineLearner,
   EngineOperation,
   EngineResult,
@@ -44,6 +46,7 @@ export type EngineLearnerOptions = {
   hasTutorReply?: EngineHasTutorReply;
   generateHint?: EngineGenerateHint;
   tutorPaper?: EngineTutorPaper;
+  judgeSummary?: EngineJudgeSummary;
   settings?: Settings;
 };
 
@@ -65,6 +68,7 @@ export function createEngine(options: CreateEngineOptions) {
       hasTutorReply = async () => false,
       generateHint,
       tutorPaper,
+      judgeSummary,
       settings,
     }: EngineLearnerOptions): EngineLearner {
       const contentPromise = options.content();
@@ -83,6 +87,7 @@ export function createEngine(options: CreateEngineOptions) {
         hasTutorReply,
         ...(generateHint ? { generateHint } : {}),
         ...(tutorPaper ? { tutorPaper } : {}),
+        ...(judgeSummary ? { judgeSummary } : {}),
         fsrsFuzz,
         tutorEnabled,
         repo: new EngineLearnerRepository(
@@ -146,6 +151,13 @@ export function createEngine(options: CreateEngineOptions) {
         finalizeTimedQuiz: (input) => call({ kind: 'finalizeTimedQuiz', ...input }),
         retakeTimedQuiz: (input) => call({ kind: 'retakeTimedQuiz', ...input }),
         timedQuizFollowUps: (input) => call({ kind: 'timedQuizFollowUps', ...input }),
+        projects: () => call({ kind: 'projects' }),
+        project: (input) => call({ kind: 'project', ...input }),
+        submitProjectResults: (input) => call({ kind: 'submitProjectResults', ...input }),
+        papers: () => call({ kind: 'papers' }),
+        paper: (input) => call({ kind: 'paper', ...input }),
+        savePaperProgress: (input) => call({ kind: 'savePaperProgress', ...input }),
+        submitPaperSummary: (input) => call({ kind: 'submitPaperSummary', ...input }),
       };
       return learner;
     },

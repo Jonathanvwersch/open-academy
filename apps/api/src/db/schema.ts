@@ -609,7 +609,7 @@ export const projectSubmissions = pgTable('project_submissions', {
   results: jsonb('results').notNull(),
   passed: integer('passed').notNull(),
   total: integer('total').notNull(),
-  metrics: jsonb('metrics').notNull().default({}),
+  metrics: jsonb('metrics').$type<Record<string, number>>().notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 });
 

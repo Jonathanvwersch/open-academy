@@ -3,6 +3,7 @@ import type {
   EngineGenerateHint,
   EngineGrade,
   EngineHasTutorReply,
+  EngineJudgeSummary,
   EngineLearner,
   EngineTutorPaper,
 } from '@open-academy/engine/engine/create-engine';
@@ -20,6 +21,7 @@ export type LearnerOptions = {
   hasTutorReply?: EngineHasTutorReply;
   generateHint?: EngineGenerateHint;
   tutorPaper?: EngineTutorPaper;
+  judgeSummary?: EngineJudgeSummary;
 };
 export interface ApiServices {
   db: Database;

@@ -1,5 +1,5 @@
 import type { TutorContextInput } from '../api/tutor.js';
-import type { ContentIndex, IndexedExercise } from '../course/types.js';
+import type { ContentIndex, IndexedExercise, IndexedPaper } from '../course/types.js';
 import type { gradeExercise } from '../lessons/grading/index.js';
 import type { GradeResult } from '../lessons/grading/types.js';
 import type { Attempt } from '../store/core-store.js';
@@ -57,7 +57,14 @@ export type EngineOperation =
   | { kind: 'answerTimedQuiz'; quizId: string; body: unknown }
   | { kind: 'finalizeTimedQuiz'; quizId: string }
   | { kind: 'retakeTimedQuiz'; quizId: string }
-  | { kind: 'timedQuizFollowUps'; quizId: string };
+  | { kind: 'timedQuizFollowUps'; quizId: string }
+  | { kind: 'projects' }
+  | { kind: 'project'; id: string }
+  | { kind: 'submitProjectResults'; id: string; body: unknown }
+  | { kind: 'papers' }
+  | { kind: 'paper'; id: string }
+  | { kind: 'savePaperProgress'; id: string; body: unknown }
+  | { kind: 'submitPaperSummary'; id: string; body: unknown };
 
 export type EngineGradeResult =
   | GradeResult
@@ -116,6 +123,13 @@ export type EngineTutorPaper = (
   | undefined
 >;
 
+export type EngineJudgeSummary = (input: {
+  question: string;
+  rubric: IndexedPaper['summary']['rubric'];
+  exemplar: IndexedPaper['summary']['exemplar'];
+  answer: string;
+}) => Promise<{ judgement: unknown } | { reason: string }>;
+
 export type EngineRequest = {
   store: CourseStore;
   userId: string;
@@ -128,6 +142,7 @@ export type EngineRequest = {
   hasTutorReply: EngineHasTutorReply;
   generateHint?: EngineGenerateHint;
   tutorPaper?: EngineTutorPaper;
+  judgeSummary?: EngineJudgeSummary;
   fsrsFuzz: boolean;
   tutorEnabled: boolean;
   repo: EngineLearnerRepository;

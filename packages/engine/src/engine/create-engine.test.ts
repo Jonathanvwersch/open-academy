@@ -96,6 +96,46 @@ test('hints and quiz reviews accept memory-issued activity and attempt IDs', asy
   });
 });
 
+test('paper summaries save progress and reveal the rubric in the memory store', async () => {
+  const index = await content;
+  const paper = index.papers[0];
+  if (!paper) throw new Error('Missing paper fixture');
+  const learnerId = 'learner';
+  const now = new Date('2026-01-17T12:00:00Z');
+  const store = memoryStore();
+  const learner = createEngine({
+    content: async () => index,
+    store,
+  }).learner({
+    id: learnerId,
+    timeZone: 'UTC',
+    now: () => now,
+    random: () => 0.5,
+  });
+
+  expect(await learner.paper({ id: paper.id })).toMatchObject({
+    status: 200,
+    body: { paper: { summary: { prompt: paper.summary.prompt } } },
+  });
+  const saved = await learner.submitPaperSummary({
+    id: paper.id,
+    body: { summary: 'A concise summary.' },
+  });
+  expect(saved).toMatchObject({
+    status: 200,
+    body: { judgement: null, reason: 'Tutor grading is disabled.', completedAt: now.toISOString() },
+  });
+  expect(await learner.paper({ id: paper.id })).toMatchObject({
+    status: 200,
+    body: { paper: { summary: { rubric: paper.summary.rubric } } },
+  });
+  expect(await store.getPaperProgress(learnerId, paper.id)).toMatchObject({
+    summary: 'A concise summary.',
+    summaryJudgement: null,
+    completedAt: now,
+  });
+});
+
 test('a completed lesson is unpinned when its content gains a knowledge point', async () => {
   const originalIndex = await content;
   const fixture = [...originalIndex.lessonsByConcept.entries()].flatMap(([conceptId, lesson]) => {

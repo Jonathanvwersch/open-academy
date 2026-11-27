@@ -40,13 +40,23 @@ describeLearnerStoreContract('memoryStore', async (options) => {
             learnerId,
             [
               {
+                id: 'submission-z',
+                userId: learnerId,
                 projectId: 'z',
                 results: { tests: [{ id: 'older', passed: false }] },
+                passed: 0,
+                total: 1,
+                metrics: {},
                 createdAt: new Date('2026-01-17T12:00:00Z'),
               },
               {
+                id: 'submission-a',
+                userId: learnerId,
                 projectId: 'a',
                 results: { tests: [{ id: 'newer', passed: true }] },
+                passed: 1,
+                total: 1,
+                metrics: {},
                 createdAt: new Date('2026-01-18T12:00:00Z'),
               },
             ],

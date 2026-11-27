@@ -20,6 +20,7 @@ import {
 } from '../lessons/reads.js';
 import { hintOperation } from '../memory/hint-operations.js';
 import { readReviews } from '../memory/review-reads.js';
+import { paper, papers, savePaperProgress, submitPaperSummary } from '../papers/operations.js';
 import {
   getPlacementRun,
   placementNext,
@@ -29,6 +30,11 @@ import {
 import { loadHomePlan } from '../planner/home-plan.js';
 import { endSession } from '../planner/session-commands.js';
 import { readProgress } from '../progress/progress.js';
+import {
+  projectOperation,
+  projectsOperation,
+  submitProjectResults,
+} from '../projects/operations.js';
 import {
   answerQuiz,
   finalizeQuiz,
@@ -260,6 +266,20 @@ export async function runEngineOperation(
       return quizResponse(await startQuizRetake(store, quizContext(request), operation.quizId));
     case 'timedQuizFollowUps':
       return quizResponse(await startQuizFollowUps(store, quizContext(request), operation.quizId));
+    case 'projects':
+      return projectsOperation(request);
+    case 'project':
+      return projectOperation(request, operation.id);
+    case 'submitProjectResults':
+      return submitProjectResults(request, operation.id, operation.body);
+    case 'papers':
+      return papers(request);
+    case 'paper':
+      return paper(request, operation.id);
+    case 'savePaperProgress':
+      return savePaperProgress(request, operation.id, operation.body);
+    case 'submitPaperSummary':
+      return submitPaperSummary(request, operation.id, operation.body);
   }
 }
 
