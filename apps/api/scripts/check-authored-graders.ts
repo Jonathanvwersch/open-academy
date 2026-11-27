@@ -1,9 +1,9 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import type { Exercise } from '@academy/aesop/course/schemas';
-import { ExerciseSchema } from '@academy/aesop/course/schemas';
-import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
-import { gradeExercise } from '@academy/aesop/lessons/grading/index';
+import type { Exercise } from '@open-academy/engine/course/schemas';
+import { ExerciseSchema } from '@open-academy/engine/course/schemas';
+import { instantiateExercise, isTemplate } from '@open-academy/engine/course/templates';
+import { gradeExercise } from '@open-academy/engine/lessons/grading/index';
 import { parse } from 'yaml';
 
 const directory = resolve('content/exercises');

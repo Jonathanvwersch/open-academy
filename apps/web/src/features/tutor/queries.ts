@@ -1,4 +1,8 @@
-import type { TutorStatus, TutorThreadDetail, TutorThreadSummary } from '@academy/aesop/api/tutor';
+import type {
+  TutorStatus,
+  TutorThreadDetail,
+  TutorThreadSummary,
+} from '@open-academy/engine/api/tutor';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 export const tutorStatusQueryOptions = () =>

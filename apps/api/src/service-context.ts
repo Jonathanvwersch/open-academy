@@ -1,5 +1,5 @@
-import type { ContentIndex } from '@academy/aesop/course/types';
-import type { EngineLearnerRepository } from '@academy/aesop/engine/repository';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import type { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
 import type { Database } from './db/client.js';
 import type { TutorProvider } from './features/tutor/provider.js';
 import type { TutorService } from './features/tutor/service.js';

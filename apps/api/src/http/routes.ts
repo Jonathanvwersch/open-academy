@@ -1,7 +1,7 @@
-import type { ContentIndex } from '@academy/aesop/course/types';
-import type { EngineGrade, EngineHasTutorReply } from '@academy/aesop/engine/create-engine';
-import { EngineLearnerRepository, type EngineUser } from '@academy/aesop/engine/repository';
-import { localDateKey } from '@academy/aesop/progress/xp';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import type { EngineGrade, EngineHasTutorReply } from '@open-academy/engine/engine/create-engine';
+import { EngineLearnerRepository, type EngineUser } from '@open-academy/engine/engine/repository';
+import { localDateKey } from '@open-academy/engine/progress/xp';
 import { asc, eq } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';

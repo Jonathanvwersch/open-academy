@@ -1,4 +1,4 @@
-# Aesop engine
+# Open Academy engine
 
 - This package owns pure content and learning-engine rules and makes no database, HTTP, or provider calls.
 - `api` owns browser-safe request and response shapes.
@@ -8,5 +8,5 @@
 - `quizzes` owns periodic timed mixed quizzes.
 - `simulator` owns learner simulations, audit invariants, and report generation.
 - `cli` owns the Academy authoring and memory-simulation commands.
-- Import explicit `@academy/aesop/<folder>/<module>` exports from outside this package.
+- Import explicit `@open-academy/engine/<folder>/<module>` exports from outside this package.
 - `HOW-IT-WORKS.md` explains every engine rule in Simplified Technical English and marks which rules come from Math Academy. Update it in the same change as any rule it describes.

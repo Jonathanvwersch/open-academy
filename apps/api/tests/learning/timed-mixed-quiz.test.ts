@@ -1,7 +1,7 @@
-import { createEngine } from '@academy/aesop/engine/create-engine';
-import { fsrsScheduler, newReviewCard } from '@academy/aesop/memory/fsrs';
-import { type QuizQuestion, quizTargetSeconds } from '@academy/aesop/quizzes/mixed-quiz';
-import { confirmedPlacementTopicIds, quizOffer } from '@academy/aesop/quizzes/quiz-offer';
+import { createEngine } from '@open-academy/engine/engine/create-engine';
+import { fsrsScheduler, newReviewCard } from '@open-academy/engine/memory/fsrs';
+import { type QuizQuestion, quizTargetSeconds } from '@open-academy/engine/quizzes/mixed-quiz';
+import { confirmedPlacementTopicIds, quizOffer } from '@open-academy/engine/quizzes/quiz-offer';
 import { eq, inArray } from 'drizzle-orm';
 import { Rating } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';

@@ -1,5 +1,5 @@
-import type { Exercise } from '@academy/aesop/course/schemas';
-import { scoreRubricCriteria } from '@academy/aesop/lessons/grading/rubric-score';
+import type { Exercise } from '@open-academy/engine/course/schemas';
+import { scoreRubricCriteria } from '@open-academy/engine/lessons/grading/rubric-score';
 import type { RubricJudgement } from './schemas.js';
 
 type ExplainExercise = Extract<Exercise, { type: 'explain' }>;

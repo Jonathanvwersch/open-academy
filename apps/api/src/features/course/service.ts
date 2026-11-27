@@ -1,9 +1,9 @@
 import {
   restartTopic as restartTopicProgress,
   updateLearningFocus as updateCourseFocus,
-} from '@academy/aesop/course/progress-commands';
-import type { ContentIndex } from '@academy/aesop/course/types';
-import type { EngineLearnerRepository } from '@academy/aesop/engine/repository';
+} from '@open-academy/engine/course/progress-commands';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import type { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
 import type { Database } from '../../db/client.js';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 

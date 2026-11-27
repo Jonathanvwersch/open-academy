@@ -1,6 +1,9 @@
-import { studyDays } from '@academy/aesop/api/settings';
-import { dailyStudyMinutes, type SessionPreferences } from '@academy/aesop/planner/session-budget';
-import { quizAccommodation } from '@academy/aesop/quizzes/quiz-offer';
+import { studyDays } from '@open-academy/engine/api/settings';
+import {
+  dailyStudyMinutes,
+  type SessionPreferences,
+} from '@open-academy/engine/planner/session-budget';
+import { quizAccommodation } from '@open-academy/engine/quizzes/quiz-offer';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { drizzleLearnerStore } from '../../db/learner-store.js';

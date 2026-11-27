@@ -1,5 +1,5 @@
-import { isTemplate } from '@academy/aesop/course/templates';
-import type { ContentIndex } from '@academy/aesop/course/types';
+import { isTemplate } from '@open-academy/engine/course/templates';
+import type { ContentIndex } from '@open-academy/engine/course/types';
 import {
   compareOutlinePosition,
   courseFoundationIds,
@@ -8,24 +8,28 @@ import {
   masteryKey,
   outlinePosition,
   prerequisiteMet,
-} from '@academy/aesop/graph/prerequisites';
-import { deriveLearningDebt } from '@academy/aesop/memory/debt';
+} from '@open-academy/engine/graph/prerequisites';
+import { deriveLearningDebt } from '@open-academy/engine/memory/debt';
 import {
   mapReviewRating,
   newReviewCard,
   scheduleInitialReview,
   scheduleReview,
-} from '@academy/aesop/memory/fsrs';
-import { countHintsSincePreviousAttempt } from '@academy/aesop/memory/hints';
+} from '@open-academy/engine/memory/fsrs';
+import { countHintsSincePreviousAttempt } from '@open-academy/engine/memory/hints';
 import {
   calculateCredit,
   DefaultMasteryModel,
   recordLessonViewed,
-} from '@academy/aesop/memory/mastery';
-import { initialMastery } from '@academy/aesop/memory/types';
-import { loadSchedulerState } from '@academy/aesop/planner/load-scheduler-state';
-import { reviewTopicsForActivity } from '@academy/aesop/planner/review-topics';
-import type { Candidate, PlannedActivity, SchedulerState } from '@academy/aesop/planner/scheduler';
+} from '@open-academy/engine/memory/mastery';
+import { initialMastery } from '@open-academy/engine/memory/types';
+import { loadSchedulerState } from '@open-academy/engine/planner/load-scheduler-state';
+import { reviewTopicsForActivity } from '@open-academy/engine/planner/review-topics';
+import type {
+  Candidate,
+  PlannedActivity,
+  SchedulerState,
+} from '@open-academy/engine/planner/scheduler';
 import {
   buildReviewActivityForConcept,
   currentLearnerUnit,
@@ -37,8 +41,8 @@ import {
   planSession,
   replan,
   SCHEDULER_CONFIG,
-} from '@academy/aesop/planner/scheduler';
-import { memoryStore } from '@academy/aesop/store/memory-store';
+} from '@open-academy/engine/planner/scheduler';
+import { memoryStore } from '@open-academy/engine/store/memory-store';
 import { fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
 import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';

@@ -1,4 +1,4 @@
-import { studyDays } from '@academy/aesop/api/settings';
+import { studyDays } from '@open-academy/engine/api/settings';
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { Check, LogOut } from 'lucide-react';

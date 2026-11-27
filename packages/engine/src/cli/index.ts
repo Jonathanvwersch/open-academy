@@ -19,11 +19,11 @@ import {
   loadContentFromDirectory,
   loadContentReportFromDirectory,
   loadContentUncheckedFromDirectory,
-} from '@academy/aesop/course/load';
-import { MIN_REVIEW_POOL } from '@academy/aesop/course/review-pool';
-import type { ContentIndex } from '@academy/aesop/course/types';
-import { runSimulateCli } from '@academy/aesop/simulator/cli';
-import { directMemoryDriver } from '@academy/aesop/simulator/memory-driver';
+} from '@open-academy/engine/course/load';
+import { MIN_REVIEW_POOL } from '@open-academy/engine/course/review-pool';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import { runSimulateCli } from '@open-academy/engine/simulator/cli';
+import { directMemoryDriver } from '@open-academy/engine/simulator/memory-driver';
 import { isMap, isSeq, parse, parseDocument, stringify } from 'yaml';
 import { verifyWeights } from './weights.js';
 

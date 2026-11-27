@@ -1,6 +1,6 @@
-import type { ContentIndex } from '@academy/aesop/course/types';
-import type { applyPlacementGrantOutcome } from '@academy/aesop/placement/grant-commands';
-import type { SchedulerState } from '@academy/aesop/planner/scheduler';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import type { applyPlacementGrantOutcome } from '@open-academy/engine/placement/grant-commands';
+import type { SchedulerState } from '@open-academy/engine/planner/scheduler';
 import type { Dimension } from '../course/schemas.js';
 import type { MasteryState } from '../memory/types.js';
 import type { Attempt } from '../store/core-store.js';

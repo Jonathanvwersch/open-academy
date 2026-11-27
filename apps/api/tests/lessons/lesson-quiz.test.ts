@@ -1,10 +1,10 @@
-import { type Exercise, ExerciseSchema } from '@academy/aesop/course/schemas';
-import { instantiateExercise } from '@academy/aesop/course/templates';
+import { type Exercise, ExerciseSchema } from '@open-academy/engine/course/schemas';
+import { instantiateExercise } from '@open-academy/engine/course/templates';
 import {
   quizQuestionsPerStep,
   scoreLessonQuiz,
   selectQuizItems,
-} from '@academy/aesop/lessons/lesson-quiz';
+} from '@open-academy/engine/lessons/lesson-quiz';
 import { expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
 

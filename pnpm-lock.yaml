@@ -170,15 +170,15 @@ importers:
 
   .:
     devDependencies:
-      '@academy/aesop':
-        specifier: workspace:*
-        version: link:packages/aesop
       '@academy/shared':
         specifier: workspace:*
         version: link:packages/shared
       '@biomejs/biome':
         specifier: 2.6.4
         version: 2.6.4
+      '@open-academy/engine':
+        specifier: workspace:*
+        version: link:packages/engine
       '@playwright/test':
         specifier: 1.64.1
         version: 1.64.1
@@ -227,15 +227,15 @@ importers:
 
   apps/api:
     dependencies:
-      '@academy/aesop':
-        specifier: workspace:*
-        version: link:../../packages/aesop
       '@academy/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@hono/node-server':
         specifier: 2.1.6
         version: 2.1.6(hono@4.13.16)
+      '@open-academy/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       dotenv:
         specifier: 18.0.9
         version: 18.0.9
@@ -288,9 +288,6 @@ importers:
 
   apps/web:
     dependencies:
-      '@academy/aesop':
-        specifier: workspace:*
-        version: link:../../packages/aesop
       '@academy/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -303,6 +300,9 @@ importers:
       '@fontsource-variable/source-sans-3':
         specifier: ^5.3.1
         version: 5.3.1
+      '@open-academy/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@tanstack/react-query':
         specifier: 5.105.3
         version: 5.105.3(@types/react@19.3.0)(react@19.3.1)
@@ -401,7 +401,7 @@ importers:
         specifier: 5.1.0
         version: 5.1.0(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
-  packages/aesop:
+  packages/engine:
     dependencies:
       '@academy/shared':
         specifier: workspace:*

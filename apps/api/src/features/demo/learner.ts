@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { localDateKey } from '@academy/aesop/progress/xp';
+import { localDateKey } from '@open-academy/engine/progress/xp';
 import { and, eq, lt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';

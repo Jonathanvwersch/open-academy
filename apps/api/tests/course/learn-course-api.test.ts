@@ -1,11 +1,14 @@
-import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
-import { subjectForCourse } from '@academy/aesop/course/index';
-import type { ContentIndex } from '@academy/aesop/course/types';
-import { EngineLearnerRepository } from '@academy/aesop/engine/repository';
-import { courseFoundationIds, createPrerequisiteChecker } from '@academy/aesop/graph/prerequisites';
-import { newReviewCard } from '@academy/aesop/memory/fsrs';
-import type { MasteryRecord } from '@academy/aesop/memory/types';
-import { answerFor } from '@academy/aesop/simulator/support';
+import { orderCourseIdsBySubject } from '@open-academy/engine/course/course-order';
+import { subjectForCourse } from '@open-academy/engine/course/index';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
+import {
+  courseFoundationIds,
+  createPrerequisiteChecker,
+} from '@open-academy/engine/graph/prerequisites';
+import { newReviewCard } from '@open-academy/engine/memory/fsrs';
+import type { MasteryRecord } from '@open-academy/engine/memory/types';
+import { answerFor } from '@open-academy/engine/simulator/support';
 import { asc, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';

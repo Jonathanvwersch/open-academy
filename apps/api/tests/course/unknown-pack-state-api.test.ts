@@ -1,5 +1,5 @@
-import type { ContentIndex } from '@academy/aesop/course/types';
-import { newReviewCard } from '@academy/aesop/memory/fsrs';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import { newReviewCard } from '@open-academy/engine/memory/fsrs';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';

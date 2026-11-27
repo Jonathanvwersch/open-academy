@@ -1,8 +1,11 @@
-import type { ContentIndex } from '@academy/aesop/course/types';
-import { normalizeLearnerExpression } from '@academy/aesop/lessons/grading/expression';
-import { gradeExercise } from '@academy/aesop/lessons/grading/index';
-import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '@academy/aesop/lessons/grading/multiple-choice';
-import type { ExpressionExercise, NumericExercise } from '@academy/aesop/lessons/grading/types';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import { normalizeLearnerExpression } from '@open-academy/engine/lessons/grading/expression';
+import { gradeExercise } from '@open-academy/engine/lessons/grading/index';
+import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '@open-academy/engine/lessons/grading/multiple-choice';
+import type {
+  ExpressionExercise,
+  NumericExercise,
+} from '@open-academy/engine/lessons/grading/types';
 import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
 

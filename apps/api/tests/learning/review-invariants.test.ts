@@ -1,16 +1,16 @@
-import { subjectForCourse } from '@academy/aesop/course/index';
-import { isTemplate } from '@academy/aesop/course/templates';
-import type { ContentIndex } from '@academy/aesop/course/types';
-import { EngineLearnerRepository } from '@academy/aesop/engine/repository';
-import { filterSchedulerStateForContent } from '@academy/aesop/graph/content-filters';
-import { courseConceptIds, courseFoundationIds } from '@academy/aesop/graph/prerequisites';
+import { subjectForCourse } from '@open-academy/engine/course/index';
+import { isTemplate } from '@open-academy/engine/course/templates';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
+import { filterSchedulerStateForContent } from '@open-academy/engine/graph/content-filters';
+import { courseConceptIds, courseFoundationIds } from '@open-academy/engine/graph/prerequisites';
 import {
   isDueToday,
   newReviewCard,
   reviewActivityRating,
   scheduleReview,
-} from '@academy/aesop/memory/fsrs';
-import * as schedulerModule from '@academy/aesop/planner/scheduler';
+} from '@open-academy/engine/memory/fsrs';
+import * as schedulerModule from '@open-academy/engine/planner/scheduler';
 import {
   buildReviewActivityForConcept,
   effectiveFocusSubjectId,
@@ -18,13 +18,13 @@ import {
   explainReviewSelectionForReplan,
   SCHEDULER_CONFIG,
   sessionBudget,
-} from '@academy/aesop/planner/scheduler';
-import { localDateKey, sessionKindForDate } from '@academy/aesop/progress/xp';
+} from '@open-academy/engine/planner/scheduler';
+import { localDateKey, sessionKindForDate } from '@open-academy/engine/progress/xp';
 import {
   answerFor as answerForExercise,
   seededWrongAnswerFor as seededWrongAnswerForExercise,
   wrongAnswerFor as wrongAnswerForExercise,
-} from '@academy/aesop/simulator/support';
+} from '@open-academy/engine/simulator/support';
 import { and, eq, inArray } from 'drizzle-orm';
 import { Rating } from 'ts-fsrs';
 import { afterAll, beforeAll, expect, vi, it as vitestIt } from 'vitest';

@@ -1,6 +1,6 @@
-import type { AnswerOptions, ClientExercise } from '@academy/aesop/api/exercises';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { onScreenOptions } from '@academy/shared/shuffle';
+import type { AnswerOptions, ClientExercise } from '@open-academy/engine/api/exercises';
 import { Check, X } from 'lucide-react';
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';

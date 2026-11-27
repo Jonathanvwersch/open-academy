@@ -1,17 +1,17 @@
-import type { ContentIndex } from '@academy/aesop/course/types';
+import type { ContentIndex } from '@open-academy/engine/course/types';
 import {
   createEngine,
   type EngineOperation,
   type EngineResult,
-} from '@academy/aesop/engine/create-engine';
-import { EngineLearnerRepository } from '@academy/aesop/engine/repository';
+} from '@open-academy/engine/engine/create-engine';
+import { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
 import {
   type ImplicitRepetitionTraceEvent,
   setImplicitRepetitionTrace,
-} from '@academy/aesop/memory/mastery-service';
-import type { MasteryRecord } from '@academy/aesop/memory/types';
-import { localDateKey } from '@academy/aesop/progress/xp';
-import { type MemoryLearnerStore, memoryStore } from '@academy/aesop/store/memory-store';
+} from '@open-academy/engine/memory/mastery-service';
+import type { MasteryRecord } from '@open-academy/engine/memory/types';
+import { localDateKey } from '@open-academy/engine/progress/xp';
+import { type MemoryLearnerStore, memoryStore } from '@open-academy/engine/store/memory-store';
 import { z } from 'zod';
 import type {
   AuditAttemptRow,
@@ -94,7 +94,7 @@ function paperProgress(
   return { status: 200, body: saved };
 }
 
-/** Calls Aesop use cases on a fresh in-memory store for each learner: no app, database or keys. */
+/** Runs engine use cases in a fresh in-memory store per learner; no app, database, or keys. */
 export class DirectMemoryDriver implements SimulatorDriver {
   private readonly quizClock = new QuizClock();
   private readonly randomness: RequestRandomness;

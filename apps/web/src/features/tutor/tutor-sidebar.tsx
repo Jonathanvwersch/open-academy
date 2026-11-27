@@ -1,13 +1,13 @@
-import type {
-  TutorLessonStage,
-  TutorThreadDetail,
-  TutorThreadSummary,
-} from '@academy/aesop/api/tutor';
 import {
   repairTutorMarkdown,
   TUTOR_QUESTION_MAX_LENGTH,
   tutorQuestionTooLongMessage,
 } from '@academy/shared/tutor';
+import type {
+  TutorLessonStage,
+  TutorThreadDetail,
+  TutorThreadSummary,
+} from '@open-academy/engine/api/tutor';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Plus, Square, X } from 'lucide-react';
 import {

@@ -1,5 +1,5 @@
-import { sessionActivityIsInContent } from '@academy/aesop/graph/content-filters';
-import { withReviewTopics } from '@academy/aesop/planner/home-plan';
+import { sessionActivityIsInContent } from '@open-academy/engine/graph/content-filters';
+import { withReviewTopics } from '@open-academy/engine/planner/home-plan';
 import type { FeatureRequest, FeatureServices } from '../../service-context.js';
 import { serviceResult } from '../../service-context.js';
 

@@ -1,6 +1,6 @@
-# How Aesop works
+# How the engine works
 
-This guide explains the rules of the Aesop engine.
+This guide explains the rules of the engine.
 
 Each rule has a source tag:
 

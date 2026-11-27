@@ -1,5 +1,5 @@
-import type { QuizQuestion } from '@academy/aesop/quizzes/mixed-quiz';
-import type { LessonQuizEvidence } from '@academy/aesop/store/lesson-store';
+import type { QuizQuestion } from '@open-academy/engine/quizzes/mixed-quiz';
+import type { LessonQuizEvidence } from '@open-academy/engine/store/lesson-store';
 import { sql } from 'drizzle-orm';
 import {
   type AnyPgColumn,

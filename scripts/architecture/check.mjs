@@ -5,11 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { parseSync } from 'oxc-parser';
 import { ResolverFactory } from 'oxc-resolver';
 import {
-  aesopBuiltins,
-  aesopDependencies,
   browserForbiddenPackages,
   cliBuiltins,
   deploymentImports,
+  engineBuiltins,
+  engineDependencies,
   publicFeatureModules,
   sharedPackageDependencies,
   simulatorBuiltins,
@@ -191,14 +191,14 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
     const targets = [];
     for (let request of importRequests(parsed.program)) {
       if (builtins.has(request)) {
-        const aesopBuiltin =
-          file.startsWith('packages/aesop/src/course/') && aesopBuiltins.has(request);
-        const cliBuiltin = file.startsWith('packages/aesop/src/cli/') && cliBuiltins.has(request);
+        const engineBuiltin =
+          file.startsWith('packages/engine/src/course/') && engineBuiltins.has(request);
+        const cliBuiltin = file.startsWith('packages/engine/src/cli/') && cliBuiltins.has(request);
         const simulatorBuiltin =
-          file === 'packages/aesop/src/simulator/cli.ts' && simulatorBuiltins.has(request);
+          file === 'packages/engine/src/simulator/cli.ts' && simulatorBuiltins.has(request);
         if (
           !isTest &&
-          !aesopBuiltin &&
+          !engineBuiltin &&
           !cliBuiltin &&
           !simulatorBuiltin &&
           (own.startsWith('packages/') || (own === 'apps/web' && !file.endsWith('config.ts')))
@@ -233,10 +233,10 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
         const dependency = packageName(request);
         if (
           !isTest &&
-          file.startsWith('packages/aesop/src/api/') &&
-          dependency !== '@academy/aesop'
+          file.startsWith('packages/engine/src/api/') &&
+          dependency !== '@open-academy/engine'
         )
-          report(file, 'Aesop API contracts may import only other API modules');
+          report(file, 'Engine API types may import only other API modules');
         if (!dependencies.has(dependency) && dependency !== manifests.get(own)?.name)
           report(file, `declare ${dependency} in ${own}/package.json`);
         const workspace = byName.get(dependency);
@@ -244,9 +244,9 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           if (
             own === 'apps/web' &&
             browserForbiddenPackages.has(dependency) &&
-            !request.startsWith('@academy/aesop/api/')
+            !request.startsWith('@open-academy/engine/api/')
           )
-            report(file, 'apps/web can import only @academy/aesop/api/* from Aesop');
+            report(file, 'apps/web can import only @open-academy/engine/api/* from the engine');
           if (workspace.dir.startsWith('apps/'))
             report(
               file,
@@ -265,11 +265,11 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
             report(file, `${request} exports a missing file`);
         }
         const packageDependencyAllowed =
-          own === 'packages/aesop'
-            ? aesopDependencies.has(dependency)
+          own === 'packages/engine'
+            ? engineDependencies.has(dependency)
             : sharedPackageDependencies.has(dependency);
         const learnerStoreContractRunner =
-          file === 'packages/aesop/src/store/learner-store.contract.ts' && request === 'vitest';
+          file === 'packages/engine/src/store/learner-store.contract.ts' && request === 'vitest';
         if (
           !isTest &&
           own.startsWith('packages/') &&
@@ -288,15 +288,15 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
       if (!target) continue;
       if (
         !isTest &&
-        file.startsWith('packages/aesop/src/api/') &&
-        !target.startsWith('packages/aesop/src/api/')
+        file.startsWith('packages/engine/src/api/') &&
+        !target.startsWith('packages/engine/src/api/')
       )
-        report(file, 'Aesop API contracts may import only other API modules');
+        report(file, 'Engine API types may import only other API modules');
       targets.push(target);
       if (own === 'apps/web' && target.startsWith('apps/api/'))
         report(
           file,
-          'web cannot import API source, even types; expose browser-safe shapes from @academy/aesop/api',
+          'web cannot import API source, even types; expose browser-safe shapes from @open-academy/engine/api',
         );
       if (own.startsWith('packages/') && target.startsWith('apps/'))
         report(file, 'shared packages cannot depend on applications');

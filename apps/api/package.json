@@ -23,7 +23,7 @@
     "yaml": "2.9.1",
     "drizzle-orm": "0.45.4",
     "hono": "4.13.16",
-    "@academy/aesop": "workspace:*",
+    "@open-academy/engine": "workspace:*",
     "zod": "4.6.7",
     "mathjs": "15.2.0",
     "postgres": "4.0.0",

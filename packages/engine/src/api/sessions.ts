@@ -1,4 +1,4 @@
-import type { AnswerOptions, RubricFeedbackItem } from '@academy/aesop/api/exercises';
+import type { AnswerOptions, RubricFeedbackItem } from '@open-academy/engine/api/exercises';
 
 export interface TodayPayload {
   tutorEnabled: boolean;

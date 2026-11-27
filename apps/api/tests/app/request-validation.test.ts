@@ -1,5 +1,5 @@
-import type { ContentIndex } from '@academy/aesop/course/types';
-import { EngineLearnerRepository } from '@academy/aesop/engine/repository';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { createApp } from '../../src/app.js';

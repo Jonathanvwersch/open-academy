@@ -1,5 +1,5 @@
-import type { EngineGrade, EngineResult } from '@academy/aesop/engine/create-engine';
-import { gradeExercise } from '@academy/aesop/lessons/grading/index';
+import type { EngineGrade, EngineResult } from '@open-academy/engine/engine/create-engine';
+import { gradeExercise } from '@open-academy/engine/lessons/grading/index';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { ApiEnv, ApiServices } from '../../http/context.js';

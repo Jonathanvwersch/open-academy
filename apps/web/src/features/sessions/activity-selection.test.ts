@@ -1,5 +1,5 @@
-import type { LessonRunPayload } from '@academy/aesop/api/lessons';
-import type { SessionActivity } from '@academy/aesop/api/sessions';
+import type { LessonRunPayload } from '@open-academy/engine/api/lessons';
+import type { SessionActivity } from '@open-academy/engine/api/sessions';
 import { expect, test } from 'vitest';
 import {
   selectSessionActivity,

@@ -1,10 +1,10 @@
-import type { ContentIndex } from '@academy/aesop/course/types';
-import { EngineLearnerRepository } from '@academy/aesop/engine/repository';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
 import {
   type ImplicitRepetitionTraceEvent,
   setImplicitRepetitionTrace,
-} from '@academy/aesop/memory/mastery-service';
-import { localDateKey } from '@academy/aesop/progress/xp';
+} from '@open-academy/engine/memory/mastery-service';
+import { localDateKey } from '@open-academy/engine/progress/xp';
 import type {
   AuditActivityReviewLog,
   AuditMasteryRow,
@@ -13,7 +13,7 @@ import type {
   AuditTimedReviewLog,
   SimulatorAudit,
   SimulatorFixtures,
-} from '@academy/aesop/simulator/audit';
+} from '@open-academy/engine/simulator/audit';
 import {
   type ApiResult,
   httpRequestFor,
@@ -26,7 +26,7 @@ import {
   type SimulatorDriverFactory,
   type SimulatorDriverInput,
   type SimulatorOperation,
-} from '@academy/aesop/simulator/driver';
+} from '@open-academy/engine/simulator/driver';
 import { and, asc, desc, eq, exists, inArray, notInArray, sql } from 'drizzle-orm';
 import { createApp } from '../src/app.js';
 import type { Database } from '../src/db/client.js';

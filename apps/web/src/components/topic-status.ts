@@ -1,4 +1,4 @@
-import type { CourseTopicStatus } from '@academy/aesop/api/course';
+import type { CourseTopicStatus } from '@open-academy/engine/api/course';
 
 export const topicStatusLabels: Record<CourseTopicStatus, string> = {
   not_started: 'Not started',
