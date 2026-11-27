@@ -27,6 +27,11 @@ export function registerExercisesRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
   });
   api.post('/hints', async (context) => {
     const body = await context.req.json().catch(() => ({}));
+    if (
+      !z.object({ activityId: z.string().uuid().optional() }).passthrough().safeParse(body).success
+    ) {
+      return context.json({ error: 'Invalid hint request' }, 400);
+    }
     const generateHint = async (input: EngineHintContext) => {
       const tutor = deps.tutor(context);
       if (!tutor) return { kind: 'disabled' as const };

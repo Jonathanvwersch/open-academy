@@ -167,11 +167,14 @@ export function registerLessonRunRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
   });
 
   api.get('/lessons/:conceptId/quiz/:attemptId/review', async (context) => {
+    const attemptId = context.req.param('attemptId');
+    if (!z.string().uuid().safeParse(attemptId).success)
+      return context.json({ error: 'Quiz attempt not found' }, 404);
     return send(
       context,
       await deps.learner(context).lessonQuizReview({
         conceptId: context.req.param('conceptId'),
-        attemptId: context.req.param('attemptId'),
+        attemptId: attemptId.toLowerCase(),
       }),
     );
   });

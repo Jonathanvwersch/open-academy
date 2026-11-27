@@ -6,7 +6,7 @@ import { attemptAllowsRetry } from './retry.js';
 
 const hintRequest = z.object({
   exerciseId: z.string(),
-  activityId: z.string().uuid().optional(),
+  activityId: z.string().min(1).optional(),
   mode: z.enum(['practice', 'review', 'assessment', 'diagnostic']).default('practice'),
   stuck: z.boolean().default(false),
   revealSolution: z.boolean().default(false),

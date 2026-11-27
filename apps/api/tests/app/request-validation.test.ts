@@ -53,6 +53,22 @@ test.each([
   expect((await app.request(path)).status).toBe(404);
 });
 
+test('hints reject non-UUID activity ids with the existing invalid-request response', async () => {
+  const response = await app.request('/api/hints', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ exerciseId: 'vectors-q1', activityId: 'activity-1' }),
+  });
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({ error: 'Invalid hint request' });
+});
+
+test('invalid quiz review ids retain the not-found response', async () => {
+  const response = await app.request('/api/lessons/vectors/quiz/invalid/review');
+  expect(response.status).toBe(404);
+  expect(await response.json()).toEqual({ error: 'Quiz attempt not found' });
+});
+
 test('unknown activity ids are rejected before recording an attempt', async () => {
   const response = await app.request('/api/attempts', {
     method: 'POST',

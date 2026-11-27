@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { courseTopicState } from '../course/course-payload.js';
 import { getLessonPrerequisites } from '../course/index.js';
 import { serializeExercise, serializeLesson } from '../course/serialize.js';
@@ -254,16 +253,12 @@ export async function readLessonRun(
 export async function readLessonQuizReview(
   request: EngineRequest,
   conceptId: string,
-  rawAttemptId: string,
+  attemptId: string,
 ) {
-  if (!z.string().uuid().safeParse(rawAttemptId).success) {
-    return respond({ error: 'Quiz attempt not found' }, 404);
-  }
   const { content, store, userId } = request;
   const lesson = content.lessonsByConcept.get(conceptId);
   if (!lesson?.knowledge_points?.length)
     return respond({ error: 'Knowledge-point lesson not found' }, 404);
-  const attemptId = rawAttemptId.toLowerCase();
   const run = await store.getLessonRun(userId, { conceptId });
   const quiz = run ? await store.readLessonQuiz(userId, run.id) : undefined;
   const attempt = quiz?.quizAttempts.find(
