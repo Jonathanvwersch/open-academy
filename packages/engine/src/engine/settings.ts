@@ -41,9 +41,9 @@ export async function saveSettingsOperation(
 ): Promise<EngineResult> {
   const body = settingsBody.safeParse(input);
   if (!body.success) return respond({ error: 'Invalid settings' }, 400);
-  const settings = await request.repo.settings();
   const { startDate, ...preferences } = body.data;
   const saved = await request.store.transaction(async (tx) => {
+    const settings = await tx.getSettings(request.userId);
     await tx.patchSettings(request.userId, {
       ...(startDate === undefined ? {} : { startDate }),
       prefs: { ...settings?.prefs, ...preferences },

@@ -10,6 +10,39 @@ const content = loadContentFromDirectory(
   fileURLToPath(new URL('../../../../content', import.meta.url)),
 );
 
+test('partial settings updates preserve earlier edits for a reused learner', async () => {
+  const index = await content;
+  const learnerId = 'settings-learner';
+  const now = new Date('2026-01-17T12:00:00Z');
+  const store = memoryStore({
+    settings: new Map([
+      [
+        learnerId,
+        {
+          activeCourseId: null,
+          studySetInitializedAt: null,
+          startDate: '2026-01-17',
+          timeZone: 'UTC',
+          prefs: {},
+        },
+      ],
+    ]),
+  });
+  const learner = createEngine({ content: async () => index, store }).learner({
+    id: learnerId,
+    timeZone: 'UTC',
+    now: () => now,
+    random: () => 0.5,
+  });
+
+  await learner.saveSettings({ body: { scheduleMinutes: 90 } });
+  await learner.saveSettings({ body: { quizTimeMultiplier: 2 } });
+
+  expect(await store.getSettings(learnerId)).toMatchObject({
+    prefs: { scheduleMinutes: 90, quizTimeMultiplier: 2 },
+  });
+});
+
 test('hints and quiz reviews accept memory-issued activity and attempt IDs', async () => {
   const index = await content;
   const exercise = index.exercises.find(
