@@ -120,6 +120,23 @@ describeLearnerStoreContract('memoryStore', async (options) => {
   };
 });
 
+it('preserves seeded paper completion when saving detailed progress', async () => {
+  const completedAt = new Date('2026-01-17T12:00:00Z');
+  const store = memoryStore({
+    schedulerProjections: new Map([
+      [learnerId, { paperProgress: [{ paperId: 'paper', completedAt }] }],
+    ]),
+  });
+  const saved = await store.savePaperProgress(learnerId, {
+    paperId: 'paper',
+    lastPage: 2,
+    updatedAt: new Date('2026-01-18T12:00:00Z'),
+  });
+
+  expect(saved).toMatchObject({ lastPage: 2, completedAt });
+  expect(await store.getPaperProgress(learnerId, 'paper')).toMatchObject({ completedAt });
+});
+
 it('clears activity links for both learners when their seeded hint is shared', async () => {
   const otherLearnerId = 'other';
   const hint = {

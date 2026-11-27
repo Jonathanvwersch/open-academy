@@ -366,6 +366,27 @@ function scopedStore(
     });
   }
 
+  async function getPaperProgress(learnerId: string, paperId: string) {
+    assertOpen();
+    const saved = data.paperProgress.get(learnerId)?.get(paperId);
+    if (saved) return structuredClone(saved);
+    const projection = data.schedulerProjections
+      .get(learnerId)
+      ?.paperProgress.find((row) => row.paperId === paperId);
+    return projection
+      ? {
+          userId: learnerId,
+          paperId,
+          lastPage: 1,
+          notes: {},
+          summary: null,
+          summaryJudgement: null,
+          completedAt: structuredClone(projection.completedAt),
+          updatedAt: structuredClone(projection.completedAt ?? new Date(0)),
+        }
+      : undefined;
+  }
+
   return {
     async transaction(fn) {
       assertOpen();
@@ -1472,30 +1493,11 @@ function scopedStore(
       }
       return structuredClone([...rows.values()].sort((a, b) => compare(a.paperId, b.paperId)));
     },
-    async getPaperProgress(learnerId, paperId) {
-      assertOpen();
-      const saved = data.paperProgress.get(learnerId)?.get(paperId);
-      if (saved) return structuredClone(saved);
-      const projection = data.schedulerProjections
-        .get(learnerId)
-        ?.paperProgress.find((row) => row.paperId === paperId);
-      return projection
-        ? {
-            userId: learnerId,
-            paperId,
-            lastPage: 1,
-            notes: {},
-            summary: null,
-            summaryJudgement: null,
-            completedAt: structuredClone(projection.completedAt),
-            updatedAt: structuredClone(projection.completedAt ?? new Date(0)),
-          }
-        : undefined;
-    },
+    getPaperProgress,
     async savePaperProgress(learnerId, patch: PaperProgressPatch) {
       assertOpen();
       const rows = data.paperProgress.get(learnerId) ?? new Map();
-      const existing = rows.get(patch.paperId);
+      const existing = await getPaperProgress(learnerId, patch.paperId);
       const saved: PaperProgressRecord = structuredClone({
         userId: learnerId,
         paperId: patch.paperId,
