@@ -65,6 +65,8 @@ export const engineDependencies = new Set([
 
 export const engineBuiltins = new Set(['node:crypto', 'node:fs/promises', 'node:path']);
 
+export const engineBuildBuiltins = new Set(['node:fs', 'node:path']);
+
 // The authoring CLI uses Node process and filesystem APIs; engine modules remain browser-safe.
 export const cliBuiltins = new Set([
   'node:child_process',
