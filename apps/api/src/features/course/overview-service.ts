@@ -11,8 +11,14 @@ import {
 import { deriveLearningDebt } from '@academy/aesop/memory/debt';
 import type { MasteryRecord } from '@academy/aesop/memory/types';
 import type { StudyMapPayload } from '@academy/contracts/course';
-import { eq } from 'drizzle-orm';
-import { lessonRuns, placementGrants } from '../../db/schema.js';
+import { and, desc, eq } from 'drizzle-orm';
+import {
+  attempts,
+  lessonRuns,
+  masteryEvents,
+  placementGrants,
+  remediationFlags,
+} from '../../db/schema.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 
 export async function getStudyMap(deps: FeatureServices, request: FeatureRequest) {
@@ -21,7 +27,7 @@ export async function getStudyMap(deps: FeatureServices, request: FeatureRequest
   const payload: StudyMapPayload = { groups: [], nodes: [], edges: [] };
   if (courseIds.length === 0) return serviceResult(payload);
   const [mastery, runs, placements] = await Promise.all([
-    request.repo.masteryRecords(),
+    request.repo.store.listMastery(request.userId),
     deps.db.select().from(lessonRuns).where(eq(lessonRuns.userId, request.userId)),
     deps.db
       .select({
@@ -110,16 +116,22 @@ export async function getStudyMap(deps: FeatureServices, request: FeatureRequest
 }
 
 export async function getConceptsById(deps: FeatureServices, request: FeatureRequest) {
-  const { content } = deps;
+  const { db, content } = deps;
   const index = await content();
   const concept = index.conceptsById.get(request.params.id);
   if (!concept) {
     return serviceResult({ error: 'Concept not found' }, 404);
   }
   const repo = request.repo;
+  const events = () =>
+    db
+      .select()
+      .from(masteryEvents)
+      .where(and(eq(masteryEvents.userId, request.userId), eq(masteryEvents.conceptId, concept.id)))
+      .orderBy(desc(masteryEvents.createdAt));
   const debt = deriveLearningDebt({
-    mastery: await repo.masteryRecords(),
-    events: (await repo.events(concept.id)).map((event) => ({
+    mastery: await repo.store.listMastery(request.userId),
+    events: (await events()).map((event) => ({
       conceptId: event.conceptId,
       dimension: event.dimension as MasteryRecord['dimension'],
       fromState: event.fromState,
@@ -127,13 +139,27 @@ export async function getConceptsById(deps: FeatureServices, request: FeatureReq
       rule: event.rule,
       createdAt: event.createdAt.toISOString(),
     })),
-    attempts: (await repo.recentAttempts()).map((attempt) => ({
+    attempts: (
+      await db
+        .select()
+        .from(attempts)
+        .where(eq(attempts.userId, request.userId))
+        .orderBy(desc(attempts.createdAt))
+        .limit(100)
+    ).map((attempt) => ({
       conceptId: attempt.conceptId,
       dimension: attempt.dimension as MasteryRecord['dimension'],
       correct: attempt.correct,
       hintsUsed: attempt.hintsUsed,
     })),
-    remediationFlags: (await repo.openFlags()).map((flag) => ({
+    remediationFlags: (
+      await db
+        .select()
+        .from(remediationFlags)
+        .where(
+          and(eq(remediationFlags.userId, request.userId), eq(remediationFlags.status, 'open')),
+        )
+    ).map((flag) => ({
       conceptId: flag.conceptId,
       targetPrereqId: flag.targetPrereqId ?? undefined,
     })),
@@ -141,8 +167,10 @@ export async function getConceptsById(deps: FeatureServices, request: FeatureReq
   return serviceResult({
     concept: serializeConcept(concept),
     lessonAvailable: index.lessonsByConcept.has(concept.id),
-    mastery: (await repo.masteryRecords()).filter((record) => record.conceptId === concept.id),
-    events: await repo.events(concept.id),
+    mastery: (await repo.store.listMastery(request.userId)).filter(
+      (record) => record.conceptId === concept.id,
+    ),
+    events: await events(),
     debt: debt.filter((entry) => entry.conceptId === concept.id),
   });
 }

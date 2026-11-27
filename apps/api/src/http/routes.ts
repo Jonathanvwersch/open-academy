@@ -1,12 +1,13 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
 import type { EngineGrade, EngineHasTutorReply } from '@academy/aesop/engine/create-engine';
+import { EngineLearnerRepository, type EngineUser } from '@academy/aesop/engine/repository';
 import { localDateKey } from '@academy/aesop/progress/xp';
 import { asc, eq } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { env } from '../config.js';
 import type { Database } from '../db/client.js';
-import { LearnerRepository } from '../db/repository.js';
+import { drizzleLearnerStore } from '../db/learner-store.js';
 import { users, xpEvents } from '../db/schema.js';
 import { registerCourseRoutes } from '../features/course/overview-routes.js';
 import { registerLearnCourseRoutes } from '../features/course/routes.js';
@@ -29,6 +30,7 @@ import {
 } from '../features/tutor/provider.js';
 import { registerTutorThreadRoutes } from '../features/tutor/routes.js';
 import { TutorService } from '../features/tutor/service.js';
+import { fsrsFuzzEnabled } from '../learning/fsrs-fuzz.js';
 import type { ApiEnv } from './context.js';
 import { createApiEngine } from './engine.js';
 import { isValidTimeZone, requestNow } from './request-context.js';
@@ -84,10 +86,13 @@ export function createApiRoutes(deps: {
     await next();
   });
   const withRepo = (context: Context<ApiEnv>) =>
-    new LearnerRepository(db, context.get('userId'), context.get('user'), {
-      load: content,
-      now: () => requestNow(context),
-    });
+    new EngineLearnerRepository(
+      drizzleLearnerStore(db, { schedulerTimezone: context.get('user').timezone ?? 'UTC' }),
+      context.get('userId'),
+      context.get('user') as EngineUser,
+      { load: content, now: () => requestNow(context) },
+      fsrsFuzzEnabled(),
+    );
   const tutor = (context: Context<ApiEnv>) =>
     tutorProvider &&
     new TutorService(

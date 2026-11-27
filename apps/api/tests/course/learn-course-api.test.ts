@@ -1,6 +1,7 @@
 import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
 import { subjectForCourse } from '@academy/aesop/course/index';
 import type { ContentIndex } from '@academy/aesop/course/types';
+import { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import { courseFoundationIds, createPrerequisiteChecker } from '@academy/aesop/graph/prerequisites';
 import { newReviewCard } from '@academy/aesop/memory/fsrs';
 import type { MasteryRecord } from '@academy/aesop/memory/types';
@@ -11,7 +12,7 @@ import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
-import { LearnerRepository } from '../../src/db/repository.js';
+import { drizzleLearnerStore } from '../../src/db/learner-store.js';
 import {
   attempts,
   courseEnrollments,
@@ -33,12 +34,22 @@ import {
   users,
   xpEvents,
 } from '../../src/db/schema.js';
+import { fsrsFuzzEnabled } from '../../src/learning/fsrs-fuzz.js';
 import { hardPrerequisiteAncestors, withStubConcept } from '../content-test-utils.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000092';
 let app: ReturnType<typeof createApp>;
 let content: ContentIndex;
+
+const repositoryFor = (learnerId = userId) =>
+  new EngineLearnerRepository(
+    drizzleLearnerStore(db),
+    learnerId,
+    undefined,
+    undefined,
+    fsrsFuzzEnabled(),
+  );
 
 beforeAll(async () => {
   content = await loadContent();
@@ -898,7 +909,7 @@ test('study set backfill includes started courses and later respects removal', a
     { userId, conceptId: b.conceptId, dimension: b.dimension, state: 'introduced', evidence: {} },
   ]);
 
-  const repository = new LearnerRepository(db, userId);
+  const repository = repositoryFor();
   expect(await repository.studyCourseIds(content)).toEqual(
     (content.curriculum?.courses ?? content.courses.map((course) => course.id)).filter((id) =>
       [courseA.id, courseB.id].includes(id),
@@ -926,7 +937,7 @@ test('an unstarted selected course stays unenrolled and still needs its start ca
 });
 
 test('study-course membership refreshes after a course is started in the same repository', async () => {
-  const repository = new LearnerRepository(db, userId);
+  const repository = repositoryFor();
   expect(await repository.studyCourseIds(content)).toEqual([]);
 
   await repository.startCourse('deep-learning', 'beginning', new Date('2026-01-07T12:00:00.000Z'));
@@ -1086,7 +1097,7 @@ test('course details persist completion when every topic is complete', async () 
 
   const detail = await (await get('/courses/deep-learning')).json();
   expect(detail.status).toBe('completed');
-  const enrollment = await new LearnerRepository(db, userId).courseEnrollment('deep-learning');
+  const enrollment = await repositoryFor().courseEnrollment('deep-learning');
   expect(enrollment).toMatchObject({
     status: 'completed',
     completedAt: expect.any(Date),
@@ -1415,7 +1426,7 @@ test('Home previews the same quiz-first activities as a new session', async () =
       completedAt: new Date(now),
     })),
   );
-  await new LearnerRepository(db, userId).completeCourses(
+  await repositoryFor().completeCourses(
     quizContent.courses.map(({ id }) => id),
     new Date(now),
   );
@@ -2683,7 +2694,7 @@ test('done-today XP rows include XP from a finalized timed quiz', async () => {
       completedAt: new Date(now),
     })),
   );
-  await new LearnerRepository(db, userId).completeCourses(
+  await repositoryFor().completeCourses(
     quizContent.courses.map(({ id }) => id),
     new Date(now),
   );

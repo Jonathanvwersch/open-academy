@@ -6,9 +6,15 @@ import { filterMasteryRecordsForContent } from '@academy/aesop/graph/content-fil
 import { type MasteryRecord, masteryRank } from '@academy/aesop/memory/types';
 import { buildProgress } from '@academy/aesop/progress/progress';
 import type { ProgressMasteryState, ProgressSubjectPayload } from '@academy/contracts/progress';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
-import { lessonRuns, masteryEvents, projectSubmissions } from '../../db/schema.js';
+import {
+  attempts,
+  lessonRuns,
+  masteryEvents,
+  projectSubmissions,
+  remediationFlags,
+} from '../../db/schema.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 
 const masteryStates: ProgressMasteryState[] = [
@@ -81,24 +87,35 @@ export async function getProgress(deps: FeatureServices, request: FeatureRequest
   const { db, content } = deps;
   const index = await content();
   const repo = request.repo;
+  const store = drizzleLearnerStore(db);
   const [records, recent, events, flags, submissions, earnedXp, runs, activeCourseIds] =
     await Promise.all([
-      repo.masteryRecords(),
-      repo.recentAttempts(100),
+      store.listMastery(request.userId),
+      db
+        .select()
+        .from(attempts)
+        .where(eq(attempts.userId, request.userId))
+        .orderBy(desc(attempts.createdAt))
+        .limit(100),
       db
         .select()
         .from(masteryEvents)
         .where(eq(masteryEvents.userId, request.userId))
         .orderBy(desc(masteryEvents.createdAt))
         .limit(100),
-      repo.openFlags(),
+      db
+        .select()
+        .from(remediationFlags)
+        .where(
+          and(eq(remediationFlags.userId, request.userId), eq(remediationFlags.status, 'open')),
+        ),
       db
         .select()
         .from(projectSubmissions)
         .where(eq(projectSubmissions.userId, request.userId))
         .orderBy(desc(projectSubmissions.createdAt))
         .limit(50),
-      drizzleLearnerStore(db).listXpEvents(request.userId, {}),
+      store.listXpEvents(request.userId, {}),
       db.select().from(lessonRuns).where(eq(lessonRuns.userId, request.userId)),
       repo.studyCourseIds(index),
     ]);

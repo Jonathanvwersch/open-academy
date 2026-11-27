@@ -1,6 +1,6 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
+import type { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import type { Database } from './db/client.js';
-import type { LearnerRepository } from './db/repository.js';
 import type { TutorProvider } from './features/tutor/provider.js';
 import type { TutorService } from './features/tutor/service.js';
 export interface FeatureServices {
@@ -14,7 +14,7 @@ export interface FeatureRequest {
   params: Record<string, string>;
   query: Record<string, string | undefined>;
   body: unknown;
-  repo: LearnerRepository;
+  repo: EngineLearnerRepository;
   tutor: TutorService | null;
   now: () => Date;
 }

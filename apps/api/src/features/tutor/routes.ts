@@ -2,6 +2,7 @@ import { buildCoursePayload } from '@academy/aesop/course/course-payload';
 import { serializedOptionOrder } from '@academy/aesop/course/serialize';
 import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
 import type { ContentIndex } from '@academy/aesop/course/types';
+import type { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import { courseFoundationIds } from '@academy/aesop/graph/prerequisites';
 import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
 import { tutorLessonStages } from '@academy/contracts/tutor';
@@ -11,7 +12,6 @@ import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
-import type { LearnerRepository } from '../../db/repository.js';
 import {
   attempts,
   lessonProblems,
@@ -95,7 +95,7 @@ export function registerTutorThreadRoutes(
   deps: {
     db: Database;
     content: () => Promise<ContentIndex>;
-    withRepo: (context: Ctx) => LearnerRepository;
+    withRepo: (context: Ctx) => EngineLearnerRepository;
     tutor: (context: Ctx) => TutorService | null;
     requestNow: (context: Ctx) => Date;
   },
