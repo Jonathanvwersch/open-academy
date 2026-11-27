@@ -1,11 +1,17 @@
 {
   "name": "@open-academy/engine",
-  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
-  "bin": {
-    "academy": "./src/cli/index.ts"
-  },
+  "files": [
+    "dist",
+    "README.md",
+    "HOW-IT-WORKS.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.build.json",
+    "prepack": "pnpm build",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "exports": {
@@ -23,10 +29,14 @@
     "./quizzes/*": "./src/quizzes/*.ts",
     "./simulator/*": "./src/simulator/*.ts"
   },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      "./*": "./dist/*.js"
+    }
+  },
   "dependencies": {
-    "@academy/shared": "workspace:*",
     "mathjs": "15.2.0",
-    "tsx": "4.23.15",
     "ts-fsrs": "6.0.0",
     "yaml": "2.9.1",
     "zod": "4.6.7"

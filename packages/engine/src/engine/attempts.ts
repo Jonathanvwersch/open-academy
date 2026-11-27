@@ -1,4 +1,4 @@
-import { emptyAnswerMessage } from '@academy/shared/answer-validation';
+import { emptyAnswerMessage } from '@open-academy/engine/api/answer-validation';
 import { z } from 'zod';
 import { isTemplate } from '../course/templates.js';
 import { answerOptionsFor } from '../lessons/answer-options.js';

@@ -6,7 +6,6 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "exports": {
-    "./answer-validation": "./src/answer-validation.ts",
     "./markdown": "./src/markdown.ts",
     "./shuffle": "./src/shuffle.ts",
     "./tutor": "./src/tutor.ts"

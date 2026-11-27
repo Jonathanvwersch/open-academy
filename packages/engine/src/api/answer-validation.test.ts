@@ -1,5 +1,5 @@
-import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { expect, test } from 'vitest';
+import { emptyAnswerMessage } from './answer-validation.js';
 
 test.each([
   ['mc', '', 'Choose an answer first.'],
