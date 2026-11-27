@@ -20,16 +20,12 @@ function fixture(files, run) {
     'packages/engine/package.json': JSON.stringify({
       name: '@open-academy/engine',
       exports: {
-        './api/*': './src/api/*.ts',
-        './course/*': './src/course/*.ts',
-        './graph/*': './src/graph/*.ts',
-        './memory/*': './src/memory/*.ts',
-        './planner/*': './src/planner/*.ts',
-        './simulator/*': './src/simulator/*.ts',
-        './lessons/*': './src/lessons/*.ts',
-        './lessons/grading/*': './src/lessons/grading/*.ts',
-        './placement/*': './src/placement/*.ts',
-        './progress/*': './src/progress/*.ts',
+        '.': './src/index.ts',
+        './api': './src/api/index.ts',
+        './node': './src/node.ts',
+        './simulator': './src/simulator/index.ts',
+        './testing': './src/testing.ts',
+        './internal/*': './src/*.ts',
       },
       dependencies: {
         mathjs: '15.2.0',
@@ -39,6 +35,13 @@ function fixture(files, run) {
       },
       devDependencies: { vitest: '5.1.0' },
     }),
+    'packages/engine/src/index.ts': 'export const schedule = 1;',
+    'packages/engine/src/api/index.ts':
+      'export interface Lesson {id:string}; export function onScreenOptions() {};',
+    'packages/engine/src/node.ts': 'export const value = 1;',
+    'packages/engine/src/simulator/index.ts': 'export const value = 1;',
+    'packages/engine/src/testing.ts': 'export const value = 1;',
+    'packages/engine/src/course/types.ts': 'export type ContentIndex = {};',
     'packages/engine/src/planner/scheduler.ts': 'export const schedule = 1;',
     'packages/engine/src/api/lessons.ts': 'export interface Lesson {id:string}',
   };
@@ -58,7 +61,7 @@ test('permits feature-owned code, query entry points, aliases, and explicit pack
   fixture(
     {
       'apps/web/src/features/lessons/queries.ts':
-        "import type {Lesson} from '@open-academy/engine/api/lessons'; export const lesson:Lesson={id:'a'};",
+        "import type {Lesson} from '@open-academy/engine/api'; export const lesson:Lesson={id:'a'};",
       'apps/web/src/features/sessions/session-page.tsx':
         "import {lesson} from '@/features/lessons/queries.js'; export const value=lesson;",
     },
@@ -76,15 +79,15 @@ test('permits the API Vercel entry point and generated deployment adapter', () =
   );
 });
 
-test('permits API and engine CLI imports through folder exports', () => {
+test('permits public engine entries and relative imports within the engine', () => {
   fixture(
     {
       'apps/api/src/learning/scheduler.ts':
-        "import {schedule} from '@open-academy/engine/planner/scheduler'; export {schedule};",
+        "import '@open-academy/engine'; import '@open-academy/engine/api'; import '@open-academy/engine/node'; import '@open-academy/engine/simulator'; import '@open-academy/engine/testing';",
       'packages/engine/src/course/load.ts':
         "import {createHash} from 'node:crypto'; import {readFile} from 'node:fs/promises'; import {resolve} from 'node:path'; export {createHash,readFile,resolve};",
       'packages/engine/src/cli/index.ts':
-        "import {spawn} from 'node:child_process'; import {readFileSync} from 'node:fs'; import {resolve} from 'node:path'; import {fileURLToPath} from 'node:url'; import {parseArgs} from 'node:util'; import {schedule} from '@open-academy/engine/planner/scheduler'; export {spawn,readFileSync,resolve,fileURLToPath,parseArgs,schedule};",
+        "import {spawn} from 'node:child_process'; import {readFileSync} from 'node:fs'; import {resolve} from 'node:path'; import {fileURLToPath} from 'node:url'; import {parseArgs} from 'node:util'; import {schedule} from '../planner/scheduler.js'; export {spawn,readFileSync,resolve,fileURLToPath,parseArgs,schedule};",
     },
     (errors) => assert.deepEqual(errors, []),
   );
@@ -177,15 +180,14 @@ test('permits browser-safe imports from engine in the web app', () => {
   fixture(
     {
       'apps/web/src/features/lessons/page.ts':
-        "import type {Lesson} from '@open-academy/engine/api/lessons'; export type {Lesson};",
+        "import type {Lesson} from '@open-academy/engine/api'; export type {Lesson};",
     },
     (errors) => assert.deepEqual(errors, []),
   );
   fixture(
     {
       'apps/web/src/features/exercises/exercise-form.tsx':
-        "import {onScreenOptions} from '@open-academy/engine/course/option-order'; export {onScreenOptions};",
-      'packages/engine/src/course/option-order.ts': 'export function onScreenOptions() {};',
+        "import {onScreenOptions} from '@open-academy/engine/api'; export {onScreenOptions};",
     },
     (errors) => assert.deepEqual(errors, []),
   );
@@ -199,6 +201,56 @@ test('permits browser-safe imports from engine in the web app', () => {
         errors.some((error) =>
           error.includes('apps/web can import only browser-safe public engine exports'),
         ),
+        errors.join('\n'),
+      ),
+  );
+});
+
+test('allows internal engine imports in tests but rejects them in production source', () => {
+  fixture(
+    {
+      'apps/api/src/service.ts':
+        "import type {ContentIndex} from '@open-academy/engine/internal/course/types'; export type {ContentIndex};",
+      'apps/api/tests/engine-internals.test.ts':
+        "import type {ContentIndex} from '@open-academy/engine/internal/course/types'; export type {ContentIndex};",
+    },
+    (errors) =>
+      assert.ok(
+        errors.some((error) => error.includes('engine internal imports are test-only')),
+        errors.join('\n'),
+      ),
+  );
+  fixture(
+    {
+      'apps/api/tests/engine-internals.test.ts':
+        "import type {ContentIndex} from '@open-academy/engine/internal/course/types'; export type {ContentIndex};",
+    },
+    (errors) => assert.deepEqual(errors, []),
+  );
+});
+
+test('rejects deep engine imports from production source and self-imports from the engine', () => {
+  fixture(
+    {
+      'apps/api/src/learning/scheduler.ts':
+        "import {schedule} from '@open-academy/engine/planner/scheduler'; export {schedule};",
+    },
+    (errors) =>
+      assert.ok(
+        errors.some((error) =>
+          error.includes('engine imports must use one of the five public entries'),
+        ),
+        errors.join('\n'),
+      ),
+  );
+  fixture(
+    {
+      'packages/engine/src/planner/scheduler.ts':
+        "import {schedule} from '@open-academy/engine/planner/scheduler'; export {schedule};",
+    },
+    (errors) =>
+      assert.ok(
+        errors.some((error) => error.includes('engine source must use relative imports')),
         errors.join('\n'),
       ),
   );

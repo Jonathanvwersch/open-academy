@@ -1,6 +1,6 @@
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import type { EngineOperation } from '@open-academy/engine/engine/create-engine';
-import type { ImplicitRepetitionTraceEvent } from '@open-academy/engine/memory/mastery-service';
+import type { ContentIndex } from '../course/types.js';
+import type { EngineOperation } from '../engine/create-engine.js';
+import type { ImplicitRepetitionTraceEvent } from '../memory/mastery-service.js';
 import type { SimulatorAudit, SimulatorFixtures } from './audit.js';
 
 /** One logical learner action. Each driver runs it; `httpRequestFor` gives its HTTP form. */

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { LessonReviewPayload } from '@open-academy/engine/api/lessons';
+import type { LessonReviewPayload } from '@open-academy/engine/internal/api/lessons';
 import { expect, type Locator, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';

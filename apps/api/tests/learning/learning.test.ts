@@ -1,5 +1,5 @@
-import { isTemplate } from '@open-academy/engine/course/templates';
-import type { ContentIndex } from '@open-academy/engine/course/types';
+import { isTemplate } from '@open-academy/engine/internal/course/templates';
+import type { ContentIndex } from '@open-academy/engine/internal/course/types';
 import {
   compareOutlinePosition,
   courseFoundationIds,
@@ -8,28 +8,28 @@ import {
   masteryKey,
   outlinePosition,
   prerequisiteMet,
-} from '@open-academy/engine/graph/prerequisites';
-import { deriveLearningDebt } from '@open-academy/engine/memory/debt';
+} from '@open-academy/engine/internal/graph/prerequisites';
+import { deriveLearningDebt } from '@open-academy/engine/internal/memory/debt';
 import {
   mapReviewRating,
   newReviewCard,
   scheduleInitialReview,
   scheduleReview,
-} from '@open-academy/engine/memory/fsrs';
-import { countHintsSincePreviousAttempt } from '@open-academy/engine/memory/hints';
+} from '@open-academy/engine/internal/memory/fsrs';
+import { countHintsSincePreviousAttempt } from '@open-academy/engine/internal/memory/hints';
 import {
   calculateCredit,
   DefaultMasteryModel,
   recordLessonViewed,
-} from '@open-academy/engine/memory/mastery';
-import { initialMastery } from '@open-academy/engine/memory/types';
-import { loadSchedulerState } from '@open-academy/engine/planner/load-scheduler-state';
-import { reviewTopicsForActivity } from '@open-academy/engine/planner/review-topics';
+} from '@open-academy/engine/internal/memory/mastery';
+import { initialMastery } from '@open-academy/engine/internal/memory/types';
+import { loadSchedulerState } from '@open-academy/engine/internal/planner/load-scheduler-state';
+import { reviewTopicsForActivity } from '@open-academy/engine/internal/planner/review-topics';
 import type {
   Candidate,
   PlannedActivity,
   SchedulerState,
-} from '@open-academy/engine/planner/scheduler';
+} from '@open-academy/engine/internal/planner/scheduler';
 import {
   buildReviewActivityForConcept,
   currentLearnerUnit,
@@ -41,8 +41,8 @@ import {
   planSession,
   replan,
   SCHEDULER_CONFIG,
-} from '@open-academy/engine/planner/scheduler';
-import { memoryStore } from '@open-academy/engine/store/memory-store';
+} from '@open-academy/engine/internal/planner/scheduler';
+import { memoryStore } from '@open-academy/engine/internal/store/memory-store';
 import { fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
 import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';

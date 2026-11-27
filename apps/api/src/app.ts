@@ -1,4 +1,4 @@
-import type { ContentIndex } from '@open-academy/engine/course/types';
+import type { ContentIndex } from '@open-academy/engine';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';

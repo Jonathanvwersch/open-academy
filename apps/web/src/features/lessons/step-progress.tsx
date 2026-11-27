@@ -1,4 +1,4 @@
-import type { LessonRunPayload } from '@open-academy/engine/api/lessons';
+import type { LessonRunPayload } from '@open-academy/engine/api';
 
 type Point = NonNullable<LessonRunPayload['run']>['points'][number];
 

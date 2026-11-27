@@ -48,19 +48,20 @@ export const sourceEntries = {
 // The Vercel entry point is a deployment adapter, not a second application.
 export const deploymentImports = new Set(['apps/api/dist-vercel/server.mjs']);
 
+export const enginePublicEntries = new Set([
+  '@open-academy/engine',
+  '@open-academy/engine/api',
+  '@open-academy/engine/node',
+  '@open-academy/engine/simulator',
+  '@open-academy/engine/testing',
+]);
 export const browserForbiddenPackages = new Set(['@open-academy/engine']);
-export const browserSafeEngineImports = new Set(['@open-academy/engine/course/option-order']);
+export const browserSafeEngineImports = new Set(['@open-academy/engine/api']);
 
 export const sharedPackageDependencies = new Set(['zod', '@academy/shared']);
 
 // The root Academy script launches the CLI with tsx.
-export const engineDependencies = new Set([
-  '@open-academy/engine',
-  'mathjs',
-  'ts-fsrs',
-  'yaml',
-  'zod',
-]);
+export const engineDependencies = new Set(['mathjs', 'ts-fsrs', 'yaml', 'zod']);
 
 export const engineBuiltins = new Set(['node:crypto', 'node:fs/promises', 'node:path']);
 

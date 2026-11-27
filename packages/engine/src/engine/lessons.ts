@@ -1,5 +1,5 @@
-import { emptyAnswerMessage } from '@open-academy/engine/api/answer-validation';
 import { z } from 'zod';
+import { emptyAnswerMessage } from '../api/answer-validation.js';
 import { lessonStudyCourseIds, resolveLessonCourse } from '../lessons/course-context.js';
 import type { GradeResult } from '../lessons/grading/types.js';
 import { lessonRunState } from '../lessons/reads.js';

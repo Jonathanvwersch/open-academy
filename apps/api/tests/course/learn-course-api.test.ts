@@ -1,14 +1,14 @@
-import { orderCourseIdsBySubject } from '@open-academy/engine/course/course-order';
-import { subjectForCourse } from '@open-academy/engine/course/index';
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
+import { orderCourseIdsBySubject } from '@open-academy/engine/internal/course/course-order';
+import { subjectForCourse } from '@open-academy/engine/internal/course/index';
+import type { ContentIndex } from '@open-academy/engine/internal/course/types';
+import { EngineLearnerRepository } from '@open-academy/engine/internal/engine/repository';
 import {
   courseFoundationIds,
   createPrerequisiteChecker,
-} from '@open-academy/engine/graph/prerequisites';
-import { newReviewCard } from '@open-academy/engine/memory/fsrs';
-import type { MasteryRecord } from '@open-academy/engine/memory/types';
-import { answerFor } from '@open-academy/engine/simulator/support';
+} from '@open-academy/engine/internal/graph/prerequisites';
+import { newReviewCard } from '@open-academy/engine/internal/memory/fsrs';
+import type { MasteryRecord } from '@open-academy/engine/internal/memory/types';
+import { answerFor } from '@open-academy/engine/internal/simulator/support';
 import { asc, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';

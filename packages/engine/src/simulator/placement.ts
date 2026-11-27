@@ -1,5 +1,5 @@
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import { applyPlacementGrantOutcome } from '@open-academy/engine/placement/grant-commands';
+import type { ContentIndex } from '../course/types.js';
+import { applyPlacementGrantOutcome } from '../placement/grant-commands.js';
 import type { SimulatorAudit } from './audit.js';
 
 export type PlacementInvariantId = 'P20' | 'P21' | 'P22' | 'P23';

@@ -1,10 +1,10 @@
+import type { ContentIndex, ContentIssue } from '@open-academy/engine';
 import {
   ContentValidationError,
   loadContentFromDirectory,
   loadContentReportFromDirectory,
   loadContentUncheckedFromDirectory,
-} from '@open-academy/engine/course/load';
-import type { ContentIndex, ContentIssue } from '@open-academy/engine/course/types';
+} from '@open-academy/engine/node';
 import { repositoryPath } from '../paths.js';
 
 export { ContentValidationError };

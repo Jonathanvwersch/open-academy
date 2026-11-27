@@ -1,14 +1,14 @@
-export {
-  buildContentIndex,
-  getLessonPrerequisites,
-  subjectForCourse,
-} from '@open-academy/engine/course/index';
 export type {
   ContentIndex,
   ContentIssue,
   ContentSourceData,
-} from '@open-academy/engine/course/types';
-export { contentWarnings } from '@open-academy/engine/course/warnings';
+} from '@open-academy/engine';
+export {
+  buildContentIndex,
+  contentWarnings,
+  getLessonPrerequisites,
+  subjectForCourse,
+} from '@open-academy/engine/node';
 export {
   ContentValidationError,
   loadContent,

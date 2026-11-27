@@ -1,4 +1,4 @@
-import type { QuizPayload } from '@open-academy/engine/api/quizzes';
+import type { QuizPayload } from '@open-academy/engine/api';
 import { queryOptions } from '@tanstack/react-query';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { getJson } from '../../api/query-client.js';

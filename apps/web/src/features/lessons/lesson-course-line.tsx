@@ -1,4 +1,4 @@
-import type { LessonCourse } from '@open-academy/engine/api/lessons';
+import type { LessonCourse } from '@open-academy/engine/api';
 import { Link } from '@tanstack/react-router';
 
 export function LessonCourseLine({ course }: { course: LessonCourse | null }) {

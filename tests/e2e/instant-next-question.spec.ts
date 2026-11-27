@@ -1,4 +1,4 @@
-import { newReviewCard } from '@open-academy/engine/memory/fsrs';
+import { newReviewCard } from '@open-academy/engine/internal/memory/fsrs';
 import { expect, type Page, type Response, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';

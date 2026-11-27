@@ -1,14 +1,14 @@
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import { newReviewCard, scheduleReview } from '@open-academy/engine/memory/fsrs';
-import { initialMastery } from '@open-academy/engine/memory/types';
-import type { SchedulerState } from '@open-academy/engine/planner/scheduler';
+import type { ContentIndex } from '@open-academy/engine/internal/course/types';
+import { newReviewCard, scheduleReview } from '@open-academy/engine/internal/memory/fsrs';
+import { initialMastery } from '@open-academy/engine/internal/memory/types';
+import type { SchedulerState } from '@open-academy/engine/internal/planner/scheduler';
 import {
   dueTopicsCoveredBy,
   explainReviewSelection,
   explainReviewSelectionForReplan,
   planSession,
   sessionBudget,
-} from '@open-academy/engine/planner/scheduler';
+} from '@open-academy/engine/internal/planner/scheduler';
 import { Rating, State } from 'ts-fsrs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { loadContent } from '../../src/content/load.js';

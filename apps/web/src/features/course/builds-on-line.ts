@@ -1,4 +1,4 @@
-import type { CoursePayload } from '@open-academy/engine/api/course';
+import type { CoursePayload } from '@open-academy/engine/api';
 
 type BuildsOnCourse = CoursePayload['buildsOn'][number];
 

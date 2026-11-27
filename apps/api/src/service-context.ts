@@ -1,5 +1,4 @@
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import type { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
+import type { ContentIndex, EngineLearnerRepository } from '@open-academy/engine';
 import type { Database } from './db/client.js';
 import type { TutorProvider } from './features/tutor/provider.js';
 import type { TutorService } from './features/tutor/service.js';

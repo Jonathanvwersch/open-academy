@@ -1,4 +1,4 @@
-import type { CourseCatalogPayload, CourseDetailPayload } from '@open-academy/engine/api/course';
+import type { CourseCatalogPayload, CourseDetailPayload } from '@open-academy/engine/api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { apiFetch } from '../../api/authenticated-fetch.js';

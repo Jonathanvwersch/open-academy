@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { LessonSchema, normalizeLesson } from '@open-academy/engine/course/schemas';
+import { LessonSchema, normalizeLesson } from '@open-academy/engine/internal/course/schemas';
 import { expect, type Page, test } from '@playwright/test';
 import { eq } from 'drizzle-orm';
 import { parse } from 'yaml';

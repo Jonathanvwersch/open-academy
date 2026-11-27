@@ -1,5 +1,5 @@
-import { instantiateExercise, isTemplate } from '@open-academy/engine/course/templates';
-import type { ContentIndex, IndexedExercise } from '@open-academy/engine/course/types';
+import { instantiateExercise, isTemplate } from '../course/templates.js';
+import type { ContentIndex, IndexedExercise } from '../course/types.js';
 
 export function exerciseFor(content: ContentIndex, exerciseId: string, seed = 0): IndexedExercise {
   const indexed = content.exercisesById.get(exerciseId);

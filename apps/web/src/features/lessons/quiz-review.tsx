@@ -1,4 +1,4 @@
-import type { QuizReviewPayload } from '@open-academy/engine/api/lessons';
+import type { QuizReviewPayload } from '@open-academy/engine/api';
 import { Check, X } from 'lucide-react';
 import { Markdown } from '../../components/markdown.js';
 import { Button } from '../../components/ui/button.js';

@@ -1,13 +1,13 @@
-import type { ContentIndex } from '@open-academy/engine/course/types';
 import type {
+  ContentIndex,
   EngineGenerateHint,
   EngineGrade,
   EngineHasTutorReply,
   EngineJudgeExplanation,
   EngineLearner,
+  EngineLearnerRepository,
   EngineTutorPaper,
-} from '@open-academy/engine/engine/create-engine';
-import type { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
+} from '@open-academy/engine';
 import type { Context } from 'hono';
 import type { Database } from '../db/client.js';
 import type { users } from '../db/schema.js';

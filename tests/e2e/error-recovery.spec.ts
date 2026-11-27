@@ -1,4 +1,4 @@
-import type { SessionPayload } from '@open-academy/engine/api/sessions';
+import type { SessionPayload } from '@open-academy/engine/internal/api/sessions';
 import { expect, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';

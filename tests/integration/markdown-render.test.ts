@@ -1,5 +1,5 @@
 import { repairTutorMarkdown } from '@academy/shared/tutor';
-import { instantiateExercise, isTemplate } from '@open-academy/engine/course/templates';
+import { instantiateExercise, isTemplate } from '@open-academy/engine/internal/course/templates';
 import { type ComponentProps, createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeAll, expect, test } from 'vitest';

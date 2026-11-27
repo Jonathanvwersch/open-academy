@@ -1,5 +1,5 @@
-import type { EngineHasTutorReply, EngineResult } from '@open-academy/engine/engine/create-engine';
-import { answerFor } from '@open-academy/engine/simulator/support';
+import type { EngineHasTutorReply, EngineResult } from '@open-academy/engine';
+import { answerFor } from '@open-academy/engine/simulator';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';

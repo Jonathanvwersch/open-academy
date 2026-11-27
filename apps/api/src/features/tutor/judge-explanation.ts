@@ -1,4 +1,4 @@
-import type { EngineJudgeExplanation } from '@open-academy/engine/engine/create-engine';
+import type { EngineJudgeExplanation } from '@open-academy/engine';
 import type { TutorService } from './service.js';
 
 export function judgeExplanation(tutor: TutorService | null): EngineJudgeExplanation {

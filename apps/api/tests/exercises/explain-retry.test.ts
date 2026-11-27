@@ -1,4 +1,4 @@
-import type { ContentIndex } from '@open-academy/engine/course/types';
+import type { ContentIndex } from '@open-academy/engine/internal/course/types';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';

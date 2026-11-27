@@ -1,5 +1,5 @@
-import { emptyAnswerMessage } from '@open-academy/engine/api/answer-validation';
 import { z } from 'zod';
+import { emptyAnswerMessage } from '../api/answer-validation.js';
 import { isTemplate } from '../course/templates.js';
 import type { IndexedExercise } from '../course/types.js';
 import { answerOptionsFor } from '../lessons/answer-options.js';

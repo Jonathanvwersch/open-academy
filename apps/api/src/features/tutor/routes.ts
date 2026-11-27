@@ -1,6 +1,6 @@
 import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '@academy/shared/tutor';
-import { type TutorTurn, tutorLessonStages } from '@open-academy/engine/api/tutor';
-import type { EngineTutorPaper } from '@open-academy/engine/engine/create-engine';
+import type { EngineTutorPaper } from '@open-academy/engine';
+import { type TutorTurn, tutorLessonStages } from '@open-academy/engine/api';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';

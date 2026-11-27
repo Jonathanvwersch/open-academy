@@ -1,4 +1,4 @@
-import type { ExercisePayload } from '@open-academy/engine/api/exercises';
+import type { ExercisePayload } from '@open-academy/engine/api';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 export const exerciseQueryOptions = (exerciseId: string | null) =>

@@ -1,4 +1,4 @@
-import type { LessonPrerequisite } from '@open-academy/engine/api/lessons';
+import type { LessonPrerequisite } from '../api/lessons.js';
 import { contentVersion } from './hash.js';
 import type { Dimension, ExerciseRole } from './schemas.js';
 import type {

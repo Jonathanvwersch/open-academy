@@ -18,25 +18,36 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "exports": {
-    "./api/*": "./src/api/*.ts",
-    "./course/*": "./src/course/*.ts",
-    "./engine/*": "./src/engine/*.ts",
-    "./graph/*": "./src/graph/*.ts",
-    "./memory/*": "./src/memory/*.ts",
-    "./planner/*": "./src/planner/*.ts",
-    "./lessons/*": "./src/lessons/*.ts",
-    "./lessons/grading/*": "./src/lessons/grading/*.ts",
-    "./placement/*": "./src/placement/*.ts",
-    "./progress/*": "./src/progress/*.ts",
-    "./store/*": "./src/store/*.ts",
-    "./quizzes/*": "./src/quizzes/*.ts",
-    "./tutor/*": "./src/tutor/*.ts",
-    "./simulator/*": "./src/simulator/*.ts"
+    ".": "./src/index.ts",
+    "./api": "./src/api/index.ts",
+    "./node": "./src/node.ts",
+    "./simulator": "./src/simulator/index.ts",
+    "./testing": "./src/testing.ts",
+    "./internal/*": "./src/*.ts"
   },
   "publishConfig": {
     "access": "public",
     "exports": {
-      "./*": "./dist/*.js"
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./api": {
+        "types": "./dist/api/index.d.ts",
+        "import": "./dist/api/index.js"
+      },
+      "./node": {
+        "types": "./dist/node.d.ts",
+        "import": "./dist/node.js"
+      },
+      "./simulator": {
+        "types": "./dist/simulator/index.d.ts",
+        "import": "./dist/simulator/index.js"
+      },
+      "./testing": {
+        "types": "./dist/testing.d.ts",
+        "import": "./dist/testing.js"
+      }
     }
   },
   "dependencies": {

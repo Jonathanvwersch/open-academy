@@ -1,22 +1,25 @@
 import { setTimeout as delay } from 'node:timers/promises';
-import { instantiateExercise, isTemplate } from '@open-academy/engine/course/templates';
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
-import { buildEncompassingIndex } from '@open-academy/engine/graph/encompassing';
-import { answerOptionsFor } from '@open-academy/engine/lessons/answer-options';
+import { instantiateExercise, isTemplate } from '@open-academy/engine/internal/course/templates';
+import type { ContentIndex } from '@open-academy/engine/internal/course/types';
+import { EngineLearnerRepository } from '@open-academy/engine/internal/engine/repository';
+import { buildEncompassingIndex } from '@open-academy/engine/internal/graph/encompassing';
+import { answerOptionsFor } from '@open-academy/engine/internal/lessons/answer-options';
 import {
   isDueToday,
   newReviewCard,
   scheduleInitialReview,
   scheduleReview,
-} from '@open-academy/engine/memory/fsrs';
-import { calculateCredit } from '@open-academy/engine/memory/mastery';
+} from '@open-academy/engine/internal/memory/fsrs';
+import { calculateCredit } from '@open-academy/engine/internal/memory/mastery';
 import {
   applyImplicitRepetitions,
   type ImplicitRepetitionTraceEvent,
   setImplicitRepetitionTrace,
-} from '@open-academy/engine/memory/mastery-service';
-import { dueTopicsCoveredBy, type SchedulerState } from '@open-academy/engine/planner/scheduler';
+} from '@open-academy/engine/internal/memory/mastery-service';
+import {
+  dueTopicsCoveredBy,
+  type SchedulerState,
+} from '@open-academy/engine/internal/planner/scheduler';
 import { and, asc, eq } from 'drizzle-orm';
 import { type Card, Rating, State } from 'ts-fsrs';
 import { afterAll, beforeAll, expect, test, vi } from 'vitest';

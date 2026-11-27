@@ -1,10 +1,10 @@
-import { type Exercise, ExerciseSchema } from '@open-academy/engine/course/schemas';
-import { instantiateExercise } from '@open-academy/engine/course/templates';
+import { type Exercise, ExerciseSchema } from '@open-academy/engine/internal/course/schemas';
+import { instantiateExercise } from '@open-academy/engine/internal/course/templates';
 import {
   quizQuestionsPerStep,
   scoreLessonQuiz,
   selectQuizItems,
-} from '@open-academy/engine/lessons/lesson-quiz';
+} from '@open-academy/engine/internal/lessons/lesson-quiz';
 import { expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
 

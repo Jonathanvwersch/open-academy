@@ -7,7 +7,7 @@ import type {
   TutorLessonStage,
   TutorThreadDetail,
   TutorThreadSummary,
-} from '@open-academy/engine/api/tutor';
+} from '@open-academy/engine/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Plus, Square, X } from 'lucide-react';
 import {

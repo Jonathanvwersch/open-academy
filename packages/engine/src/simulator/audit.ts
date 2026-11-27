@@ -1,8 +1,8 @@
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import type { applyPlacementGrantOutcome } from '@open-academy/engine/placement/grant-commands';
-import type { SchedulerState } from '@open-academy/engine/planner/scheduler';
 import type { Dimension } from '../course/schemas.js';
+import type { ContentIndex } from '../course/types.js';
 import type { MasteryState } from '../memory/types.js';
+import type { applyPlacementGrantOutcome } from '../placement/grant-commands.js';
+import type { SchedulerState } from '../planner/scheduler.js';
 import type { Attempt } from '../store/core-store.js';
 import type { TimedQuizItem } from '../store/flow-store.js';
 import type { StoredReviewCard } from '../store/learner-store.js';
