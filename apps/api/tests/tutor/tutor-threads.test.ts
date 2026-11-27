@@ -1,9 +1,9 @@
-import { serializedOptionOrder } from '@academy/aesop/course/serialize';
-import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
-import type { ContentIndex } from '@academy/aesop/course/types';
-import { answerDisplay } from '@academy/aesop/lessons/answer-display';
 import { onScreenOptions } from '@academy/shared/shuffle';
 import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '@academy/shared/tutor';
+import { serializedOptionOrder } from '@open-academy/engine/course/serialize';
+import { instantiateExercise, isTemplate } from '@open-academy/engine/course/templates';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import { answerDisplay } from '@open-academy/engine/lessons/answer-display';
 import { and, asc, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';

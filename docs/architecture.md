@@ -7,8 +7,8 @@ and learner Python projects stay in `content` and `labs`.
 Frontend routes describe URLs and loaders; features own pages, queries, mutations and local tests.
 The app layer composes features. Generic UI and transport helpers stay below features. Backend
 routes decode HTTP and invoke services; the learning engine owns common grading, mastery and
-scheduling rules. Browser-safe API types live in `packages/aesop/src/api`; pure shared behavior
-lives in shared. Aesop also owns the learner simulator in `src/simulator` and the Academy CLI in
+scheduling rules. Browser-safe API types live in `packages/engine/src/api`; pure shared behavior
+lives in shared. The engine also owns the learner simulator in `src/simulator` and the Academy CLI in
 `src/cli`; the HTTP/PostgreSQL simulator driver remains in `apps/api/scripts`. Package exports and
 declared workspace dependencies define the public boundary.
 

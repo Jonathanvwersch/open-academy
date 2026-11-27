@@ -1,4 +1,4 @@
-import type { IndexedPaper } from '@academy/aesop/course/types';
+import type { IndexedPaper } from '@open-academy/engine/course/types';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { loadContent } from '../../content/load.js';
 import { HttpPaperFetcher } from './fetcher.js';

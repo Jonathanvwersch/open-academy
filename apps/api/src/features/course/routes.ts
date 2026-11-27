@@ -1,6 +1,6 @@
-import type { ContentIndex } from '@academy/aesop/course/types';
-import type { EngineResult } from '@academy/aesop/engine/create-engine';
-import type { EngineLearnerRepository } from '@academy/aesop/engine/repository';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import type { EngineResult } from '@open-academy/engine/engine/create-engine';
+import type { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';

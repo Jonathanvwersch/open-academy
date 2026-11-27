@@ -1,4 +1,4 @@
-import type { ContentIndex } from '@academy/aesop/course/types';
+import type { ContentIndex } from '@open-academy/engine/course/types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);

@@ -1,9 +1,9 @@
-import { serializedOptionOrder, serializeExercise } from '@academy/aesop/course/serialize';
-import { isTemplate } from '@academy/aesop/course/templates';
-import type { IndexedExercise } from '@academy/aesop/course/types';
-import { hintsSincePreviousAttempt } from '@academy/aesop/memory/hint-evidence';
-import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
 import { onScreenOptions } from '@academy/shared/shuffle';
+import { serializedOptionOrder, serializeExercise } from '@open-academy/engine/course/serialize';
+import { isTemplate } from '@open-academy/engine/course/templates';
+import type { IndexedExercise } from '@open-academy/engine/course/types';
+import { hintsSincePreviousAttempt } from '@open-academy/engine/memory/hint-evidence';
+import { attemptAllowsRetry } from '@open-academy/engine/memory/retry';
 import { desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { drizzleLearnerStore } from '../../db/learner-store.js';

@@ -1,14 +1,24 @@
-import type { Dimension } from '@academy/aesop/course/schemas';
-import { startOfNextCalendarDay } from '@academy/aesop/memory/fsrs';
-import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY } from '@academy/aesop/memory/speed';
-import { initialMastery, type MasteryRecord, type MasteryState } from '@academy/aesop/memory/types';
-import type { AttemptQuery, Settings } from '@academy/aesop/store/core-store';
-import { type CourseStore, compareCompletedActivities } from '@academy/aesop/store/course-store';
-import { collectTimedQuizItemKeys } from '@academy/aesop/store/flow-store';
-import type { ReviewLogRecord, StoredReviewCard } from '@academy/aesop/store/learner-store';
-import type { FlagQuery, LessonKey } from '@academy/aesop/store/lesson-store';
-import type { DiagnosticRun, PlacementGrant } from '@academy/aesop/store/placement-review-store';
-import type { ActivityQuery, SessionQuery } from '@academy/aesop/store/session-store';
+import type { Dimension } from '@open-academy/engine/course/schemas';
+import { startOfNextCalendarDay } from '@open-academy/engine/memory/fsrs';
+import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY } from '@open-academy/engine/memory/speed';
+import {
+  initialMastery,
+  type MasteryRecord,
+  type MasteryState,
+} from '@open-academy/engine/memory/types';
+import type { AttemptQuery, Settings } from '@open-academy/engine/store/core-store';
+import {
+  type CourseStore,
+  compareCompletedActivities,
+} from '@open-academy/engine/store/course-store';
+import { collectTimedQuizItemKeys } from '@open-academy/engine/store/flow-store';
+import type { ReviewLogRecord, StoredReviewCard } from '@open-academy/engine/store/learner-store';
+import type { FlagQuery, LessonKey } from '@open-academy/engine/store/lesson-store';
+import type {
+  DiagnosticRun,
+  PlacementGrant,
+} from '@open-academy/engine/store/placement-review-store';
+import type { ActivityQuery, SessionQuery } from '@open-academy/engine/store/session-store';
 import {
   and,
   asc,

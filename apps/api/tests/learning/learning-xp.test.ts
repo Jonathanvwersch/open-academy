@@ -6,7 +6,7 @@ import {
   localDateKey,
   weekXp,
   xpGoalFor,
-} from '@academy/aesop/progress/xp';
+} from '@open-academy/engine/progress/xp';
 import { describe, expect, test } from 'vitest';
 
 describe('XP calculations', () => {

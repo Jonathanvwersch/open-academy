@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import type { ContentIndex, IndexedPaper } from '@academy/aesop/course/types';
-import type { EngineLearnerRepository } from '@academy/aesop/engine/repository';
-import { activeCourseFor } from '@academy/aesop/graph/prerequisites';
+import type { ContentIndex, IndexedPaper } from '@open-academy/engine/course/types';
+import type { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
+import { activeCourseFor } from '@open-academy/engine/graph/prerequisites';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';

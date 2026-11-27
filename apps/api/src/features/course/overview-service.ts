@@ -1,16 +1,16 @@
-import type { StudyMapPayload } from '@academy/aesop/api/course';
+import type { StudyMapPayload } from '@open-academy/engine/api/course';
 import {
   courseTopicState,
   placedOutConceptsFromGrants,
-} from '@academy/aesop/course/course-payload';
-import { serializeConcept } from '@academy/aesop/course/serialize';
+} from '@open-academy/engine/course/course-payload';
+import { serializeConcept } from '@open-academy/engine/course/serialize';
 import {
   activeCourseFor,
   compareOutlinePosition,
   courseFoundationIds,
-} from '@academy/aesop/graph/prerequisites';
-import { deriveLearningDebt } from '@academy/aesop/memory/debt';
-import type { MasteryRecord } from '@academy/aesop/memory/types';
+} from '@open-academy/engine/graph/prerequisites';
+import { deriveLearningDebt } from '@open-academy/engine/memory/debt';
+import type { MasteryRecord } from '@open-academy/engine/memory/types';
 import { and, desc, eq } from 'drizzle-orm';
 import {
   attempts,

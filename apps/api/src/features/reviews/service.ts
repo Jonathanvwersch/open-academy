@@ -1,7 +1,7 @@
-import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
-import { courseConceptIds, courseFoundationIds } from '@academy/aesop/graph/prerequisites';
-import { isDueToday } from '@academy/aesop/memory/fsrs';
-import { localDateKey } from '@academy/aesop/progress/xp';
+import { orderCourseIdsBySubject } from '@open-academy/engine/course/course-order';
+import { courseConceptIds, courseFoundationIds } from '@open-academy/engine/graph/prerequisites';
+import { isDueToday } from '@open-academy/engine/memory/fsrs';
+import { localDateKey } from '@open-academy/engine/progress/xp';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { reviewCards } from '../../db/schema.js';
 import { localDateDifference, shiftLocalDate } from '../../http/request-context.js';

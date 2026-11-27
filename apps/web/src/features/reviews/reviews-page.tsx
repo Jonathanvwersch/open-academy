@@ -1,4 +1,4 @@
-import type { ReviewTopic } from '@academy/aesop/api/reviews';
+import type { ReviewTopic } from '@open-academy/engine/api/reviews';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Collapsible } from 'radix-ui';

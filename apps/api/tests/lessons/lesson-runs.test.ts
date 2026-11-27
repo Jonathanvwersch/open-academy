@@ -1,10 +1,10 @@
-import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
-import type { ContentIndex } from '@academy/aesop/course/types';
-import { scoreLessonQuiz } from '@academy/aesop/lessons/lesson-quiz';
-import { answerLessonProblem } from '@academy/aesop/lessons/run-commands';
-import { loadRunSnapshot } from '@academy/aesop/lessons/run-recovery';
-import { newReviewCard, scheduleReview } from '@academy/aesop/memory/fsrs';
-import { applyMastery } from '@academy/aesop/memory/mastery-service';
+import { instantiateExercise, isTemplate } from '@open-academy/engine/course/templates';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import { scoreLessonQuiz } from '@open-academy/engine/lessons/lesson-quiz';
+import { answerLessonProblem } from '@open-academy/engine/lessons/run-commands';
+import { loadRunSnapshot } from '@open-academy/engine/lessons/run-recovery';
+import { newReviewCard, scheduleReview } from '@open-academy/engine/memory/fsrs';
+import { applyMastery } from '@open-academy/engine/memory/mastery-service';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { Rating, State } from 'ts-fsrs';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';

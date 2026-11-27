@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import type { ContentIndex } from '@academy/aesop/course/types';
+import type { ContentIndex } from '@open-academy/engine/course/types';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { createApp } from '../../src/app.js';

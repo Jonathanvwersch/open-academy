@@ -1,5 +1,5 @@
-import { serializeExercise } from '@academy/aesop/course/serialize';
-import { initialMastery, masteryRank } from '@academy/aesop/memory/types';
+import { serializeExercise } from '@open-academy/engine/course/serialize';
+import { initialMastery, masteryRank } from '@open-academy/engine/memory/types';
 import { and, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { masteryEvents, projectProgress, projectSubmissions } from '../../db/schema.js';

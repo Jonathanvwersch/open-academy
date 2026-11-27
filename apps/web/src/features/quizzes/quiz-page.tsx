@@ -1,4 +1,4 @@
-import type { QuizAnswer, QuizPayload } from '@academy/aesop/api/quizzes';
+import type { QuizAnswer, QuizPayload } from '@open-academy/engine/api/quizzes';
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';

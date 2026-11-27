@@ -1,10 +1,10 @@
-import type { ContentIndex } from '@academy/aesop/course/types';
+import type { ContentIndex } from '@open-academy/engine/course/types';
 import type {
   EngineGrade,
   EngineHasTutorReply,
   EngineLearner,
-} from '@academy/aesop/engine/create-engine';
-import type { EngineLearnerRepository } from '@academy/aesop/engine/repository';
+} from '@open-academy/engine/engine/create-engine';
+import type { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
 import type { Context } from 'hono';
 import type { Database } from '../db/client.js';
 import type { users } from '../db/schema.js';

@@ -23,7 +23,7 @@
       "!apps/api/src/features/tutor/prompts",
       "!apps/web/src/components/ui",
       "!apps/web/src/routeTree.gen.ts",
-      "!packages/aesop/src/cli/template/.agents"
+      "!packages/engine/src/cli/template/.agents"
     ]
   },
   "formatter": {

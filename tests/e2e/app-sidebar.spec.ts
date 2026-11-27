@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs';
-import { newReviewCard } from '@academy/aesop/memory/fsrs';
+import { newReviewCard } from '@open-academy/engine/memory/fsrs';
 import { expect, type Route, test } from '@playwright/test';
 import { and, eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';

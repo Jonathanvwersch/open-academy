@@ -1,5 +1,5 @@
-import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
-import { newReviewCard } from '@academy/aesop/memory/fsrs';
+import { instantiateExercise, isTemplate } from '@open-academy/engine/course/templates';
+import { newReviewCard } from '@open-academy/engine/memory/fsrs';
 import { expect, test } from '@playwright/test';
 import { eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';

@@ -1,5 +1,5 @@
-import type { AnswerOptions, AttemptResponse } from '@academy/aesop/api/exercises';
-import type { SessionActivity } from '@academy/aesop/api/sessions';
+import type { AnswerOptions, AttemptResponse } from '@open-academy/engine/api/exercises';
+import type { SessionActivity } from '@open-academy/engine/api/sessions';
 import { useQueries, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';

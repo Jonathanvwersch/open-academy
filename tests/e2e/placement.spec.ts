@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
-import type { IndexedExercise } from '@academy/aesop/course/types';
-import { courseFoundations } from '@academy/aesop/graph/prerequisites';
 import { onScreenOptions } from '@academy/shared/shuffle';
+import type { IndexedExercise } from '@open-academy/engine/course/types';
+import { courseFoundations } from '@open-academy/engine/graph/prerequisites';
 import { expect, type Page, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { loadContent } from '../../apps/api/src/content/load.js';

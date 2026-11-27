@@ -11,14 +11,14 @@ function fixture(files, run) {
     'package.json': JSON.stringify({ name: 'academy' }),
     'apps/web/package.json': JSON.stringify({
       name: '@academy/web',
-      dependencies: { '@academy/aesop': 'workspace:*' },
+      dependencies: { '@open-academy/engine': 'workspace:*' },
     }),
     'apps/api/package.json': JSON.stringify({
       name: '@academy/api',
-      dependencies: { '@academy/aesop': 'workspace:*' },
+      dependencies: { '@open-academy/engine': 'workspace:*' },
     }),
-    'packages/aesop/package.json': JSON.stringify({
-      name: '@academy/aesop',
+    'packages/engine/package.json': JSON.stringify({
+      name: '@open-academy/engine',
       exports: {
         './api/*': './src/api/*.ts',
         './course/*': './src/course/*.ts',
@@ -39,8 +39,8 @@ function fixture(files, run) {
       },
       devDependencies: { vitest: '5.1.0' },
     }),
-    'packages/aesop/src/planner/scheduler.ts': 'export const schedule = 1;',
-    'packages/aesop/src/api/lessons.ts': 'export interface Lesson {id:string}',
+    'packages/engine/src/planner/scheduler.ts': 'export const schedule = 1;',
+    'packages/engine/src/api/lessons.ts': 'export interface Lesson {id:string}',
   };
   try {
     for (const [file, source] of Object.entries({ ...defaults, ...files })) {
@@ -58,7 +58,7 @@ test('permits feature-owned code, query entry points, aliases, and explicit pack
   fixture(
     {
       'apps/web/src/features/lessons/queries.ts':
-        "import type {Lesson} from '@academy/aesop/api/lessons'; export const lesson:Lesson={id:'a'};",
+        "import type {Lesson} from '@open-academy/engine/api/lessons'; export const lesson:Lesson={id:'a'};",
       'apps/web/src/features/sessions/session-page.tsx':
         "import {lesson} from '@/features/lessons/queries.js'; export const value=lesson;",
     },
@@ -76,31 +76,31 @@ test('permits the API Vercel entry point and generated deployment adapter', () =
   );
 });
 
-test('permits API and Aesop CLI imports through folder exports', () => {
+test('permits API and engine CLI imports through folder exports', () => {
   fixture(
     {
       'apps/api/src/learning/scheduler.ts':
-        "import {schedule} from '@academy/aesop/planner/scheduler'; export {schedule};",
-      'packages/aesop/src/course/load.ts':
+        "import {schedule} from '@open-academy/engine/planner/scheduler'; export {schedule};",
+      'packages/engine/src/course/load.ts':
         "import {createHash} from 'node:crypto'; import {readFile} from 'node:fs/promises'; import {resolve} from 'node:path'; export {createHash,readFile,resolve};",
-      'packages/aesop/src/cli/index.ts':
-        "import {spawn} from 'node:child_process'; import {readFileSync} from 'node:fs'; import {resolve} from 'node:path'; import {fileURLToPath} from 'node:url'; import {parseArgs} from 'node:util'; import {schedule} from '@academy/aesop/planner/scheduler'; export {spawn,readFileSync,resolve,fileURLToPath,parseArgs,schedule};",
+      'packages/engine/src/cli/index.ts':
+        "import {spawn} from 'node:child_process'; import {readFileSync} from 'node:fs'; import {resolve} from 'node:path'; import {fileURLToPath} from 'node:url'; import {parseArgs} from 'node:util'; import {schedule} from '@open-academy/engine/planner/scheduler'; export {spawn,readFileSync,resolve,fileURLToPath,parseArgs,schedule};",
     },
     (errors) => assert.deepEqual(errors, []),
   );
 });
 
-test('forbids Node builtins outside approved Aesop modules', () => {
+test('forbids Node builtins outside approved engine modules', () => {
   fixture(
     {
-      'packages/aesop/src/simulator/driver.ts':
+      'packages/engine/src/simulator/driver.ts':
         "import {readFile} from 'node:fs/promises'; export {readFile};",
     },
     (errors) =>
       assert.ok(
         errors.some((error) =>
           error.includes(
-            'packages/aesop/src/simulator/driver.ts: browser-safe code cannot import node:fs/promises',
+            'packages/engine/src/simulator/driver.ts: browser-safe code cannot import node:fs/promises',
           ),
         ),
         errors.join('\n'),
@@ -108,16 +108,16 @@ test('forbids Node builtins outside approved Aesop modules', () => {
   );
 });
 
-test('forbids importing the CLI launcher as an Aesop source dependency', () => {
+test('forbids importing the CLI launcher as an engine source dependency', () => {
   fixture(
     {
-      'packages/aesop/src/simulator/driver.ts': "import 'tsx';",
+      'packages/engine/src/simulator/driver.ts': "import 'tsx';",
     },
     (errors) =>
       assert.ok(
         errors.some((error) =>
           error.includes(
-            'packages/aesop/src/simulator/driver.ts: tsx does not belong in a browser-safe shared package',
+            'packages/engine/src/simulator/driver.ts: tsx does not belong in a browser-safe shared package',
           ),
         ),
         errors.join('\n'),
@@ -125,56 +125,60 @@ test('forbids importing the CLI launcher as an Aesop source dependency', () => {
   );
 });
 
-test('forbids browser imports of Aesop', () => {
+test('forbids browser imports of engine', () => {
   fixture(
     {
       'apps/web/package.json': JSON.stringify({
         name: '@academy/web',
-        dependencies: { '@academy/aesop': 'workspace:*' },
+        dependencies: { '@open-academy/engine': 'workspace:*' },
       }),
       'apps/web/src/features/lessons/page.ts':
-        "import {schedule} from '@academy/aesop/planner/scheduler'; export {schedule};",
+        "import {schedule} from '@open-academy/engine/planner/scheduler'; export {schedule};",
     },
     (errors) =>
       assert.ok(
-        errors.some((error) => error.includes('apps/web can import only @academy/aesop/api/*')),
+        errors.some((error) =>
+          error.includes('apps/web can import only @open-academy/engine/api/*'),
+        ),
         errors.join('\n'),
       ),
   );
 });
 
-test('permits only API contract imports from Aesop in the web app', () => {
+test('permits only API contract imports from engine in the web app', () => {
   fixture(
     {
       'apps/web/src/features/lessons/page.ts':
-        "import type {Lesson} from '@academy/aesop/api/lessons'; export type {Lesson};",
+        "import type {Lesson} from '@open-academy/engine/api/lessons'; export type {Lesson};",
     },
     (errors) => assert.deepEqual(errors, []),
   );
   fixture(
     {
       'apps/web/src/features/lessons/page.ts':
-        "import {schedule} from '@academy/aesop/planner/scheduler'; export {schedule};",
+        "import {schedule} from '@open-academy/engine/planner/scheduler'; export {schedule};",
     },
     (errors) =>
       assert.ok(
-        errors.some((error) => error.includes('apps/web can import only @academy/aesop/api/*')),
+        errors.some((error) =>
+          error.includes('apps/web can import only @open-academy/engine/api/*'),
+        ),
         errors.join('\n'),
       ),
   );
 });
 
-test('Aesop API modules import only other API modules', () => {
+test('engine API modules import only other API modules', () => {
   fixture(
     {
-      'packages/aesop/src/api/lessons.ts':
+      'packages/engine/src/api/lessons.ts':
         "import type {ContentIndex} from '../course/types.js'; export type {ContentIndex};",
-      'packages/aesop/src/course/types.ts': 'export type ContentIndex = {};',
+      'packages/engine/src/course/types.ts': 'export type ContentIndex = {};',
     },
     (errors) =>
       assert.ok(
         errors.some((error) =>
-          error.includes('Aesop API contracts may import only other API modules'),
+          error.includes('Engine API types may import only other API modules'),
         ),
         errors.join('\n'),
       ),
@@ -182,14 +186,14 @@ test('Aesop API modules import only other API modules', () => {
 });
 
 test('allows Vitest in the shared learner-store contract without relaxing store boundaries', () => {
-  const contract = 'packages/aesop/src/store/learner-store.contract.ts';
+  const contract = 'packages/engine/src/store/learner-store.contract.ts';
   fixture({ [contract]: "export {describe} from 'vitest';" }, (errors) =>
     assert.deepEqual(errors, []),
   );
   fixture(
     {
       [contract]: "export {sql} from 'drizzle-orm';",
-      'packages/aesop/src/store/memory-store.ts': "export {describe} from 'vitest';",
+      'packages/engine/src/store/memory-store.ts': "export {describe} from 'vitest';",
     },
     (errors) => {
       assert.ok(
@@ -200,15 +204,15 @@ test('allows Vitest in the shared learner-store contract without relaxing store 
   );
 });
 
-test('forbids Aesop imports of database and application code', () => {
+test('forbids engine imports of database and application code', () => {
   fixture(
     {
       'apps/api/src/config.ts': 'export const value=1;',
-      'packages/aesop/src/planner/database.ts':
+      'packages/engine/src/planner/database.ts':
         "import {sql} from 'drizzle-orm'; import {Hono} from 'hono'; export {sql,Hono};",
-      'packages/aesop/src/planner/api.ts':
+      'packages/engine/src/planner/api.ts':
         "import {value} from '../../../../apps/api/src/config.js'; export {value};",
-      'packages/aesop/src/planner/files.ts':
+      'packages/engine/src/planner/files.ts':
         "import {readFile} from 'node:fs/promises'; export {readFile};",
     },
     (errors) => {
@@ -282,7 +286,7 @@ test('rejects private package paths and relative paths that bypass exports', () 
   fixture(
     {
       'apps/web/src/features/lessons/page.ts':
-        "import type {Lesson} from '@academy/aesop/src/api/lessons'; import type {Lesson as Other} from '../../../../../packages/aesop/src/api/lessons.js';",
+        "import type {Lesson} from '@open-academy/engine/src/api/lessons'; import type {Lesson as Other} from '../../../../../packages/engine/src/api/lessons.js';",
     },
     (errors) => {
       assert.ok(errors.some((error) => error.includes('is private')));
@@ -291,11 +295,11 @@ test('rejects private package paths and relative paths that bypass exports', () 
   );
 });
 
-test('keeps Aesop API contracts browser-safe and independent from applications', () => {
+test('keeps engine API types browser-safe and independent from applications', () => {
   fixture(
     {
       'apps/api/src/config.ts': 'export const value=1;',
-      'packages/aesop/src/api/lessons.ts':
+      'packages/engine/src/api/lessons.ts':
         "import {readFileSync} from 'node:fs'; export {value} from '../../../../apps/api/src/config.js';",
     },
     (errors) => {

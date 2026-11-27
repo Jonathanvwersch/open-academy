@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { deserialize } from 'node:v8';
-import type { ContentIndex } from '@academy/aesop/course/types';
+import type { ContentIndex } from '@open-academy/engine/course/types';
 import { createApp } from './app.js';
 import { env, productionAuth } from './config.js';
 import { createDb } from './db/client.js';

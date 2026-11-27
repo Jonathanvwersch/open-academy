@@ -1,32 +1,43 @@
-import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/aesop/api/course';
-import type { QuizPayload } from '@academy/aesop/api/quizzes';
-import type { SessionActivity, SessionPayload, TodayPayload } from '@academy/aesop/api/sessions';
-import type { ContentEdge, ContentIndex } from '@academy/aesop/course/types';
-import { filterSchedulerStateForContent } from '@academy/aesop/graph/content-filters';
-import { topicIsComplete } from '@academy/aesop/graph/course-status';
-import { buildEncompassingIndex, type EncompassingIndex } from '@academy/aesop/graph/encompassing';
+import type {
+  CourseCatalogPayload,
+  CoursePayload,
+  LearnPayload,
+} from '@open-academy/engine/api/course';
+import type { QuizPayload } from '@open-academy/engine/api/quizzes';
+import type {
+  SessionActivity,
+  SessionPayload,
+  TodayPayload,
+} from '@open-academy/engine/api/sessions';
+import type { ContentEdge, ContentIndex } from '@open-academy/engine/course/types';
+import { filterSchedulerStateForContent } from '@open-academy/engine/graph/content-filters';
+import { topicIsComplete } from '@open-academy/engine/graph/course-status';
+import {
+  buildEncompassingIndex,
+  type EncompassingIndex,
+} from '@open-academy/engine/graph/encompassing';
 import {
   courseFoundationIds,
   createPrerequisiteChecker,
   keyPrereqsForPoint,
   masteryKey,
   prerequisiteMet,
-} from '@academy/aesop/graph/prerequisites';
-import { isLessonRetryReady } from '@academy/aesop/lessons/lesson-retry';
+} from '@open-academy/engine/graph/prerequisites';
+import { isLessonRetryReady } from '@open-academy/engine/lessons/lesson-retry';
 import {
   bringWeakestPrerequisiteCardDueNow,
   canBringPrerequisiteDueNow,
-} from '@academy/aesop/lessons/prerequisite-review';
+} from '@open-academy/engine/lessons/prerequisite-review';
 import {
   retrievability as fsrsRetrievability,
   isDueToday,
   newReviewCard,
   scheduleReview,
   startOfNextCalendarDay,
-} from '@academy/aesop/memory/fsrs';
-import { implicitRepetition } from '@academy/aesop/memory/implicit-repetition';
-import type { ImplicitRepetitionTraceEvent } from '@academy/aesop/memory/mastery-service';
-import { initialMastery, type MasteryState } from '@academy/aesop/memory/types';
+} from '@open-academy/engine/memory/fsrs';
+import { implicitRepetition } from '@open-academy/engine/memory/implicit-repetition';
+import type { ImplicitRepetitionTraceEvent } from '@open-academy/engine/memory/mastery-service';
+import { initialMastery, type MasteryState } from '@open-academy/engine/memory/types';
 import {
   adjustedMinutesForLearnerPace,
   explainReviewSelection,
@@ -36,13 +47,13 @@ import {
   type ReviewSelectionExplanation,
   SCHEDULER_CONFIG,
   type SchedulerState,
-} from '@academy/aesop/planner/scheduler';
-import { localDateKey } from '@academy/aesop/progress/xp';
+} from '@open-academy/engine/planner/scheduler';
+import { localDateKey } from '@open-academy/engine/progress/xp';
 import {
   QUIZ_XP_INTERVAL,
   QUIZ_XP_WINDOW,
   quizTargetSeconds,
-} from '@academy/aesop/quizzes/mixed-quiz';
+} from '@open-academy/engine/quizzes/mixed-quiz';
 import type { Card } from 'ts-fsrs';
 import { createEmptyCard, fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
 import type { AuditReviewCardInsert, SimulatorAudit, SimulatorFixtures } from './audit.js';

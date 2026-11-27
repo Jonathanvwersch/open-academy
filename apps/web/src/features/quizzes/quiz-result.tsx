@@ -1,4 +1,4 @@
-import type { QuizPayload } from '@academy/aesop/api/quizzes';
+import type { QuizPayload } from '@open-academy/engine/api/quizzes';
 import { Link } from '@tanstack/react-router';
 import { Button } from '../../components/ui/button.js';
 

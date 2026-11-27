@@ -1,4 +1,4 @@
-import type { ProgressSubjectPayload } from '@academy/aesop/api/progress';
+import type { ProgressSubjectPayload } from '@open-academy/engine/api/progress';
 import { orderCourseIdsBySubject } from '../course/course-order.js';
 import type { ContentIndex } from '../course/types.js';
 import { deriveLearningDebt } from '../memory/debt.js';

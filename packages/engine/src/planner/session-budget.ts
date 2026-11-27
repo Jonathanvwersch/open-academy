@@ -1,4 +1,4 @@
-import { type DailyStudyMinutes, studyDays } from '@academy/aesop/api/settings';
+import { type DailyStudyMinutes, studyDays } from '@open-academy/engine/api/settings';
 
 export type SessionKind = 'weekday' | 'saturday' | 'sunday' | 'custom';
 

@@ -1,13 +1,13 @@
 import {
   bringWeakestPrerequisiteCardDueNow,
   canBringPrerequisiteDueNow,
-} from '@academy/aesop/lessons/prerequisite-review';
+} from '@open-academy/engine/lessons/prerequisite-review';
 import {
   isDueToday,
   mapReviewRating,
   newReviewCard,
   reviewActivityRating,
-} from '@academy/aesop/memory/fsrs';
+} from '@open-academy/engine/memory/fsrs';
 import { Rating, State } from 'ts-fsrs';
 import { describe, expect, it } from 'vitest';
 

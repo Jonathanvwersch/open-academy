@@ -1,7 +1,7 @@
-import type { QuizPayload } from '@academy/aesop/api/quizzes';
-import type { SessionPayload } from '@academy/aesop/api/sessions';
-import type { ContentIndex } from '@academy/aesop/course/types';
-import { answerFor, wrongAnswerFor } from '@academy/aesop/simulator/support';
+import type { QuizPayload } from '@open-academy/engine/api/quizzes';
+import type { SessionPayload } from '@open-academy/engine/api/sessions';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import { answerFor, wrongAnswerFor } from '@open-academy/engine/simulator/support';
 import type { Page, TestInfo } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import { asc, eq } from 'drizzle-orm';

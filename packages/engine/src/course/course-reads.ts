@@ -2,7 +2,7 @@ import type {
   CourseCatalogPayload,
   CourseDetailPayload,
   CoursePayload,
-} from '@academy/aesop/api/course';
+} from '@open-academy/engine/api/course';
 import { filterMasteryRecordsForContent } from '../graph/content-filters.js';
 import { buildCourseStartState } from '../graph/course-start.js';
 import { activeCourseFor } from '../graph/prerequisites.js';

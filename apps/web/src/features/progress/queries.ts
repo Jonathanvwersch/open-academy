@@ -1,4 +1,4 @@
-import type { ProgressPayload } from '@academy/aesop/api/progress';
+import type { ProgressPayload } from '@open-academy/engine/api/progress';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 export const progressQueryOptions = () =>

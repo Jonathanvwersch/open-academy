@@ -1,4 +1,4 @@
-import { updateActivityAndAdvance as advance } from '@academy/aesop/planner/activity-advance';
+import { updateActivityAndAdvance as advance } from '@open-academy/engine/planner/activity-advance';
 import type { Database } from '../db/client.js';
 import { drizzleLearnerStore } from '../db/learner-store.js';
 

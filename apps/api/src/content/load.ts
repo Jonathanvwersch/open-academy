@@ -3,8 +3,8 @@ import {
   loadContentFromDirectory,
   loadContentReportFromDirectory,
   loadContentUncheckedFromDirectory,
-} from '@academy/aesop/course/load';
-import type { ContentIndex, ContentIssue } from '@academy/aesop/course/types';
+} from '@open-academy/engine/course/load';
+import type { ContentIndex, ContentIssue } from '@open-academy/engine/course/types';
 import { repositoryPath } from '../paths.js';
 
 export { ContentValidationError };

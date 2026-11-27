@@ -1,5 +1,5 @@
-import { DefaultMasteryModel } from '@academy/aesop/memory/mastery';
-import { initialMastery } from '@academy/aesop/memory/types';
+import { DefaultMasteryModel } from '@open-academy/engine/memory/mastery';
+import { initialMastery } from '@open-academy/engine/memory/types';
 import { expect, test } from 'vitest';
 
 const now = new Date('2025-01-01T12:00:00.000Z');

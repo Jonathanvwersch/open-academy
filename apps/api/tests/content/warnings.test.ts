@@ -1,7 +1,7 @@
-import { buildContentIndex } from '@academy/aesop/course/index';
-import type { Concept, Course, Lesson } from '@academy/aesop/course/schemas';
-import type { ContentSourceData } from '@academy/aesop/course/types';
-import { contentWarnings } from '@academy/aesop/course/warnings';
+import { buildContentIndex } from '@open-academy/engine/course/index';
+import type { Concept, Course, Lesson } from '@open-academy/engine/course/schemas';
+import type { ContentSourceData } from '@open-academy/engine/course/types';
+import { contentWarnings } from '@open-academy/engine/course/warnings';
 import { describe, expect, it } from 'vitest';
 
 function topic(id: string, prereqs: Concept['prereqs'] = []): Concept {

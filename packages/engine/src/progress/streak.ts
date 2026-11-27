@@ -1,4 +1,4 @@
-import type { StreakPayload } from '@academy/aesop/api/progress';
+import type { StreakPayload } from '@open-academy/engine/api/progress';
 import type { XpEventDate } from './xp.js';
 
 // XP dates are recorded in the learner's timezone when the activity is completed.

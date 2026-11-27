@@ -1,6 +1,6 @@
-import type { ContentIndex } from '@academy/aesop/course/types';
-import type { EngineLearnerRepository } from '@academy/aesop/engine/repository';
-import { lessonCourseContext } from '@academy/aesop/graph/lesson-course-context';
+import type { ContentIndex } from '@open-academy/engine/course/types';
+import type { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
+import { lessonCourseContext } from '@open-academy/engine/graph/lesson-course-context';
 import { and, desc, eq } from 'drizzle-orm';
 import type { Database } from '../../db/client.js';
 import { sessionActivities, studySessions } from '../../db/schema.js';

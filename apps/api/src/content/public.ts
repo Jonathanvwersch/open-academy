@@ -2,9 +2,13 @@ export {
   buildContentIndex,
   getLessonPrerequisites,
   subjectForCourse,
-} from '@academy/aesop/course/index';
-export type { ContentIndex, ContentIssue, ContentSourceData } from '@academy/aesop/course/types';
-export { contentWarnings } from '@academy/aesop/course/warnings';
+} from '@open-academy/engine/course/index';
+export type {
+  ContentIndex,
+  ContentIssue,
+  ContentSourceData,
+} from '@open-academy/engine/course/types';
+export { contentWarnings } from '@open-academy/engine/course/warnings';
 export {
   ContentValidationError,
   loadContent,

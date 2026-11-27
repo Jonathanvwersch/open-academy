@@ -1,9 +1,9 @@
-import { courseTopicState } from '@academy/aesop/course/course-payload';
-import { getLessonPrerequisites } from '@academy/aesop/course/index';
-import { serializeExercise, serializeLesson } from '@academy/aesop/course/serialize';
-import { isTemplate } from '@academy/aesop/course/templates';
-import { readLessonReviewStatus } from '@academy/aesop/lessons/run-state';
-import { masteryRank } from '@academy/aesop/memory/types';
+import { courseTopicState } from '@open-academy/engine/course/course-payload';
+import { getLessonPrerequisites } from '@open-academy/engine/course/index';
+import { serializeExercise, serializeLesson } from '@open-academy/engine/course/serialize';
+import { isTemplate } from '@open-academy/engine/course/templates';
+import { readLessonReviewStatus } from '@open-academy/engine/lessons/run-state';
+import { masteryRank } from '@open-academy/engine/memory/types';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { resolveLessonCourse } from './course-context.js';

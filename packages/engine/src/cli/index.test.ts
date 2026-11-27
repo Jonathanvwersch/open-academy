@@ -18,7 +18,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { parse, stringify } from 'yaml';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
-const cli = join(root, 'packages/aesop/src/cli/index.ts');
+const cli = join(root, 'packages/engine/src/cli/index.ts');
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -725,7 +725,7 @@ describe('academy CLI', () => {
         avoid?: unknown[];
       };
       const starterNotation = parse(
-        readFileSync(join(root, 'packages/aesop/src/cli/template/notation.yaml'), 'utf8'),
+        readFileSync(join(root, 'packages/engine/src/cli/template/notation.yaml'), 'utf8'),
       ) as typeof notation;
       const sumTerm = starterNotation.terms.find(({ id }) => id === 'sum');
       const nablaTerm = starterNotation.terms.find(({ id }) => id === 'nabla');

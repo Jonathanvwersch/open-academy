@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@academy/aesop": "workspace:*",
+    "@open-academy/engine": "workspace:*",
     "@academy/shared": "workspace:*",
     "@dagrejs/dagre": "3.1.3",
     "@fontsource-variable/newsreader": "^5.3.0",

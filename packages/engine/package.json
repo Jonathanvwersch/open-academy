@@ -1,5 +1,5 @@
 {
-  "name": "@academy/aesop",
+  "name": "@open-academy/engine",
   "private": true,
   "type": "module",
   "bin": {

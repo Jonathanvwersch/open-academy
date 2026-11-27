@@ -1,19 +1,23 @@
-import { getLessonPrerequisites } from '@academy/aesop/course/index';
-import { serializeExercise } from '@academy/aesop/course/serialize';
+import { getLessonPrerequisites } from '@open-academy/engine/course/index';
+import { serializeExercise } from '@open-academy/engine/course/serialize';
 import {
   formatTemplateNumber,
   instantiateExercise,
   isTemplate,
-} from '@academy/aesop/course/templates';
-import type { ContentIndex, IndexedExercise, IndexedLesson } from '@academy/aesop/course/types';
-import type { EngineHasTutorReply, EngineResult } from '@academy/aesop/engine/create-engine';
-import { answerDisplay, answerText } from '@academy/aesop/lessons/answer-display';
-import { answerOptionsFor } from '@academy/aesop/lessons/answer-options';
-import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '@academy/aesop/lessons/grading/multiple-choice';
-import { resolveLessonExercise } from '@academy/aesop/lessons/run-commands';
-import type { LessonRuntime } from '@academy/aesop/lessons/run-recovery';
-import { readLessonState } from '@academy/aesop/lessons/run-state';
-import type { LessonRun } from '@academy/aesop/store/lesson-store';
+} from '@open-academy/engine/course/templates';
+import type {
+  ContentIndex,
+  IndexedExercise,
+  IndexedLesson,
+} from '@open-academy/engine/course/types';
+import type { EngineHasTutorReply, EngineResult } from '@open-academy/engine/engine/create-engine';
+import { answerDisplay, answerText } from '@open-academy/engine/lessons/answer-display';
+import { answerOptionsFor } from '@open-academy/engine/lessons/answer-options';
+import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '@open-academy/engine/lessons/grading/multiple-choice';
+import { resolveLessonExercise } from '@open-academy/engine/lessons/run-commands';
+import type { LessonRuntime } from '@open-academy/engine/lessons/run-recovery';
+import { readLessonState } from '@open-academy/engine/lessons/run-state';
+import type { LessonRun } from '@open-academy/engine/store/lesson-store';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
