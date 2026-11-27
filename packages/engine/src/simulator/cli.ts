@@ -19,10 +19,13 @@ function argumentsMap(argv: string[]): Map<string, string> {
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (!argument || argument === '--' || !argument.startsWith('--')) continue;
-    const value = argv[index + 1];
+    const equals = argument.indexOf('=');
+    const key = argument.slice(2, equals < 0 ? undefined : equals);
+    const inlineValue = equals < 0 ? undefined : argument.slice(equals + 1);
+    const value = inlineValue ?? argv[index + 1];
     if (!value || value.startsWith('--')) throw new Error(`Missing value for ${argument}`);
-    args.set(argument.slice(2), value);
-    index += 1;
+    args.set(key, value);
+    if (inlineValue === undefined) index += 1;
   }
   return args;
 }

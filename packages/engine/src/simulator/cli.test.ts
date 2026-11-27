@@ -41,3 +41,21 @@ test('explicit scripted scenarios require repository fixtures', async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('accepts equals-form simulator options', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'academy-simulator-cli-'));
+  try {
+    const out = join(directory, 'out');
+    await runSimulateCli([`--days=1`, `--out=${out}`], {
+      contentDir,
+      drivers: {},
+      scenarioContentDir: join(directory, 'missing-fixtures'),
+    });
+    const report = JSON.parse(await readFile(join(out, 'report.json'), 'utf8')) as {
+      profiles: Array<{ profile: string }>;
+    };
+    expect(report.profiles.length).toBeGreaterThan(0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}, 60_000);
