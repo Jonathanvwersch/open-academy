@@ -3,6 +3,7 @@
 - Hono + PostgreSQL/Drizzle. `src/app.ts` and `src/http/routes.ts` compose features and dependencies.
 - Route modules decode HTTP and map responses. New services accept plain domain inputs, not Hono contexts. `features/projects/routes.ts` and `service.ts` show the boundary.
 - The `packages/engine` package owns pure content and learning-engine rules without database, HTTP, or provider calls. `src/learning` contains database-backed completion services; `src/db/learner-store.ts` is the Drizzle implementation of `LearnerStore`. `src/content` resolves content roots and wraps the engine's directory-based loader.
+- Production API code imports only `@open-academy/engine`, `@open-academy/engine/api`, `@open-academy/engine/node`, `@open-academy/engine/simulator`, or `@open-academy/engine/testing`; tests may use `@open-academy/engine/internal/*`.
 - Schema: `src/db/schema.ts`; migrations: `drizzle/`. Do not rename migrations or regenerate history during refactors.
 - Validate runtime environment in `src/config.ts`. Document required secret names only; never log credentials.
 - Resolve bundled prompts beside their module. Use `repositoryPath` for root-owned content, fixtures and built web assets; preserve explicit absolute paths. Commands must work from the root and via app filters.

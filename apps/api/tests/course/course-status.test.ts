@@ -3,7 +3,7 @@ import {
   masteryLabel,
   topicIsComplete,
   topicStatus,
-} from '@open-academy/engine/graph/course-status';
+} from '@open-academy/engine/internal/graph/course-status';
 import { describe, expect, test } from 'vitest';
 
 describe('course mastery and status', () => {

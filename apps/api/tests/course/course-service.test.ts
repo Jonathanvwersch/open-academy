@@ -1,11 +1,11 @@
-import type { CourseTopicStatus } from '@open-academy/engine/api/course';
+import type { CourseTopicStatus } from '@open-academy/engine/internal/api/course';
 import {
   courseQueueStatus,
   type courseTopicState,
   suggestedNextCourses,
-} from '@open-academy/engine/course/course-payload';
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import { courseFoundationIds } from '@open-academy/engine/graph/prerequisites';
+} from '@open-academy/engine/internal/course/course-payload';
+import type { ContentIndex } from '@open-academy/engine/internal/course/types';
+import { courseFoundationIds } from '@open-academy/engine/internal/graph/prerequisites';
 import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
 import { withStubConcept } from '../content-test-utils.js';

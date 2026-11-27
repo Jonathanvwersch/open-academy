@@ -1,4 +1,4 @@
-import { newReviewCard } from '@open-academy/engine/memory/fsrs';
+import { newReviewCard } from '@open-academy/engine/internal/memory/fsrs';
 import { expect, test } from '@playwright/test';
 import { asc, eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';

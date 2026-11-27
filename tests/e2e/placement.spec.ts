@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
-import { onScreenOptions } from '@open-academy/engine/course/option-order';
-import type { IndexedExercise } from '@open-academy/engine/course/types';
-import { courseFoundations } from '@open-academy/engine/graph/prerequisites';
+import { onScreenOptions } from '@open-academy/engine/internal/course/option-order';
+import type { IndexedExercise } from '@open-academy/engine/internal/course/types';
+import { courseFoundations } from '@open-academy/engine/internal/graph/prerequisites';
 import { expect, type Page, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { loadContent } from '../../apps/api/src/content/load.js';

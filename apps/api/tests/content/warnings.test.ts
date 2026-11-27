@@ -1,7 +1,7 @@
-import { buildContentIndex } from '@open-academy/engine/course/index';
-import type { Concept, Course, Lesson } from '@open-academy/engine/course/schemas';
-import type { ContentSourceData } from '@open-academy/engine/course/types';
-import { contentWarnings } from '@open-academy/engine/course/warnings';
+import { buildContentIndex } from '@open-academy/engine/internal/course/index';
+import type { Concept, Course, Lesson } from '@open-academy/engine/internal/course/schemas';
+import type { ContentSourceData } from '@open-academy/engine/internal/course/types';
+import { contentWarnings } from '@open-academy/engine/internal/course/warnings';
 import { describe, expect, it } from 'vitest';
 
 function topic(id: string, prereqs: Concept['prereqs'] = []): Concept {

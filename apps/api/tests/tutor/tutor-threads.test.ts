@@ -1,10 +1,10 @@
 import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '@academy/shared/tutor';
-import { onScreenOptions } from '@open-academy/engine/course/option-order';
-import { serializedOptionOrder } from '@open-academy/engine/course/serialize';
-import { instantiateExercise, isTemplate } from '@open-academy/engine/course/templates';
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import { answerDisplay } from '@open-academy/engine/lessons/answer-display';
-import { sanitizePageContent } from '@open-academy/engine/tutor/page-context';
+import { onScreenOptions } from '@open-academy/engine/internal/course/option-order';
+import { serializedOptionOrder } from '@open-academy/engine/internal/course/serialize';
+import { instantiateExercise, isTemplate } from '@open-academy/engine/internal/course/templates';
+import type { ContentIndex } from '@open-academy/engine/internal/course/types';
+import { answerDisplay } from '@open-academy/engine/internal/lessons/answer-display';
+import { sanitizePageContent } from '@open-academy/engine/internal/tutor/page-context';
 import { and, asc, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';

@@ -9,5 +9,5 @@
 - `quizzes` owns periodic timed mixed quizzes.
 - `simulator` owns learner simulations, audit invariants, and report generation.
 - `cli` owns the Academy authoring and memory-simulation commands.
-- Import explicit `@open-academy/engine/<folder>/<module>` exports from outside this package.
+- Consumers import the five public entries (`@open-academy/engine`, `@open-academy/engine/api`, `@open-academy/engine/node`, `@open-academy/engine/simulator`, `@open-academy/engine/testing`). Tests may use `@open-academy/engine/internal/<folder>/<module>`; engine source uses relative imports.
 - `HOW-IT-WORKS.md` explains every engine rule in Simplified Technical English and marks which rules come from Math Academy. Update it in the same change as any rule it describes.

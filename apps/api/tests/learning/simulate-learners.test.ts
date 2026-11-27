@@ -1,8 +1,8 @@
-import { newReviewCard, scheduleReview } from '@open-academy/engine/memory/fsrs';
-import { implicitRepetition } from '@open-academy/engine/memory/implicit-repetition';
-import { ensureReviewCard } from '@open-academy/engine/memory/mastery-service';
-import type { SchedulerState } from '@open-academy/engine/planner/scheduler';
-import { directMemoryDriver } from '@open-academy/engine/simulator/memory-driver';
+import { newReviewCard, scheduleReview } from '@open-academy/engine/internal/memory/fsrs';
+import { implicitRepetition } from '@open-academy/engine/internal/memory/implicit-repetition';
+import { ensureReviewCard } from '@open-academy/engine/internal/memory/mastery-service';
+import type { SchedulerState } from '@open-academy/engine/internal/planner/scheduler';
+import { directMemoryDriver } from '@open-academy/engine/internal/simulator/memory-driver';
 import {
   lessonRunConceptsAtWithdrawal,
   p20HasWithdrawnCreditViolation,
@@ -10,7 +10,7 @@ import {
   p21HasUnboundedWithdrawalViolation,
   p22HasProtectedWithdrawalViolation,
   p23ChangedHistoryIds,
-} from '@open-academy/engine/simulator/placement';
+} from '@open-academy/engine/internal/simulator/placement';
 import {
   attributeActivityLogs,
   auditP11DescendantCard,
@@ -48,7 +48,7 @@ import {
   selectedReviewConceptsForAudit,
   simulateLearners,
   validateSimulationCourseIds,
-} from '@open-academy/engine/simulator/simulator';
+} from '@open-academy/engine/internal/simulator/simulator';
 import { eq } from 'drizzle-orm';
 import { type Card, Rating, State } from 'ts-fsrs';
 import { afterAll, expect, test } from 'vitest';

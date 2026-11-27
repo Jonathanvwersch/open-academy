@@ -1,4 +1,4 @@
-import type { AttemptResponse } from '@open-academy/engine/api/exercises';
+import type { AttemptResponse } from '@open-academy/engine/api';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';

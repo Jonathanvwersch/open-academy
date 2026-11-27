@@ -1,4 +1,4 @@
-import type { TutorPrompt } from '@open-academy/engine/api/tutor';
+import type { TutorPrompt } from '@open-academy/engine/api';
 import { z } from 'zod';
 
 export const TutorReplySchema = z

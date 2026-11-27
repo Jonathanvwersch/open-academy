@@ -1,4 +1,4 @@
-import { type DailyStudyMinutes, studyDays } from '@open-academy/engine/api/settings';
+import { type DailyStudyMinutes, studyDays } from '../api/settings.js';
 
 export type SessionKind = 'weekday' | 'saturday' | 'sunday' | 'custom';
 

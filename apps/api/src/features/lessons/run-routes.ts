@@ -1,5 +1,4 @@
-import type { EngineHasTutorReply, EngineResult } from '@open-academy/engine/engine/create-engine';
-import { answerFor } from '@open-academy/engine/simulator/support';
+import type { EngineHasTutorReply, EngineResult } from '@open-academy/engine';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
@@ -196,6 +195,7 @@ export function registerLessonRunRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
       if (!content.exercisesById.has(row.problem.exerciseId)) {
         return context.json({ error: 'Exercise not found' }, 404);
       }
+      const { answerFor } = await import('@open-academy/engine/simulator');
       return context.json({
         answer: answerFor(content, row.problem.exerciseId, row.problem.seed ?? 0),
       });
@@ -219,6 +219,7 @@ export function registerLessonRunRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
       if (!content.exercisesById.has(row.item.exerciseId)) {
         return context.json({ error: 'Exercise not found' }, 404);
       }
+      const { answerFor } = await import('@open-academy/engine/simulator');
       return context.json({
         answer: answerFor(content, row.item.exerciseId, row.item.seed ?? 0),
       });

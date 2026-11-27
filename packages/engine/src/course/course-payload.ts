@@ -1,4 +1,4 @@
-import type { CourseQueueStatus } from '@open-academy/engine/api/course';
+import type { CourseQueueStatus } from '../api/course.js';
 import { orderCourseIdsBySubject } from '../course/course-order.js';
 import { subjectForCourse } from '../course/index.js';
 import type { ContentIndex, IndexedConcept, IndexedCourse } from '../course/types.js';

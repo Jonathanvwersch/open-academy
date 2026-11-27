@@ -12,15 +12,23 @@ npm install @open-academy/engine
 
 Pass YAML text in a map keyed by POSIX paths relative to the pack root. See the [course pack format](https://github.com/Jonathanvwersch/open-academy/blob/main/docs/CONTENT_FORMAT.md).
 
-`parseCourses(files)` throws `ContentValidationError` when validation fails. Use `loadContentReportFromDirectory` to load a directory pack and collect warnings.
+`parseCourses(files)` throws `ContentValidationError` when validation fails. Import `loadContentReportFromDirectory` from `@open-academy/engine/node` to load a directory pack and collect warnings.
+
+## Public API
+
+- `@open-academy/engine` — learning operations, content parsing, store contracts, and in-memory store.
+- `@open-academy/engine/api` — browser-safe request and response shapes and helpers.
+- `@open-academy/engine/node` — content directory loaders and Node-only helpers.
+- `@open-academy/engine/simulator` — learner simulation, audit, and driver helpers.
+- `@open-academy/engine/testing` — learner-store contract test helpers.
+
+All other paths are workspace-only internals, are not published, and may change.
 
 ## Use the engine
 
 ```js
 import { readdir, readFile } from 'node:fs/promises';
-import { parseCourses } from '@open-academy/engine/course/load';
-import { createEngine } from '@open-academy/engine/engine/create-engine';
-import { memoryStore } from '@open-academy/engine/store/memory-store';
+import { createEngine, memoryStore, parseCourses } from '@open-academy/engine';
 
 const paths = (await readdir('content', { recursive: true })).filter((p) => p.endsWith('.yaml'));
 const pairs = await Promise.all(

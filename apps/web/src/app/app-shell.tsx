@@ -1,5 +1,4 @@
-import type { AuthPayload } from '@open-academy/engine/api/auth';
-import type { CourseCatalogPayload } from '@open-academy/engine/api/course';
+import type { AuthPayload, CourseCatalogPayload } from '@open-academy/engine/api';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { Activity, BookOpen, House, ListOrdered, RotateCcw, Settings } from 'lucide-react';

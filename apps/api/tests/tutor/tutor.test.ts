@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import { calculateCredit } from '@open-academy/engine/memory/mastery';
+import type { ContentIndex } from '@open-academy/engine/internal/course/types';
+import { calculateCredit } from '@open-academy/engine/internal/memory/mastery';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../../src/db/client.js';
 import {

@@ -14,17 +14,17 @@ import {
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual, parseArgs } from 'node:util';
+import { isMap, isSeq, parse, parseDocument, stringify } from 'yaml';
 import {
   ContentValidationError,
   loadContentFromDirectory,
   loadContentReportFromDirectory,
   loadContentUncheckedFromDirectory,
-} from '@open-academy/engine/course/load';
-import { MIN_REVIEW_POOL } from '@open-academy/engine/course/review-pool';
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import { runSimulateCli } from '@open-academy/engine/simulator/cli';
-import { directMemoryDriver } from '@open-academy/engine/simulator/memory-driver';
-import { isMap, isSeq, parse, parseDocument, stringify } from 'yaml';
+} from '../course/load.js';
+import { MIN_REVIEW_POOL } from '../course/review-pool.js';
+import type { ContentIndex } from '../course/types.js';
+import { runSimulateCli } from '../simulator/cli.js';
+import { directMemoryDriver } from '../simulator/memory-driver.js';
 import { verifyWeights } from './weights.js';
 
 const cliRoot = dirname(fileURLToPath(import.meta.url));

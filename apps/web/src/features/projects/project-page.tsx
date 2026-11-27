@@ -1,4 +1,4 @@
-import type { CoursePayload } from '@open-academy/engine/api/course';
+import type { CoursePayload } from '@open-academy/engine/api';
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { useState } from 'react';

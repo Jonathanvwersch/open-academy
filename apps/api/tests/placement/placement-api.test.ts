@@ -1,5 +1,5 @@
-import type { ContentIndex, IndexedExercise } from '@open-academy/engine/course/types';
-import { initialMastery } from '@open-academy/engine/memory/types';
+import type { ContentIndex, IndexedExercise } from '@open-academy/engine/internal/course/types';
+import { initialMastery } from '@open-academy/engine/internal/memory/types';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';

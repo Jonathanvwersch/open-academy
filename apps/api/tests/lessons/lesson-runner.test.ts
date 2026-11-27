@@ -1,10 +1,10 @@
-import { type Exercise, ExerciseSchema } from '@open-academy/engine/course/schemas';
+import { type Exercise, ExerciseSchema } from '@open-academy/engine/internal/course/schemas';
 import {
   deriveLessonState,
   type LessonProblemRow,
   selectNextProblem,
   xpForPassedPoint,
-} from '@open-academy/engine/lessons/lesson-runner';
+} from '@open-academy/engine/internal/lessons/lesson-runner';
 import { expect, test } from 'vitest';
 
 const point = (id: string, problems: string[]) => ({

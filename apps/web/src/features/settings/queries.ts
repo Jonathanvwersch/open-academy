@@ -1,4 +1,4 @@
-import type { SettingsPayload } from '@open-academy/engine/api/settings';
+import type { SettingsPayload } from '@open-academy/engine/api';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 export const settingsQueryOptions = () =>

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { IndexedPaper } from '@open-academy/engine/course/types';
+import type { IndexedPaper } from '@open-academy/engine';
 import { repositoryPath } from '../../paths.js';
 
 const MAX_PDF_BYTES = 40 * 1024 * 1024;

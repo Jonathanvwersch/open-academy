@@ -1,32 +1,27 @@
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
-import {
-  type ImplicitRepetitionTraceEvent,
-  setImplicitRepetitionTrace,
-} from '@open-academy/engine/memory/mastery-service';
-import { localDateKey } from '@open-academy/engine/progress/xp';
-import type {
-  AuditActivityReviewLog,
-  AuditMasteryRow,
-  AuditPlacementGrantRow,
-  AuditReviewCardRow,
-  AuditTimedReviewLog,
-  SimulatorAudit,
-  SimulatorFixtures,
-} from '@open-academy/engine/simulator/audit';
+import type { ContentIndex } from '@open-academy/engine';
+import { EngineLearnerRepository, localDateKey } from '@open-academy/engine';
 import {
   type ApiResult,
+  type AuditActivityReviewLog,
+  type AuditMasteryRow,
+  type AuditPlacementGrantRow,
+  type AuditReviewCardRow,
+  type AuditTimedReviewLog,
   httpRequestFor,
+  type ImplicitRepetitionTraceEvent,
   QuizClock,
   RequestRandomness,
   type SimulatedApiFailure,
   SimulatedApiFailureError,
   type SimulatorAfterCall,
+  type SimulatorAudit,
   type SimulatorDriver,
   type SimulatorDriverFactory,
   type SimulatorDriverInput,
+  type SimulatorFixtures,
   type SimulatorOperation,
-} from '@open-academy/engine/simulator/driver';
+  setImplicitRepetitionTrace,
+} from '@open-academy/engine/simulator';
 import { and, asc, desc, eq, exists, inArray, notInArray, sql } from 'drizzle-orm';
 import { createApp } from '../src/app.js';
 import type { Database } from '../src/db/client.js';

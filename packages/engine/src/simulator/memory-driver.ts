@@ -1,17 +1,13 @@
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import {
-  createEngine,
-  type EngineOperation,
-  type EngineResult,
-} from '@open-academy/engine/engine/create-engine';
-import { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
+import type { ContentIndex } from '../course/types.js';
+import { createEngine, type EngineOperation, type EngineResult } from '../engine/create-engine.js';
+import { EngineLearnerRepository } from '../engine/repository.js';
 import {
   type ImplicitRepetitionTraceEvent,
   setImplicitRepetitionTrace,
-} from '@open-academy/engine/memory/mastery-service';
-import type { MasteryRecord } from '@open-academy/engine/memory/types';
-import { localDateKey } from '@open-academy/engine/progress/xp';
-import { type MemoryLearnerStore, memoryStore } from '@open-academy/engine/store/memory-store';
+} from '../memory/mastery-service.js';
+import type { MasteryRecord } from '../memory/types.js';
+import { localDateKey } from '../progress/xp.js';
+import { type MemoryLearnerStore, memoryStore } from '../store/memory-store.js';
 import type {
   AuditAttemptRow,
   AuditLessonRunRow,

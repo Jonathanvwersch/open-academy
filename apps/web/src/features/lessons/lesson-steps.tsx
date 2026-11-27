@@ -1,4 +1,4 @@
-import type { LessonRunPayload } from '@open-academy/engine/api/lessons';
+import type { LessonRunPayload } from '@open-academy/engine/api';
 import { Badge } from '../../components/ui/badge.js';
 export function LessonSteps({
   state,

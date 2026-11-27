@@ -2,7 +2,7 @@ import type {
   LessonRunAnswerPayload,
   LessonRunPayload,
   QuizReviewPayload,
-} from '@open-academy/engine/api/lessons';
+} from '@open-academy/engine/api';
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';

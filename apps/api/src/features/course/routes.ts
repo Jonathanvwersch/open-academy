@@ -1,4 +1,4 @@
-import type { EngineResult } from '@open-academy/engine/engine/create-engine';
+import type { EngineResult } from '@open-academy/engine';
 import type { Context, Hono } from 'hono';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
 

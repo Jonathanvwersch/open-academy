@@ -1,5 +1,5 @@
-import { runSimulateCli } from '@open-academy/engine/simulator/cli';
-import type { SimulatorDriverFactory } from '@open-academy/engine/simulator/driver';
+import type { SimulatorDriverFactory } from '@open-academy/engine/simulator';
+import { runSimulateCli } from '@open-academy/engine/simulator';
 import { config } from 'dotenv';
 import { resolveContentDirectory } from '../src/content/load.js';
 import { repositoryPath } from '../src/paths.js';

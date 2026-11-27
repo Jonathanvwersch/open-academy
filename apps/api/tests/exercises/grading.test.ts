@@ -1,11 +1,11 @@
-import type { ContentIndex } from '@open-academy/engine/course/types';
-import { normalizeLearnerExpression } from '@open-academy/engine/lessons/grading/expression';
-import { gradeExercise } from '@open-academy/engine/lessons/grading/index';
-import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '@open-academy/engine/lessons/grading/multiple-choice';
+import type { ContentIndex } from '@open-academy/engine/internal/course/types';
+import { normalizeLearnerExpression } from '@open-academy/engine/internal/lessons/grading/expression';
+import { gradeExercise } from '@open-academy/engine/internal/lessons/grading/index';
+import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '@open-academy/engine/internal/lessons/grading/multiple-choice';
 import type {
   ExpressionExercise,
   NumericExercise,
-} from '@open-academy/engine/lessons/grading/types';
+} from '@open-academy/engine/internal/lessons/grading/types';
 import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
 

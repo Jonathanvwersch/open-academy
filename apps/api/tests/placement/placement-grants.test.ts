@@ -1,10 +1,10 @@
-import type { ContentIndex, IndexedExercise } from '@open-academy/engine/course/types';
-import { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
-import { initialMastery, masteryRank } from '@open-academy/engine/memory/types';
+import type { ContentIndex, IndexedExercise } from '@open-academy/engine/internal/course/types';
+import { EngineLearnerRepository } from '@open-academy/engine/internal/engine/repository';
+import { initialMastery, masteryRank } from '@open-academy/engine/internal/memory/types';
 import {
   applyPlacementGrantOutcome,
   recordPlacementGrants,
-} from '@open-academy/engine/placement/grant-commands';
+} from '@open-academy/engine/internal/placement/grant-commands';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { env } from '../../src/config.js';

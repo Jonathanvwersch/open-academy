@@ -3,7 +3,7 @@ import type {
   PlacementNextPayload,
   PlacementResultsPayload,
   PlacementStartPayload,
-} from '@open-academy/engine/api/placement';
+} from '@open-academy/engine/api';
 import { mutationOptions, queryOptions } from '@tanstack/react-query';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { getJson } from '../../api/query-client.js';

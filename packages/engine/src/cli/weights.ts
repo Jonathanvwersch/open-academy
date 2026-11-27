@@ -1,4 +1,4 @@
-import type { ContentIndex } from '@open-academy/engine/course/types';
+import type { ContentIndex } from '../course/types.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);

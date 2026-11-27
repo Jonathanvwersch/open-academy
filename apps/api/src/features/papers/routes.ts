@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { IndexedPaper } from '@open-academy/engine/course/types';
+import type { IndexedPaper } from '@open-academy/engine';
 import { eq } from 'drizzle-orm';
 import type { Hono } from 'hono';
 import { z } from 'zod';

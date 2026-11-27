@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { deserialize, serialize } from 'node:v8';
-import { buildContentIndex, subjectForCourse } from '@open-academy/engine/course/index';
+import { buildContentIndex, subjectForCourse } from '@open-academy/engine/internal/course/index';
 import {
   ConceptSchema,
   CurriculumSchema,
@@ -8,12 +8,12 @@ import {
   LessonSchema,
   normalizeLesson,
   PaperSchema,
-} from '@open-academy/engine/course/schemas';
-import { serializeExercise } from '@open-academy/engine/course/serialize';
-import type { ContentIndex, ContentSourceData } from '@open-academy/engine/course/types';
-import { validateContent } from '@open-academy/engine/course/validate';
-import { keyPrereqsForPoint } from '@open-academy/engine/graph/prerequisites';
-import { gradeText } from '@open-academy/engine/lessons/grading/text';
+} from '@open-academy/engine/internal/course/schemas';
+import { serializeExercise } from '@open-academy/engine/internal/course/serialize';
+import type { ContentIndex, ContentSourceData } from '@open-academy/engine/internal/course/types';
+import { validateContent } from '@open-academy/engine/internal/course/validate';
+import { keyPrereqsForPoint } from '@open-academy/engine/internal/graph/prerequisites';
+import { gradeText } from '@open-academy/engine/internal/lessons/grading/text';
 import { expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
 

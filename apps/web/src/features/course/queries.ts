@@ -3,7 +3,7 @@ import type {
   CourseDetailPayload,
   CoursePayload,
   LearnPayload,
-} from '@open-academy/engine/api/course';
+} from '@open-academy/engine/api';
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 import { studyMapQueryOptions } from '../map/queries.js';

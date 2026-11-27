@@ -1,4 +1,4 @@
-import type { StreakPayload } from '@open-academy/engine/api/progress';
+import type { StreakPayload } from '@open-academy/engine/api';
 import { Check } from 'lucide-react';
 import { AcademyMascot } from '../../components/academy-mascot.js';
 import { Card, CardContent } from '../../components/ui/card.js';

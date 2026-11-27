@@ -1,4 +1,4 @@
-import { updateActivityAndAdvance } from '@open-academy/engine/planner/activity-advance';
+import { updateActivityAndAdvance } from '@open-academy/engine/internal/planner/activity-advance';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, expect, test } from 'vitest';
 import { env } from '../../src/config.js';

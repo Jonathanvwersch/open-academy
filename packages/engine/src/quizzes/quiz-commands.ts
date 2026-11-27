@@ -1,5 +1,5 @@
-import { emptyAnswerMessage } from '@open-academy/engine/api/answer-validation';
 import { Rating } from 'ts-fsrs';
+import { emptyAnswerMessage } from '../api/answer-validation.js';
 import { serializeExercise } from '../course/serialize.js';
 import { studyCourseIds } from '../course/study-set.js';
 import type { ContentIndex } from '../course/types.js';

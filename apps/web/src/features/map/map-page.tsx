@@ -1,4 +1,4 @@
-import type { UpNextPayload } from '@open-academy/engine/api/course';
+import type { UpNextPayload } from '@open-academy/engine/api';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronDown } from 'lucide-react';

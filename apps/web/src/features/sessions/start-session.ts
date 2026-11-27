@@ -1,4 +1,4 @@
-import type { TodayPayload } from '@open-academy/engine/api/sessions';
+import type { TodayPayload } from '@open-academy/engine/api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { apiFetch } from '../../api/authenticated-fetch.js';

@@ -1,9 +1,9 @@
-import { ExerciseSchema } from '@open-academy/engine/course/schemas';
+import { ExerciseSchema } from '@open-academy/engine/internal/course/schemas';
 import {
   formatTemplateNumber,
   instantiateExercise,
   isTemplate,
-} from '@open-academy/engine/course/templates';
+} from '@open-academy/engine/internal/course/templates';
 import { expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
 

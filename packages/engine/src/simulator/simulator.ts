@@ -1,43 +1,34 @@
-import type {
-  CourseCatalogPayload,
-  CoursePayload,
-  LearnPayload,
-} from '@open-academy/engine/api/course';
-import type { QuizPayload } from '@open-academy/engine/api/quizzes';
-import type {
-  SessionActivity,
-  SessionPayload,
-  TodayPayload,
-} from '@open-academy/engine/api/sessions';
-import type { ContentEdge, ContentIndex } from '@open-academy/engine/course/types';
-import { filterSchedulerStateForContent } from '@open-academy/engine/graph/content-filters';
-import { topicIsComplete } from '@open-academy/engine/graph/course-status';
-import {
-  buildEncompassingIndex,
-  type EncompassingIndex,
-} from '@open-academy/engine/graph/encompassing';
+import type { Card } from 'ts-fsrs';
+import { createEmptyCard, fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
+import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '../api/course.js';
+import type { QuizPayload } from '../api/quizzes.js';
+import type { SessionActivity, SessionPayload, TodayPayload } from '../api/sessions.js';
+import type { ContentEdge, ContentIndex } from '../course/types.js';
+import { filterSchedulerStateForContent } from '../graph/content-filters.js';
+import { topicIsComplete } from '../graph/course-status.js';
+import { buildEncompassingIndex, type EncompassingIndex } from '../graph/encompassing.js';
 import {
   courseFoundationIds,
   createPrerequisiteChecker,
   keyPrereqsForPoint,
   masteryKey,
   prerequisiteMet,
-} from '@open-academy/engine/graph/prerequisites';
-import { isLessonRetryReady } from '@open-academy/engine/lessons/lesson-retry';
+} from '../graph/prerequisites.js';
+import { isLessonRetryReady } from '../lessons/lesson-retry.js';
 import {
   bringWeakestPrerequisiteCardDueNow,
   canBringPrerequisiteDueNow,
-} from '@open-academy/engine/lessons/prerequisite-review';
+} from '../lessons/prerequisite-review.js';
 import {
   retrievability as fsrsRetrievability,
   isDueToday,
   newReviewCard,
   scheduleReview,
   startOfNextCalendarDay,
-} from '@open-academy/engine/memory/fsrs';
-import { implicitRepetition } from '@open-academy/engine/memory/implicit-repetition';
-import type { ImplicitRepetitionTraceEvent } from '@open-academy/engine/memory/mastery-service';
-import { initialMastery, type MasteryState } from '@open-academy/engine/memory/types';
+} from '../memory/fsrs.js';
+import { implicitRepetition } from '../memory/implicit-repetition.js';
+import type { ImplicitRepetitionTraceEvent } from '../memory/mastery-service.js';
+import { initialMastery, type MasteryState } from '../memory/types.js';
 import {
   adjustedMinutesForLearnerPace,
   explainReviewSelection,
@@ -47,15 +38,9 @@ import {
   type ReviewSelectionExplanation,
   SCHEDULER_CONFIG,
   type SchedulerState,
-} from '@open-academy/engine/planner/scheduler';
-import { localDateKey } from '@open-academy/engine/progress/xp';
-import {
-  QUIZ_XP_INTERVAL,
-  QUIZ_XP_WINDOW,
-  quizTargetSeconds,
-} from '@open-academy/engine/quizzes/mixed-quiz';
-import type { Card } from 'ts-fsrs';
-import { createEmptyCard, fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
+} from '../planner/scheduler.js';
+import { localDateKey } from '../progress/xp.js';
+import { QUIZ_XP_INTERVAL, QUIZ_XP_WINDOW, quizTargetSeconds } from '../quizzes/mixed-quiz.js';
 import type { AuditReviewCardInsert, SimulatorAudit, SimulatorFixtures } from './audit.js';
 import {
   decisionSeed,

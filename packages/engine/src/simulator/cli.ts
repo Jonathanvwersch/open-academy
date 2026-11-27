@@ -1,7 +1,7 @@
 import { mkdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadContentFromDirectory } from '@open-academy/engine/course/load';
+import { loadContentFromDirectory } from '../course/load.js';
 import type { SimulatorDriverFactory } from './driver.js';
 import { directMemoryDriver } from './memory-driver.js';
 import {

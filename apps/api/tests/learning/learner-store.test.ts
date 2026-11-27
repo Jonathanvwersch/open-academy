@@ -1,5 +1,5 @@
-import { newReviewCard } from '@open-academy/engine/memory/fsrs';
-import { describeLearnerStoreContract } from '@open-academy/engine/store/learner-store.contract';
+import { newReviewCard } from '@open-academy/engine/internal/memory/fsrs';
+import { describeLearnerStoreContract } from '@open-academy/engine/testing';
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, afterEach, expect, test } from 'vitest';
 import { env } from '../../src/config.js';

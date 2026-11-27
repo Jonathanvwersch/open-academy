@@ -12,6 +12,7 @@ import {
   engineBuildBuiltins,
   engineBuiltins,
   engineDependencies,
+  enginePublicEntries,
   publicFeatureModules,
   sharedPackageDependencies,
   simulatorBuiltins,
@@ -236,6 +237,16 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           report(file, `use an explicit workspace package export instead of ${request}`);
       } else {
         const dependency = packageName(request);
+        if (dependency === '@open-academy/engine') {
+          const internal = request.startsWith('@open-academy/engine/internal/');
+          if (own === 'packages/engine') {
+            report(file, 'engine source must use relative imports within the package');
+          } else if (internal && !isTest) {
+            report(file, 'engine internal imports are test-only');
+          } else if (!internal && !enginePublicEntries.has(request)) {
+            report(file, 'engine imports must use one of the five public entries');
+          }
+        }
         if (
           !isTest &&
           file.startsWith('packages/engine/src/api/') &&
@@ -247,9 +258,9 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
         const workspace = byName.get(dependency);
         if (workspace) {
           if (
+            !isTest &&
             own === 'apps/web' &&
             browserForbiddenPackages.has(dependency) &&
-            !request.startsWith('@open-academy/engine/api/') &&
             !browserSafeEngineImports.has(request)
           )
             report(file, 'apps/web can import only browser-safe public engine exports');
@@ -295,7 +306,11 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
       if (
         !isTest &&
         file.startsWith('packages/engine/src/api/') &&
-        !target.startsWith('packages/engine/src/api/')
+        !target.startsWith('packages/engine/src/api/') &&
+        !(
+          file === 'packages/engine/src/api/index.ts' &&
+          target === 'packages/engine/src/course/option-order.ts'
+        )
       )
         report(file, 'Engine API types may import only other API modules');
       targets.push(target);

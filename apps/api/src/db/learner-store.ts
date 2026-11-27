@@ -1,24 +1,27 @@
-import type { Dimension } from '@open-academy/engine/course/schemas';
-import { startOfNextCalendarDay } from '@open-academy/engine/memory/fsrs';
-import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY } from '@open-academy/engine/memory/speed';
+import type {
+  ActivityQuery,
+  AttemptQuery,
+  DiagnosticRun,
+  Dimension,
+  FlagQuery,
+  LessonKey,
+  PlacementGrant,
+  ReviewLogRecord,
+  SessionQuery,
+  Settings,
+  StoredReviewCard,
+} from '@open-academy/engine';
 import {
+  type CourseStore,
+  collectTimedQuizItemKeys,
+  compareCompletedActivities,
   initialMastery,
   type MasteryRecord,
   type MasteryState,
-} from '@open-academy/engine/memory/types';
-import type { AttemptQuery, Settings } from '@open-academy/engine/store/core-store';
-import {
-  type CourseStore,
-  compareCompletedActivities,
-} from '@open-academy/engine/store/course-store';
-import { collectTimedQuizItemKeys } from '@open-academy/engine/store/flow-store';
-import type { ReviewLogRecord, StoredReviewCard } from '@open-academy/engine/store/learner-store';
-import type { FlagQuery, LessonKey } from '@open-academy/engine/store/lesson-store';
-import type {
-  DiagnosticRun,
-  PlacementGrant,
-} from '@open-academy/engine/store/placement-review-store';
-import type { ActivityQuery, SessionQuery } from '@open-academy/engine/store/session-store';
+  startOfNextCalendarDay,
+  TOPIC_SPEED_DECAY,
+  TOPIC_SPEED_POLICY,
+} from '@open-academy/engine';
 import {
   and,
   asc,

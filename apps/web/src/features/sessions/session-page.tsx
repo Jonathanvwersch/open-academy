@@ -1,5 +1,4 @@
-import type { AnswerOptions, AttemptResponse } from '@open-academy/engine/api/exercises';
-import type { SessionActivity } from '@open-academy/engine/api/sessions';
+import type { AnswerOptions, AttemptResponse, SessionActivity } from '@open-academy/engine/api';
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
