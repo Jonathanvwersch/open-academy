@@ -1,3 +1,4 @@
+import type { SessionPayload } from '@open-academy/engine/api/sessions';
 import { expect, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
@@ -100,6 +101,17 @@ for (const kind of ['reflect', 'paper'] as const) {
 test('an interrupted inline lesson check preserves its answer and can retry', async ({ page }) => {
   const sessionId = await createSession('practice');
   await db.update(sessionActivities).set({ kind: 'learn', progress: {} });
+  await page.route(`**/api/sessions/${sessionId}`, async (route) => {
+    const response = await route.fetch();
+    const session = (await response.json()) as SessionPayload;
+    await route.fulfill({
+      response,
+      json: {
+        ...session,
+        activities: session.activities.map((activity) => ({ ...activity, lessonRunner: false })),
+      },
+    });
+  });
   await page.route('**/api/lessons/vectors', async (route) => {
     const response = await route.fetch();
     const lesson = await response.json();
