@@ -20,7 +20,7 @@ export type EngineOperation =
   | { kind: 'lesson'; conceptId: string }
   | { kind: 'lessonReview'; conceptId: string }
   | { kind: 'exercise'; id: string }
-  | { kind: 'hint'; id: string; body: unknown }
+  | { kind: 'hint'; body: unknown }
   | { kind: 'activeSession' }
   | { kind: 'lessonRun'; conceptId: string; activityId?: string }
   | { kind: 'lessonQuizReview'; conceptId: string; attemptId: string }

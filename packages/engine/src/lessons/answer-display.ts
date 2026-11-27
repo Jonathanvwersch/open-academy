@@ -22,3 +22,25 @@ export function answerDisplay(exercise: IndexedExercise, answer: unknown): strin
   }
   return answerText(answer);
 }
+
+export function correctAnswerDisplay(exercise: IndexedExercise): string {
+  if (exercise.type === 'mc') {
+    return exercise.options
+      .filter((option) => option.correct)
+      .map((option) => option.text)
+      .join('\n');
+  }
+  if (exercise.type === 'numeric') {
+    return 'answer' in exercise ? formatTemplateNumber(exercise.answer) : '';
+  }
+  if ('answer' in exercise) return answerText(exercise.answer);
+  if ('accept' in exercise) return exercise.accept.join(', ');
+  if (exercise.type === 'explain') return exercise.exemplar;
+  if (exercise.type === 'debug') {
+    return exercise.fix_options
+      .filter((option) => option.correct)
+      .map((option) => option.text)
+      .join('\n');
+  }
+  return '';
+}

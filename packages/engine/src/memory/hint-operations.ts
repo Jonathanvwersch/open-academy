@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { IndexedExercise } from '../course/types.js';
 import type { EngineRequest, EngineResult } from '../engine/types.js';
 import { respond } from '../engine/types.js';
 import { hintsSincePreviousAttempt } from './hint-evidence.js';
@@ -13,15 +12,10 @@ const hintRequest = z.object({
   revealSolution: z.boolean().default(false),
 });
 
-export async function hintOperation(
-  request: EngineRequest,
-  id: string,
-  input: unknown,
-): Promise<EngineResult> {
+export async function hintOperation(request: EngineRequest, input: unknown): Promise<EngineResult> {
   const body = hintRequest.safeParse(input);
-  if (!body.success || body.data.exerciseId !== id) {
-    return respond({ error: 'Invalid hint request' }, 400);
-  }
+  if (!body.success) return respond({ error: 'Invalid hint request' }, 400);
+  const id = body.data.exerciseId;
   if (body.data.mode === 'assessment' || body.data.mode === 'diagnostic') {
     return respond({ error: 'Hints are unavailable in assessment mode.' }, 403);
   }
@@ -59,7 +53,7 @@ export async function hintOperation(
     exercise.id,
     body.data.activityId,
   );
-  const authoredHints = (exercise as IndexedExercise & { hints?: string[] }).hints ?? [];
+  const authoredHints = exercise.hints;
   if (body.data.revealSolution) {
     if (hintsUsed >= 5) return respond({ error: 'The solution has already been revealed.' }, 409);
     const event = await request.store.insertHintEvent(request.userId, {
@@ -80,6 +74,7 @@ export async function hintOperation(
   const level = hintsUsed + 1;
   let text = authoredHints[level - 1];
   let generated = false;
+  let generationDisabled = !request.tutorEnabled;
   if (!text && level <= 4 && request.tutorEnabled) {
     const recentAttempts = await request.store.listAttempts(request.userId, {
       order: 'recent',
@@ -105,14 +100,8 @@ export async function hintOperation(
           problemStatus,
         })
       : { kind: 'disabled' as const };
-    if (result.kind === 'disabled') {
-      return respond({
-        level,
-        hasMore: level < authoredHints.length,
-        revealedSolution: false,
-      });
-    }
-    if (result.kind === 'ok') {
+    if (result.kind === 'disabled') generationDisabled = true;
+    else if (result.kind === 'ok') {
       text = result.text;
       generated = true;
     } else {
@@ -124,7 +113,7 @@ export async function hintOperation(
       });
     }
   }
-  if (!text && !request.tutorEnabled) {
+  if (!text && generationDisabled) {
     return respond({
       level,
       hasMore: level < authoredHints.length,

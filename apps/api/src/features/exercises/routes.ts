@@ -27,13 +27,6 @@ export function registerExercisesRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
   });
   api.post('/hints', async (context) => {
     const body = await context.req.json().catch(() => ({}));
-    const id =
-      body &&
-      typeof body === 'object' &&
-      'exerciseId' in body &&
-      typeof body.exerciseId === 'string'
-        ? body.exerciseId
-        : '';
     const generateHint = async (input: EngineHintContext) => {
       const tutor = deps.tutor(context);
       if (!tutor) return { kind: 'disabled' as const };
@@ -85,10 +78,7 @@ export function registerExercisesRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
         ? { kind: 'ok' as const, text: generated.value.message_md }
         : { kind: 'unavailable' as const };
     };
-    return send(
-      context,
-      await deps.learner(context, undefined, undefined, generateHint).hint({ id, body }),
-    );
+    return send(context, await deps.learner(context, { generateHint }).hint({ body }));
   });
   api.post('/attempts', async (context) => {
     const body = await context.req.json().catch(() => ({}));
@@ -138,7 +128,7 @@ export function registerExercisesRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
     };
     return send(
       context,
-      await deps.learner(context, grade).exerciseAttempt({
+      await deps.learner(context, { grade }).exerciseAttempt({
         body,
       }),
     );

@@ -116,7 +116,7 @@ export async function runEngineOperation(
     case 'exercise':
       return readExercise(request, operation.id);
     case 'hint':
-      return hintOperation(request, operation.id, operation.body);
+      return hintOperation(request, operation.body);
     case 'activeSession':
       return activeSession(request);
     case 'lessonRun':

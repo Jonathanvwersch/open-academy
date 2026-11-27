@@ -2,15 +2,15 @@ import { z } from 'zod';
 import { courseTopicState } from '../course/course-payload.js';
 import { getLessonPrerequisites } from '../course/index.js';
 import { serializeExercise, serializeLesson } from '../course/serialize.js';
-import { formatTemplateNumber, isTemplate } from '../course/templates.js';
-import type { ContentIndex, IndexedExercise, IndexedLesson } from '../course/types.js';
+import { isTemplate } from '../course/templates.js';
+import type { ContentIndex, IndexedLesson } from '../course/types.js';
 import type { EngineRequest, EngineResult } from '../engine/types.js';
 import { respond } from '../engine/types.js';
 import { masteryRank } from '../memory/types.js';
 import type { LessonRun } from '../store/lesson-store.js';
-import { answerDisplay, answerText } from './answer-display.js';
+import { answerDisplay, correctAnswerDisplay } from './answer-display.js';
 import { answerOptionsFor } from './answer-options.js';
-import { resolveLessonCourse } from './course-context.js';
+import { lessonStudyCourseIds, resolveLessonCourse } from './course-context.js';
 import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from './grading/multiple-choice.js';
 import { resolveLessonExercise } from './run-commands.js';
 import type { LessonRuntime } from './run-recovery.js';
@@ -76,7 +76,9 @@ export async function readLessonReview(
     }),
   );
   const runRowsPromise = store.listLessonRuns(userId);
-  const studyCourseIds = await lessonStudyCourseIds(request, conceptId);
+  const studyCourseIds = await lessonStudyCourseIds(content, conceptId, () =>
+    request.repo.activeStudyCourseIds(content),
+  );
   const [runRows, masteryRecords, course] = await Promise.all([
     runRowsPromise,
     runRowsPromise.then((rows) =>
@@ -103,29 +105,7 @@ export async function readLessonReview(
   });
 }
 
-function correctAnswerDisplay(exercise: IndexedExercise): string {
-  if (exercise.type === 'mc') {
-    return exercise.options
-      .filter((option) => option.correct)
-      .map((option) => option.text)
-      .join('\n');
-  }
-  if (exercise.type === 'numeric') {
-    return 'answer' in exercise ? formatTemplateNumber(exercise.answer) : '';
-  }
-  if ('answer' in exercise) return answerText(exercise.answer);
-  if ('accept' in exercise) return exercise.accept.join(', ');
-  if (exercise.type === 'explain') return exercise.exemplar;
-  if (exercise.type === 'debug') {
-    return exercise.fix_options
-      .filter((option) => option.correct)
-      .map((option) => option.text)
-      .join('\n');
-  }
-  return '';
-}
-
-async function runState(
+export async function lessonRunState(
   request: EngineRequest,
   lesson: IndexedLesson,
   index: ContentIndex,
@@ -257,7 +237,9 @@ export async function readLessonRun(
   if (!lesson?.knowledge_points?.length)
     return respond({ error: 'Knowledge-point lesson not found' }, 404);
   const run = await store.getLessonRun(userId, { conceptId });
-  const studyCourseIds = await lessonStudyCourseIds(request, conceptId);
+  const studyCourseIds = await lessonStudyCourseIds(content, conceptId, () =>
+    request.repo.activeStudyCourseIds(content),
+  );
   return respond({
     course: await resolveLessonCourse(store, content, {
       userId,
@@ -265,15 +247,8 @@ export async function readLessonRun(
       activityId,
       studyCourseIds,
     }),
-    run: run ? await runState(request, lesson, content, run) : null,
+    run: run ? await lessonRunState(request, lesson, content, run) : null,
   });
-}
-
-async function lessonStudyCourseIds(request: EngineRequest, conceptId: string) {
-  const containing = request.content.courses.filter((course) =>
-    course.units.some((unit) => unit.concepts.includes(conceptId)),
-  );
-  return containing.length > 1 ? request.repo.activeStudyCourseIds(request.content) : [];
 }
 
 export async function readLessonQuizReview(

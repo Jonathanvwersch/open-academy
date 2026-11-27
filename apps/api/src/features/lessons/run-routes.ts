@@ -106,7 +106,7 @@ export function registerLessonRunRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
     if (!body.success) return context.json({ error: 'Invalid lesson answer' }, 400);
     return send(
       context,
-      await deps.learner(context, undefined, hasTutorReply).answerLessonProblem({
+      await deps.learner(context, { hasTutorReply }).answerLessonProblem({
         conceptId,
         body: body.data,
       }),

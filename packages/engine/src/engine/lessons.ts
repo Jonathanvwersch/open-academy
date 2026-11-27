@@ -1,51 +1,20 @@
 import { emptyAnswerMessage } from '@open-academy/engine/api/answer-validation';
 import { z } from 'zod';
-import { getLessonPrerequisites } from '../course/index.js';
-import { serializeExercise } from '../course/serialize.js';
-import { formatTemplateNumber } from '../course/templates.js';
-import type { ContentIndex, IndexedExercise, IndexedLesson } from '../course/types.js';
-import { lessonCourseContext } from '../graph/lesson-course-context.js';
-import { answerDisplay, answerText } from '../lessons/answer-display.js';
-import { answerOptionsFor } from '../lessons/answer-options.js';
-import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../lessons/grading/multiple-choice.js';
+import { lessonStudyCourseIds, resolveLessonCourse } from '../lessons/course-context.js';
 import type { GradeResult } from '../lessons/grading/types.js';
+import { lessonRunState } from '../lessons/reads.js';
 import {
   answerLessonProblem,
   answerLessonQuiz,
   type LessonGrader,
   practiceLessonPoint,
-  resolveLessonExercise,
   startLessonQuiz,
   startLessonRun,
   submitLessonQuiz,
 } from '../lessons/run-commands.js';
 import type { LessonRuntime } from '../lessons/run-recovery.js';
-import { readLessonState } from '../lessons/run-state.js';
 import { applyMastery } from '../memory/mastery-service.js';
-import type { LessonRun } from '../store/lesson-store.js';
 import { type EngineRequest, type EngineResult, respond } from './types.js';
-
-function correctAnswerDisplay(exercise: IndexedExercise): string {
-  if (exercise.type === 'mc') {
-    return exercise.options
-      .filter((option) => option.correct)
-      .map((option) => option.text)
-      .join('\n');
-  }
-  if (exercise.type === 'numeric') {
-    return 'answer' in exercise ? formatTemplateNumber(exercise.answer) : '';
-  }
-  if ('answer' in exercise) return answerText(exercise.answer);
-  if ('accept' in exercise) return exercise.accept.join(', ');
-  if (exercise.type === 'explain') return exercise.exemplar;
-  if (exercise.type === 'debug') {
-    return exercise.fix_options
-      .filter((option) => option.correct)
-      .map((option) => option.text)
-      .join('\n');
-  }
-  return '';
-}
 
 function runtime(request: EngineRequest): LessonRuntime {
   return {
@@ -58,156 +27,16 @@ function runtime(request: EngineRequest): LessonRuntime {
 
 async function lessonCourse(request: EngineRequest, conceptId: string, activityId?: string) {
   const { content, store, userId } = request;
-  const containing = content.courses.filter((course) =>
-    course.units.some((unit) => unit.concepts.includes(conceptId)),
+  const studyCourseIds = await lessonStudyCourseIds(content, conceptId, () =>
+    request.repo.activeStudyCourseIds(content),
   );
-  let preferredCourseId: string | undefined;
-  let studyCourseIds: string[] = [];
-  if (containing.length > 1) {
-    const activities = await store.listActivities(userId, {
-      conceptId,
-      ...(activityId ? { ids: [activityId] } : {}),
-    });
-    const sessions = await store.listSessions(userId, {
-      ids: [...new Set(activities.map((activity) => activity.sessionId))],
-    });
-    const startedAt = new Map(sessions.map((session) => [session.id, session.startedAt]));
-    const time = (id: string) => startedAt.get(id)?.getTime() ?? Number.POSITIVE_INFINITY;
-    preferredCourseId = [...activities]
-      .sort((left, right) => time(right.sessionId) - time(left.sessionId) || right.idx - left.idx)
-      .map(({ reason }) => {
-        const value = (reason as { courseId?: unknown }).courseId;
-        return typeof value === 'string' ? value : undefined;
-      })
-      .find((value) => value !== undefined);
-    studyCourseIds = await request.repo.activeStudyCourseIds(content);
-  }
-  const result = lessonCourseContext(content, { conceptId, preferredCourseId, studyCourseIds });
-  return result
-    ? {
-        id: result.courseId,
-        title: result.courseTitle,
-        unitNumber: result.unitNumber,
-        unitTitle: result.unitTitle,
-        position: result.position,
-      }
-    : null;
-}
-
-async function runState(
-  request: EngineRequest,
-  lesson: IndexedLesson,
-  index: ContentIndex,
-  run: LessonRun,
-) {
-  const { userId } = request;
-  const snapshot = await readLessonState(
-    request.store,
+  return resolveLessonCourse(store, content, {
     userId,
-    run,
-    lesson,
-    index,
-    runtime(request),
-  );
-  if (!snapshot) return null;
-  ({ run } = snapshot);
-  const { derived, lastAttempt, practicePending, needsProgressSync, retry, currentQuiz } = snapshot;
-  const point = lesson.knowledge_points?.find((item) => item.id === derived.currentPointId);
-  const buildInstance = resolveLessonExercise;
-  const pendingRow = derived.pending;
-  const pendingExercise = pendingRow ? index.exercisesById.get(pendingRow.exerciseId) : undefined;
-  const pendingInstance =
-    pendingExercise && pendingRow ? buildInstance(pendingExercise, pendingRow.seed) : undefined;
-  const lastRow = derived.lastAnswered;
-  const lastExercise = lastRow ? index.exercisesById.get(lastRow.exerciseId) : undefined;
-  const lastInstance =
-    lastExercise && lastRow ? buildInstance(lastExercise, lastRow.seed) : undefined;
-  const attemptFeedback = (lastAttempt?.feedback as { message?: string } | null)?.message;
-  const lastAnswerOptions =
-    lastAttempt && lastInstance
-      ? answerOptionsFor(lastInstance, lastAttempt.answer, true)
-      : undefined;
-  const feedback =
-    lastInstance?.type === 'mc' && attemptFeedback === MULTIPLE_CHOICE_FALLBACK_FEEDBACK
-      ? ''
-      : (attemptFeedback ??
-        (lastRow?.correct === 1 ? 'Correct.' : MULTIPLE_CHOICE_FALLBACK_FEEDBACK));
-  const practiceExercise = practicePending
-    ? index.exercisesById.get(practicePending.exerciseId)
-    : undefined;
-  const practiceInstance =
-    practiceExercise && practicePending
-      ? buildInstance(practiceExercise, practicePending.seed)
-      : undefined;
-  const quiz = currentQuiz
-    ? {
-        ...snapshot.quiz,
-        current: {
-          attemptId: currentQuiz.attemptId,
-          items: currentQuiz.items.map((item) => {
-            const indexed = index.exercisesById.get(item.exerciseId);
-            const instance = indexed ? buildInstance(indexed, item.seed) : undefined;
-            return {
-              id: item.id,
-              position: item.position,
-              exercise: instance ? serializeExercise(instance, userId) : null,
-              answered: item.answeredAt !== null,
-              ...(item.answeredAt !== null ? { answer: item.answer } : {}),
-              locked: item.attemptId !== null,
-            };
-          }),
-        },
-      }
-    : snapshot.quiz;
-  return {
-    id: run.id,
-    ...(needsProgressSync ? { needsProgressSync: true } : {}),
-    status: run.status === 'needs_retry' ? 'needs_retry' : derived.status,
-    ...(retry ? { retry: { ...retry, after: retry.after?.toISOString() ?? null } } : {}),
-    ...(derived.halted ? { halted: derived.halted } : {}),
-    where_this_fits: lesson.where_this_fits,
-    prerequisites: getLessonPrerequisites(index, lesson.concept),
-    points: snapshot.points,
-    currentPointId: derived.currentPointId,
-    currentPoint: point
-      ? {
-          id: point.id,
-          title: point.title,
-          tldr: point.tldr,
-          explain: point.explain,
-          worked: point.worked,
-        }
-      : undefined,
-    pending: pendingRow,
-    pendingProblem:
-      pendingRow && pendingInstance
-        ? { ...pendingRow, exercise: serializeExercise(pendingInstance, userId) }
-        : undefined,
-    pendingPracticeProblem:
-      practicePending && practiceInstance
-        ? { ...practicePending, exercise: serializeExercise(practiceInstance, userId) }
-        : undefined,
-    lastAnswered: lastInstance ? lastRow : undefined,
-    lastAnsweredProblem:
-      lastRow && lastInstance
-        ? {
-            ...lastRow,
-            activityId: lastAttempt?.activityId ?? null,
-            exercise: serializeExercise(lastInstance, userId),
-            result: {
-              correct: lastRow.correct,
-              attemptNo: lastAttempt?.attemptNo ?? 1,
-              feedback,
-              solution: lastInstance.solution,
-              yourAnswer: answerDisplay(lastInstance, lastAttempt?.answer),
-              correctAnswer: correctAnswerDisplay(lastInstance),
-              ...(lastAnswerOptions ? { answerOptions: lastAnswerOptions } : {}),
-            },
-          }
-        : undefined,
-    xpEarned: snapshot.xpEarned,
-    quiz,
-  };
+    conceptId,
+    activityId,
+    includeActivitiesWithoutSession: true,
+    studyCourseIds,
+  });
 }
 
 async function verifyActivity(
@@ -295,7 +124,7 @@ export async function lessonOperation(
   if (!activity) return respond({ error: 'Learn activity not found' }, 403);
   const state = async (runId: string) => {
     const run = await store.getLessonRun(userId, { runId });
-    return run ? await runState(request, lesson, index, run) : null;
+    return run ? await lessonRunState(request, lesson, index, run) : null;
   };
   const course = () => lessonCourse(request, conceptId, body.activityId);
   const sessionId = activity.activity ? activity.session?.id : undefined;
@@ -319,7 +148,7 @@ export async function lessonOperation(
       }
       return respond({
         course: await course(),
-        run: await runState(request, lesson, index, run.run),
+        run: await lessonRunState(request, lesson, index, run.run),
       });
     }
     case 'practiceLessonPoint': {
