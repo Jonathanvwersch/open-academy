@@ -162,6 +162,28 @@ test('graded attempt outcomes include retries and persist with completed attempt
   ]);
 });
 
+test('self-check-required attempts do not include an outcome', async () => {
+  const index = await content;
+  const exercise = index.exercises.find(({ type }) => type === 'explain');
+  if (exercise?.type !== 'explain') throw new Error('Missing explanation exercise fixture');
+  const learner = createEngine({ content: async () => index, store: memoryStore() }).learner({
+    id: 'self-check-outcome-learner',
+    timeZone: 'UTC',
+    now: () => new Date('2026-01-17T12:00:00Z'),
+    random: () => 0.5,
+  });
+
+  const result = await learner.exerciseAttempt({
+    body: {
+      exerciseId: exercise.id,
+      answer: { text: 'A model maps inputs to targets.' },
+    },
+  });
+
+  expect(result).toMatchObject({ status: 200, body: { status: 'self_check_required' } });
+  expect(result.body).not.toHaveProperty('outcome');
+});
+
 test('activity progress patches preserve stored fields', async () => {
   const index = await content;
   const learnerId = 'progress-merge-learner';

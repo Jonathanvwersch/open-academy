@@ -232,11 +232,14 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
         const answerOptions = exercise
           ? answerOptionsFor(exercise, answer, !answerWithheld)
           : undefined;
+        const status = (feedback.status ?? 'graded') as string;
         return {
           exerciseId: attempt.exerciseId,
-          status: (feedback.status ?? 'graded') as string,
+          status,
           correct: attempt.correct,
-          outcome: attempt.correct > 0 ? ('correct' as const) : ('incorrect' as const),
+          ...(status !== 'invalid' && status !== 'self_check_required'
+            ? { outcome: attempt.correct > 0 ? ('correct' as const) : ('incorrect' as const) }
+            : {}),
           attemptNo: attempt.attemptNo,
           retryAllowed,
           ...(followUp ? { followUp: true } : {}),

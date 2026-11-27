@@ -129,6 +129,7 @@ type PreparedExercise = Extract<
   { kind: 'ready' }
 >;
 type GradedAnswer = {
+  status?: 'graded' | 'invalid' | 'self_check_required';
   correct: number;
   feedback: string;
   gradedBy?: GradedBy;
@@ -160,7 +161,6 @@ export async function recordExerciseAttempt(
     attemptNo < 2 &&
     ((input.mode === 'practice' && grade.correct === 0) ||
       ((input.mode === 'practice' || input.mode === 'review') && followUp));
-  const outcome = grade.correct > 0 ? 'correct' : 'incorrect';
   const answerWithheld = retryAllowed;
   const now = runtime.now();
   const attemptId = runtime.newId();
@@ -262,7 +262,7 @@ export async function recordExerciseAttempt(
     };
     const outcomes = {
       ...(progress.outcomes ?? {}),
-      [exercise.id]: outcome,
+      [exercise.id]: grade.correct > 0 ? 'correct' : 'incorrect',
     };
     const completedExerciseIds = [
       ...new Set([...(progress.completedExerciseIds ?? []), exercise.id]),
@@ -366,7 +366,9 @@ export async function recordExerciseAttempt(
     attemptNo,
     hintsUsed,
     credit,
-    outcome,
+    ...(grade.status !== 'invalid' && grade.status !== 'self_check_required'
+      ? { outcome: grade.correct > 0 ? 'correct' : 'incorrect' }
+      : {}),
     mastery: masteryResult,
     retryAllowed,
     activityCompleted,
