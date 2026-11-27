@@ -108,6 +108,33 @@ describe('academy CLI', () => {
     }
   });
 
+  it('prints simulate help without starting a run', () => {
+    const parent = temporaryDirectory();
+    const out = join(parent, 'simulation-output');
+    const help =
+      'academy simulate [--days <n>] [--profiles <list|all>] [--out <dir>] [--courses <list>]';
+    try {
+      const shortHelp = run([
+        'simulate',
+        '-h',
+        '--days',
+        '1',
+        '--profiles',
+        'average',
+        '--out',
+        out,
+      ]);
+      const longHelp = run(['simulate', '--help']);
+      expect(shortHelp.status).toBe(0);
+      expect(longHelp.status).toBe(0);
+      expect(shortHelp.stdout.trim()).toBe(help);
+      expect(longHelp.stdout.trim()).toBe(help);
+      expect(existsSync(out)).toBe(false);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
   it('verifies encompassing weights against every eligible question and prerequisite step', () => {
     const parent = temporaryDirectory();
     try {

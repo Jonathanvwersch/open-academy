@@ -1066,6 +1066,7 @@ async function main() {
     return;
   }
   if (command === 'simulate') {
+    if (args.includes('--help') || args.includes('-h')) return showHelp(command);
     return runSimulateCli(args, {
       contentDir: resolve(repoRoot, process.env.CONTENT_DIR ?? 'content'),
       drivers: { direct: directMemoryDriver },
