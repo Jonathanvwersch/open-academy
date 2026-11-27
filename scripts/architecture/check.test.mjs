@@ -76,19 +76,15 @@ test('permits the API Vercel entry point and generated deployment adapter', () =
   );
 });
 
-test('permits API and CLI imports through Aesop folder exports', () => {
+test('permits API and Aesop CLI imports through folder exports', () => {
   fixture(
     {
       'apps/api/src/learning/scheduler.ts':
         "import {schedule} from '@academy/aesop/planner/scheduler'; export {schedule};",
       'packages/aesop/src/course/load.ts':
         "import {createHash} from 'node:crypto'; import {readFile} from 'node:fs/promises'; import {resolve} from 'node:path'; export {createHash,readFile,resolve};",
-      'packages/cli/package.json': JSON.stringify({
-        name: '@academy/cli',
-        dependencies: { '@academy/aesop': 'workspace:*' },
-      }),
-      'packages/cli/src/scheduler.ts':
-        "import {schedule} from '@academy/aesop/planner/scheduler'; export {schedule};",
+      'packages/aesop/src/cli/index.ts':
+        "import {spawn} from 'node:child_process'; import {readFileSync} from 'node:fs'; import {resolve} from 'node:path'; import {fileURLToPath} from 'node:url'; import {parseArgs} from 'node:util'; import {schedule} from '@academy/aesop/planner/scheduler'; export {spawn,readFileSync,resolve,fileURLToPath,parseArgs,schedule};",
     },
     (errors) => assert.deepEqual(errors, []),
   );

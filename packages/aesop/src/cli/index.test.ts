@@ -17,8 +17,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { parse, stringify } from 'yaml';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const cli = join(root, 'packages/cli/src/index.ts');
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const cli = join(root, 'packages/aesop/src/cli/index.ts');
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -81,7 +81,7 @@ describe('academy CLI', () => {
     expect(noArguments.stdout).toBe(rootHelp.stdout);
     const helpLines = rootHelp.stdout.trim().split('\n');
     expect(helpLines[0]).toBe('Usage:');
-    expect(helpLines.slice(1)).toHaveLength(10);
+    expect(helpLines.slice(1)).toHaveLength(11);
     expect(helpLines.slice(1).every((line) => line.startsWith('  '))).toBe(true);
     expect(rootHelp.stdout).toContain('--pack');
     expect(rootHelp.stdout).toContain('--requires');
@@ -94,6 +94,18 @@ describe('academy CLI', () => {
     expect(run(['weights', 'verify', '--help']).stdout.trim()).toBe(
       'academy weights verify <uses.yaml> [--pack <dir>]',
     );
+  });
+
+  it('runs simulations with the memory driver', () => {
+    const out = temporaryDirectory();
+    try {
+      const result = run(['simulate', '--days', '1', '--profiles', 'average', '--out', out]);
+      expect(result.status).toBe(0);
+      expect(existsSync(join(out, 'report.json'))).toBe(true);
+      expect(existsSync(join(out, 'report.md'))).toBe(true);
+    } finally {
+      rmSync(out, { recursive: true, force: true });
+    }
   });
 
   it('verifies encompassing weights against every eligible question and prerequisite step', () => {
@@ -670,7 +682,7 @@ describe('academy CLI', () => {
         avoid?: unknown[];
       };
       const starterNotation = parse(
-        readFileSync(join(root, 'packages/cli/template/notation.yaml'), 'utf8'),
+        readFileSync(join(root, 'packages/aesop/src/cli/template/notation.yaml'), 'utf8'),
       ) as typeof notation;
       const sumTerm = starterNotation.terms.find(({ id }) => id === 'sum');
       const nablaTerm = starterNotation.terms.find(({ id }) => id === 'nabla');

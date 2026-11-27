@@ -59,12 +59,21 @@ export const aesopDependencies = new Set([
   '@academy/shared',
   'mathjs',
   'ts-fsrs',
+  'tsx',
   'yaml',
   'zod',
 ]);
 
 export const aesopBuiltins = new Set(['node:crypto', 'node:fs/promises', 'node:path']);
 
-export const cliDependencies = new Set(['@academy/api', '@academy/aesop', 'tsx', 'yaml']);
+// The authoring CLI uses Node process and filesystem APIs; engine modules remain browser-safe.
+export const cliBuiltins = new Set([
+  'node:child_process',
+  'node:fs',
+  'node:path',
+  'node:url',
+  'node:util',
+]);
+
 // Only the simulator CLI writes reports; keep filesystem access out of simulator drivers.
 export const simulatorBuiltins = new Set(['node:fs/promises', 'node:path']);

@@ -30,7 +30,7 @@
     "boundaries": "node scripts/architecture/check.mjs",
     "check": "pnpm boundaries && pnpm lint && pnpm typecheck && pnpm content:check && pnpm test:architecture && pnpm test:tooling",
     "build": "pnpm --filter @academy/web build && pnpm --filter @academy/api build",
-    "academy": "tsx packages/cli/src/index.ts",
+    "academy": "tsx packages/aesop/src/cli/index.ts",
     "start": "pnpm --filter @academy/api start",
     "vercel-build": "pnpm build && pnpm --filter @academy/api vercel:bundle && pnpm --filter @academy/api vercel:migrate"
   },

@@ -14,18 +14,21 @@ import {
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual, parseArgs } from 'node:util';
-import { MIN_REVIEW_POOL } from '@academy/aesop/course/review-pool';
 import {
   ContentValidationError,
-  loadContent,
-  loadContentReport,
-  loadContentUnchecked,
-} from '@academy/api/content';
+  loadContentFromDirectory,
+  loadContentReportFromDirectory,
+  loadContentUncheckedFromDirectory,
+} from '@academy/aesop/course/load';
+import { MIN_REVIEW_POOL } from '@academy/aesop/course/review-pool';
+import type { ContentIndex } from '@academy/aesop/course/types';
+import { runSimulateCli } from '@academy/aesop/simulator/cli';
+import { directMemoryDriver } from '@academy/aesop/simulator/memory-driver';
 import { isMap, isSeq, parse, parseDocument, stringify } from 'yaml';
 import { verifyWeights } from './weights.js';
 
-const cliRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const repoRoot = resolve(cliRoot, '../..');
+const cliRoot = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(cliRoot, '../../../..');
 const templateRoot = join(cliRoot, 'template');
 const options = {
   help: { type: 'boolean', short: 'h' },
@@ -39,7 +42,7 @@ const options = {
 } as const;
 
 const helpText: Record<string, string> = {
-  root: 'academy init <dir> --title <title> | check [dir] | prereqs <topic-id> | dev [dir] | new <topic|lesson|course> ... | sources <add|list> ... | weights verify ...',
+  root: 'academy init <dir> --title <title> | check [dir] | prereqs <topic-id> | dev [dir] | new <topic|lesson|course> ... | sources <add|list> ... | weights verify ... | simulate ...',
   init: 'academy init <dir> --title <subject title>',
   check: 'academy check [dir] [--pack <dir>]',
   prereqs: 'academy prereqs <topic-id> [--pack <dir>]',
@@ -51,6 +54,8 @@ const helpText: Record<string, string> = {
   'sources add': 'academy sources add <file> [--title <title>] [--kind <kind>] [--pack <dir>]',
   'sources list': 'academy sources list [--pack <dir>]',
   'weights verify': 'academy weights verify <uses.yaml> [--pack <dir>]',
+  simulate:
+    'academy simulate [--days <n>] [--profiles <list|all>] [--out <dir>] [--courses <list>]',
 };
 
 function showHelp(command = 'root') {
@@ -104,6 +109,22 @@ function packPath(positionals: string[], pack?: string): string {
     invocationDirectory(),
     pack ?? positionals[0] ?? process.env.CONTENT_DIR ?? 'content',
   );
+}
+
+async function loadContent(
+  directory = process.env.CONTENT_DIR ?? 'content',
+): Promise<ContentIndex> {
+  return loadContentFromDirectory(resolve(repoRoot, directory));
+}
+
+async function loadContentUnchecked(
+  directory = process.env.CONTENT_DIR ?? 'content',
+): Promise<ContentIndex> {
+  return loadContentUncheckedFromDirectory(resolve(repoRoot, directory));
+}
+
+async function loadContentReport(directory = process.env.CONTENT_DIR ?? 'content') {
+  return loadContentReportFromDirectory(resolve(repoRoot, directory));
 }
 
 function fail(message: string): never {
@@ -1043,6 +1064,12 @@ async function main() {
     showHelp(name);
     process.exitCode = 1;
     return;
+  }
+  if (command === 'simulate') {
+    return runSimulateCli(args, {
+      contentDir: resolve(repoRoot, process.env.CONTENT_DIR ?? 'content'),
+      drivers: { direct: directMemoryDriver },
+    });
   }
   if (command === 'prereqs') {
     const parsed = parseOptions(args);
