@@ -97,14 +97,30 @@ describe('academy CLI', () => {
   });
 
   it('runs simulations with the memory driver', () => {
-    const out = temporaryDirectory();
+    const parent = temporaryDirectory();
     try {
-      const result = run(['simulate', '--days', '1', '--profiles', 'average', '--out', out]);
+      const pack = join(parent, 'pack');
+      const out = join(parent, 'simulation-output');
+      cpSync(join(root, 'tests/fixtures/content'), pack, { recursive: true });
+      const result = runFromPack(
+        [
+          'simulate',
+          '--days',
+          '1',
+          '--profiles',
+          'average',
+          '--courses',
+          'fixture-course',
+          '--out',
+          out,
+        ],
+        pack,
+      );
       expect(result.status).toBe(0);
       expect(existsSync(join(out, 'report.json'))).toBe(true);
       expect(existsSync(join(out, 'report.md'))).toBe(true);
     } finally {
-      rmSync(out, { recursive: true, force: true });
+      rmSync(parent, { recursive: true, force: true });
     }
   });
 
