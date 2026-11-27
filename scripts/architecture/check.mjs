@@ -8,6 +8,7 @@ import {
   browserForbiddenPackages,
   cliBuiltins,
   deploymentImports,
+  engineBuildBuiltins,
   engineBuiltins,
   engineDependencies,
   publicFeatureModules,
@@ -193,12 +194,15 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
       if (builtins.has(request)) {
         const engineBuiltin =
           file.startsWith('packages/engine/src/course/') && engineBuiltins.has(request);
+        const engineBuildBuiltin =
+          file === 'packages/engine/scripts/build.mjs' && engineBuildBuiltins.has(request);
         const cliBuiltin = file.startsWith('packages/engine/src/cli/') && cliBuiltins.has(request);
         const simulatorBuiltin =
           file === 'packages/engine/src/simulator/cli.ts' && simulatorBuiltins.has(request);
         if (
           !isTest &&
           !engineBuiltin &&
+          !engineBuildBuiltin &&
           !cliBuiltin &&
           !simulatorBuiltin &&
           (own.startsWith('packages/') || (own === 'apps/web' && !file.endsWith('config.ts')))

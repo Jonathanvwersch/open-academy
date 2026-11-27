@@ -90,6 +90,34 @@ test('permits API and engine CLI imports through folder exports', () => {
   );
 });
 
+test('permits Node filesystem imports in the engine build script', () => {
+  fixture(
+    {
+      'packages/engine/scripts/build.mjs':
+        "import {cpSync,rmSync} from 'node:fs'; import {join} from 'node:path'; export {cpSync,rmSync,join};",
+    },
+    (errors) => assert.deepEqual(errors, []),
+  );
+});
+
+test('forbids non-allowlisted Node imports in the engine build script', () => {
+  fixture(
+    {
+      'packages/engine/scripts/build.mjs':
+        "import {spawn} from 'node:child_process'; export {spawn};",
+    },
+    (errors) =>
+      assert.ok(
+        errors.some((error) =>
+          error.includes(
+            'packages/engine/scripts/build.mjs: browser-safe code cannot import node:child_process',
+          ),
+        ),
+        errors.join('\n'),
+      ),
+  );
+});
+
 test('forbids Node builtins outside approved engine modules', () => {
   fixture(
     {

@@ -45,7 +45,24 @@ console.log(today.status);
 
 `grade` can be set on `createEngine` or overridden for one learner. It receives an exercise, an answer, and `{ random }`, and returns a grade result or a promise. `hasTutorReply` is a per-learner hook. It receives the store, learner ID, and problem ID and returns a promise of a boolean.
 
-The `academy` CLI ships with the Open Academy repository. It is not part of the published package.
+## CLI
+
+Install the package in a course pack, then run the CLI with `npx academy`:
+
+```sh
+npx academy init my-pack --title "Applied Science"
+npx academy check my-pack
+npx academy new topic vectors --title "Vectors" --pack my-pack
+npx academy new lesson vectors --pack my-pack
+npx academy new course maths --title "Maths" --pack my-pack
+npx academy sources add notes.pdf --pack my-pack
+npx academy sources list --pack my-pack
+npx academy prereqs vectors --pack my-pack
+npx academy weights verify uses.yaml --pack my-pack
+npx academy simulate --pack my-pack --days 3
+```
+
+`academy dev my-pack` launches the Open Academy app and needs its source checkout.
 
 ## Versioning
 

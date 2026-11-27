@@ -39,9 +39,10 @@ function runWithInitCwd(args: string[], initCwd: string, environment: NodeJS.Pro
 }
 
 function runFromPack(args: string[], pack: string) {
-  const environment: NodeJS.ProcessEnv = { ...process.env, CONTENT_DIR: '.' };
+  const environment: NodeJS.ProcessEnv = { ...process.env };
   delete environment.INIT_CWD;
-  return spawnSync('pnpm', ['--dir', root, 'academy', ...args], {
+  delete environment.CONTENT_DIR;
+  return spawnSync(join(root, 'node_modules/.bin/tsx'), [cli, ...args], {
     cwd: pack,
     env: environment,
     encoding: 'utf8',
@@ -49,6 +50,18 @@ function runFromPack(args: string[], pack: string) {
 }
 
 describe('academy CLI', () => {
+  it('checks a pack from its root without a path argument', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Pack']).status).toBe(0);
+      const result = runFromPack(['check'], pack);
+      expect(result.status, result.stderr).toBe(0);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
   it('keeps added source files private in an existing pack without ignore rules', () => {
     const parent = temporaryDirectory();
     try {
@@ -102,9 +115,10 @@ describe('academy CLI', () => {
       const pack = join(parent, 'pack');
       const out = join(parent, 'simulation-output');
       cpSync(join(root, 'tests/fixtures/content'), pack, { recursive: true });
-      const result = runFromPack(
+      const result = runWithInitCwd(
         [
           'simulate',
+          pack,
           '--days',
           '1',
           '--profiles',
@@ -114,7 +128,7 @@ describe('academy CLI', () => {
           '--out',
           out,
         ],
-        pack,
+        parent,
       );
       expect(result.status).toBe(0);
       expect(existsSync(join(out, 'report.json'))).toBe(true);
@@ -128,7 +142,7 @@ describe('academy CLI', () => {
     const parent = temporaryDirectory();
     const out = join(parent, 'simulation-output');
     const help =
-      'academy simulate [--days <n>] [--profiles <list|all>] [--out <dir>] [--courses <list>]';
+      'academy simulate [dir] [--pack <dir>] [--days <n>] [--profiles <list|all>] [--out <dir>] [--courses <list>]';
     try {
       const shortHelp = run([
         'simulate',
@@ -568,11 +582,13 @@ describe('academy CLI', () => {
         '.agents/skills/set-weights/SKILL.md',
       ];
       const agents = readFileSync(join(pack, 'AGENTS.md'), 'utf8');
-      expect(agents).toContain(`CONTENT_DIR=. pnpm --dir "${root}" academy check`);
+      expect(agents).toContain('npm i -D @open-academy/engine');
+      expect(agents).toContain('npx academy check');
       expect(agents).not.toContain('{{ACADEMY}}');
       expect(agents).toContain('.agents/skills/set-weights/SKILL.md');
       const readme = readFileSync(join(pack, 'README.md'), 'utf8');
-      expect(readme).toContain(`CONTENT_DIR=. pnpm --dir "${root}" academy check`);
+      expect(readme).toContain('npm i -D @open-academy/engine');
+      expect(readme).toContain('npx academy check');
       for (const file of templateFiles) expect(existsSync(join(pack, file))).toBe(true);
       const transformedFiles = [
         '.agents/skills/write-lesson/SKILL.md',

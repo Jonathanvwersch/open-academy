@@ -17,7 +17,7 @@ Rules:
 - After a topic's questions are done, use `.agents/skills/set-weights/SKILL.md` to set its encompassing weights and have a separate agent check them before the course ships.
 - When the pack has sources, write from them with `.agents/skills/write-from-sources/SKILL.md` and cite them.
 - Run `academy check` after every change and fix every issue it reports before you stop.
-- Running the CLI: `academy` means `CONTENT_DIR=. pnpm --dir "{{ACADEMY}}" academy`; run it from this folder, for example `CONTENT_DIR=. pnpm --dir "{{ACADEMY}}" academy check`.
+- Install the CLI once with `npm i -D @open-academy/engine` in this folder, then run `npx academy check`.
 - Use the CLI to create files (`academy new topic`, `academy new lesson`, `academy new course`, `academy sources add`) so IDs and file layout stay consistent.
 
 The reference lesson, its questions, and the format docs are in `.agents/skills/write-lesson/reference/`.
