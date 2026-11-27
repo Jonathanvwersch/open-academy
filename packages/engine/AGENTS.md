@@ -2,8 +2,9 @@
 
 - This package owns pure content and learning-engine rules and makes no database, HTTP, or provider calls.
 - `api` owns browser-safe request and response shapes.
-- `course` loads and validates curriculum from an already-resolved directory; `graph` owns prerequisite and course relationships; `memory` owns mastery and review state; `planner` owns scheduling; `lessons` owns lesson progression; `lessons/grading` owns grading algorithms; `placement` owns placement rules; `progress` owns XP, streak, and progress helpers; `store` owns the learner state interface and in-memory store.
+- `course` loads and validates curriculum from an already-resolved directory; `graph` owns prerequisite and course relationships; `memory` owns mastery and review state; `planner` owns scheduling; `lessons` owns lesson progression; `lessons/grading` owns grading algorithms; `placement` owns placement rules; `progress` owns XP, streak, and progress helpers; `store` owns the learner state interface and in-memory store; `tutor` owns tutor learning-context rules.
 - `memory/mastery-service.ts` writes through `LearnerStore`.
+- `tutor` owns tutor learning-context rules.
 - `engine` exposes the request-scoped `createEngine` facade.
 - `quizzes` owns periodic timed mixed quizzes.
 - `simulator` owns learner simulations, audit invariants, and report generation.

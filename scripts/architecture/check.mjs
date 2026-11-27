@@ -6,6 +6,7 @@ import { parseSync } from 'oxc-parser';
 import { ResolverFactory } from 'oxc-resolver';
 import {
   browserForbiddenPackages,
+  browserSafeEngineImports,
   cliBuiltins,
   deploymentImports,
   engineBuildBuiltins,
@@ -248,9 +249,10 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           if (
             own === 'apps/web' &&
             browserForbiddenPackages.has(dependency) &&
-            !request.startsWith('@open-academy/engine/api/')
+            !request.startsWith('@open-academy/engine/api/') &&
+            !browserSafeEngineImports.has(request)
           )
-            report(file, 'apps/web can import only @open-academy/engine/api/* from the engine');
+            report(file, 'apps/web can import only browser-safe public engine exports');
           if (workspace.dir.startsWith('apps/'))
             report(
               file,

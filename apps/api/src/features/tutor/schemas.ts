@@ -1,3 +1,4 @@
+import type { TutorPrompt } from '@open-academy/engine/api/tutor';
 import { z } from 'zod';
 
 export const TutorReplySchema = z
@@ -29,28 +30,10 @@ export type RubricJudgement = z.infer<typeof RubricJudgementSchema>;
 export const TutorLevelSchema = z.enum(['nudge', 'hint', 'worked_step']);
 export type TutorLevel = z.infer<typeof TutorLevelSchema>;
 
-export interface TutorContext {
-  conceptTitle: string;
-  objectives: string[];
-  lessonSummary: string;
-  exercisePrompt: string;
-  exerciseLabel: string;
-  exerciseOptions: string[];
-  answerKey: string;
-  learnerAnswer?: string;
-  graderVerdict?: string;
-  graderFeedback: string;
-  hintLevel: number;
-  authoredHints: string[];
-  solution: string;
-  recentMistakes: string[];
+export type TutorContext = TutorPrompt & {
   question?: string;
-  mode?: 'practice';
   history: Array<{ role: 'learner' | 'tutor'; content: string }>;
-  problem_status: 'unanswered' | 'retrying' | 'answered' | 'none';
-  page: string;
-  page_content: string;
-}
+};
 
 export interface ExplanationContext {
   question: string;

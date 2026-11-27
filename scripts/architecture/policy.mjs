@@ -23,7 +23,6 @@ export const publicFeatureModules = {
     'features/papers/service.ts',
     'features/tutor/provider.ts',
     'features/tutor/schemas.ts',
-    'features/tutor/feedback-context.ts',
     'features/tutor/scoring.ts',
     'features/tutor/service.ts',
   ]),
@@ -51,6 +50,7 @@ export const sourceEntries = {
 export const deploymentImports = new Set(['apps/api/dist-vercel/server.mjs']);
 
 export const browserForbiddenPackages = new Set(['@open-academy/engine']);
+export const browserSafeEngineImports = new Set(['@open-academy/engine/course/option-order']);
 
 export const sharedPackageDependencies = new Set(['zod', '@academy/shared']);
 

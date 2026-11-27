@@ -258,7 +258,11 @@ A _withdrawn_ grant gives no credit.
 - The daily XP goal is the day's time budget.
 - A day counts for the streak when the learner earns any XP that day, in their own time zone.
 
-## 12. What the engine does not do
+## 12. Tutor context
+
+[Ours] The engine prepares context for Fable. Fable cannot see recall questions or placement questions. Before a final answer, Fable gets authored hints and no solution. After a final answer, Fable gets the learner's answer, verdict, feedback, and solution. Fable sees options in the same order as they appear on the screen.
+
+## 13. What the engine does not do
 
 The engine does not use a database, HTTP or an AI model. The host app does these jobs:
 
@@ -287,7 +291,7 @@ The API store uses PostgreSQL. It locks the learner row when a flow asks for a l
 
 Starting placement locks the learner row. Answering a placement question locks the diagnostic run. Withdrawing placement credit rebuilds mastery and suspends review cards in one transaction.
 
-## 13. How we check the engine
+## 14. How we check the engine
 
 The simulator runs 12 simulated learners for 120 days each. Seven learners study courses. Five learners follow scripts, for example a learner who is placed too high or a learner who takes a timed quiz again. The learners follow fixed rules and use a fixed random seed. A fake grader marks written answers. No AI is used.
 

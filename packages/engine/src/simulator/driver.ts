@@ -42,6 +42,8 @@ export function httpRequestFor(operation: SimulatorOperation): SimulatorHttpRequ
       return { method: 'GET', path: `/exercises/${encodeURIComponent(operation.id)}` };
     case 'hint':
       return { method: 'POST', path: '/hints', body: operation.body };
+    case 'tutorContext':
+      throw new Error('Tutor context is not a standalone simulator HTTP operation');
     case 'activeSession':
       return { method: 'GET', path: '/sessions/active' };
     case 'lessonRun':

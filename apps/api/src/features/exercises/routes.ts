@@ -1,4 +1,4 @@
-import { onScreenOptions } from '@academy/shared/shuffle';
+import { onScreenOptions } from '@open-academy/engine/course/option-order';
 import { serializedOptionOrder } from '@open-academy/engine/course/serialize';
 import type {
   EngineGrade,
@@ -6,16 +6,16 @@ import type {
   EngineResult,
 } from '@open-academy/engine/engine/create-engine';
 import { gradeExercise } from '@open-academy/engine/lessons/grading/index';
-import type { Context, Hono } from 'hono';
-import { z } from 'zod';
-import type { ApiEnv, ApiServices } from '../../http/context.js';
 import {
   formatGraderFeedback,
   graderVerdictFor,
   tutorAnswerFor,
   tutorAnswerKeyFor,
   tutorSolutionFor,
-} from '../tutor/feedback-context.js';
+} from '@open-academy/engine/tutor/feedback-context';
+import type { Context, Hono } from 'hono';
+import { z } from 'zod';
+import type { ApiEnv, ApiServices } from '../../http/context.js';
 import { scoreRubric } from '../tutor/scoring.js';
 
 const send = (context: Context<ApiEnv>, result: EngineResult) =>

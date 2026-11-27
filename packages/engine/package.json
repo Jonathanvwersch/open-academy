@@ -30,6 +30,7 @@
     "./progress/*": "./src/progress/*.ts",
     "./store/*": "./src/store/*.ts",
     "./quizzes/*": "./src/quizzes/*.ts",
+    "./tutor/*": "./src/tutor/*.ts",
     "./simulator/*": "./src/simulator/*.ts"
   },
   "publishConfig": {

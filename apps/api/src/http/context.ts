@@ -4,6 +4,7 @@ import type {
   EngineGrade,
   EngineHasTutorReply,
   EngineLearner,
+  EngineTutorPaper,
 } from '@open-academy/engine/engine/create-engine';
 import type { EngineLearnerRepository } from '@open-academy/engine/engine/repository';
 import type { Context } from 'hono';
@@ -18,6 +19,7 @@ export type LearnerOptions = {
   grade?: EngineGrade;
   hasTutorReply?: EngineHasTutorReply;
   generateHint?: EngineGenerateHint;
+  tutorPaper?: EngineTutorPaper;
 };
 export interface ApiServices {
   db: Database;

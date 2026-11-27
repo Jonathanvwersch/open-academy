@@ -37,6 +37,7 @@ import {
   startQuizFollowUps,
   startQuizRetake,
 } from '../quizzes/quiz-commands.js';
+import { tutorContextOperation } from '../tutor/context.js';
 import { exerciseAttempt, placementAnswer, placementCommand } from './attempts.js';
 import { lessonOperation } from './lessons.js';
 import type { EngineLearnerRepository } from './repository.js';
@@ -117,6 +118,8 @@ export async function runEngineOperation(
       return readExercise(request, operation.id);
     case 'hint':
       return hintOperation(request, operation.body);
+    case 'tutorContext':
+      return tutorContextOperation(request, operation);
     case 'activeSession':
       return activeSession(request);
     case 'lessonRun':

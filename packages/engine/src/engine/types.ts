@@ -1,3 +1,4 @@
+import type { TutorContextInput } from '../api/tutor.js';
 import type { ContentIndex, IndexedExercise } from '../course/types.js';
 import type { gradeExercise } from '../lessons/grading/index.js';
 import type { GradeResult } from '../lessons/grading/types.js';
@@ -21,6 +22,7 @@ export type EngineOperation =
   | { kind: 'lessonReview'; conceptId: string }
   | { kind: 'exercise'; id: string }
   | { kind: 'hint'; body: unknown }
+  | ({ kind: 'tutorContext' } & TutorContextInput)
   | { kind: 'activeSession' }
   | { kind: 'lessonRun'; conceptId: string; activityId?: string }
   | { kind: 'lessonQuizReview'; conceptId: string; attemptId: string }
@@ -101,6 +103,19 @@ export type EngineGenerateHint = (
   input: EngineHintContext,
 ) => Promise<{ kind: 'ok'; text: string } | { kind: 'disabled' | 'unavailable' }>;
 
+export type EngineTutorPaper = (
+  paperId: string,
+  pageNumber: number,
+) => Promise<
+  | {
+      notes: Record<string, string>;
+      summary?: string | null;
+      feedback?: unknown;
+      pages: Array<{ page: number; text: string }>;
+    }
+  | undefined
+>;
+
 export type EngineRequest = {
   store: CourseStore;
   userId: string;
@@ -112,6 +127,7 @@ export type EngineRequest = {
   grade: EngineGrade;
   hasTutorReply: EngineHasTutorReply;
   generateHint?: EngineGenerateHint;
+  tutorPaper?: EngineTutorPaper;
   fsrsFuzz: boolean;
   tutorEnabled: boolean;
   repo: EngineLearnerRepository;
