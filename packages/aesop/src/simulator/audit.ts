@@ -1,35 +1,55 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
 import type { applyPlacementGrantOutcome } from '@academy/aesop/placement/grant-commands';
 import type { SchedulerState } from '@academy/aesop/planner/scheduler';
-import type {
-  attempts,
-  lessonQuizAttempts,
-  lessonQuizItems,
-  lessonRuns,
-  mastery,
-  placementGrants,
-  quizItems,
-  remediationFlags,
-  reviewCards,
-  reviewLogs,
-  sessionActivities,
-  xpEvents,
-} from '../src/db/schema.js';
+import type { Dimension } from '../course/schemas.js';
+import type { MasteryState } from '../memory/types.js';
+import type { Attempt } from '../store/core-store.js';
+import type { TimedQuizItem } from '../store/flow-store.js';
+import type { StoredReviewCard } from '../store/learner-store.js';
+import type { LessonQuizAttempt, LessonQuizItem, LessonRun } from '../store/lesson-store.js';
+import type { PlacementGrant } from '../store/placement-review-store.js';
+import type { Activity, RemediationFlag } from '../store/session-store.js';
 
-export type AuditMasteryRow = typeof mastery.$inferSelect;
-export type AuditLessonRunRow = typeof lessonRuns.$inferSelect;
-export type AuditPlacementGrantRow = typeof placementGrants.$inferSelect;
-export type AuditRemediationFlagRow = typeof remediationFlags.$inferSelect;
-export type AuditReviewCardRow = typeof reviewCards.$inferSelect;
-export type AuditLessonQuizAttemptRow = typeof lessonQuizAttempts.$inferSelect;
-export type AuditLessonQuizItemRow = typeof lessonQuizItems.$inferSelect;
-export type AuditQuizItemRow = typeof quizItems.$inferSelect;
-export type AuditSessionActivityRow = typeof sessionActivities.$inferSelect;
-export type AuditAttemptRow = typeof attempts.$inferSelect;
-export type AuditXpEventRow = typeof xpEvents.$inferSelect;
-type ReviewLogRow = typeof reviewLogs.$inferSelect;
-export type AuditMasteryInsert = typeof mastery.$inferInsert;
-export type AuditReviewCardInsert = typeof reviewCards.$inferInsert;
+export type AuditMasteryRow = {
+  userId: string;
+  conceptId: string;
+  dimension: Dimension;
+  state: MasteryState;
+  provisional: boolean;
+  inferred: boolean;
+  evidence: unknown;
+  lastAssessedAt: Date | null;
+  lastIndependentAt: Date | null;
+  firstIndependentAt: Date | null;
+};
+export type AuditLessonRunRow = LessonRun & { userId: string };
+export type AuditPlacementGrantRow = Omit<PlacementGrant, 'evidenceAttemptIds'> & {
+  evidenceAttemptIds: unknown;
+  userId: string;
+};
+export type AuditRemediationFlagRow = RemediationFlag & { userId: string };
+export type AuditReviewCardRow = Pick<
+  StoredReviewCard,
+  | 'id'
+  | 'conceptId'
+  | 'dimension'
+  | 'fsrs'
+  | 'dueAt'
+  | 'lastReviewAt'
+  | 'reps'
+  | 'lapses'
+  | 'suspendedAt'
+> & { userId: string };
+export type AuditLessonQuizAttemptRow = LessonQuizAttempt;
+export type AuditLessonQuizItemRow = LessonQuizItem;
+export type AuditQuizItemRow = TimedQuizItem;
+export type AuditSessionActivityRow = Activity;
+export type AuditAttemptRow = Attempt & { userId: string };
+export type AuditMasteryInsert = AuditMasteryRow;
+export type AuditReviewCardInsert = Omit<StoredReviewCard, 'id' | 'suspendedAt'> & {
+  userId: string;
+  suspendedAt?: Date | null;
+};
 
 export interface AuditProgressRows {
   mastery: AuditMasteryRow[];
@@ -38,17 +58,28 @@ export interface AuditProgressRows {
   openFlags: AuditRemediationFlagRow[];
 }
 
-export type AuditActivityReviewLog = Pick<ReviewLogRow, 'id' | 'cardId' | 'rating'> &
-  Pick<AuditReviewCardRow, 'conceptId' | 'dimension'>;
+export type AuditActivityReviewLog = {
+  id: string;
+  cardId: string;
+  rating: string;
+  conceptId: string;
+  dimension: Dimension;
+};
 
-export type AuditTimedReviewLog = Pick<
-  ReviewLogRow,
-  'id' | 'cardId' | 'rating' | 'speed' | 'rawDueAt' | 'fsrsLog'
-> &
-  Pick<AuditReviewCardRow, 'conceptId' | 'dimension'> & { cardDueAt: Date };
+export type AuditTimedReviewLog = {
+  id: string;
+  cardId: string;
+  rating: string;
+  speed: number | null | undefined;
+  rawDueAt: Date | null;
+  fsrsLog: unknown;
+  conceptId: string;
+  dimension: Dimension;
+  cardDueAt: Date;
+};
 
 export type AuditTimedAttempt = Pick<
-  AuditAttemptRow,
+  Attempt,
   'id' | 'conceptId' | 'correct' | 'gradedBy' | 'hintsUsed' | 'attemptNo' | 'answer'
 > & { tutorHelped: unknown };
 
@@ -80,7 +111,7 @@ export interface SimulatorAudit {
   /** Logs for the given cards, newest first. */
   reviewLogHistory(
     cardIds: string[],
-  ): Promise<Array<Pick<ReviewLogRow, 'cardId' | 'rating' | 'createdAt'>>>;
+  ): Promise<Array<{ cardId: string; rating: string; createdAt: Date }>>;
   /** Attempts graded at `now`, ordered by quiz position, topic and id. */
   attemptsAt(userId: string, now: Date): Promise<AuditTimedAttempt[]>;
   latestLessonRun(

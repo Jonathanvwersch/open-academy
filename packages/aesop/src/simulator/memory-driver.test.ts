@@ -5,9 +5,11 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
-import { loadContent } from '../src/content/load.js';
-import { directMemoryDriver } from './learner-simulation-direct-driver.js';
-import { type SimulationProfile, simulateLearners } from './learner-simulator.js';
+import { loadContentFromDirectory } from '../course/load.js';
+import { directMemoryDriver } from './memory-driver.js';
+import { type SimulationProfile, simulateLearners } from './simulator.js';
+
+const contentDirectory = fileURLToPath(new URL('../../../../content', import.meta.url));
 
 function stripWallClockFields(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stripWallClockFields);
@@ -23,7 +25,7 @@ function stripWallClockFields(value: unknown): unknown {
 }
 
 test('two direct 15-day runs from the same seed produce byte-identical reports', async () => {
-  const content = await loadContent();
+  const content = await loadContentFromDirectory(contentDirectory);
   const options = {
     profiles: ['average', 'struggling'] as SimulationProfile[],
     days: 15,
@@ -67,8 +69,8 @@ test('direct simulator modules do not load the app, the database or its config',
       }
     }
   };
-  await visit(new URL('learner-simulation-direct-driver.ts', import.meta.url));
-  await visit(new URL('learner-simulator.ts', import.meta.url));
+  await visit(new URL('memory-driver.ts', import.meta.url));
+  await visit(new URL('simulator.ts', import.meta.url));
   expect(visited.size).toBeGreaterThan(4);
   expect(reached).toEqual([]);
 });
@@ -81,7 +83,7 @@ test('the simulator CLI runs in direct mode by default without database config',
       [
         '--import',
         'tsx',
-        'scripts/simulate-learners.ts',
+        'apps/api/scripts/simulate-learners.ts',
         '--days',
         '1',
         '--profiles',
@@ -90,7 +92,7 @@ test('the simulator CLI runs in direct mode by default without database config',
         out,
       ],
       {
-        cwd: fileURLToPath(new URL('..', import.meta.url)),
+        cwd: fileURLToPath(new URL('../../../../', import.meta.url)),
         env: { ...process.env, DATABASE_URL: 'invalid', TEST_DATABASE_URL: 'invalid' },
       },
     );
@@ -104,8 +106,10 @@ test('the simulator CLI runs in direct mode by default without database config',
 }, 60_000);
 
 test('direct scripted scenarios and the timed quiz scenario pass every invariant', async () => {
-  const content = await loadContent();
-  const scenarioContent = await loadContent('tests/fixtures/content');
+  const content = await loadContentFromDirectory(contentDirectory);
+  const scenarioContent = await loadContentFromDirectory(
+    fileURLToPath(new URL('../../../../tests/fixtures/content', import.meta.url)),
+  );
   const report = await simulateLearners(directMemoryDriver, content, {
     profiles: [
       'scenario-p14-fallback',

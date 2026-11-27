@@ -17,7 +17,8 @@
     "./placement/*": "./src/placement/*.ts",
     "./progress/*": "./src/progress/*.ts",
     "./store/*": "./src/store/*.ts",
-    "./quizzes/*": "./src/quizzes/*.ts"
+    "./quizzes/*": "./src/quizzes/*.ts",
+    "./simulator/*": "./src/simulator/*.ts"
   },
   "dependencies": {
     "@academy/shared": "workspace:*",

@@ -45,17 +45,13 @@ import {
 } from '@academy/aesop/quizzes/mixed-quiz';
 import type { Card } from 'ts-fsrs';
 import { createEmptyCard, fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
-import type {
-  AuditReviewCardInsert,
-  SimulatorAudit,
-  SimulatorFixtures,
-} from './learner-simulation-audit.js';
+import type { AuditReviewCardInsert, SimulatorAudit, SimulatorFixtures } from './audit.js';
 import {
   decisionSeed,
   type SimulatorDriver,
   type SimulatorDriverFactory,
   seededRandom,
-} from './learner-simulation-driver.js';
+} from './driver.js';
 import {
   auditPlacementGrants,
   emptyPlacementAuditState,
@@ -64,8 +60,8 @@ import {
   recordLessonRunsAtWithdrawal,
   recordOverplacement,
   type SimulationPlacementGrantEvidence,
-} from './learner-simulation-placement.js';
-import { answerFor, exerciseFor, wrongAnswerFor } from './learner-simulation-support.js';
+} from './placement.js';
+import { answerFor, exerciseFor, wrongAnswerFor } from './support.js';
 
 export const simulationProfiles = [
   'diligent',
@@ -6197,4 +6193,4 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
 export {
   type SimulatedApiFailure,
   SimulatedApiFailureError,
-} from './learner-simulation-driver.js';
+} from './driver.js';

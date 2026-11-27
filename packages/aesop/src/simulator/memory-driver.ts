@@ -18,11 +18,13 @@ import type {
   AuditLessonRunRow,
   AuditMasteryRow,
   AuditPlacementGrantRow,
+  AuditQuizItemRow,
   AuditRemediationFlagRow,
   AuditReviewCardRow,
+  AuditSessionActivityRow,
   SimulatorAudit,
   SimulatorFixtures,
-} from './learner-simulation-audit.js';
+} from './audit.js';
 import {
   type ApiResult,
   httpRequestFor,
@@ -35,7 +37,7 @@ import {
   type SimulatorDriverFactory,
   type SimulatorDriverInput,
   type SimulatorOperation,
-} from './learner-simulation-driver.js';
+} from './driver.js';
 
 const learnerId = '00000000-0000-4000-8000-000000000001';
 
@@ -294,7 +296,7 @@ function masteryRow(userId: string, record: MasteryRecord): AuditMasteryRow {
     lastAssessedAt: date(record.lastAssessedAt),
     lastIndependentAt: date(record.lastIndependentAt),
     firstIndependentAt: date(record.firstIndependentAt),
-  } as AuditMasteryRow;
+  };
 }
 
 const jsonbRows = <R>(rows: readonly object[], jsonbFields: readonly string[], extra = {}) =>
@@ -356,7 +358,10 @@ export function memorySimulatorAudit(store: () => MemoryLearnerStore): Simulator
     const all = await cards(userId);
     const byId = new Map(all.map((card) => [card.id, card]));
     const rows = await store().listReviewLogs(userId, { cardIds: [...byId.keys()] });
-    return rows.map((log) => ({ log, card: byId.get(log.cardId) as AuditReviewCardRow }));
+    return rows.flatMap((log) => {
+      const card = byId.get(log.cardId);
+      return card ? [{ log, card }] : [];
+    });
   };
   const attemptRows = async (userId: string) =>
     withUser<object, AuditAttemptRow>(userId, await store().listAttempts(userId, {}), [
@@ -441,7 +446,7 @@ export function memorySimulatorAudit(store: () => MemoryLearnerStore): Simulator
           rating: String(log.rating),
           conceptId: card.conceptId,
           dimension: card.dimension,
-        })) as unknown as Awaited<ReturnType<SimulatorAudit['activityReviewLogsAt']>>;
+        }));
     },
     async timedReviewLogsAt(userId, now) {
       return (await logs(userId))
@@ -462,7 +467,7 @@ export function memorySimulatorAudit(store: () => MemoryLearnerStore): Simulator
           cardDueAt: new Date(card.dueAt),
           conceptId: card.conceptId,
           dimension: card.dimension,
-        })) as unknown as Awaited<ReturnType<SimulatorAudit['timedReviewLogsAt']>>;
+        }));
     },
     async reviewLogHistory(cardIds) {
       const userId = learnerOf(cardIds);
@@ -473,9 +478,7 @@ export function memorySimulatorAudit(store: () => MemoryLearnerStore): Simulator
           rating: String(rating),
           createdAt: new Date(at),
         }))
-        .sort(
-          (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
-        ) as unknown as Awaited<ReturnType<SimulatorAudit['reviewLogHistory']>>;
+        .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
     },
     async attemptsAt(userId, now) {
       const runs = await store().listLessonRuns(userId);
@@ -542,12 +545,10 @@ export function memorySimulatorAudit(store: () => MemoryLearnerStore): Simulator
       }));
     },
     async timedQuizItems(runId) {
-      return jsonbRows<{ position: number }>(await store().listTimedQuizItems(learnerId, [runId]), [
+      return jsonbRows<AuditQuizItemRow>(await store().listTimedQuizItems(learnerId, [runId]), [
         'question',
         'submission',
-      ]).sort((left, right) => left.position - right.position) as Awaited<
-        ReturnType<SimulatorAudit['timedQuizItems']>
-      >;
+      ]).sort((left, right) => left.position - right.position);
     },
     async timedQuizHistory(userId) {
       const runs = await store().listTimedQuizRuns(userId, {});
@@ -576,12 +577,10 @@ export function memorySimulatorAudit(store: () => MemoryLearnerStore): Simulator
       return row?.status;
     },
     async sessionActivities(sessionId) {
-      return jsonbRows<{ idx: number }>(
+      return jsonbRows<AuditSessionActivityRow>(
         await store().listActivities(learnerId, { sessionIds: [sessionId] }),
         ['progress', 'reason'],
-      ).sort((left, right) => left.idx - right.idx) as Awaited<
-        ReturnType<SimulatorAudit['sessionActivities']>
-      >;
+      ).sort((left, right) => left.idx - right.idx);
     },
     placementGrants: grants,
     async confirmedGrantTopics(userId) {

@@ -5,6 +5,28 @@ import {
   setImplicitRepetitionTrace,
 } from '@academy/aesop/memory/mastery-service';
 import { localDateKey } from '@academy/aesop/progress/xp';
+import type {
+  AuditActivityReviewLog,
+  AuditMasteryRow,
+  AuditPlacementGrantRow,
+  AuditReviewCardRow,
+  AuditTimedReviewLog,
+  SimulatorAudit,
+  SimulatorFixtures,
+} from '@academy/aesop/simulator/audit';
+import {
+  type ApiResult,
+  httpRequestFor,
+  QuizClock,
+  RequestRandomness,
+  type SimulatedApiFailure,
+  SimulatedApiFailureError,
+  type SimulatorAfterCall,
+  type SimulatorDriver,
+  type SimulatorDriverFactory,
+  type SimulatorDriverInput,
+  type SimulatorOperation,
+} from '@academy/aesop/simulator/driver';
 import { and, asc, desc, eq, exists, inArray, notInArray, sql } from 'drizzle-orm';
 import { createApp } from '../src/app.js';
 import type { Database } from '../src/db/client.js';
@@ -30,20 +52,6 @@ import {
   xpEvents,
 } from '../src/db/schema.js';
 import { fsrsFuzzEnabled } from '../src/learning/fsrs-fuzz.js';
-import type { SimulatorAudit, SimulatorFixtures } from './learner-simulation-audit.js';
-import {
-  type ApiResult,
-  httpRequestFor,
-  QuizClock,
-  RequestRandomness,
-  type SimulatedApiFailure,
-  SimulatedApiFailureError,
-  type SimulatorAfterCall,
-  type SimulatorDriver,
-  type SimulatorDriverFactory,
-  type SimulatorDriverInput,
-  type SimulatorOperation,
-} from './learner-simulation-driver.js';
 
 const repositoryFor = (db: Database, userId: string) =>
   new EngineLearnerRepository(
@@ -218,23 +226,37 @@ export function postgresSimulatorAudit(db: Database): SimulatorAudit {
             asc(remediationFlags.id),
           ),
       ]);
-      return { mastery: masteryRows, lessonRuns: runs, placements, openFlags: flags };
+      return {
+        mastery: masteryRows.map((row) => ({
+          ...row,
+          dimension: row.dimension as AuditMasteryRow['dimension'],
+        })),
+        lessonRuns: runs,
+        placements,
+        openFlags: flags,
+      };
     },
     schedulerState: (userId, now, content) =>
       repositoryFor(db, userId).schedulerState(now, content),
-    reviewCards: (userId) =>
-      db
+    async reviewCards(userId) {
+      const rows = await db
         .select()
         .from(reviewCards)
         .where(eq(reviewCards.userId, userId))
-        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id)),
+        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension), asc(reviewCards.id));
+      return rows.map((row) => ({
+        ...row,
+        fsrs: row.fsrs as AuditReviewCardRow['fsrs'],
+        dimension: row.dimension as AuditReviewCardRow['dimension'],
+      }));
+    },
     reviewCardDueDates: (userId, conceptIds) =>
       db
         .select({ conceptId: reviewCards.conceptId, dueAt: reviewCards.dueAt })
         .from(reviewCards)
         .where(and(eq(reviewCards.userId, userId), inArray(reviewCards.conceptId, conceptIds))),
-    firstReviewCardsAt: (userId, now) =>
-      db
+    async firstReviewCardsAt(userId, now) {
+      const rows = await db
         .select()
         .from(reviewCards)
         .where(
@@ -244,7 +266,13 @@ export function postgresSimulatorAudit(db: Database): SimulatorAudit {
             eq(reviewCards.reps, 1),
           ),
         )
-        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension)),
+        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension));
+      return rows.map((row) => ({
+        ...row,
+        fsrs: row.fsrs as AuditReviewCardRow['fsrs'],
+        dimension: row.dimension as AuditReviewCardRow['dimension'],
+      }));
+    },
     activityReviewLogsAt: (userId, now) =>
       db
         .select({
@@ -263,6 +291,12 @@ export function postgresSimulatorAudit(db: Database): SimulatorAudit {
           asc(reviewCards.dimension),
           asc(reviewLogs.rating),
           asc(reviewLogs.id),
+        )
+        .then((rows) =>
+          rows.map((row) => ({
+            ...row,
+            dimension: row.dimension as AuditActivityReviewLog['dimension'],
+          })),
         ),
     timedReviewLogsAt: (userId, now) =>
       db
@@ -280,7 +314,13 @@ export function postgresSimulatorAudit(db: Database): SimulatorAudit {
         .from(reviewLogs)
         .innerJoin(reviewCards, eq(reviewCards.id, reviewLogs.cardId))
         .where(and(eq(reviewCards.userId, userId), eq(reviewLogs.createdAt, now)))
-        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension)),
+        .orderBy(asc(reviewCards.conceptId), asc(reviewCards.dimension))
+        .then((rows) =>
+          rows.map((row) => ({
+            ...row,
+            dimension: row.dimension as AuditTimedReviewLog['dimension'],
+          })),
+        ),
     reviewLogHistory: (cardIds) =>
       db
         .select({
@@ -420,7 +460,13 @@ export function postgresSimulatorAudit(db: Database): SimulatorAudit {
         .select()
         .from(placementGrants)
         .where(eq(placementGrants.userId, userId))
-        .orderBy(asc(placementGrants.createdAt), asc(placementGrants.id)),
+        .orderBy(asc(placementGrants.createdAt), asc(placementGrants.id))
+        .then((rows) =>
+          rows.map((row) => ({
+            ...row,
+            reason: row.reason as AuditPlacementGrantRow['reason'],
+          })),
+        ),
     async confirmedGrantTopics(userId) {
       const grants = await db
         .select({ topic: placementGrants.conceptId })

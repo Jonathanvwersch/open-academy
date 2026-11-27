@@ -12,6 +12,7 @@ import {
   deploymentImports,
   publicFeatureModules,
   sharedPackageDependencies,
+  simulatorBuiltins,
   sourceEntries,
   sourceLayers,
 } from './policy.mjs';
@@ -192,10 +193,13 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
       if (builtins.has(request)) {
         const aesopBuiltin =
           file.startsWith('packages/aesop/src/course/') && aesopBuiltins.has(request);
+        const simulatorBuiltin =
+          file === 'packages/aesop/src/simulator/cli.ts' && simulatorBuiltins.has(request);
         if (
           !isTest &&
           !file.startsWith('packages/cli/src/') &&
           !aesopBuiltin &&
+          !simulatorBuiltin &&
           (own.startsWith('packages/') || (own === 'apps/web' && !file.endsWith('config.ts')))
         )
           report(file, `browser-safe code cannot import ${request}`);

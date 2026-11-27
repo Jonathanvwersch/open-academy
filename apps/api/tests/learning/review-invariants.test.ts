@@ -20,14 +20,14 @@ import {
   sessionBudget,
 } from '@academy/aesop/planner/scheduler';
 import { localDateKey, sessionKindForDate } from '@academy/aesop/progress/xp';
-import { and, eq, inArray } from 'drizzle-orm';
-import { Rating } from 'ts-fsrs';
-import { afterAll, beforeAll, expect, vi, it as vitestIt } from 'vitest';
 import {
   answerFor as answerForExercise,
   seededWrongAnswerFor as seededWrongAnswerForExercise,
   wrongAnswerFor as wrongAnswerForExercise,
-} from '../../scripts/learner-simulation-support.js';
+} from '@academy/aesop/simulator/support';
+import { and, eq, inArray } from 'drizzle-orm';
+import { Rating } from 'ts-fsrs';
+import { afterAll, beforeAll, expect, vi, it as vitestIt } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';

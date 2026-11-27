@@ -25,6 +25,7 @@ function fixture(files, run) {
         './graph/*': './src/graph/*.ts',
         './memory/*': './src/memory/*.ts',
         './planner/*': './src/planner/*.ts',
+        './simulator/*': './src/simulator/*.ts',
         './lessons/*': './src/lessons/*.ts',
         './lessons/grading/*': './src/lessons/grading/*.ts',
         './placement/*': './src/placement/*.ts',
@@ -93,6 +94,24 @@ test('permits API and CLI imports through Aesop folder exports', () => {
   );
 });
 
+test('forbids Node builtins outside approved Aesop modules', () => {
+  fixture(
+    {
+      'packages/aesop/src/simulator/driver.ts':
+        "import {readFile} from 'node:fs/promises'; export {readFile};",
+    },
+    (errors) =>
+      assert.ok(
+        errors.some((error) =>
+          error.includes(
+            'packages/aesop/src/simulator/driver.ts: browser-safe code cannot import node:fs/promises',
+          ),
+        ),
+        errors.join('\n'),
+      ),
+  );
+});
+
 test('forbids browser imports of Aesop', () => {
   fixture(
     {
@@ -137,6 +156,7 @@ test('Aesop API modules import only other API modules', () => {
     {
       'packages/aesop/src/api/lessons.ts':
         "import type {ContentIndex} from '../course/types.js'; export type {ContentIndex};",
+      'packages/aesop/src/course/types.ts': 'export type ContentIndex = {};',
     },
     (errors) =>
       assert.ok(

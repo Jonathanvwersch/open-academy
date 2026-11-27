@@ -2,11 +2,7 @@ import { newReviewCard, scheduleReview } from '@academy/aesop/memory/fsrs';
 import { implicitRepetition } from '@academy/aesop/memory/implicit-repetition';
 import { ensureReviewCard } from '@academy/aesop/memory/mastery-service';
 import type { SchedulerState } from '@academy/aesop/planner/scheduler';
-import { eq } from 'drizzle-orm';
-import { type Card, Rating, State } from 'ts-fsrs';
-import { afterAll, expect, test } from 'vitest';
-import { directMemoryDriver } from '../../scripts/learner-simulation-direct-driver.js';
-import { httpPostgresDriver } from '../../scripts/learner-simulation-http-driver.js';
+import { directMemoryDriver } from '@academy/aesop/simulator/memory-driver';
 import {
   lessonRunConceptsAtWithdrawal,
   p20HasWithdrawnCreditViolation,
@@ -14,7 +10,7 @@ import {
   p21HasUnboundedWithdrawalViolation,
   p22HasProtectedWithdrawalViolation,
   p23ChangedHistoryIds,
-} from '../../scripts/learner-simulation-placement.js';
+} from '@academy/aesop/simulator/placement';
 import {
   attributeActivityLogs,
   auditP11DescendantCard,
@@ -52,7 +48,11 @@ import {
   selectedReviewConceptsForAudit,
   simulateLearners,
   validateSimulationCourseIds,
-} from '../../scripts/learner-simulator.js';
+} from '@academy/aesop/simulator/simulator';
+import { eq } from 'drizzle-orm';
+import { type Card, Rating, State } from 'ts-fsrs';
+import { afterAll, expect, test } from 'vitest';
+import { httpPostgresDriver } from '../../scripts/learner-simulation-http-driver.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';

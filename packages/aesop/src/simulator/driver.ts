@@ -1,7 +1,7 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
 import type { EngineOperation } from '@academy/aesop/engine/create-engine';
 import type { ImplicitRepetitionTraceEvent } from '@academy/aesop/memory/mastery-service';
-import type { SimulatorAudit, SimulatorFixtures } from './learner-simulation-audit.js';
+import type { SimulatorAudit, SimulatorFixtures } from './audit.js';
 
 /** One logical learner action. Each driver runs it; `httpRequestFor` gives its HTTP form. */
 export type SimulatorOperation =

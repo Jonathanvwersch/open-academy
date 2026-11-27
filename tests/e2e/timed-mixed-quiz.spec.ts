@@ -1,10 +1,10 @@
 import type { QuizPayload } from '@academy/aesop/api/quizzes';
 import type { SessionPayload } from '@academy/aesop/api/sessions';
 import type { ContentIndex } from '@academy/aesop/course/types';
+import { answerFor, wrongAnswerFor } from '@academy/aesop/simulator/support';
 import type { Page, TestInfo } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import { asc, eq } from 'drizzle-orm';
-import { answerFor, wrongAnswerFor } from '../../apps/api/scripts/learner-simulation-support.js';
 import { env } from '../../apps/api/src/config.js';
 import { loadContent } from '../../apps/api/src/content/load.js';
 import { createDb } from '../../apps/api/src/db/client.js';

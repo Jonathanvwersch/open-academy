@@ -66,3 +66,5 @@ export const aesopDependencies = new Set([
 export const aesopBuiltins = new Set(['node:crypto', 'node:fs/promises', 'node:path']);
 
 export const cliDependencies = new Set(['@academy/api', '@academy/aesop', 'tsx', 'yaml']);
+// Only the simulator CLI writes reports; keep filesystem access out of simulator drivers.
+export const simulatorBuiltins = new Set(['node:fs/promises', 'node:path']);
