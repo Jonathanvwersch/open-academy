@@ -6,6 +6,7 @@ import { labActivityReady, masteryKey } from '../graph/prerequisites.js';
 import { answerDisplay } from '../lessons/answer-display.js';
 import { answerOptionsFor } from '../lessons/answer-options.js';
 import { initialLearnProgress } from '../lessons/initial-learn-progress.js';
+import { readLessonReviewStatus } from '../lessons/run-state.js';
 import { attemptAllowsRetry } from '../memory/retry.js';
 import { withReviewTopics } from '../planner/home-plan.js';
 import { attemptedExerciseIdsByActivity } from '../planner/review-topics.js';
@@ -145,9 +146,7 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
     ]),
   );
   const runs = runRows.map(({ conceptId, status }) => ({ conceptId, status }));
-  const runStatuses = new Map(
-    runRows.map(({ conceptId, status }) => [conceptId, { status }] as const),
-  );
+  const runsByConcept = new Map(runRows.map((run) => [run.conceptId, run] as const));
   const activities =
     session?.activities.filter(
       (activity) =>
@@ -155,6 +154,20 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
         ((activity.status !== 'planned' && activity.status !== 'in_progress') ||
           labActivityReady(activity, masteryByKey, runs, index)),
     ) ?? [];
+  const runStatuses = new Map<string, { status: string }>();
+  await Promise.all(
+    activities.map(async (activity) => {
+      if (activity.kind !== 'learn' || !activity.conceptId) return;
+      const run = runsByConcept.get(activity.conceptId);
+      const lesson = index.lessonsByConcept.get(activity.conceptId);
+      if (!run || !lesson?.knowledge_points?.length) return;
+      const status =
+        run.status === 'needs_retry'
+          ? run.status
+          : await readLessonReviewStatus(store, userId, run, lesson, index);
+      if (status) runStatuses.set(activity.conceptId, { status });
+    }),
+  );
   const activityIds = activities.map((activity) => activity.id);
   const activityAttempts = activityIds.length
     ? (await store.listAttempts(userId, { activityIds })).sort(
