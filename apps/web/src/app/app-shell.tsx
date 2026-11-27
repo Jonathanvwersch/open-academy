@@ -1,5 +1,5 @@
-import type { AuthPayload } from '@academy/contracts/auth';
-import type { CourseCatalogPayload } from '@academy/contracts/course';
+import type { AuthPayload } from '@academy/aesop/api/auth';
+import type { CourseCatalogPayload } from '@academy/aesop/api/course';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { Activity, BookOpen, House, ListOrdered, RotateCcw, Settings } from 'lucide-react';

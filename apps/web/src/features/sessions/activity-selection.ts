@@ -1,5 +1,5 @@
-import type { LessonPayload, LessonRunPayload } from '@academy/contracts/lessons';
-import type { SessionActivity } from '@academy/contracts/sessions';
+import type { LessonPayload, LessonRunPayload } from '@academy/aesop/api/lessons';
+import type { SessionActivity } from '@academy/aesop/api/sessions';
 
 const uncontinuedLesson = (item: SessionActivity) =>
   item.kind === 'learn' &&

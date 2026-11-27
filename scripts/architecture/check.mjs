@@ -226,15 +226,22 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           report(file, `use an explicit workspace package export instead of ${request}`);
       } else {
         const dependency = packageName(request);
+        if (
+          !isTest &&
+          file.startsWith('packages/aesop/src/api/') &&
+          dependency !== '@academy/aesop'
+        )
+          report(file, 'Aesop API contracts may import only other API modules');
         if (!dependencies.has(dependency) && dependency !== manifests.get(own)?.name)
           report(file, `declare ${dependency} in ${own}/package.json`);
         const workspace = byName.get(dependency);
         if (workspace) {
-          if (own === 'apps/web' && browserForbiddenPackages.has(dependency))
-            report(
-              file,
-              'apps/web cannot import @academy/aesop because it uses Node filesystem APIs',
-            );
+          if (
+            own === 'apps/web' &&
+            browserForbiddenPackages.has(dependency) &&
+            !request.startsWith('@academy/aesop/api/')
+          )
+            report(file, 'apps/web can import only @academy/aesop/api/* from Aesop');
           if (
             workspace.dir.startsWith('apps/') &&
             !(own === 'packages/cli' && request === '@academy/api/content')
@@ -279,11 +286,17 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           report(file, 'keep Hono in routes; services accept plain inputs');
       }
       if (!target) continue;
+      if (
+        !isTest &&
+        file.startsWith('packages/aesop/src/api/') &&
+        !target.startsWith('packages/aesop/src/api/')
+      )
+        report(file, 'Aesop API contracts may import only other API modules');
       targets.push(target);
       if (own === 'apps/web' && target.startsWith('apps/api/'))
         report(
           file,
-          'web cannot import API source, even types; move the public shape to packages/contracts',
+          'web cannot import API source, even types; expose browser-safe shapes from @academy/aesop/api',
         );
       if (
         own.startsWith('packages/') &&

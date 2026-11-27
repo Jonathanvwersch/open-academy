@@ -1,3 +1,4 @@
+import type { StudyMapPayload } from '@academy/aesop/api/course';
 import {
   courseTopicState,
   placedOutConceptsFromGrants,
@@ -10,7 +11,6 @@ import {
 } from '@academy/aesop/graph/prerequisites';
 import { deriveLearningDebt } from '@academy/aesop/memory/debt';
 import type { MasteryRecord } from '@academy/aesop/memory/types';
-import type { StudyMapPayload } from '@academy/contracts/course';
 import { and, desc, eq } from 'drizzle-orm';
 import {
   attempts,

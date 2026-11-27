@@ -10,7 +10,7 @@ export type LessonBlockKind =
   | 'summary'
   | 'tldr';
 
-import type { AnswerOptions, ClientExercise, ExercisePayload } from '@academy/contracts/exercises';
+import type { AnswerOptions, ClientExercise, ExercisePayload } from '@academy/aesop/api/exercises';
 
 export interface LessonPayload {
   where_this_fits?: string;

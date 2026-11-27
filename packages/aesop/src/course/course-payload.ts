@@ -1,4 +1,4 @@
-import type { CourseQueueStatus } from '@academy/contracts/course';
+import type { CourseQueueStatus } from '@academy/aesop/api/course';
 import { orderCourseIdsBySubject } from '../course/course-order.js';
 import { subjectForCourse } from '../course/index.js';
 import type { ContentIndex, IndexedConcept, IndexedCourse } from '../course/types.js';

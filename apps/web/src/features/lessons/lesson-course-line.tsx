@@ -1,4 +1,4 @@
-import type { LessonCourse } from '@academy/contracts/lessons';
+import type { LessonCourse } from '@academy/aesop/api/lessons';
 import { Link } from '@tanstack/react-router';
 
 export function LessonCourseLine({ course }: { course: LessonCourse | null }) {

@@ -1,6 +1,6 @@
+import type { QuizPayload } from '@academy/aesop/api/quizzes';
+import type { SessionPayload } from '@academy/aesop/api/sessions';
 import type { ContentIndex } from '@academy/aesop/course/types';
-import type { QuizPayload } from '@academy/contracts/quizzes';
-import type { SessionPayload } from '@academy/contracts/sessions';
 import type { Page, TestInfo } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import { asc, eq } from 'drizzle-orm';

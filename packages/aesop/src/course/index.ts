@@ -1,4 +1,4 @@
-import type { LessonPrerequisite } from '@academy/contracts/lessons';
+import type { LessonPrerequisite } from '@academy/aesop/api/lessons';
 import { contentVersion } from './hash.js';
 import type { Dimension, ExerciseRole } from './schemas.js';
 import type {

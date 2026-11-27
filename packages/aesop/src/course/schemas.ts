@@ -300,9 +300,9 @@ export type KnowledgePoint = z.infer<typeof KnowledgePointSchema>;
 export type LessonInput = z.infer<typeof LessonSchema>;
 export type KnowledgePointLessonInput = z.infer<typeof KnowledgePointLessonSchema>;
 
-import type { LessonPrerequisite } from '@academy/contracts/lessons';
+import type { LessonPrerequisite } from '@academy/aesop/api/lessons';
 
-export type { LessonPrerequisite } from '@academy/contracts/lessons';
+export type { LessonPrerequisite } from '@academy/aesop/api/lessons';
 export type Lesson = Omit<z.infer<typeof LegacyLessonSchema>, 'fast_path'> & {
   fast_path: z.infer<typeof LegacyLessonSchema>['fast_path'];
   knowledge_points?: KnowledgePoint[];

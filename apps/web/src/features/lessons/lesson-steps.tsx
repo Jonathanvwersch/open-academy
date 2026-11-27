@@ -1,4 +1,4 @@
-import type { LessonRunPayload } from '@academy/contracts/lessons';
+import type { LessonRunPayload } from '@academy/aesop/api/lessons';
 import { Badge } from '../../components/ui/badge.js';
 export function LessonSteps({
   state,

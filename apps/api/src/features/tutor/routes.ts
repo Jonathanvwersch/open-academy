@@ -1,3 +1,4 @@
+import { tutorLessonStages } from '@academy/aesop/api/tutor';
 import { buildCoursePayload } from '@academy/aesop/course/course-payload';
 import { serializedOptionOrder } from '@academy/aesop/course/serialize';
 import { instantiateExercise, isTemplate } from '@academy/aesop/course/templates';
@@ -5,7 +6,6 @@ import type { ContentIndex } from '@academy/aesop/course/types';
 import type { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import { courseFoundationIds } from '@academy/aesop/graph/prerequisites';
 import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
-import { tutorLessonStages } from '@academy/contracts/tutor';
 import { onScreenOptions } from '@academy/shared/shuffle';
 import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '@academy/shared/tutor';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';

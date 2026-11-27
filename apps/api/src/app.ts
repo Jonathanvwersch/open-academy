@@ -1,9 +1,9 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
-import { HealthResponseSchema } from '@academy/contracts/health';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { getCookie, setCookie } from 'hono/cookie';
+import { z } from 'zod';
 import type { Database } from './db/client.js';
 import {
   type AuthOptions,
@@ -17,6 +17,11 @@ import type { TutorProvider } from './features/tutor/provider.js';
 import type { ApiEnv } from './http/context.js';
 import { isValidTimeZone } from './http/request-context.js';
 import { createApiRoutes } from './http/routes.js';
+
+const HealthResponseSchema = z.object({
+  ok: z.literal(true),
+  db: z.literal(true),
+});
 
 export function createApp(deps: {
   db: Database;

@@ -1,4 +1,4 @@
-import type { LearnPayload } from '@academy/contracts/course';
+import type { LearnPayload } from '@academy/aesop/api/course';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 

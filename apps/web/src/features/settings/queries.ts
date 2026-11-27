@@ -1,4 +1,4 @@
-import type { SettingsPayload } from '@academy/contracts/settings';
+import type { SettingsPayload } from '@academy/aesop/api/settings';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 export const settingsQueryOptions = () =>

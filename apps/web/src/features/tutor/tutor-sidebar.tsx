@@ -2,7 +2,7 @@ import type {
   TutorLessonStage,
   TutorThreadDetail,
   TutorThreadSummary,
-} from '@academy/contracts/tutor';
+} from '@academy/aesop/api/tutor';
 import {
   repairTutorMarkdown,
   TUTOR_QUESTION_MAX_LENGTH,

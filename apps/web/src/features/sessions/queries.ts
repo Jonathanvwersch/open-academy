@@ -2,7 +2,7 @@ import type {
   ActiveSessionPayload,
   SessionPayload,
   TodayPayload,
-} from '@academy/contracts/sessions';
+} from '@academy/aesop/api/sessions';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 export const activeSessionQueryOptions = () =>

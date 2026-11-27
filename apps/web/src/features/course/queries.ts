@@ -3,7 +3,7 @@ import type {
   CourseDetailPayload,
   CoursePayload,
   LearnPayload,
-} from '@academy/contracts/course';
+} from '@academy/aesop/api/course';
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 import { studyMapQueryOptions } from '../map/queries.js';

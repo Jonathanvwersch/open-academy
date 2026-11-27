@@ -52,10 +52,10 @@ export const deploymentImports = new Set(['apps/api/dist-vercel/server.mjs']);
 
 export const browserForbiddenPackages = new Set(['@academy/aesop']);
 
-export const sharedPackageDependencies = new Set(['zod', '@academy/contracts', '@academy/shared']);
+export const sharedPackageDependencies = new Set(['zod', '@academy/shared']);
 
 export const aesopDependencies = new Set([
-  '@academy/contracts',
+  '@academy/aesop',
   '@academy/shared',
   'mathjs',
   'ts-fsrs',

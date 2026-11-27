@@ -1,5 +1,5 @@
+import type { TutorLessonStage } from '@academy/aesop/api/tutor';
 import type { ContentIndex, IndexedLesson } from '@academy/aesop/course/types';
-import type { TutorLessonStage } from '@academy/contracts/tutor';
 
 export interface CourseOutlineUnit {
   unit: number;

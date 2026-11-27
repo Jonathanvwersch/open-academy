@@ -1,3 +1,4 @@
+import type { CourseTopicStatus } from '@academy/aesop/api/course';
 import {
   courseQueueStatus,
   type courseTopicState,
@@ -5,7 +6,6 @@ import {
 } from '@academy/aesop/course/course-payload';
 import type { ContentIndex } from '@academy/aesop/course/types';
 import { courseFoundationIds } from '@academy/aesop/graph/prerequisites';
-import type { CourseTopicStatus } from '@academy/contracts/course';
 import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
 import { withStubConcept } from '../content-test-utils.js';

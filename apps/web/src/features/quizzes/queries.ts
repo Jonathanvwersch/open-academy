@@ -1,4 +1,4 @@
-import type { QuizPayload } from '@academy/contracts/quizzes';
+import type { QuizPayload } from '@academy/aesop/api/quizzes';
 import { queryOptions } from '@tanstack/react-query';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { getJson } from '../../api/query-client.js';

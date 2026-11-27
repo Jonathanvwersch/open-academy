@@ -1,3 +1,6 @@
+import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/aesop/api/course';
+import type { QuizPayload } from '@academy/aesop/api/quizzes';
+import type { SessionActivity, SessionPayload, TodayPayload } from '@academy/aesop/api/sessions';
 import type { ContentEdge, ContentIndex } from '@academy/aesop/course/types';
 import { filterSchedulerStateForContent } from '@academy/aesop/graph/content-filters';
 import { topicIsComplete } from '@academy/aesop/graph/course-status';
@@ -40,9 +43,6 @@ import {
   QUIZ_XP_WINDOW,
   quizTargetSeconds,
 } from '@academy/aesop/quizzes/mixed-quiz';
-import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
-import type { QuizPayload } from '@academy/contracts/quizzes';
-import type { SessionActivity, SessionPayload, TodayPayload } from '@academy/contracts/sessions';
 import type { Card } from 'ts-fsrs';
 import { createEmptyCard, fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
 import type {

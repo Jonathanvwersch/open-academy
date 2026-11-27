@@ -1,4 +1,4 @@
-import type { QuizReviewPayload } from '@academy/contracts/lessons';
+import type { QuizReviewPayload } from '@academy/aesop/api/lessons';
 import { Check, X } from 'lucide-react';
 import { Markdown } from '../../components/markdown.js';
 import { Button } from '../../components/ui/button.js';

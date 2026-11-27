@@ -1,4 +1,4 @@
-import type { CoursePayload } from '@academy/contracts/course';
+import type { CoursePayload } from '@academy/aesop/api/course';
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { useState } from 'react';

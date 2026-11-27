@@ -1,4 +1,4 @@
-import type { AnswerOptions, ClientExercise } from '@academy/contracts/exercises';
+import type { AnswerOptions, ClientExercise } from '@academy/aesop/api/exercises';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { onScreenOptions } from '@academy/shared/shuffle';
 import { Check, X } from 'lucide-react';

@@ -1,4 +1,4 @@
-import type { LessonRunPayload } from '@academy/contracts/lessons';
+import type { LessonRunPayload } from '@academy/aesop/api/lessons';
 
 type Point = NonNullable<LessonRunPayload['run']>['points'][number];
 

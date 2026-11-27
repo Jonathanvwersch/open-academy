@@ -1,4 +1,4 @@
-import type { CourseCatalogPayload, CourseDetailPayload } from '@academy/contracts/course';
+import type { CourseCatalogPayload, CourseDetailPayload } from '@academy/aesop/api/course';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { apiFetch } from '../../api/authenticated-fetch.js';
