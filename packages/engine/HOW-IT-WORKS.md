@@ -148,6 +148,8 @@ Rules that apply to the whole plan:
 - **Size.** A session has at most 6 activities. **[Ours]**
 - **Replan.** When the learner finishes or skips work, the planner plans the rest of the day again. It does not repeat work that the learner finished.
 
+**Current activity.** The session shows a completed lesson that is not yet confirmed first. If none is waiting, it shows a final question that is waiting for Continue. Otherwise, it shows the active activity. A `?activity=` link opens another activity only when nothing is pinned.
+
 ## 9. Timed mixed quizzes (`quizzes/`)
 
 ### When the quiz appears
