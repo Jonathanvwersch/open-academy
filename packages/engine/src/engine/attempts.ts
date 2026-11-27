@@ -44,7 +44,7 @@ export async function exerciseAttempt(
       prepared.kind === 'not_found' ? 404 : prepared.kind === 'conflict' ? 409 : 400,
     );
   }
-  const result = await gradeAttempt(request, exercise, body.data.answer, body.data.mode);
+  const result = await gradeAttempt(request, exercise, body.data.answer);
   const rubricForFeedback =
     exercise.type === 'explain' && 'rubric' in result && Array.isArray(result.rubric)
       ? rubricFeedbackWithScoredFlags(exercise.rubric, result.rubric)
@@ -122,17 +122,12 @@ async function gradeAttempt(
   request: EngineRequest,
   exercise: IndexedExercise,
   answer: unknown,
-  mode: 'practice' | 'assessment' | 'diagnostic' | 'review',
 ): Promise<EngineGradeResult> {
   const text =
     answer && typeof answer === 'object' && 'text' in answer && typeof answer.text === 'string'
       ? answer.text
       : undefined;
-  if (
-    exercise.type === 'explain' &&
-    (mode === 'practice' || mode === 'assessment') &&
-    text !== undefined
-  ) {
+  if (exercise.type === 'explain' && text !== undefined) {
     const judged = request.judgeExplanation
       ? await request.judgeExplanation({
           question: exercise.prompt,

@@ -266,7 +266,7 @@ A _withdrawn_ grant gives no credit.
 
 [Ours] The engine builds a hint prompt from the exercise, its authored hints, recent mistakes and any prior answer. It sends the solution only after a final answer.
 
-[Ours] For a normal explain answer, the host judges the text with the authored rubric. The engine scores the returned criteria and uses its grader if the host cannot judge the answer.
+[Ours] For an explain answer, the host judges the text with the authored rubric. The engine scores the returned criteria and uses its grader if the host cannot judge the answer.
 
 ## 13. What the engine does not do
 
