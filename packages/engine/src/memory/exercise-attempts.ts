@@ -160,6 +160,7 @@ export async function recordExerciseAttempt(
     attemptNo < 2 &&
     ((input.mode === 'practice' && grade.correct === 0) ||
       ((input.mode === 'practice' || input.mode === 'review') && followUp));
+  const outcome = grade.correct > 0 ? 'correct' : 'incorrect';
   const answerWithheld = retryAllowed;
   const now = runtime.now();
   const attemptId = runtime.newId();
@@ -261,7 +262,7 @@ export async function recordExerciseAttempt(
     };
     const outcomes = {
       ...(progress.outcomes ?? {}),
-      [exercise.id]: grade.correct > 0 ? 'correct' : 'incorrect',
+      [exercise.id]: outcome,
     };
     const completedExerciseIds = [
       ...new Set([...(progress.completedExerciseIds ?? []), exercise.id]),
@@ -365,6 +366,7 @@ export async function recordExerciseAttempt(
     attemptNo,
     hintsUsed,
     credit,
+    outcome,
     mastery: masteryResult,
     retryAllowed,
     activityCompleted,

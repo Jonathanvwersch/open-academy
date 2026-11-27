@@ -116,8 +116,16 @@ export function currentActivity(
   const final = withLessonState.find(completedFinal);
   const active = activeActivity(withLessonState);
   const selected = lesson ?? final ?? active;
+  const sessionActivities = withLessonState.map((activity) => {
+    const completedIds = new Set(activity.progress?.completedExerciseIds ?? []);
+    const exerciseId =
+      activity.id === final?.id
+        ? activity.exerciseIds.find((id) => completedIds.has(id))
+        : activity.exerciseIds.find((id) => !completedIds.has(id));
+    return { ...activity, ...(exerciseId ? { exerciseId } : {}) };
+  });
   return {
-    activities: withLessonState,
+    activities: sessionActivities,
     current: {
       ...(selected ? { activityId: selected.id } : {}),
       ...(final ? { completedFinalId: final.id } : {}),
@@ -228,6 +236,7 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
           exerciseId: attempt.exerciseId,
           status: (feedback.status ?? 'graded') as string,
           correct: attempt.correct,
+          outcome: attempt.correct > 0 ? ('correct' as const) : ('incorrect' as const),
           attemptNo: attempt.attemptNo,
           retryAllowed,
           ...(followUp ? { followUp: true } : {}),
@@ -326,6 +335,56 @@ export function activityProgressOperation(
       body,
       locked,
     );
+  });
+}
+
+export function continueActivityOperation(
+  request: EngineRequest,
+  sessionId: string,
+  activityId: string,
+): Promise<EngineResult> {
+  return request.store.transaction(async (tx) => {
+    const session = await tx.lockSession(request.userId, sessionId);
+    const locked = session && { ...session, userId: request.userId };
+    const repo = request.freshRepo(tx, true);
+    const current = await repo.session(sessionId, locked);
+    const activity = current?.activities.find((item) => item.id === activityId);
+    if (!activity) return respond({ error: 'Activity not found' }, 404);
+    if (activity.kind !== 'learn' || !activity.conceptId)
+      return respond({ error: 'Nothing to continue' }, 409);
+
+    const lesson = request.content.lessonsByConcept.get(activity.conceptId);
+    const progress = (activity.progress ?? {}) as Record<string, unknown>;
+    const completedExerciseIds = Array.isArray(progress.completedExerciseIds)
+      ? progress.completedExerciseIds.filter((id): id is string => typeof id === 'string')
+      : [];
+    const finalPending = Boolean(lesson?.final && !completedExerciseIds.includes(lesson.final));
+    const run = await tx.getLessonRun(request.userId, { conceptId: activity.conceptId });
+    let body: Record<string, unknown>;
+
+    if (
+      !progress.lessonRunnerContinued ||
+      (progress.finalQuestionContinued && !progress.quizContinued)
+    ) {
+      if (run?.status === 'completed' || (run?.status === 'quiz' && !finalPending)) {
+        body = {
+          lessonRunnerContinued: true,
+          finalQuestionContinued: true,
+          quizContinued: true,
+          complete: true,
+        };
+      } else if (run?.status === 'quiz' && finalPending) {
+        body = { lessonRunnerContinued: true };
+      } else {
+        return respond({ error: 'Nothing to continue' }, 409);
+      }
+    } else if (!progress.finalQuestionContinued && !finalPending) {
+      body = { finalQuestionContinued: true };
+    } else {
+      return respond({ error: 'Nothing to continue' }, 409);
+    }
+
+    return activityProgress({ ...request, store: tx, repo }, sessionId, activityId, body, locked);
   });
 }
 

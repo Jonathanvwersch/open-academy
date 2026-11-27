@@ -56,7 +56,7 @@ export function LessonRunner({
   finalAnswered: boolean;
   step?: string;
   onStepChange: (step?: string, replace?: boolean) => void;
-  onContinue: (status: 'quiz' | 'completed', stage: 'final' | 'done') => Promise<void>;
+  onContinue: () => Promise<void>;
 }) {
   const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
@@ -599,7 +599,7 @@ export function LessonRunner({
       setBusyAction('continue');
       setError('');
       try {
-        await onContinue('quiz', 'final');
+        await onContinue();
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Could not save lesson progress.');
       } finally {
@@ -613,7 +613,7 @@ export function LessonRunner({
       setBusyAction('continue');
       setError('');
       try {
-        await onContinue(state.status, 'done');
+        await onContinue();
         await invalidateSidebarQueries(queryClient);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Could not save lesson progress.');

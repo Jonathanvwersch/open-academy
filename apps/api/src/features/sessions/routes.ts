@@ -40,6 +40,18 @@ export function registerSessionsRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
       }),
     );
   });
+  api.post('/sessions/:id/activities/:aid/continue', async (context) => {
+    const sessionId = context.req.param('id');
+    if (!z.string().uuid().safeParse(sessionId).success)
+      return context.json({ error: 'Session not found' }, 404);
+    return send(
+      context,
+      await deps.learner(context).continueActivity({
+        sessionId,
+        activityId: context.req.param('aid'),
+      }),
+    );
+  });
   api.post('/sessions/:id/replan', async (context) => {
     const sessionId = context.req.param('id');
     if (!z.string().uuid().safeParse(sessionId).success)

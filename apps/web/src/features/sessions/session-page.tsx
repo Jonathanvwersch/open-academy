@@ -45,6 +45,15 @@ async function saveActivityProgress(
   if (!response?.ok) throw new Error('Your progress was not saved. Please try again.');
 }
 
+async function continueActivity(sessionId: string, activityId: string) {
+  const response = await apiFetch(`/api/sessions/${sessionId}/activities/${activityId}/continue`, {
+    method: 'POST',
+  });
+  if (response.status !== 200 && response.status !== 409)
+    throw new Error('Could not continue. Please try again.');
+  return response;
+}
+
 export function SessionPage() {
   const navigate = useNavigate({ from: '/session/$id' });
   const { id } = Route.useParams();
@@ -52,7 +61,9 @@ export function SessionPage() {
   const step = typeof searchStep === 'number' ? String(searchStep) : searchStep;
   const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
-  const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [result, setResult] = useState<
+    (AttemptResponse & { exerciseId: string; durationMs?: number }) | null
+  >(null);
   const [shown, setShown] = useState<{ activityId: string; exerciseId: string } | null>(null);
   const [submitError, setSubmitError] = useState('');
   const [progressError, setProgressError] = useState('');
@@ -99,13 +110,9 @@ export function SessionPage() {
   }, [sessionQuery.data?.serverNow]);
   const session = sessionQuery.data;
   const activities = session.activities;
-  const current = session.current;
   const activitiesById = new Map(activities.map((item) => [item.id, item] as const));
   const requested = requestedActivityId ? activitiesById.get(requestedActivityId) : undefined;
   const requestedCompletedActivity = requested?.status === 'completed' ? requested : undefined;
-  const completedFinal = current.completedFinalId
-    ? activitiesById.get(current.completedFinalId)
-    : undefined;
   const shownActivity = shown ? activities.find((item) => item.id === shown.activityId) : undefined;
   const activity = shownActivity ?? chosenActivity(session, requestedActivityId);
   const lessonQuizActive = activity?.lessonQuiz ?? false;
@@ -140,7 +147,6 @@ export function SessionPage() {
   const showingRequestedCompletedActivity = Boolean(
     activity && activity.id === requestedCompletedActivity?.id && !lessonQuizActive,
   );
-  const showingCompletedFinal = activity?.id === completedFinal?.id;
   const labProjectId = activity?.kind === 'lab' ? activity.projectId : undefined;
   const labProjectQuery = useQuery({
     ...projectQueryOptions(labProjectId ?? ''),
@@ -155,16 +161,7 @@ export function SessionPage() {
     enabled: Boolean(lessonRunConceptId),
     retry: false,
   });
-  const exerciseId =
-    shownActivity && shown
-      ? shown.exerciseId
-      : showingCompletedFinal
-        ? activity?.exerciseIds.find((candidate) =>
-            (activity.progress?.completedExerciseIds ?? []).includes(candidate),
-          )
-        : activity?.exerciseIds.find(
-            (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
-          );
+  const exerciseId = shownActivity && shown ? shown.exerciseId : activity?.exerciseId;
   const currentResult = exerciseId && result?.exerciseId === exerciseId ? result : null;
   const lessonQuery = useSuspenseQuery(
     lessonQueryOptions(
@@ -295,7 +292,7 @@ export function SessionPage() {
         if (current?.exerciseId === exerciseId) return current;
         const lastAttempt = activity.lastAttempt;
         return lastAttempt && lastAttempt.exerciseId === exerciseId
-          ? { ...lastAttempt, status: lastAttempt.status ?? 'graded' }
+          ? { ...lastAttempt, exerciseId, status: lastAttempt.status ?? 'graded' }
           : null;
       });
       setHints([]);
@@ -383,7 +380,6 @@ export function SessionPage() {
     setProgressError('');
     try {
       await saveActivityProgress(id, activity.id, {
-        ...(activity.progress ?? {}),
         lessonViewed: true,
       });
       await queryClient.invalidateQueries({ queryKey: ['session', id] });
@@ -400,7 +396,6 @@ export function SessionPage() {
     setProgressError('');
     try {
       await saveActivityProgress(id, activity.id, {
-        ...(activity.progress ?? {}),
         complete: true,
       });
       await Promise.all([
@@ -503,19 +498,12 @@ export function SessionPage() {
           ...(activity.progress?.completedExerciseIds ?? []),
           currentExerciseId,
         ]);
-        const hasNextExercise = activity.exerciseIds.some(
+        const nextExerciseId = activity.exerciseIds.find(
           (candidate) => !completedExerciseIds.has(candidate),
         );
-        if (hasNextExercise) {
-          const currentOutcome: 'correct' | 'incorrect' | undefined =
-            currentResult &&
-            currentResult.status !== 'invalid' &&
-            currentResult.status !== 'self_check_required'
-              ? Number(currentResult.correct) > 0
-                ? 'correct'
-                : 'incorrect'
-              : undefined;
-          setShown(null);
+        if (nextExerciseId) {
+          const currentOutcome = currentResult?.outcome;
+          setShown({ activityId: activity.id, exerciseId: nextExerciseId });
           queryClient.setQueryData(sessionQueryOptions(id).queryKey, (session) => {
             if (!session) return session;
             return {
@@ -550,28 +538,15 @@ export function SessionPage() {
           return;
         }
       }
-      const freshSession = await queryClient.fetchQuery({
-        ...sessionQueryOptions(id),
-        staleTime: 0,
-      });
-      setShown(null);
-      const freshActivity = freshSession.activities.find((item) => item.id === activity.id);
-      let finalQuestionContinued = false;
-      if (
-        currentExerciseId &&
-        freshActivity?.kind === 'learn' &&
-        freshActivity.progress?.lessonRunnerContinued &&
-        !freshActivity.progress.finalQuestionContinued &&
-        (freshActivity.progress.completedExerciseIds ?? []).includes(currentExerciseId)
-      ) {
-        await saveActivityProgress(id, freshActivity.id, {
-          ...(freshActivity.progress ?? {}),
-          finalQuestionContinued: true,
-        });
-        finalQuestionContinued = true;
-      }
-      if (finalQuestionContinued) {
+      if (activity.kind === 'learn') {
+        const response = await continueActivity(id, activity.id);
+        if (response.status === 200) {
+          setShown(null);
+          await queryClient.invalidateQueries({ queryKey: ['session', id] });
+        }
+      } else {
         await queryClient.invalidateQueries({ queryKey: ['session', id] });
+        setShown(null);
       }
     } catch {
       setProgressError('Could not continue. Please try again.');
@@ -612,18 +587,9 @@ export function SessionPage() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [continueNext, currentResult, recapPoint]);
-  const continueLessonRunner = async (_status: 'quiz' | 'completed', stage: 'final' | 'done') => {
+  const continueLessonRunner = async () => {
     if (!activity) return;
-    const finalQuestionPending =
-      stage === 'final' &&
-      !!lesson?.final &&
-      !(activity.progress?.completedExerciseIds ?? []).includes(lesson.final);
-    await saveActivityProgress(id, activity.id, {
-      ...(activity.progress ?? {}),
-      lessonRunnerContinued: true,
-      ...(finalQuestionPending ? {} : { finalQuestionContinued: true }),
-      ...(stage === 'done' ? { complete: true, quizContinued: true } : {}),
-    });
+    await continueActivity(id, activity.id);
     await queryClient.invalidateQueries({ queryKey: ['session', id] });
   };
 
@@ -773,14 +739,7 @@ export function SessionPage() {
         : Number(currentResult?.correct) === 0 && currentResult?.retryAllowed === true
           ? `Try again · ${triesLeft} ${triesLeft === 1 ? 'try' : 'tries'} left`
           : 'Submit answer';
-  const currentResultOutcome =
-    currentResult &&
-    currentResult.status !== 'invalid' &&
-    currentResult.status !== 'self_check_required'
-      ? Number(currentResult.correct) > 0
-        ? 'correct'
-        : 'incorrect'
-      : null;
+  const currentResultOutcome = currentResult?.outcome ?? null;
   const completedExerciseIds = new Set(activity.progress?.completedExerciseIds ?? []);
   const questionStates: QuestionState[] = activity.exerciseIds.map((candidate) => {
     if (candidate === exerciseId) {

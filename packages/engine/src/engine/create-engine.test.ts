@@ -10,6 +10,65 @@ const content = loadContentFromDirectory(
   fileURLToPath(new URL('../../../../content', import.meta.url)),
 );
 
+async function continueFixture(
+  options: {
+    kind?: 'learn' | 'practice';
+    conceptId?: string | null;
+    progress?: Record<string, unknown>;
+    runStatus?: 'in_progress' | 'quiz' | 'completed';
+  } = {},
+) {
+  const index = await content;
+  const lessonEntry = [...index.lessonsByConcept.entries()].find(([, lesson]) => lesson.final);
+  if (!lessonEntry) throw new Error('Missing lesson final fixture');
+  const [conceptId, lesson] = lessonEntry;
+  const finalId = lesson.final;
+  if (!finalId) throw new Error('Missing lesson final fixture');
+  const learnerId = 'continue-learner';
+  const now = new Date('2026-01-17T12:00:00Z');
+  const store = memoryStore();
+  const session = await store.insertSession(learnerId, sessionRow(now));
+  const progress = { ...(options.progress ?? {}) };
+  if (Array.isArray(progress.completedExerciseIds)) {
+    progress.completedExerciseIds = progress.completedExerciseIds.map((id) =>
+      id === 'final' ? finalId : id,
+    );
+  }
+  const [activity] = await store.insertActivities(learnerId, session.id, [
+    activityRow(0, {
+      kind: options.kind ?? 'learn',
+      status: 'in_progress',
+      conceptId: options.conceptId === undefined ? conceptId : options.conceptId,
+      exerciseIds: [finalId],
+      progress,
+    }),
+  ]);
+  if (!activity) throw new Error('Activity did not insert');
+  if (options.runStatus) {
+    const run = await store.insertLessonRunIfAbsent(learnerId, {
+      conceptId,
+      status: options.runStatus,
+      startedAt: now,
+      updatedAt: now,
+      completedAt: options.runStatus === 'completed' ? now : null,
+      quizPassedAt: options.runStatus === 'completed' ? now : null,
+      attempt: 1,
+      haltedAt: null,
+      retryAfter: null,
+      haltedPointIndex: null,
+      haltCount: 0,
+    });
+    if (!run) throw new Error('Lesson run did not insert');
+  }
+  const learner = createEngine({ content: async () => index, store }).learner({
+    id: learnerId,
+    timeZone: 'UTC',
+    now: () => now,
+    random: () => 0.5,
+  });
+  return { activity, finalId, learner, learnerId, session, store };
+}
+
 test('partial settings updates preserve earlier edits for a reused learner', async () => {
   const index = await content;
   const learnerId = 'settings-learner';
@@ -41,6 +100,199 @@ test('partial settings updates preserve earlier edits for a reused learner', asy
   expect(await store.getSettings(learnerId)).toMatchObject({
     prefs: { scheduleMinutes: 90, quizTimeMultiplier: 2 },
   });
+});
+
+test('graded attempt outcomes include retries and persist with completed attempts', async () => {
+  const index = await content;
+  const exercise = index.exercises.find(({ type, role }) => type === 'mc' && role !== 'diagnostic');
+  if (!exercise) throw new Error('Missing multiple-choice exercise fixture');
+  const learnerId = 'attempt-outcome-learner';
+  const now = new Date('2026-01-17T12:00:00Z');
+  const store = memoryStore();
+  const session = await store.insertSession(learnerId, sessionRow(now));
+  const [activity] = await store.insertActivities(learnerId, session.id, [
+    activityRow(0, {
+      kind: 'practice',
+      status: 'in_progress',
+      exerciseIds: [exercise.id],
+    }),
+  ]);
+  if (!activity) throw new Error('Activity did not insert');
+  let gradedAttempts = 0;
+  const learner = createEngine({
+    content: async () => index,
+    store,
+    grade: async () => {
+      const correct = gradedAttempts++ === 0 ? 0 : 1;
+      return {
+        status: 'graded',
+        correct,
+        credit: correct,
+        feedback: 'Graded answer.',
+        graded_by: 'deterministic',
+      };
+    },
+  }).learner({
+    id: learnerId,
+    timeZone: 'UTC',
+    now: () => now,
+    random: () => 0.5,
+  });
+  const body = {
+    exerciseId: exercise.id,
+    activityId: activity.id,
+    answer: 'submitted answer',
+    mode: 'practice',
+  };
+
+  expect(await learner.exerciseAttempt({ body })).toMatchObject({
+    status: 200,
+    body: { status: 'graded', correct: 0, retryAllowed: true, outcome: 'incorrect' },
+  });
+  expect(
+    (await store.listActivities(learnerId, { ids: [activity.id] }))[0]?.progress,
+  ).not.toHaveProperty('outcomes');
+
+  expect(await learner.exerciseAttempt({ body })).toMatchObject({
+    status: 200,
+    body: { status: 'graded', correct: 1, retryAllowed: false, outcome: 'correct' },
+  });
+  expect(await store.listActivities(learnerId, { ids: [activity.id] })).toMatchObject([
+    { progress: { completedExerciseIds: [exercise.id], outcomes: { [exercise.id]: 'correct' } } },
+  ]);
+});
+
+test('activity progress patches preserve stored fields', async () => {
+  const index = await content;
+  const learnerId = 'progress-merge-learner';
+  const now = new Date('2026-01-17T12:00:00Z');
+  const store = memoryStore();
+  const session = await store.insertSession(learnerId, sessionRow(now));
+  const [activity] = await store.insertActivities(learnerId, session.id, [
+    activityRow(0, {
+      kind: 'practice',
+      status: 'in_progress',
+      progress: { answerDraft: 'keep my work' },
+    }),
+  ]);
+  if (!activity) throw new Error('Activity did not insert');
+  const learner = createEngine({ content: async () => index, store }).learner({
+    id: learnerId,
+    timeZone: 'UTC',
+    now: () => now,
+    random: () => 0.5,
+  });
+
+  expect(
+    await learner.activityProgress({
+      sessionId: session.id,
+      activityId: activity.id,
+      body: { lessonViewed: true },
+    }),
+  ).toMatchObject({ status: 200 });
+  expect(await store.listActivities(learnerId, { ids: [activity.id] })).toMatchObject([
+    { progress: { answerDraft: 'keep my work', lessonViewed: true } },
+  ]);
+});
+
+test('continueActivity advances lesson stages and completes eligible runs', async () => {
+  const finalStage = await continueFixture({ runStatus: 'quiz' });
+  expect(
+    await finalStage.learner.continueActivity({
+      sessionId: finalStage.session.id,
+      activityId: finalStage.activity.id,
+    }),
+  ).toMatchObject({ status: 200 });
+  const [finalStageActivity] = await finalStage.store.listActivities(finalStage.learnerId, {
+    ids: [finalStage.activity.id],
+  });
+  expect(finalStageActivity?.progress).toMatchObject({ lessonRunnerContinued: true });
+  expect(finalStageActivity?.progress).not.toHaveProperty('finalQuestionContinued');
+  expect(finalStageActivity?.progress).not.toHaveProperty('quizContinued');
+
+  for (const options of [
+    { runStatus: 'completed' as const, progress: {} },
+    {
+      runStatus: 'quiz' as const,
+      progress: { completedExerciseIds: ['final'] },
+    },
+  ]) {
+    const completed = await continueFixture({
+      runStatus: options.runStatus,
+      progress: options.progress,
+    });
+    const activity = completed.activity;
+    expect(
+      await completed.learner.continueActivity({
+        sessionId: completed.session.id,
+        activityId: activity.id,
+      }),
+    ).toMatchObject({ status: 200 });
+    expect(
+      await completed.store.listActivities(completed.learnerId, { ids: [activity.id] }),
+    ).toMatchObject([
+      {
+        status: 'completed',
+        progress: {
+          lessonRunnerContinued: true,
+          finalQuestionContinued: true,
+          quizContinued: true,
+        },
+      },
+    ]);
+  }
+
+  const finalQuestion = await continueFixture({
+    runStatus: 'quiz',
+    progress: { lessonRunnerContinued: true, completedExerciseIds: ['final'] },
+  });
+  expect(
+    await finalQuestion.learner.continueActivity({
+      sessionId: finalQuestion.session.id,
+      activityId: finalQuestion.activity.id,
+    }),
+  ).toMatchObject({ status: 200 });
+  expect(
+    await finalQuestion.store.listActivities(finalQuestion.learnerId, {
+      ids: [finalQuestion.activity.id],
+    }),
+  ).toMatchObject([{ progress: { finalQuestionContinued: true } }]);
+});
+
+test('continueActivity returns the specified 404 and 409 responses', async () => {
+  const missing = await continueFixture({ runStatus: 'quiz' });
+  expect(
+    await missing.learner.continueActivity({
+      sessionId: missing.session.id,
+      activityId: 'missing',
+    }),
+  ).toMatchObject({ status: 404, body: { error: 'Activity not found' } });
+
+  for (const options of [
+    { runStatus: 'in_progress' as const },
+    {
+      runStatus: 'quiz' as const,
+      progress: { lessonRunnerContinued: true },
+    },
+    {
+      runStatus: 'in_progress' as const,
+      progress: {
+        lessonRunnerContinued: true,
+        finalQuestionContinued: true,
+        quizContinued: false,
+      },
+    },
+    { runStatus: 'completed' as const, kind: 'practice' as const },
+    { conceptId: null },
+  ]) {
+    const fixture = await continueFixture(options);
+    expect(
+      await fixture.learner.continueActivity({
+        sessionId: fixture.session.id,
+        activityId: fixture.activity.id,
+      }),
+    ).toMatchObject({ status: 409, body: { error: 'Nothing to continue' } });
+  }
 });
 
 test('hints and quiz reviews accept memory-issued activity and attempt IDs', async () => {
