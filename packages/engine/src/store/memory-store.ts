@@ -1474,8 +1474,8 @@ function scopedStore(
         userId: learnerId,
       });
       data.projectSubmissions.set(learnerId, [
-        ...(data.projectSubmissions.get(learnerId) ?? []),
         row,
+        ...(data.projectSubmissions.get(learnerId) ?? []),
       ]);
       markWrite(learnerId);
       return structuredClone(row);

@@ -137,6 +137,30 @@ it('preserves seeded paper completion when saving detailed progress', async () =
   expect(await store.getPaperProgress(learnerId, 'paper')).toMatchObject({ completedAt });
 });
 
+it('orders project submissions newest-first when creation times tie', async () => {
+  const store = memoryStore();
+  const createdAt = new Date('2026-01-17T12:00:00Z');
+  const first = await store.addProjectSubmission(learnerId, {
+    projectId: 'project',
+    results: { version: 1 },
+    passed: 0,
+    total: 1,
+    metrics: {},
+    createdAt,
+  });
+  const second = await store.addProjectSubmission(learnerId, {
+    projectId: 'project',
+    results: { version: 2 },
+    passed: 1,
+    total: 1,
+    metrics: {},
+    createdAt,
+  });
+
+  expect(await store.listProjectSubmissions(learnerId, { limit: 1 })).toEqual([second]);
+  expect(first.id).not.toBe(second.id);
+});
+
 it('clears activity links for both learners when their seeded hint is shared', async () => {
   const otherLearnerId = 'other';
   const hint = {
