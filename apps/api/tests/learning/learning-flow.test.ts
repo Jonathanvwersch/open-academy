@@ -25,7 +25,6 @@ import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
 import { drizzleLearnerStore } from '../../src/db/learner-store.js';
-import { LearnerRepository } from '../../src/db/repository.js';
 import {
   attempts,
   courseEnrollments,
@@ -1481,7 +1480,13 @@ test('a wrong recall plus two correct problems rates its due card Hard without l
     await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, nonDueCard.id)),
   ).toHaveLength(0);
 
-  const state = await new LearnerRepository(db, userId).schedulerState(new Date(now), index);
+  const state = await new EngineLearnerRepository(
+    drizzleLearnerStore(db),
+    userId,
+    undefined,
+    undefined,
+    fsrsFuzzEnabled(),
+  ).schedulerState(new Date(now), index);
   expect(state.recallAttempts).toContainEqual(
     expect.objectContaining({ exerciseId: recall.id, correct: 0 }),
   );

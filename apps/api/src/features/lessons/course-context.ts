@@ -1,13 +1,13 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
+import type { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import { lessonCourseContext } from '@academy/aesop/graph/lesson-course-context';
 import { and, desc, eq } from 'drizzle-orm';
 import type { Database } from '../../db/client.js';
-import type { LearnerRepository } from '../../db/repository.js';
 import { sessionActivities, studySessions } from '../../db/schema.js';
 
 export async function resolveLessonCourse(
   db: Database,
-  repo: LearnerRepository,
+  repo: EngineLearnerRepository,
   content: ContentIndex,
   userId: string,
   conceptId: string,

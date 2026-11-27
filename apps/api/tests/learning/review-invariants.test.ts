@@ -1,6 +1,7 @@
 import { subjectForCourse } from '@academy/aesop/course/index';
 import { isTemplate } from '@academy/aesop/course/templates';
 import type { ContentIndex } from '@academy/aesop/course/types';
+import { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import { filterSchedulerStateForContent } from '@academy/aesop/graph/content-filters';
 import { courseConceptIds, courseFoundationIds } from '@academy/aesop/graph/prerequisites';
 import {
@@ -31,7 +32,7 @@ import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
-import { LearnerRepository } from '../../src/db/repository.js';
+import { drizzleLearnerStore } from '../../src/db/learner-store.js';
 import {
   attempts,
   courseEnrollments,
@@ -44,6 +45,7 @@ import {
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
 import { shiftLocalDate } from '../../src/http/request-context.js';
+import { fsrsFuzzEnabled } from '../../src/learning/fsrs-fuzz.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const realDataAuditMode = process.env.REVIEW_AUDIT_REALDATA === '1';
@@ -1661,7 +1663,13 @@ async function plannerSelectionAt(
   now: Date,
   today: Record<string, any>,
 ): Promise<PlannerSelection> {
-  const repo = new LearnerRepository(db, userId);
+  const repo = new EngineLearnerRepository(
+    drizzleLearnerStore(db),
+    userId,
+    undefined,
+    undefined,
+    fsrsFuzzEnabled(),
+  );
   const [learner, rawState] = await Promise.all([repo.user(), repo.schedulerState(now, content)]);
   const state = filterSchedulerStateForContent(content, rawState);
   const day = localDateKey(now, timezone);

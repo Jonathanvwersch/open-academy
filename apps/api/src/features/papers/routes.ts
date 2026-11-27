@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { ContentIndex, IndexedPaper } from '@academy/aesop/course/types';
+import type { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import { activeCourseFor } from '@academy/aesop/graph/prerequisites';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
-import type { LearnerRepository } from '../../db/repository.js';
 import {
   paperFiles,
   paperProgress,
@@ -28,7 +28,7 @@ export function registerPaperRoutes(
   deps: {
     db: Database;
     content: () => Promise<ContentIndex>;
-    withRepo: (context: PaperContext) => LearnerRepository;
+    withRepo: (context: PaperContext) => EngineLearnerRepository;
     tutor: (context: PaperContext) => TutorService | null;
     paperFetcher?: PaperFetcher;
     requestNow: (context: PaperContext) => Date;

@@ -4,10 +4,10 @@ import type { IndexedExercise } from '@academy/aesop/course/types';
 import { hintsSincePreviousAttempt } from '@academy/aesop/memory/hint-evidence';
 import { attemptAllowsRetry } from '@academy/aesop/memory/retry';
 import { onScreenOptions } from '@academy/shared/shuffle';
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
-import { sessionActivities } from '../../db/schema.js';
+import { attempts, hintEvents, sessionActivities } from '../../db/schema.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import {
   formatGraderFeedback,
@@ -33,6 +33,26 @@ export async function getExercisesById(deps: FeatureServices, request: FeatureRe
 
 export async function postHints(deps: FeatureServices, request: FeatureRequest) {
   const { db, content, tutorProvider } = deps;
+  const saveHintEvent = (input: {
+    activityId?: string;
+    exerciseId: string;
+    level: number;
+    text: string;
+    source?: 'authored' | 'llm';
+    createdAt: Date;
+  }) =>
+    db
+      .insert(hintEvents)
+      .values({
+        userId: request.userId,
+        activityId: input.activityId,
+        exerciseId: input.exerciseId,
+        level: input.level,
+        source: input.source ?? 'authored',
+        text: input.text,
+        createdAt: input.createdAt,
+      })
+      .returning();
   const body = z
     .object({
       exerciseId: z.string(),
@@ -93,7 +113,7 @@ export async function postHints(deps: FeatureServices, request: FeatureRequest) 
   if (body.data.revealSolution) {
     if (hintsUsed >= 5)
       return serviceResult({ error: 'The solution has already been revealed.' }, 409);
-    const [event] = await request.repo.saveHintEvent({
+    const [event] = await saveHintEvent({
       activityId: body.data.activityId,
       exerciseId: exercise.id,
       level: 5,
@@ -114,7 +134,12 @@ export async function postHints(deps: FeatureServices, request: FeatureRequest) 
     const index = await content();
     const concept = index.conceptsById.get(exercise.concept);
     const lesson = index.lessonsByConcept.get(exercise.concept);
-    const recentAttempts = await request.repo.recentAttempts(100);
+    const recentAttempts = await db
+      .select()
+      .from(attempts)
+      .where(eq(attempts.userId, request.userId))
+      .orderBy(desc(attempts.createdAt))
+      .limit(100);
     const recentMistakes = recentAttempts
       .filter((attempt) => attempt.conceptId === exercise.concept && attempt.mistakeCategory)
       .slice(0, 5)
@@ -191,7 +216,7 @@ export async function postHints(deps: FeatureServices, request: FeatureRequest) 
   if (!text || level > 4) {
     return serviceResult({ level, hasMore: false, revealedSolution: false });
   }
-  const [event] = await request.repo.saveHintEvent({
+  const [event] = await saveHintEvent({
     activityId: body.data.activityId,
     exerciseId: exercise.id,
     level,

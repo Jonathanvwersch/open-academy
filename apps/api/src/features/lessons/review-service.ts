@@ -13,7 +13,7 @@ export async function getLessonsByConceptId(deps: FeatureServices, request: Feat
   const index = await content();
   const conceptId = request.params.conceptId;
   const lesson = index.lessonsByConcept.get(conceptId);
-  const priorEvidence = (await request.repo.masteryRecords()).some(
+  const priorEvidence = (await request.repo.store.listMastery(request.userId)).some(
     (record) =>
       record.conceptId === conceptId &&
       (record.inferred || masteryRank(record.state) >= masteryRank('assisted')),
@@ -74,7 +74,9 @@ export async function getLessonsByConceptIdReview(deps: FeatureServices, request
   const [runRows, masteryRecords, course] = await Promise.all([
     runRowsPromise,
     runRowsPromise.then((rows) =>
-      rows.some((row) => row.conceptId === conceptId) ? [] : request.repo.masteryRecords(),
+      rows.some((row) => row.conceptId === conceptId)
+        ? []
+        : request.repo.store.listMastery(request.userId),
     ),
     resolveLessonCourse(deps.db, request.repo, index, request.userId, conceptId),
   ]);

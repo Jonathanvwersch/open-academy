@@ -1,4 +1,5 @@
 import type { ContentIndex, IndexedExercise } from '@academy/aesop/course/types';
+import { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import { initialMastery, masteryRank } from '@academy/aesop/memory/types';
 import {
   applyPlacementGrantOutcome,
@@ -10,7 +11,6 @@ import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import { createDb } from '../../src/db/client.js';
 import { drizzleLearnerStore } from '../../src/db/learner-store.js';
-import { LearnerRepository } from '../../src/db/repository.js';
 import {
   attempts,
   diagnosticRuns,
@@ -25,12 +25,13 @@ import {
   users,
   xpEvents,
 } from '../../src/db/schema.js';
+import { fsrsFuzzEnabled } from '../../src/learning/fsrs-fuzz.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000321';
 const now = new Date('2026-01-07T12:00:00.000Z');
 let content: ContentIndex;
-let repo: LearnerRepository;
+let repo: EngineLearnerRepository;
 let runId = '';
 
 beforeAll(async () => {
@@ -46,7 +47,13 @@ beforeEach(async () => {
     startDate: '2026-01-01',
     prefs: { scheduleMinutes: 60 },
   });
-  repo = new LearnerRepository(db, userId);
+  repo = new EngineLearnerRepository(
+    drizzleLearnerStore(db),
+    userId,
+    undefined,
+    undefined,
+    fsrsFuzzEnabled(),
+  );
   const [run] = await db
     .insert(diagnosticRuns)
     .values({
@@ -114,7 +121,7 @@ async function seedGrant(
     confirmedAt: state === 'confirmed' ? now : null,
   });
   for (const dimension of content.conceptsById.get(conceptId)?.dimensions ?? []) {
-    await repo.saveMastery({
+    await repo.store.saveMastery(userId, {
       ...initialMastery(conceptId, dimension),
       state: 'independent',
       provisional: state === 'conditional',
@@ -379,7 +386,7 @@ test('a wrong review on a dependent topic queues a targeted review before any wi
     .from(placementGrants)
     .where(eq(placementGrants.userId, userId));
   expect(confirmed).toMatchObject({ state: 'confirmed', reason: 'confirmed_by_answer' });
-  expect((await repo.masteryRecords()).every((record) => !record.provisional)).toBe(true);
+  expect((await repo.store.listMastery(userId)).every((record) => !record.provisional)).toBe(true);
 });
 
 test('studied and confirmed topics are never withdrawn', async () => {
@@ -412,8 +419,9 @@ test('later answers on a withdrawn topic do not restore credit before its lesson
     .update(reviewCards)
     .set({ suspendedAt: null })
     .where(and(eq(reviewCards.userId, userId), eq(reviewCards.conceptId, 'vectors')));
-  for (const record of await repo.masteryRecords()) {
-    if (record.conceptId === 'vectors') await repo.saveMastery({ ...record, state: 'assisted' });
+  for (const record of await repo.store.listMastery(userId)) {
+    if (record.conceptId === 'vectors')
+      await repo.store.saveMastery(userId, { ...record, state: 'assisted' });
   }
   await answer('vectors', 1);
   const after = await snapshot();
@@ -462,9 +470,11 @@ test('withdrawal suspends cards, keeps review logs, and skips planned work the t
   expect(await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, reviewed.id))).toHaveLength(
     1,
   );
-  expect((await repo.dueCards(now, 'UTC')).some((card) => card.conceptId === 'vectors')).toBe(
-    false,
-  );
+  expect(
+    (await repo.store.listReviewCards(userId, ['vectors'], { activeOnly: true })).some(
+      (card) => card.conceptId === 'vectors',
+    ),
+  ).toBe(false);
   const [skipped] = await db
     .select({ status: sessionActivities.status })
     .from(sessionActivities)

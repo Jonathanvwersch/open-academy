@@ -3,9 +3,9 @@ import {
   updateLearningFocus as updateCourseFocus,
 } from '@academy/aesop/course/progress-commands';
 import type { ContentIndex } from '@academy/aesop/course/types';
+import type { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import type { Database } from '../../db/client.js';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
-import type { LearnerRepository } from '../../db/repository.js';
 
 export function restartTopic(input: {
   db: Database;
@@ -18,7 +18,7 @@ export function restartTopic(input: {
 
 export function updateLearningFocus(input: {
   db: Database;
-  repo: LearnerRepository;
+  repo: EngineLearnerRepository;
   userId: string;
   content: ContentIndex;
   subjectId: string | null;

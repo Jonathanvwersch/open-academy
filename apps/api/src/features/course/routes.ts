@@ -1,9 +1,9 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
 import type { EngineResult } from '@academy/aesop/engine/create-engine';
+import type { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { Database } from '../../db/client.js';
-import type { LearnerRepository } from '../../db/repository.js';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
 import { restartTopic, updateLearningFocus } from './service.js';
 
@@ -16,7 +16,7 @@ export function registerLearnCourseRoutes(
   deps: {
     db: Database;
     content: () => Promise<ContentIndex>;
-    withRepo: (context: RouteContext) => LearnerRepository;
+    withRepo: (context: RouteContext) => EngineLearnerRepository;
     requestNow: (context: RouteContext) => Date;
     learner: ApiServices['learner'];
   },

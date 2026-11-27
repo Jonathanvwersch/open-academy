@@ -187,10 +187,14 @@ export async function postProjectsByIdResults(deps: FeatureServices, request: Fe
     const spec = allowedTests.get(check.id);
     if (!spec) continue;
     for (const conceptId of spec.concepts) {
-      const existing = await request.repo.masteryRecord(conceptId, spec.dimension);
+      const existing = await request.repo.store.getMastery(
+        request.userId,
+        conceptId,
+        spec.dimension,
+      );
       const next = existing ?? initialMastery(conceptId, spec.dimension);
       if (masteryRank(next.state) < masteryRank('assisted')) {
-        await request.repo.saveMastery({
+        await request.repo.store.saveMastery(request.userId, {
           ...next,
           state: 'assisted',
           inferred: false,

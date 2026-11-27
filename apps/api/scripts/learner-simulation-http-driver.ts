@@ -1,4 +1,5 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
+import { EngineLearnerRepository } from '@academy/aesop/engine/repository';
 import {
   type ImplicitRepetitionTraceEvent,
   setImplicitRepetitionTrace,
@@ -8,7 +9,6 @@ import { and, asc, desc, eq, exists, inArray, notInArray, sql } from 'drizzle-or
 import { createApp } from '../src/app.js';
 import type { Database } from '../src/db/client.js';
 import { drizzleLearnerStore } from '../src/db/learner-store.js';
-import { LearnerRepository } from '../src/db/repository.js';
 import {
   attempts,
   lessonProblems,
@@ -29,6 +29,7 @@ import {
   users,
   xpEvents,
 } from '../src/db/schema.js';
+import { fsrsFuzzEnabled } from '../src/learning/fsrs-fuzz.js';
 import type { SimulatorAudit, SimulatorFixtures } from './learner-simulation-audit.js';
 import {
   type ApiResult,
@@ -43,6 +44,15 @@ import {
   type SimulatorDriverInput,
   type SimulatorOperation,
 } from './learner-simulation-driver.js';
+
+const repositoryFor = (db: Database, userId: string) =>
+  new EngineLearnerRepository(
+    drizzleLearnerStore(db),
+    userId,
+    undefined,
+    undefined,
+    fsrsFuzzEnabled(),
+  );
 
 /** Drives the real Hono app with a fake clock, and checks learner state in PostgreSQL. */
 export class HttpPostgresDriver implements SimulatorDriver {
@@ -211,7 +221,7 @@ export function postgresSimulatorAudit(db: Database): SimulatorAudit {
       return { mastery: masteryRows, lessonRuns: runs, placements, openFlags: flags };
     },
     schedulerState: (userId, now, content) =>
-      new LearnerRepository(db, userId).schedulerState(now, content),
+      repositoryFor(db, userId).schedulerState(now, content),
     reviewCards: (userId) =>
       db
         .select()
@@ -479,7 +489,7 @@ export function postgresSimulatorAudit(db: Database): SimulatorAudit {
 export function postgresSimulatorFixtures(db: Database): SimulatorFixtures {
   return {
     async seedScriptedScenario({ userId, now, courseId, masteryRows, reviewCards: cards }) {
-      await new LearnerRepository(db, userId).startCourse(courseId, 'beginning', now);
+      await repositoryFor(db, userId).startCourse(courseId, 'beginning', now);
       await db
         .update(users)
         .set({
