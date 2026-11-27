@@ -4,9 +4,7 @@ import type { ImplicitRepetitionTraceEvent } from '@open-academy/engine/memory/m
 import type { SimulatorAudit, SimulatorFixtures } from './audit.js';
 
 /** One logical learner action. Each driver runs it; `httpRequestFor` gives its HTTP form. */
-export type SimulatorOperation =
-  | EngineOperation
-  | { kind: 'paperProgress'; paperId: string; body: Record<string, unknown> };
+export type SimulatorOperation = EngineOperation;
 
 export type SimulatorOperationKind = SimulatorOperation['kind'];
 
@@ -155,8 +153,32 @@ export function httpRequestFor(operation: SimulatorOperation): SimulatorHttpRequ
       return { method: 'POST', path: `/quizzes/${operation.quizId}/retake` };
     case 'timedQuizFollowUps':
       return { method: 'POST', path: `/quizzes/${operation.quizId}/follow-ups` };
-    case 'paperProgress':
-      return { method: 'PUT', path: `/papers/${operation.paperId}/progress`, body: operation.body };
+    case 'projects':
+      return { method: 'GET', path: '/projects' };
+    case 'project':
+      return { method: 'GET', path: `/projects/${encodeURIComponent(operation.id)}` };
+    case 'submitProjectResults':
+      return {
+        method: 'POST',
+        path: `/projects/${encodeURIComponent(operation.id)}/results`,
+        body: operation.body,
+      };
+    case 'papers':
+      return { method: 'GET', path: '/papers' };
+    case 'paper':
+      return { method: 'GET', path: `/papers/${encodeURIComponent(operation.id)}` };
+    case 'savePaperProgress':
+      return {
+        method: 'PUT',
+        path: `/papers/${encodeURIComponent(operation.id)}/progress`,
+        body: operation.body,
+      };
+    case 'submitPaperSummary':
+      return {
+        method: 'POST',
+        path: `/papers/${encodeURIComponent(operation.id)}/summary`,
+        body: operation.body,
+      };
   }
 }
 

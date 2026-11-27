@@ -40,13 +40,23 @@ describeLearnerStoreContract('memoryStore', async (options) => {
             learnerId,
             [
               {
+                id: 'submission-z',
+                userId: learnerId,
                 projectId: 'z',
                 results: { tests: [{ id: 'older', passed: false }] },
+                passed: 0,
+                total: 1,
+                metrics: {},
                 createdAt: new Date('2026-01-17T12:00:00Z'),
               },
               {
+                id: 'submission-a',
+                userId: learnerId,
                 projectId: 'a',
                 results: { tests: [{ id: 'newer', passed: true }] },
+                passed: 1,
+                total: 1,
+                metrics: {},
                 createdAt: new Date('2026-01-18T12:00:00Z'),
               },
             ],
@@ -108,6 +118,47 @@ describeLearnerStoreContract('memoryStore', async (options) => {
       store.resolveRemediationFlag(learnerId, id);
     },
   };
+});
+
+it('preserves seeded paper completion when saving detailed progress', async () => {
+  const completedAt = new Date('2026-01-17T12:00:00Z');
+  const store = memoryStore({
+    schedulerProjections: new Map([
+      [learnerId, { paperProgress: [{ paperId: 'paper', completedAt }] }],
+    ]),
+  });
+  const saved = await store.savePaperProgress(learnerId, {
+    paperId: 'paper',
+    lastPage: 2,
+    updatedAt: new Date('2026-01-18T12:00:00Z'),
+  });
+
+  expect(saved).toMatchObject({ lastPage: 2, completedAt });
+  expect(await store.getPaperProgress(learnerId, 'paper')).toMatchObject({ completedAt });
+});
+
+it('orders project submissions newest-first when creation times tie', async () => {
+  const store = memoryStore();
+  const createdAt = new Date('2026-01-17T12:00:00Z');
+  const first = await store.addProjectSubmission(learnerId, {
+    projectId: 'project',
+    results: { version: 1 },
+    passed: 0,
+    total: 1,
+    metrics: {},
+    createdAt,
+  });
+  const second = await store.addProjectSubmission(learnerId, {
+    projectId: 'project',
+    results: { version: 2 },
+    passed: 1,
+    total: 1,
+    metrics: {},
+    createdAt,
+  });
+
+  expect(await store.listProjectSubmissions(learnerId, { limit: 1 })).toEqual([second]);
+  expect(first.id).not.toBe(second.id);
 });
 
 it('clears activity links for both learners when their seeded hint is shared', async () => {

@@ -12,7 +12,6 @@ import {
 import type { MasteryRecord } from '@open-academy/engine/memory/types';
 import { localDateKey } from '@open-academy/engine/progress/xp';
 import { type MemoryLearnerStore, memoryStore } from '@open-academy/engine/store/memory-store';
-import { z } from 'zod';
 import type {
   AuditAttemptRow,
   AuditLessonRunRow,
@@ -41,64 +40,16 @@ import {
 
 const learnerId = '00000000-0000-4000-8000-000000000001';
 
-type PaperProgressRow = {
-  userId: string;
-  paperId: string;
-  lastPage: number;
-  notes: Record<string, string>;
-  summary: string | null;
-  summaryJudgement: unknown;
-  completedAt: Date | null;
-  updatedAt: Date;
-};
 /** Deterministic UUID-shaped ids, so ids look the same to every check as they do over HTTP. */
 function uuidCounter() {
   let count = 0;
   return () => `00000000-0000-4000-8000-${(++count).toString(16).padStart(12, '0')}`;
 }
 
-function paperProgress(
-  content: ContentIndex,
-  userId: string,
-  now: Date,
-  paperId: string,
-  input: Record<string, unknown>,
-  papers: Map<string, PaperProgressRow>,
-) {
-  const paper = content.papersById.get(paperId);
-  if (!paper) return { status: 404, body: { error: 'Paper not found' } };
-  const body = z
-    .object({
-      lastPage: z.number().int().min(1).optional(),
-      notes: z.record(z.string(), z.string().max(4000)).optional(),
-    })
-    .strict()
-    .safeParse(input);
-  if (!body.success) return { status: 400, body: { error: 'Invalid paper progress' } };
-  const allowed = new Set(paper.questions.map((question) => question.id));
-  if (Object.keys(body.data.notes ?? {}).some((id) => !allowed.has(id))) {
-    return { status: 400, body: { error: 'Unknown question id in notes' } };
-  }
-  const existing = papers.get(paper.id);
-  const saved: PaperProgressRow = {
-    userId,
-    paperId: paper.id,
-    lastPage: body.data.lastPage ?? existing?.lastPage ?? 1,
-    notes: { ...(existing?.notes ?? {}), ...(body.data.notes ?? {}) },
-    summary: existing?.summary ?? null,
-    summaryJudgement: existing?.summaryJudgement ?? null,
-    completedAt: existing?.completedAt ?? null,
-    updatedAt: now,
-  };
-  papers.set(paper.id, saved);
-  return { status: 200, body: saved };
-}
-
 /** Runs engine use cases in a fresh in-memory store per learner; no app, database, or keys. */
 export class DirectMemoryDriver implements SimulatorDriver {
   private readonly quizClock = new QuizClock();
   private readonly randomness: RequestRandomness;
-  private readonly papers = new Map<string, PaperProgressRow>();
   private readonly newId = uuidCounter();
   private content: ContentIndex;
   private readonly timeZone: string;
@@ -187,21 +138,10 @@ export class DirectMemoryDriver implements SimulatorDriver {
       });
       let response: { status: number; body: unknown };
       try {
-        if (operation.kind === 'paperProgress') {
-          response = paperProgress(
-            this.content,
-            learnerId,
-            now,
-            operation.paperId,
-            operation.body,
-            this.papers,
-          );
-        } else {
-          const invoke = learner[operation.kind] as (
-            operation: EngineOperation,
-          ) => Promise<EngineResult>;
-          response = await invoke(operation);
-        }
+        const invoke = learner[operation.kind] as (
+          operation: EngineOperation,
+        ) => Promise<EngineResult>;
+        response = await invoke(operation);
       } catch (error) {
         response = {
           status: 500,

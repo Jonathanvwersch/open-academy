@@ -150,6 +150,8 @@ Rules that apply to the whole plan:
 
 **Current activity.** The session shows a completed lesson that is not yet confirmed first. If none is waiting, it shows a final question that is waiting for Continue. Otherwise, it shows the active activity. A `?activity=` link opens another activity only when nothing is pinned.
 
+**Projects and papers.** A passing project check makes its concepts at least `assisted`. A project is complete only when all tests pass and every metric meets its threshold. Show a paper rubric only after the learner submits a summary. Submitting a summary completes the paper activity. **[Ours]**
+
 ## 9. Timed mixed quizzes (`quizzes/`)
 
 ### When the quiz appears

@@ -3321,7 +3321,7 @@ async function processActivity(
     const paperId = activity.paperId ?? activity.conceptId ?? '';
     if (paperId) runtime.report.papersRecorded.push({ day, courseId, paperId });
     if (paperId) {
-      await api.require({ kind: 'paperProgress', paperId: paperId, body: { lastPage: 1 } }, now);
+      await api.require({ kind: 'savePaperProgress', id: paperId, body: { lastPage: 1 } }, now);
     }
   } else {
     const mode = activity.kind === 'quick_check' ? 'assessment' : 'practice';

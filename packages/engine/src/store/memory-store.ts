@@ -16,6 +16,8 @@ import {
   type CourseProjectSubmission,
   type CourseStore,
   compareCompletedActivities,
+  type PaperProgressPatch,
+  type PaperProgressRecord,
 } from './course-store.js';
 import { collectTimedQuizItemKeys, type TimedQuizItem, type TimedQuizRun } from './flow-store.js';
 import type {
@@ -119,7 +121,12 @@ type StoreState = {
   learners: Map<string, LearnerState>;
   settings: Map<string, Settings>;
   hints: Map<string, readonly Hint[]>;
+  projectProgress: Map<
+    string,
+    Map<string, { status: CourseProjectProgress['status']; completedAt: Date | null }>
+  >;
   projectSubmissions: Map<string, readonly SeededProjectSubmission[]>;
+  paperProgress: Map<string, Map<string, PaperProgressRecord>>;
   revisions: Map<string, number>;
   schedulerProjections: Map<string, SeededProjections>;
 };
@@ -135,6 +142,7 @@ type IdCounters = {
   xpCount: number;
   sessionCount: number;
   activityCount: number;
+  projectSubmissionCount: number;
   lessonRunCount: number;
   lessonProblemCount: number;
   lessonQuizCount: number;
@@ -191,7 +199,9 @@ export function memoryStore(seed: MemorySeed = {}): MemoryLearnerStore {
       learners: new Map(),
       settings: structuredClone(new Map(seed.settings)),
       hints: structuredClone(new Map(seed.hints)),
+      projectProgress: new Map(),
       projectSubmissions: structuredClone(new Map(seed.projectSubmissions)),
+      paperProgress: new Map(),
       revisions: new Map(),
       schedulerProjections: structuredClone(new Map(seed.schedulerProjections)),
     },
@@ -206,6 +216,7 @@ export function memoryStore(seed: MemorySeed = {}): MemoryLearnerStore {
       xpCount: 0,
       sessionCount: 0,
       activityCount: 0,
+      projectSubmissionCount: 0,
       lessonRunCount: 0,
       lessonProblemCount: 0,
       lessonQuizCount: 0,
@@ -355,6 +366,27 @@ function scopedStore(
     });
   }
 
+  async function getPaperProgress(learnerId: string, paperId: string) {
+    assertOpen();
+    const saved = data.paperProgress.get(learnerId)?.get(paperId);
+    if (saved) return structuredClone(saved);
+    const projection = data.schedulerProjections
+      .get(learnerId)
+      ?.paperProgress.find((row) => row.paperId === paperId);
+    return projection
+      ? {
+          userId: learnerId,
+          paperId,
+          lastPage: 1,
+          notes: {},
+          summary: null,
+          summaryJudgement: null,
+          completedAt: structuredClone(projection.completedAt),
+          updatedAt: structuredClone(projection.completedAt ?? new Date(0)),
+        }
+      : undefined;
+  }
+
   return {
     async transaction(fn) {
       assertOpen();
@@ -402,6 +434,27 @@ function scopedStore(
           if (settings) data.settings.set(learnerId, settings);
           const hints = snapshot.hints.get(learnerId);
           if (hints) data.hints.set(learnerId, hints);
+          if (snapshot.projectProgress.has(learnerId)) {
+            data.projectProgress.set(
+              learnerId,
+              snapshot.projectProgress.get(learnerId) ?? new Map(),
+            );
+          }
+          if (snapshot.projectSubmissions.has(learnerId)) {
+            data.projectSubmissions.set(
+              learnerId,
+              snapshot.projectSubmissions.get(learnerId) ?? [],
+            );
+          }
+          if (snapshot.paperProgress.has(learnerId)) {
+            data.paperProgress.set(learnerId, snapshot.paperProgress.get(learnerId) ?? new Map());
+          }
+          if (snapshot.schedulerProjections.has(learnerId)) {
+            data.schedulerProjections.set(
+              learnerId,
+              snapshot.schedulerProjections.get(learnerId) ?? { paperProgress: [] },
+            );
+          }
           data.revisions.set(learnerId, snapshot.revisions.get(learnerId) ?? 0);
         }
         return result;
@@ -1390,22 +1443,87 @@ function scopedStore(
         ),
       );
     },
+    async setProjectProgress(learnerId, { projectId, status, completedAt }) {
+      assertOpen();
+      const progress = data.projectProgress.get(learnerId) ?? new Map();
+      progress.set(projectId, { status, completedAt: structuredClone(completedAt) });
+      data.projectProgress.set(learnerId, progress);
+      const projection = data.schedulerProjections.get(learnerId) ?? { paperProgress: [] };
+      data.schedulerProjections.set(learnerId, {
+        ...projection,
+        projectProgress: [
+          ...(projection.projectProgress ?? []).filter((row) => row.projectId !== projectId),
+          { projectId, status },
+        ].sort((left, right) => compare(left.projectId, right.projectId)),
+      });
+      markWrite(learnerId);
+    },
     async listProjectSubmissions(learnerId, query = {}) {
       assertOpen();
       return structuredClone(
         [...(data.projectSubmissions.get(learnerId) ?? [])]
           .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
-          .slice(0, query.limit)
-          .map(({ projectId, results, createdAt }) => ({ projectId, results, createdAt })),
+          .slice(0, query.limit),
       );
+    },
+    async addProjectSubmission(learnerId, submission) {
+      assertOpen();
+      const row = structuredClone({
+        ...submission,
+        id: `project-submission-${++ids.projectSubmissionCount}`,
+        userId: learnerId,
+      });
+      data.projectSubmissions.set(learnerId, [
+        row,
+        ...(data.projectSubmissions.get(learnerId) ?? []),
+      ]);
+      markWrite(learnerId);
+      return structuredClone(row);
     },
     async listPaperProgress(learnerId) {
       assertOpen();
-      return structuredClone(
-        [...(data.schedulerProjections.get(learnerId)?.paperProgress ?? [])].sort((a, b) =>
-          compare(a.paperId, b.paperId),
-        ),
+      const rows = new Map(
+        (data.schedulerProjections.get(learnerId)?.paperProgress ?? []).map((row) => [
+          row.paperId,
+          row,
+        ]),
       );
+      for (const row of data.paperProgress.get(learnerId)?.values() ?? []) {
+        rows.set(row.paperId, { paperId: row.paperId, completedAt: row.completedAt });
+      }
+      return structuredClone([...rows.values()].sort((a, b) => compare(a.paperId, b.paperId)));
+    },
+    getPaperProgress,
+    async savePaperProgress(learnerId, patch: PaperProgressPatch) {
+      assertOpen();
+      const rows = data.paperProgress.get(learnerId) ?? new Map();
+      const existing = await getPaperProgress(learnerId, patch.paperId);
+      const saved: PaperProgressRecord = structuredClone({
+        userId: learnerId,
+        paperId: patch.paperId,
+        lastPage: patch.lastPage ?? existing?.lastPage ?? 1,
+        notes: { ...(existing?.notes ?? {}), ...(patch.notes ?? {}) },
+        summary: patch.summary !== undefined ? patch.summary : (existing?.summary ?? null),
+        summaryJudgement:
+          patch.summaryJudgement !== undefined
+            ? patch.summaryJudgement
+            : (existing?.summaryJudgement ?? null),
+        completedAt:
+          patch.completedAt !== undefined ? patch.completedAt : (existing?.completedAt ?? null),
+        updatedAt: patch.updatedAt,
+      });
+      rows.set(patch.paperId, saved);
+      data.paperProgress.set(learnerId, rows);
+      const projection = data.schedulerProjections.get(learnerId) ?? { paperProgress: [] };
+      data.schedulerProjections.set(learnerId, {
+        ...projection,
+        paperProgress: [
+          ...(projection.paperProgress ?? []).filter((row) => row.paperId !== patch.paperId),
+          { paperId: patch.paperId, completedAt: saved.completedAt },
+        ].sort((left, right) => compare(left.paperId, right.paperId)),
+      });
+      markWrite(learnerId);
+      return structuredClone(saved);
     },
     async listCompletedActivities(learnerId, since) {
       assertOpen();

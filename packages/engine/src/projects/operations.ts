@@ -1,14 +1,14 @@
-import { serializeExercise } from '@open-academy/engine/course/serialize';
-import { initialMastery, masteryRank } from '@open-academy/engine/memory/types';
-import { and, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { masteryEvents, projectProgress, projectSubmissions } from '../../db/schema.js';
-import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
+import { serializeExercise } from '../course/serialize.js';
+import type { EngineRequest, EngineResult } from '../engine/types.js';
+import { respond } from '../engine/types.js';
+import { initialMastery, masteryRank } from '../memory/types.js';
 
 type ProjectVerifierResults = {
   tests: Array<{ id: string; passed: boolean; message: string }>;
   metrics: Record<string, number>;
 };
+
 function projectEvidenceSummary(
   project: {
     tests: Array<{ id: string }>;
@@ -68,40 +68,27 @@ function projectEvidenceSummary(
     evidence: `${passed}/${project.tests.length} checks passed${failures.length ? ` · ${failures.join(' ')}` : ''}`,
   };
 }
-export async function getProjects(deps: FeatureServices, _request: FeatureRequest) {
-  const { content } = deps;
-  const index = await content();
-  return serviceResult(index.projects.map((project) => ({ id: project.id, title: project.title })));
+
+export function projectsOperation(request: EngineRequest): EngineResult {
+  return respond(
+    request.content.projects.map((project) => ({ id: project.id, title: project.title })),
+  );
 }
 
-export async function getProjectsById(deps: FeatureServices, request: FeatureRequest) {
-  const { db, content } = deps;
-  const index = await content();
-  const project = index.projectsById.get(request.params.id);
-  if (!project) return serviceResult({ error: 'Project not found' }, 404);
-  const submissions = await db
-    .select()
-    .from(projectSubmissions)
-    .where(
-      and(
-        eq(projectSubmissions.userId, request.userId),
-        eq(projectSubmissions.projectId, project.id),
-      ),
-    )
-    .orderBy(desc(projectSubmissions.createdAt))
-    .limit(1);
-  const progress = await db
-    .select()
-    .from(projectProgress)
-    .where(
-      and(eq(projectProgress.userId, request.userId), eq(projectProgress.projectId, project.id)),
-    )
-    .limit(1);
-  const latestSubmission = submissions[0] ?? null;
+export async function projectOperation(request: EngineRequest, id: string): Promise<EngineResult> {
+  const project = request.content.projectsById.get(id);
+  if (!project) return respond({ error: 'Project not found' }, 404);
+  const latestSubmission =
+    (await request.store.listProjectSubmissions(request.userId)).find(
+      (submission) => submission.projectId === project.id,
+    ) ?? null;
+  const progress = (await request.store.listProjectProgress(request.userId)).find(
+    (row) => row.projectId === project.id,
+  );
   const evidence = latestSubmission
     ? projectEvidenceSummary(project, latestSubmission.results as ProjectVerifierResults).evidence
     : null;
-  return serviceResult({
+  return respond({
     project: {
       id: project.id,
       title: project.title,
@@ -113,21 +100,24 @@ export async function getProjectsById(deps: FeatureServices, request: FeatureReq
       status: project.status,
     },
     checksTotal: project.tests.length,
-    submitted: Boolean(submissions[0]),
+    submitted: Boolean(latestSubmission),
     latestSubmission,
     evidence,
     reflection: project.reflection
-      .map((id) => {
-        const exercise = index.exercisesById.get(id);
+      .map((exerciseId) => {
+        const exercise = request.content.exercisesById.get(exerciseId);
         return exercise ? serializeExercise(exercise, request.userId) : null;
       })
       .filter(Boolean),
-    status: progress[0]?.status ?? 'not_started',
+    status: progress?.status ?? 'not_started',
   });
 }
 
-export async function postProjectsByIdResults(deps: FeatureServices, request: FeatureRequest) {
-  const { db, content } = deps;
+export async function submitProjectResults(
+  request: EngineRequest,
+  id: string,
+  input: unknown,
+): Promise<EngineResult> {
   const body = z
     .object({
       project: z.string(),
@@ -139,12 +129,12 @@ export async function postProjectsByIdResults(deps: FeatureServices, request: Fe
       generated_at: z.string(),
     })
     .strict()
-    .safeParse(request.body);
-  if (!body.success) return serviceResult({ error: 'Invalid results JSON' }, 400);
-  const index = await content();
-  const project = index.projectsById.get(request.params.id);
-  if (!project || body.data.project !== project.id)
-    return serviceResult({ error: 'Project mismatch' }, 400);
+    .safeParse(input);
+  if (!body.success) return respond({ error: 'Invalid results JSON' }, 400);
+  const project = request.content.projectsById.get(id);
+  if (!project || body.data.project !== project.id) {
+    return respond({ error: 'Project mismatch' }, 400);
+  }
   const allowedTests = new Map(project.tests.map((test) => [test.id, test]));
   if (
     new Set(body.data.tests.map((test) => test.id)).size !== body.data.tests.length ||
@@ -153,55 +143,37 @@ export async function postProjectsByIdResults(deps: FeatureServices, request: Fe
       (metricId) => !project.metrics.some((metric) => metric.id === metricId),
     )
   ) {
-    return serviceResult({ error: 'Unknown verifier test or metric' }, 422);
+    return respond({ error: 'Unknown verifier test or metric' }, 422);
   }
   const verification = projectEvidenceSummary(project, body.data);
   const passed = body.data.tests.filter((test) => test.passed).length;
-  const [submission] = await db
-    .insert(projectSubmissions)
-    .values({
-      userId: request.userId,
-      projectId: project.id,
-      results: body.data,
-      passed,
-      total: body.data.tests.length,
-      metrics: body.data.metrics,
-    })
-    .returning();
-  await db
-    .insert(projectProgress)
-    .values({
-      userId: request.userId,
-      projectId: project.id,
-      status: verification.complete ? 'completed' : 'in_progress',
-      completedAt: verification.complete ? request.now() : null,
-    })
-    .onConflictDoUpdate({
-      target: [projectProgress.userId, projectProgress.projectId],
-      set: {
-        status: verification.complete ? 'completed' : 'in_progress',
-        completedAt: verification.complete ? request.now() : null,
-      },
-    });
+  const submission = await request.store.addProjectSubmission(request.userId, {
+    projectId: project.id,
+    results: body.data,
+    passed,
+    total: body.data.tests.length,
+    metrics: body.data.metrics,
+    createdAt: request.now(),
+  });
+  await request.store.setProjectProgress(request.userId, {
+    projectId: project.id,
+    status: verification.complete ? 'completed' : 'in_progress',
+    completedAt: verification.complete ? request.now() : null,
+  });
   for (const check of body.data.tests.filter((test) => test.passed)) {
     const spec = allowedTests.get(check.id);
     if (!spec) continue;
     for (const conceptId of spec.concepts) {
-      const existing = await request.repo.store.getMastery(
-        request.userId,
-        conceptId,
-        spec.dimension,
-      );
+      const existing = await request.store.getMastery(request.userId, conceptId, spec.dimension);
       const next = existing ?? initialMastery(conceptId, spec.dimension);
       if (masteryRank(next.state) < masteryRank('assisted')) {
-        await request.repo.store.saveMastery(request.userId, {
+        await request.store.saveMastery(request.userId, {
           ...next,
           state: 'assisted',
           inferred: false,
           lastAssessedAt: request.now().toISOString(),
         });
-        await db.insert(masteryEvents).values({
-          userId: request.userId,
+        await request.store.addMasteryEvent(request.userId, {
           conceptId,
           dimension: spec.dimension,
           fromState: next.state,
@@ -213,14 +185,14 @@ export async function postProjectsByIdResults(deps: FeatureServices, request: Fe
       }
     }
   }
-  return serviceResult(
+  return respond(
     {
       submission,
       status: verification.complete ? 'completed' : 'in_progress',
       evidence: verification.evidence,
       reflection: project.reflection
-        .map((id) => {
-          const exercise = index.exercisesById.get(id);
+        .map((exerciseId) => {
+          const exercise = request.content.exercisesById.get(exerciseId);
           return exercise ? serializeExercise(exercise, request.userId) : null;
         })
         .filter(Boolean),
