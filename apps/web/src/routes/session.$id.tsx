@@ -23,13 +23,8 @@ export const Route = createFileRoute('/session/$id')({
   loader: async ({ context, params, deps }) => {
     const session = await context.queryClient.ensureQueryData(sessionQueryOptions(params.id));
     const queryClient = context.queryClient;
-    const currentActivity = chosenActivity(session);
-    const requestedActivity = chosenActivity(session, deps.activity);
-    const activitiesToPrefetch = new Map<string, (typeof session.activities)[number]>();
-    for (const activity of [currentActivity, requestedActivity]) {
-      if (activity) activitiesToPrefetch.set(activity.id, activity);
-    }
-    const activities = [...activitiesToPrefetch.values()];
+    const activity = chosenActivity(session, deps.activity);
+    const activities = activity ? [activity] : [];
     const loadLessons = activities.map(async (activity) => {
       if (
         !['learn', 'practice', 'remediate', 'transfer'].includes(activity.kind) ||
