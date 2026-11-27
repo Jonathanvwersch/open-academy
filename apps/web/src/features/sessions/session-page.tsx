@@ -509,7 +509,7 @@ export function SessionPage() {
         );
         if (nextExerciseId) {
           const currentOutcome = currentResult?.outcome;
-          setShown({ activityId: activity.id, exerciseId: nextExerciseId });
+          setShown(null);
           queryClient.setQueryData(sessionQueryOptions(id).queryKey, (session) => {
             if (!session) return session;
             return {
@@ -518,6 +518,7 @@ export function SessionPage() {
                 item.id === activity.id
                   ? {
                       ...item,
+                      exerciseId: nextExerciseId,
                       progress: {
                         ...item.progress,
                         completedExerciseIds: [
