@@ -341,11 +341,17 @@ export function activityProgressOperation(
   });
 }
 
-export function continueActivityOperation(
+export async function continueActivityOperation(
   request: EngineRequest,
   sessionId: string,
   activityId: string,
+  input: unknown,
 ): Promise<EngineResult> {
+  const body = z
+    .object({ after: z.literal('final').optional() })
+    .strict()
+    .safeParse(input);
+  if (!body.success) return respond({ error: 'Invalid continue request' }, 400);
   return request.store.transaction(async (tx) => {
     const session = await tx.lockSession(request.userId, sessionId);
     const locked = session && { ...session, userId: request.userId };
@@ -363,31 +369,43 @@ export function continueActivityOperation(
       : [];
     const finalPending = Boolean(lesson?.final && !completedExerciseIds.includes(lesson.final));
     const run = await tx.getLessonRun(request.userId, { conceptId: activity.conceptId });
-    let body: Record<string, unknown>;
+    let progressBody: Record<string, unknown>;
 
-    if (
-      !progress.lessonRunnerContinued ||
-      (progress.finalQuestionContinued && !progress.quizContinued)
-    ) {
-      if (run?.status === 'completed' || (run?.status === 'quiz' && !finalPending)) {
-        body = {
-          lessonRunnerContinued: true,
-          finalQuestionContinued: true,
-          quizContinued: true,
-          complete: true,
-        };
-      } else if (run?.status === 'quiz' && finalPending) {
-        body = { lessonRunnerContinued: true };
+    if (body.data.after === 'final') {
+      if (!progress.finalQuestionContinued && !finalPending) {
+        progressBody = { finalQuestionContinued: true };
       } else {
         return respond({ error: 'Nothing to continue' }, 409);
       }
-    } else if (!progress.finalQuestionContinued && !finalPending) {
-      body = { finalQuestionContinued: true };
     } else {
-      return respond({ error: 'Nothing to continue' }, 409);
+      if (
+        !progress.lessonRunnerContinued ||
+        (progress.finalQuestionContinued && !progress.quizContinued)
+      ) {
+        if (run?.status === 'completed' || (run?.status === 'quiz' && !finalPending)) {
+          progressBody = {
+            lessonRunnerContinued: true,
+            finalQuestionContinued: true,
+            quizContinued: true,
+            complete: true,
+          };
+        } else if (run?.status === 'quiz' && finalPending) {
+          progressBody = { lessonRunnerContinued: true };
+        } else {
+          return respond({ error: 'Nothing to continue' }, 409);
+        }
+      } else {
+        return respond({ error: 'Nothing to continue' }, 409);
+      }
     }
 
-    return activityProgress({ ...request, store: tx, repo }, sessionId, activityId, body, locked);
+    return activityProgress(
+      { ...request, store: tx, repo },
+      sessionId,
+      activityId,
+      progressBody,
+      locked,
+    );
   });
 }
 

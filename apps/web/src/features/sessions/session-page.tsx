@@ -45,9 +45,15 @@ async function saveActivityProgress(
   if (!response?.ok) throw new Error('Your progress was not saved. Please try again.');
 }
 
-async function continueActivity(sessionId: string, activityId: string) {
+async function continueActivity(sessionId: string, activityId: string, body?: { after: 'final' }) {
   const response = await apiFetch(`/api/sessions/${sessionId}/activities/${activityId}/continue`, {
     method: 'POST',
+    ...(body
+      ? {
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        }
+      : {}),
   });
   if (response.status !== 200 && response.status !== 409)
     throw new Error('Could not continue. Please try again.');
@@ -539,7 +545,7 @@ export function SessionPage() {
         }
       }
       if (activity.kind === 'learn') {
-        const response = await continueActivity(id, activity.id);
+        const response = await continueActivity(id, activity.id, { after: 'final' });
         if (response.status === 200) {
           setShown(null);
           await queryClient.invalidateQueries({ queryKey: ['session', id] });

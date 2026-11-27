@@ -223,6 +223,7 @@ test('continueActivity advances lesson stages and completes eligible runs', asyn
     await finalStage.learner.continueActivity({
       sessionId: finalStage.session.id,
       activityId: finalStage.activity.id,
+      body: {},
     }),
   ).toMatchObject({ status: 200 });
   const [finalStageActivity] = await finalStage.store.listActivities(finalStage.learnerId, {
@@ -248,6 +249,7 @@ test('continueActivity advances lesson stages and completes eligible runs', asyn
       await completed.learner.continueActivity({
         sessionId: completed.session.id,
         activityId: activity.id,
+        body: {},
       }),
     ).toMatchObject({ status: 200 });
     expect(
@@ -272,13 +274,21 @@ test('continueActivity advances lesson stages and completes eligible runs', asyn
     await finalQuestion.learner.continueActivity({
       sessionId: finalQuestion.session.id,
       activityId: finalQuestion.activity.id,
+      body: { after: 'final' },
     }),
   ).toMatchObject({ status: 200 });
+  expect(
+    await finalQuestion.learner.continueActivity({
+      sessionId: finalQuestion.session.id,
+      activityId: finalQuestion.activity.id,
+      body: { after: 'final' },
+    }),
+  ).toMatchObject({ status: 409, body: { error: 'Nothing to continue' } });
   expect(
     await finalQuestion.store.listActivities(finalQuestion.learnerId, {
       ids: [finalQuestion.activity.id],
     }),
-  ).toMatchObject([{ progress: { finalQuestionContinued: true } }]);
+  ).toMatchObject([{ status: 'in_progress', progress: { finalQuestionContinued: true } }]);
 });
 
 test('continueActivity returns the specified 404 and 409 responses', async () => {
@@ -287,6 +297,7 @@ test('continueActivity returns the specified 404 and 409 responses', async () =>
     await missing.learner.continueActivity({
       sessionId: missing.session.id,
       activityId: 'missing',
+      body: {},
     }),
   ).toMatchObject({ status: 404, body: { error: 'Activity not found' } });
 
@@ -312,8 +323,20 @@ test('continueActivity returns the specified 404 and 409 responses', async () =>
       await fixture.learner.continueActivity({
         sessionId: fixture.session.id,
         activityId: fixture.activity.id,
+        body: {},
       }),
     ).toMatchObject({ status: 409, body: { error: 'Nothing to continue' } });
+  }
+
+  const fixture = await continueFixture({ runStatus: 'quiz' });
+  for (const body of [null, { after: 'quiz' }, { unknown: true }]) {
+    expect(
+      await fixture.learner.continueActivity({
+        sessionId: fixture.session.id,
+        activityId: fixture.activity.id,
+        body,
+      }),
+    ).toMatchObject({ status: 400, body: { error: 'Invalid continue request' } });
   }
 });
 

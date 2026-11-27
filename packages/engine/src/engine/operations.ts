@@ -245,7 +245,12 @@ export async function runEngineOperation(
         operation.body,
       );
     case 'continueActivity':
-      return continueActivityOperation(request, operation.sessionId, operation.activityId);
+      return continueActivityOperation(
+        request,
+        operation.sessionId,
+        operation.activityId,
+        operation.body,
+      );
     case 'replanSession':
       return replanSessionOperation(request, operation.sessionId, operation.body);
     case 'endSession': {
