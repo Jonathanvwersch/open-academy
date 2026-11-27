@@ -2,4 +2,4 @@
 
 ## 0.1.0
 
-- First release of the engine package.
+- Ships `createEngine`, `parseCourses`, the memory store, and the simulator.

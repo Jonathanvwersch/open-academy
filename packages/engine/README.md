@@ -16,14 +16,17 @@ Pass YAML text in a map keyed by POSIX paths relative to the pack root. See the 
 
 ## Use the engine
 
-`course-files.mjs` exports the YAML file map loaded by the host.
-
 ```js
-import { files } from './course-files.mjs';
+import { readdir, readFile } from 'node:fs/promises';
 import { parseCourses } from '@open-academy/engine/course/load';
 import { createEngine } from '@open-academy/engine/engine/create-engine';
 import { memoryStore } from '@open-academy/engine/store/memory-store';
 
+const paths = (await readdir('content', { recursive: true })).filter((p) => p.endsWith('.yaml'));
+const pairs = await Promise.all(
+  paths.map((p) => readFile(`content/${p}`, 'utf8').then((s) => [p, s])),
+);
+const files = Object.fromEntries(pairs);
 const content = parseCourses(files);
 
 const engine = createEngine({ content: async () => content, store: memoryStore() });

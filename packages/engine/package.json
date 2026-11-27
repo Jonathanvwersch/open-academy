@@ -32,58 +32,7 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      "./api/*": {
-        "types": "./dist/api/*.d.ts",
-        "import": "./dist/api/*.js"
-      },
-      "./course/*": {
-        "types": "./dist/course/*.d.ts",
-        "import": "./dist/course/*.js"
-      },
-      "./engine/*": {
-        "types": "./dist/engine/*.d.ts",
-        "import": "./dist/engine/*.js"
-      },
-      "./graph/*": {
-        "types": "./dist/graph/*.d.ts",
-        "import": "./dist/graph/*.js"
-      },
-      "./memory/*": {
-        "types": "./dist/memory/*.d.ts",
-        "import": "./dist/memory/*.js"
-      },
-      "./planner/*": {
-        "types": "./dist/planner/*.d.ts",
-        "import": "./dist/planner/*.js"
-      },
-      "./lessons/*": {
-        "types": "./dist/lessons/*.d.ts",
-        "import": "./dist/lessons/*.js"
-      },
-      "./lessons/grading/*": {
-        "types": "./dist/lessons/grading/*.d.ts",
-        "import": "./dist/lessons/grading/*.js"
-      },
-      "./placement/*": {
-        "types": "./dist/placement/*.d.ts",
-        "import": "./dist/placement/*.js"
-      },
-      "./progress/*": {
-        "types": "./dist/progress/*.d.ts",
-        "import": "./dist/progress/*.js"
-      },
-      "./store/*": {
-        "types": "./dist/store/*.d.ts",
-        "import": "./dist/store/*.js"
-      },
-      "./quizzes/*": {
-        "types": "./dist/quizzes/*.d.ts",
-        "import": "./dist/quizzes/*.js"
-      },
-      "./simulator/*": {
-        "types": "./dist/simulator/*.d.ts",
-        "import": "./dist/simulator/*.js"
-      }
+      "./*": "./dist/*.js"
     }
   },
   "dependencies": {

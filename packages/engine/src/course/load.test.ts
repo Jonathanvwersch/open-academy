@@ -1,25 +1,20 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { expect, it } from 'vitest';
 import { ContentValidationError, loadContentFromDirectory, parseCourses } from './load.js';
 
 async function readPackFiles(root: string): Promise<Record<string, string>> {
-  const files: Record<string, string> = {};
-
-  async function visit(directory: string): Promise<void> {
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const path = join(directory, entry.name);
-      if (entry.isDirectory()) {
-        await visit(path);
-      } else if (entry.isFile() && entry.name.endsWith('.yaml')) {
-        files[relative(root, path).replaceAll('\\', '/')] = await readFile(path, 'utf8');
-      }
-    }
-  }
-
-  await visit(root);
-  return files;
+  return Object.fromEntries(
+    await Promise.all(
+      (await readdir(root, { recursive: true }))
+        .filter((file) => file.endsWith('.yaml'))
+        .map(
+          async (file) =>
+            [file.replaceAll('\\', '/'), await readFile(join(root, file), 'utf8')] as const,
+        ),
+    ),
+  );
 }
 
 async function captureValidationError(
