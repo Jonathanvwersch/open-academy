@@ -51,6 +51,7 @@ import type { EngineLearnerRepository } from './repository.js';
 import {
   activeSession,
   activityProgressOperation,
+  continueActivityOperation,
   createSessionOperation,
   replanSessionOperation,
   sessionById,
@@ -238,6 +239,13 @@ export async function runEngineOperation(
       return sessionById(request, operation.sessionId);
     case 'activityProgress':
       return activityProgressOperation(
+        request,
+        operation.sessionId,
+        operation.activityId,
+        operation.body,
+      );
+    case 'continueActivity':
+      return continueActivityOperation(
         request,
         operation.sessionId,
         operation.activityId,

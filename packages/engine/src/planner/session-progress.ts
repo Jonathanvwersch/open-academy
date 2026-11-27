@@ -58,7 +58,8 @@ export async function updateSessionProgress(
       ? await reads.attemptedExerciseIdsByActivity([activity.id])
       : new Map<string, Set<string>>();
   const completed = input.complete === true;
-  const { complete: _complete, ...progress } = input;
+  const { complete: _complete, ...postedProgress } = input;
+  let progress = { ...(activity.progress ?? {}), ...postedProgress };
   const now = clock();
   if (completed && activity.kind === 'review') {
     const attemptedExerciseIds = attemptedByActivity.get(activity.id) ?? new Set<string>();
@@ -146,6 +147,7 @@ export async function updateSessionProgress(
       session = await reads.session(sessionId);
       activity = session?.activities.find((item) => item.id === activityId);
       if (!activity) return { kind: 'not_found' as const, body: { error: 'Activity not found' } };
+      progress = { ...(activity.progress ?? {}), ...postedProgress };
     }
   }
   const lessonIndex =

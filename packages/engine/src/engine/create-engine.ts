@@ -126,6 +126,7 @@ export function createEngine(options: CreateEngineOptions) {
         replanSession: (input) => call({ kind: 'replanSession', ...input }),
         endSession: (input) => call({ kind: 'endSession', ...input }),
         activityProgress: (input) => call({ kind: 'activityProgress', ...input }),
+        continueActivity: (input) => call({ kind: 'continueActivity', ...input }),
         startLessonRun: (input) => call({ kind: 'startLessonRun', ...input }),
         practiceLessonPoint: (input) => call({ kind: 'practiceLessonPoint', ...input }),
         answerLessonProblem: (input) => call({ kind: 'answerLessonProblem', ...input }),

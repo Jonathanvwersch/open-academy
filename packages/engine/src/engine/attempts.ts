@@ -79,6 +79,7 @@ export async function exerciseAttempt(
     },
     prepared,
     {
+      status: result.status,
       correct: result.correct,
       feedback: result.feedback,
       gradedBy: result.graded_by,

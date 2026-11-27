@@ -44,6 +44,7 @@ export interface SessionActivity {
   allReviewTopics?: Array<{ conceptId: string; title: string }>;
   projectId?: string | null;
   exerciseIds: string[];
+  exerciseId?: string;
   plannedMinutes: number;
   status: string;
   lessonAvailable?: boolean;
@@ -53,6 +54,7 @@ export interface SessionActivity {
     exerciseId?: string;
     status?: string;
     correct?: number;
+    outcome?: 'correct' | 'incorrect';
     attemptNo?: number;
     followUp?: boolean;
     retryAllowed?: boolean;

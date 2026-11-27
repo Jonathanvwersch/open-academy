@@ -32,6 +32,7 @@ export interface AttemptResponse extends Record<string, unknown> {
   attemptId?: string;
   attemptNo?: number;
   correct?: number;
+  outcome?: 'correct' | 'incorrect';
   feedback?: string;
   followUp?: boolean;
   rubric?: RubricFeedbackItem[];

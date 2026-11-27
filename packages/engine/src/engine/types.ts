@@ -39,6 +39,7 @@ export type EngineOperation =
   | { kind: 'session'; sessionId: string }
   | { kind: 'replanSession'; sessionId: string; body?: Record<string, unknown> }
   | { kind: 'endSession'; sessionId: string }
+  | { kind: 'continueActivity'; sessionId: string; activityId: string; body: unknown }
   | {
       kind: 'activityProgress';
       sessionId: string;

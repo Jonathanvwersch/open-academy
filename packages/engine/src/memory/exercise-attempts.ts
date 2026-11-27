@@ -129,6 +129,7 @@ type PreparedExercise = Extract<
   { kind: 'ready' }
 >;
 type GradedAnswer = {
+  status?: 'graded' | 'invalid' | 'self_check_required';
   correct: number;
   feedback: string;
   gradedBy?: GradedBy;
@@ -365,6 +366,9 @@ export async function recordExerciseAttempt(
     attemptNo,
     hintsUsed,
     credit,
+    ...(grade.status !== 'invalid' && grade.status !== 'self_check_required'
+      ? { outcome: grade.correct > 0 ? 'correct' : 'incorrect' }
+      : {}),
     mastery: masteryResult,
     retryAllowed,
     activityCompleted,

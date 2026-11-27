@@ -67,6 +67,27 @@ test('a completed final question keeps priority over the next planned lesson', (
   });
 });
 
+test('session activities expose the next incomplete or completed final exercise', () => {
+  const current = activity('current', {
+    kind: 'practice',
+    status: 'in_progress',
+    exerciseIds: ['done', 'next'],
+    progress: { completedExerciseIds: ['done'] },
+  });
+  const final = activity('final', {
+    exerciseIds: ['final', 'later'],
+    status: 'completed',
+    progress: { lessonRunnerContinued: true, completedExerciseIds: ['final'] },
+  });
+  const result = currentActivity([current, final], noRuns, content);
+
+  expect(result.activities).toMatchObject([
+    { id: 'current', exerciseId: 'next' },
+    { id: 'final', exerciseId: 'final' },
+  ]);
+  expect(result.current.completedFinalId).toBe('final');
+});
+
 test('completed deep links stay openable without changing the current activity', () => {
   const prior = activity('prior', { kind: 'practice', status: 'completed' });
   const current = activity('current');

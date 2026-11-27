@@ -112,6 +112,12 @@ export function httpRequestFor(operation: SimulatorOperation): SimulatorHttpRequ
         path: `/sessions/${operation.sessionId}/activities/${operation.activityId}/progress`,
         body: operation.body,
       };
+    case 'continueActivity':
+      return {
+        method: 'POST',
+        path: `/sessions/${operation.sessionId}/activities/${operation.activityId}/continue`,
+        ...(operation.body === undefined ? {} : { body: operation.body }),
+      };
     case 'startLessonRun':
       return { method: 'POST', path: `/lessons/${operation.conceptId}/run`, body: operation.body };
     case 'practiceLessonPoint':
