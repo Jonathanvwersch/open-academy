@@ -77,7 +77,13 @@ export function parseCourses(
   files: Record<string, string>,
   { validate = true }: { validate?: boolean } = {},
 ): ContentIndex {
-  return buildContentIndex(parseContentData(files, { validate }));
+  const normalizedFiles = Object.fromEntries(
+    Object.entries(files).map(([key, value]) => [
+      posix.normalize(key.replaceAll('\\', '/')),
+      value,
+    ]),
+  );
+  return buildContentIndex(parseContentData(normalizedFiles, { validate }));
 }
 
 function parseContentData(

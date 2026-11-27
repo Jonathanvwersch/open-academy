@@ -36,6 +36,14 @@ it('parses the same content as the directory loader', async () => {
   );
 });
 
+it('normalizes ./-prefixed paths', async () => {
+  const files = await readPackFiles(resolve('tests/fixtures/content'));
+  const prefixedFiles = Object.fromEntries(
+    Object.entries(files).map(([path, source]) => [`./${path}`, source]),
+  );
+  expect(parseCourses(prefixedFiles)).toEqual(parseCourses(files));
+});
+
 it('reports the same invalid file as the directory loader', async () => {
   const directory = resolve('tests/fixtures/content');
   const files = await readPackFiles(directory);
