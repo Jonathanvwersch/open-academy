@@ -35,7 +35,7 @@ function parseProfiles(
   defaultProfiles: readonly SimulationProfile[],
 ): SimulationProfile[] {
   if (!value) return [...defaultProfiles];
-  if (value === 'all') return [...simulationProfiles];
+  if (value === 'all') return [...defaultProfiles];
   const requested = value.split(',').map((profile) => profile.trim());
   const invalid = requested.filter(
     (profile) => !simulationProfiles.includes(profile as SimulationProfile),

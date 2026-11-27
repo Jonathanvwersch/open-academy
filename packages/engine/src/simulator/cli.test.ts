@@ -8,20 +8,44 @@ import { scriptedScenarioProfiles } from './simulator.js';
 
 const contentDir = fileURLToPath(new URL('../../../../tests/fixtures/content', import.meta.url));
 
-test('defaults omit scripted scenarios without repository fixtures', async () => {
+test('defaults and all omit scripted scenarios without repository fixtures', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'academy-simulator-cli-'));
+  try {
+    for (const selection of [undefined, 'all']) {
+      const out = join(directory, selection ?? 'default');
+      await runSimulateCli(
+        [...(selection ? ['--profiles', selection] : []), '--days', '1', '--out', out],
+        {
+          contentDir,
+          drivers: {},
+          scenarioContentDir: join(directory, 'missing-fixtures'),
+        },
+      );
+      const report = JSON.parse(await readFile(join(out, 'report.json'), 'utf8')) as {
+        profiles: Array<{ profile: string }>;
+      };
+      const profiles = new Set(report.profiles.map(({ profile }) => profile));
+      expect(scriptedScenarioProfiles.some((profile) => profiles.has(profile))).toBe(false);
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}, 60_000);
+
+test('all includes scripted scenarios when repository fixtures exist', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'academy-simulator-cli-'));
   try {
     const out = join(directory, 'out');
-    await runSimulateCli(['--days', '1', '--out', out], {
+    await runSimulateCli(['--profiles', 'all', '--days', '1', '--out', out], {
       contentDir,
       drivers: {},
-      scenarioContentDir: join(directory, 'missing-fixtures'),
+      scenarioContentDir: contentDir,
     });
     const report = JSON.parse(await readFile(join(out, 'report.json'), 'utf8')) as {
       profiles: Array<{ profile: string }>;
     };
     const profiles = new Set(report.profiles.map(({ profile }) => profile));
-    expect(scriptedScenarioProfiles.some((profile) => profiles.has(profile))).toBe(false);
+    expect(scriptedScenarioProfiles.every((profile) => profiles.has(profile))).toBe(true);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
