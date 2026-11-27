@@ -170,6 +170,40 @@ export async function sessionById(request: EngineRequest, sessionId: string) {
   });
 }
 
+export async function activeSession(request: EngineRequest) {
+  const now = request.now();
+  const session = await request.repo.activeSession(now);
+  const fullSession = session ? await request.repo.session(session.id, session) : null;
+  const activities =
+    fullSession?.activities.filter((activity) =>
+      sessionActivityIsInContent(request.content, activity),
+    ) ?? [];
+  const reviewIds = activities
+    .filter((activity) => activity.kind === 'review' && activity.status === 'in_progress')
+    .map((activity) => activity.id);
+  const attemptedByActivity = await request.repo.attemptedExerciseIdsByActivity(reviewIds);
+  return respond(
+    fullSession && activities.length
+      ? {
+          ...fullSession,
+          activities: activities.map((activity) =>
+            withReviewTopics(
+              {
+                ...activity,
+                conceptTitle: activity.conceptId
+                  ? request.content.conceptsById.get(activity.conceptId)?.title
+                  : undefined,
+              },
+              request.content,
+              attemptedByActivity.get(activity.id),
+            ),
+          ),
+          serverNow: now,
+        }
+      : null,
+  );
+}
+
 type LockedSession = Parameters<typeof updateSessionProgress>[8] extends {
   session: (id: string) => Promise<infer S>;
 }

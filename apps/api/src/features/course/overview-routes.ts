@@ -1,18 +1,21 @@
-import type { Hono } from 'hono';
+import type { EngineResult } from '@open-academy/engine/engine/create-engine';
+import type { Context, Hono } from 'hono';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
-import { featureRequest } from '../../http/feature-service.js';
-import { getConceptsById, getPlanWeek, getStudyMap } from './overview-service.js';
+
+const send = (context: Context<ApiEnv>, result: EngineResult) =>
+  context.json(result.body, result.status);
+
 export function registerCourseRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
   api.get('/study-map', async (context) => {
-    const response = await getStudyMap(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    return send(context, await deps.learner(context).studyMap());
   });
   api.get('/concepts/:id', async (context) => {
-    const response = await getConceptsById(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    return send(
+      context,
+      await deps.learner(context).concept({ conceptId: context.req.param('id') }),
+    );
   });
   api.get('/plan/week', async (context) => {
-    const response = await getPlanWeek(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    return send(context, await deps.learner(context).planWeek());
   });
 }

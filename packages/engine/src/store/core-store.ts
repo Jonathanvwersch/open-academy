@@ -61,6 +61,17 @@ export type XpQuery = {
   sourceKey?: string;
 };
 
+export type HintEventInput = {
+  activityId: Id | null;
+  exerciseId: Id;
+  level: number;
+  source: 'authored' | 'llm';
+  text: string;
+  createdAt: Date;
+};
+
+export type HintEventReceipt = { id: Id };
+
 export type Settings = {
   activeCourseId: Id | null;
   studySetInitializedAt: Date | null;
@@ -102,6 +113,7 @@ export interface CoreStore extends LearnerStore {
     attempts: Pick<Attempt, 'activityId' | 'createdAt'>[];
     hints: { activityId: Id | null; createdAt: Date; level: number }[];
   }>;
+  insertHintEvent(learnerId: Id, event: HintEventInput): Promise<HintEventReceipt>;
   listXpEvents(learnerId: Id, query: XpQuery): Promise<XpEvent[]>;
   insertXpEventOnce(learnerId: Id, event: NewRow<XpEvent>): Promise<boolean>;
   getSettings(learnerId: Id): Promise<Settings | undefined>;

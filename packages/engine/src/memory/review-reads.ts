@@ -1,52 +1,55 @@
-import { orderCourseIdsBySubject } from '@open-academy/engine/course/course-order';
-import { courseConceptIds, courseFoundationIds } from '@open-academy/engine/graph/prerequisites';
-import { isDueToday } from '@open-academy/engine/memory/fsrs';
-import { localDateKey } from '@open-academy/engine/progress/xp';
-import { and, asc, eq, isNull } from 'drizzle-orm';
-import { reviewCards } from '../../db/schema.js';
-import { localDateDifference, shiftLocalDate } from '../../http/request-context.js';
-import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
+import type { ReviewsPayload } from '../api/reviews.js';
+import { orderCourseIdsBySubject } from '../course/course-order.js';
+import type { ContentIndex } from '../course/types.js';
+import { courseConceptIds, courseFoundationIds } from '../graph/prerequisites.js';
+import { localDateDifference, localDateKey, shiftLocalDate } from '../progress/xp.js';
+import type { CourseStore } from '../store/course-store.js';
+import { isDueToday } from './fsrs.js';
 
-export async function getReviews(deps: FeatureServices, request: FeatureRequest) {
-  const { db, content } = deps;
-  const index = await content();
-  const now = request.now();
-  const timeZone = request.timeZone;
+export async function readReviews(
+  store: CourseStore,
+  input: {
+    userId: string;
+    content: ContentIndex;
+    now: Date;
+    timeZone: string;
+    studyCourseIds: readonly string[];
+    activeCourseId: () => Promise<string | null>;
+  },
+): Promise<ReviewsPayload> {
+  const { userId, content, now, timeZone, studyCourseIds: courseIds } = input;
   const localToday = localDateKey(now, timeZone);
-  const studyCourseIds = orderCourseIdsBySubject(index, await request.repo.studyCourseIds(index));
   const [cards, activeCourseId] = await Promise.all([
-    db
-      .select()
-      .from(reviewCards)
-      .where(and(eq(reviewCards.userId, request.userId), isNull(reviewCards.suspendedAt)))
-      .orderBy(asc(reviewCards.dueAt)),
-    request.repo.activeCourseId(),
+    store.listReviewCards(userId, undefined, { activeOnly: true }),
+    input.activeCourseId(),
   ]);
-  const activeCourse = index.coursesById.get(activeCourseId ?? '');
+  const studyCourseIds = orderCourseIdsBySubject(content, courseIds);
+  cards.sort((left, right) => left.dueAt.getTime() - right.dueAt.getTime());
+  const activeCourse = content.coursesById.get(activeCourseId ?? '');
   const preferredCourseIds = [
     ...studyCourseIds,
     ...(activeCourse ? [activeCourse.id] : []),
-    ...orderCourseIdsBySubject(index),
+    ...orderCourseIdsBySubject(content),
   ];
   const courseTopicSets = new Map(
     preferredCourseIds.map((courseId) => {
-      const course = index.coursesById.get(courseId);
+      const course = content.coursesById.get(courseId);
       return [
         courseId,
-        new Set([...courseConceptIds(course), ...courseFoundationIds(index, courseId)]),
+        new Set([...courseConceptIds(course), ...courseFoundationIds(content, courseId)]),
       ] as const;
     }),
   );
   const cardsByConcept = new Map<string, typeof cards>();
   for (const card of cards) {
-    if (!index.conceptsById.has(card.conceptId)) continue;
+    if (!content.conceptsById.has(card.conceptId)) continue;
     const rows = cardsByConcept.get(card.conceptId) ?? [];
     rows.push(card);
     cardsByConcept.set(card.conceptId, rows);
   }
   const topics = [...cardsByConcept]
     .flatMap(([conceptId, conceptCards]) => {
-      const concept = index.conceptsById.get(conceptId);
+      const concept = content.conceptsById.get(conceptId);
       if (!concept || concept.status === 'stub') return [];
       const firstCard = conceptCards[0];
       if (!firstCard) return [];
@@ -54,7 +57,7 @@ export async function getReviews(deps: FeatureServices, request: FeatureRequest)
       const courseId = preferredCourseIds.find((candidateId) =>
         courseTopicSets.get(candidateId)?.has(conceptId),
       );
-      const course = courseId ? index.coursesById.get(courseId) : undefined;
+      const course = courseId ? content.coursesById.get(courseId) : undefined;
       const kinds = [...new Set(conceptCards.map((card) => card.dimension))].sort(
         (left, right) =>
           ['conceptual', 'math', 'implementation', 'transfer'].indexOf(left) -
@@ -86,9 +89,9 @@ export async function getReviews(deps: FeatureServices, request: FeatureRequest)
     const date = localDateKey(new Date(topic.dueAt), timeZone);
     if (upcomingCounts.has(date)) upcomingCounts.set(date, (upcomingCounts.get(date) ?? 0) + 1);
   }
-  return serviceResult({
+  return {
     dueNow: topics.filter((topic) => topic.due).length,
     upcoming: upcomingDates.map((date) => ({ date, count: upcomingCounts.get(date) ?? 0 })),
     topics,
-  });
+  };
 }

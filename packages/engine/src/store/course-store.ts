@@ -8,6 +8,7 @@ export type CourseProjectProgress = {
   projectId: Id;
   status: 'not_started' | 'in_progress' | 'completed';
 };
+export type CourseProjectSubmission = { projectId: Id; results: unknown; createdAt: Date };
 export type CoursePaperProgress = { paperId: Id; completedAt: Date | null };
 export type CourseMasteryEvent = Pick<
   MasteryEventRecord,
@@ -16,6 +17,10 @@ export type CourseMasteryEvent = Pick<
 
 export interface CourseStore extends FlowStore {
   listProjectProgress(learnerId: Id): Promise<CourseProjectProgress[]>;
+  listProjectSubmissions(
+    learnerId: Id,
+    query?: { limit?: number },
+  ): Promise<CourseProjectSubmission[]>;
   listPaperProgress(learnerId: Id): Promise<CoursePaperProgress[]>;
   listCompletedActivities(learnerId: Id, since: Date): Promise<Activity[]>;
   listActivityAttemptKeys(

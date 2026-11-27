@@ -1,5 +1,4 @@
 import type { ContentIndex } from '@open-academy/engine/course/types';
-import type { EngineGrade, EngineHasTutorReply } from '@open-academy/engine/engine/create-engine';
 import { EngineLearnerRepository, type EngineUser } from '@open-academy/engine/engine/repository';
 import { localDateKey } from '@open-academy/engine/progress/xp';
 import { asc, eq } from 'drizzle-orm';
@@ -31,7 +30,7 @@ import {
 import { registerTutorThreadRoutes } from '../features/tutor/routes.js';
 import { TutorService } from '../features/tutor/service.js';
 import { fsrsFuzzEnabled } from '../learning/fsrs-fuzz.js';
-import type { ApiEnv } from './context.js';
+import type { ApiEnv, LearnerOptions } from './context.js';
 import { createApiEngine } from './engine.js';
 import { isValidTimeZone, requestNow } from './request-context.js';
 export function createApiRoutes(deps: {
@@ -105,8 +104,7 @@ export function createApiRoutes(deps: {
   const engine = createApiEngine({ db, content, tutorEnabled: tutorProvider !== null });
   const learner = (
     context: Context<ApiEnv>,
-    grade?: EngineGrade,
-    hasTutorReply?: EngineHasTutorReply,
+    { grade, hasTutorReply, generateHint }: LearnerOptions = {},
   ) =>
     engine.learner({
       id: context.get('userId'),
@@ -122,6 +120,7 @@ export function createApiRoutes(deps: {
       },
       ...(grade ? { grade } : {}),
       ...(hasTutorReply ? { hasTutorReply } : {}),
+      ...(generateHint ? { generateHint } : {}),
     });
   const services = { db, content, withRepo, tutor, requestNow, learner, tutorProvider };
   registerLessonRunRoutes(api, {

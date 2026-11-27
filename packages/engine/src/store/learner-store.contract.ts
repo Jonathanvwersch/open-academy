@@ -220,6 +220,30 @@ export function describeLearnerStoreContract(
       expect(await store.listPaperProgress(otherLearnerId)).toEqual([]);
     });
 
+    it('reads recent project submissions in descending time with limits and ownership', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore({ seedCourseProgress: true });
+      expect(await store.listProjectSubmissions(learnerId)).toEqual([
+        {
+          projectId: 'a',
+          results: { tests: [{ id: 'newer', passed: true }] },
+          createdAt: later,
+        },
+        {
+          projectId: 'z',
+          results: { tests: [{ id: 'older', passed: false }] },
+          createdAt: date,
+        },
+      ]);
+      expect(await store.listProjectSubmissions(learnerId, { limit: 1 })).toEqual([
+        {
+          projectId: 'a',
+          results: { tests: [{ id: 'newer', passed: true }] },
+          createdAt: later,
+        },
+      ]);
+      expect(await store.listProjectSubmissions(otherLearnerId)).toEqual([]);
+    });
+
     it('orders tied course activity and lesson evidence by semantic keys', async () => {
       const { store, learnerId, otherLearnerId } = await makeStore();
       for (const [owner, topic] of [
@@ -282,6 +306,38 @@ export function describeLearnerStoreContract(
         (await store.listCourseMasteryEvents(learnerId, ['vectors'])).map(({ toState }) => toState),
       ).toEqual(['assisted', 'independent']);
       expect(await store.listCourseMasteryEvents(learnerId, [])).toEqual([]);
+      await store.addMasteryEvent(learnerId, {
+        conceptId: 'algebra',
+        dimension: 'math',
+        fromState: 'not_assessed',
+        toState: 'independent',
+        createdAt: date,
+        rule: 'test',
+        attemptId: null,
+      });
+      await store.addMasteryEvent(learnerId, {
+        conceptId: 'algebra',
+        dimension: 'math',
+        fromState: 'not_assessed',
+        toState: 'assisted',
+        createdAt: later,
+        rule: 'test',
+        attemptId: null,
+      });
+      const latest = await store.listMasteryEvents(learnerId, {
+        conceptId: 'algebra',
+        limit: 1,
+      });
+      expect(latest).toHaveLength(1);
+      expect(latest[0]).toMatchObject({
+        userId: learnerId,
+        conceptId: 'algebra',
+        toState: 'assisted',
+        id: expect.any(String),
+      });
+      expect(await store.listMasteryEvents(otherLearnerId, { conceptId: 'vectors' })).toEqual([
+        expect.objectContaining({ userId: otherLearnerId, toState: 'assisted' }),
+      ]);
     });
 
     it('filters timed quiz runs by ownership and sorts originals by finalize, start and seed', async () => {
@@ -1258,6 +1314,28 @@ export function describeLearnerStoreContract(
       expect(
         count(await store.readHintEvidence(learnerId, exerciseId, activityId), activityId),
       ).toBe(5);
+    });
+
+    it('inserts learner-scoped hint events and includes them in hint evidence', async () => {
+      const { store, learnerId, otherLearnerId } = await makeStore();
+      const hintExerciseId = 'hint-insert-test';
+      const inserted = await store.insertHintEvent(learnerId, {
+        activityId: null,
+        exerciseId: hintExerciseId,
+        level: 2,
+        source: 'llm',
+        text: 'Try a smaller case.',
+        createdAt: date,
+      });
+      expect(inserted.id).toEqual(expect.any(String));
+      expect(await store.readHintEvidence(learnerId, hintExerciseId)).toEqual({
+        attempts: [],
+        hints: [{ activityId: null, createdAt: date, level: 2 }],
+      });
+      expect(await store.readHintEvidence(otherLearnerId, hintExerciseId)).toEqual({
+        attempts: [],
+        hints: [],
+      });
     });
 
     it('clears hint activity links on deletion and preserves them on rollback', async () => {

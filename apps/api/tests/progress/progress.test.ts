@@ -1,10 +1,9 @@
 import { subjectForCourse } from '@open-academy/engine/course/index';
 import type { ContentIndex } from '@open-academy/engine/course/types';
 import { initialMastery } from '@open-academy/engine/memory/types';
-import { buildProgress } from '@open-academy/engine/progress/progress';
+import { buildProgress, buildProgressSubjects } from '@open-academy/engine/progress/progress';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { loadContent } from '../../src/content/load.js';
-import { buildProgressSubjects } from '../../src/features/progress/service.js';
 
 let content: ContentIndex;
 

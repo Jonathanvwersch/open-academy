@@ -1,5 +1,6 @@
 import type { ContentIndex } from '@open-academy/engine/course/types';
 import type {
+  EngineGenerateHint,
   EngineGrade,
   EngineHasTutorReply,
   EngineLearner,
@@ -13,6 +14,11 @@ import type { TutorService } from '../features/tutor/service.js';
 export type ApiEnv = {
   Variables: { userId: string; timeZone: string; user: typeof users.$inferSelect };
 };
+export type LearnerOptions = {
+  grade?: EngineGrade;
+  hasTutorReply?: EngineHasTutorReply;
+  generateHint?: EngineGenerateHint;
+};
 export interface ApiServices {
   db: Database;
   tutorProvider: TutorProvider | null;
@@ -20,9 +26,5 @@ export interface ApiServices {
   withRepo: (context: Context<ApiEnv>) => EngineLearnerRepository;
   tutor: (context: Context<ApiEnv>) => TutorService | null;
   requestNow: (context: Context<ApiEnv>) => Date;
-  learner: (
-    context: Context<ApiEnv>,
-    grade?: EngineGrade,
-    hasTutorReply?: EngineHasTutorReply,
-  ) => EngineLearner;
+  learner: (context: Context<ApiEnv>, options?: LearnerOptions) => EngineLearner;
 }

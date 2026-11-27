@@ -53,6 +53,7 @@ import {
   paperProgress,
   placementGrants,
   projectProgress,
+  projectSubmissions,
   quizItems,
   quizRuns,
   remediationFlags,
@@ -117,31 +118,6 @@ function mapReviewCard(row: typeof reviewCards.$inferSelect): StoredReviewCard {
 function mapDiagnosticRun(row: Omit<typeof diagnosticRuns.$inferSelect, 'userId'>): DiagnosticRun {
   const courseId = (row.state as { courseId?: unknown } | null)?.courseId;
   return { ...row, courseId: typeof courseId === 'string' ? courseId : null };
-}
-
-export async function readPassedLessonQuizItems(
-  db: Database,
-  learnerId: string,
-  conceptId: string,
-  attemptId: string,
-) {
-  const rows = await db
-    .select({ item: lessonQuizItems })
-    .from(lessonQuizAttempts)
-    .innerJoin(lessonRuns, eq(lessonRuns.id, lessonQuizAttempts.runId))
-    .leftJoin(lessonQuizItems, eq(lessonQuizItems.quizAttemptId, lessonQuizAttempts.id))
-    .where(
-      and(
-        eq(lessonQuizAttempts.id, attemptId),
-        eq(lessonRuns.userId, learnerId),
-        eq(lessonRuns.conceptId, conceptId),
-        isNotNull(lessonQuizAttempts.submittedAt),
-        eq(lessonQuizAttempts.passed, true),
-      ),
-    )
-    .orderBy(lessonQuizItems.position, lessonQuizItems.id);
-  if (rows.length === 0) return;
-  return rows.flatMap(({ item }) => (item ? [item] : []));
 }
 
 export function drizzleLearnerStore(
@@ -327,6 +303,14 @@ export function drizzleLearnerStore(
       ]);
       return { attempts: attemptRows, hints };
     },
+    async insertHintEvent(learnerId, event) {
+      const [row] = await db
+        .insert(hintEvents)
+        .values({ ...event, userId: learnerId })
+        .returning({ id: hintEvents.id });
+      if (!row) throw new Error('Unable to insert hint event');
+      return row;
+    },
     async listXpEvents(learnerId, query) {
       return db
         .select(xpFields)
@@ -508,6 +492,22 @@ export function drizzleLearnerStore(
     },
     async addMasteryEvent(learnerId, event) {
       await db.insert(masteryEvents).values({ ...event, userId: learnerId });
+    },
+    async listMasteryEvents(learnerId, query = {}) {
+      const rows = db
+        .select()
+        .from(masteryEvents)
+        .where(
+          and(
+            eq(masteryEvents.userId, learnerId),
+            query.conceptId === undefined
+              ? undefined
+              : eq(masteryEvents.conceptId, query.conceptId),
+          ),
+        )
+        .orderBy(desc(masteryEvents.createdAt));
+      const result = query.limit === undefined ? await rows : await rows.limit(query.limit);
+      return result.map((row) => ({ ...row, dimension: row.dimension as Dimension }));
     },
     async listTopicSpeedEvidence(learnerId, conceptIds) {
       const rows = await db
@@ -929,6 +929,18 @@ export function drizzleLearnerStore(
         .from(projectProgress)
         .where(eq(projectProgress.userId, learnerId))
         .orderBy(projectProgress.projectId);
+    },
+    async listProjectSubmissions(learnerId, query = {}) {
+      const rows = db
+        .select({
+          projectId: projectSubmissions.projectId,
+          results: projectSubmissions.results,
+          createdAt: projectSubmissions.createdAt,
+        })
+        .from(projectSubmissions)
+        .where(eq(projectSubmissions.userId, learnerId))
+        .orderBy(desc(projectSubmissions.createdAt));
+      return query.limit === undefined ? rows : rows.limit(query.limit);
     },
     async listPaperProgress(learnerId) {
       return db

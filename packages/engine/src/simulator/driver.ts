@@ -21,6 +21,39 @@ export function httpRequestFor(operation: SimulatorOperation): SimulatorHttpRequ
   switch (operation.kind) {
     case 'today':
       return { method: 'GET', path: '/today' };
+    case 'progress':
+      return { method: 'GET', path: '/progress' };
+    case 'reviews':
+      return { method: 'GET', path: '/reviews' };
+    case 'studyMap':
+      return { method: 'GET', path: '/study-map' };
+    case 'concept':
+      return { method: 'GET', path: `/concepts/${encodeURIComponent(operation.conceptId)}` };
+    case 'planWeek':
+      return { method: 'GET', path: '/plan/week' };
+    case 'lesson':
+      return { method: 'GET', path: `/lessons/${encodeURIComponent(operation.conceptId)}` };
+    case 'lessonReview':
+      return {
+        method: 'GET',
+        path: `/lessons/${encodeURIComponent(operation.conceptId)}/review`,
+      };
+    case 'exercise':
+      return { method: 'GET', path: `/exercises/${encodeURIComponent(operation.id)}` };
+    case 'hint':
+      return { method: 'POST', path: '/hints', body: operation.body };
+    case 'activeSession':
+      return { method: 'GET', path: '/sessions/active' };
+    case 'lessonRun':
+      return {
+        method: 'GET',
+        path: `/lessons/${encodeURIComponent(operation.conceptId)}/run${operation.activityId === undefined ? '' : `?activityId=${encodeURIComponent(operation.activityId)}`}`,
+      };
+    case 'lessonQuizReview':
+      return {
+        method: 'GET',
+        path: `/lessons/${encodeURIComponent(operation.conceptId)}/quiz/${encodeURIComponent(operation.attemptId)}/review`,
+      };
     case 'learn':
       return { method: 'GET', path: '/learn' };
     case 'courseCatalog':
