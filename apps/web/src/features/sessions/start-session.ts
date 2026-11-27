@@ -1,4 +1,4 @@
-import type { TodayPayload } from '@academy/contracts/sessions';
+import type { TodayPayload } from '@academy/aesop/api/sessions';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { apiFetch } from '../../api/authenticated-fetch.js';

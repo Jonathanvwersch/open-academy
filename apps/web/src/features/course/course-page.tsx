@@ -1,4 +1,4 @@
-import type { CourseQueueStatus, CourseTopic } from '@academy/contracts/course';
+import type { CourseQueueStatus, CourseTopic } from '@academy/aesop/api/course';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, FileText, Wrench } from 'lucide-react';

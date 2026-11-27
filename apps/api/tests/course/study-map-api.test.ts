@@ -1,5 +1,5 @@
+import type { CourseDetailPayload, StudyMapPayload } from '@academy/aesop/api/course';
 import type { ContentIndex } from '@academy/aesop/course/types';
-import type { CourseDetailPayload, StudyMapPayload } from '@academy/contracts/course';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';

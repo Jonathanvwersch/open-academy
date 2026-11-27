@@ -1,4 +1,4 @@
-import type { CoursePayload } from '@academy/contracts/course';
+import type { CoursePayload } from '@academy/aesop/api/course';
 
 type BuildsOnCourse = CoursePayload['buildsOn'][number];
 

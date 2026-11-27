@@ -8,10 +8,11 @@ import {
   aesopBuiltins,
   aesopDependencies,
   browserForbiddenPackages,
-  cliDependencies,
+  cliBuiltins,
   deploymentImports,
   publicFeatureModules,
   sharedPackageDependencies,
+  simulatorBuiltins,
   sourceEntries,
   sourceLayers,
 } from './policy.mjs';
@@ -192,10 +193,14 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
       if (builtins.has(request)) {
         const aesopBuiltin =
           file.startsWith('packages/aesop/src/course/') && aesopBuiltins.has(request);
+        const cliBuiltin = file.startsWith('packages/aesop/src/cli/') && cliBuiltins.has(request);
+        const simulatorBuiltin =
+          file === 'packages/aesop/src/simulator/cli.ts' && simulatorBuiltins.has(request);
         if (
           !isTest &&
-          !file.startsWith('packages/cli/src/') &&
           !aesopBuiltin &&
+          !cliBuiltin &&
+          !simulatorBuiltin &&
           (own.startsWith('packages/') || (own === 'apps/web' && !file.endsWith('config.ts')))
         )
           report(file, `browser-safe code cannot import ${request}`);
@@ -226,19 +231,23 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           report(file, `use an explicit workspace package export instead of ${request}`);
       } else {
         const dependency = packageName(request);
+        if (
+          !isTest &&
+          file.startsWith('packages/aesop/src/api/') &&
+          dependency !== '@academy/aesop'
+        )
+          report(file, 'Aesop API contracts may import only other API modules');
         if (!dependencies.has(dependency) && dependency !== manifests.get(own)?.name)
           report(file, `declare ${dependency} in ${own}/package.json`);
         const workspace = byName.get(dependency);
         if (workspace) {
-          if (own === 'apps/web' && browserForbiddenPackages.has(dependency))
-            report(
-              file,
-              'apps/web cannot import @academy/aesop because it uses Node filesystem APIs',
-            );
           if (
-            workspace.dir.startsWith('apps/') &&
-            !(own === 'packages/cli' && request === '@academy/api/content')
+            own === 'apps/web' &&
+            browserForbiddenPackages.has(dependency) &&
+            !request.startsWith('@academy/aesop/api/')
           )
+            report(file, 'apps/web can import only @academy/aesop/api/* from Aesop');
+          if (workspace.dir.startsWith('apps/'))
             report(
               file,
               'applications cannot be imported as libraries; extract a shared contract or helper',
@@ -255,7 +264,6 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           if (!existsSync(path.join(root, target)))
             report(file, `${request} exports a missing file`);
         }
-        const nodeCliDependency = own === 'packages/cli' && cliDependencies.has(dependency);
         const packageDependencyAllowed =
           own === 'packages/aesop'
             ? aesopDependencies.has(dependency)
@@ -266,8 +274,7 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           !isTest &&
           own.startsWith('packages/') &&
           !packageDependencyAllowed &&
-          !learnerStoreContractRunner &&
-          !nodeCliDependency
+          !learnerStoreContractRunner
         )
           report(file, `${dependency} does not belong in a browser-safe shared package`);
         if (
@@ -279,17 +286,19 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           report(file, 'keep Hono in routes; services accept plain inputs');
       }
       if (!target) continue;
+      if (
+        !isTest &&
+        file.startsWith('packages/aesop/src/api/') &&
+        !target.startsWith('packages/aesop/src/api/')
+      )
+        report(file, 'Aesop API contracts may import only other API modules');
       targets.push(target);
       if (own === 'apps/web' && target.startsWith('apps/api/'))
         report(
           file,
-          'web cannot import API source, even types; move the public shape to packages/contracts',
+          'web cannot import API source, even types; expose browser-safe shapes from @academy/aesop/api',
         );
-      if (
-        own.startsWith('packages/') &&
-        target.startsWith('apps/') &&
-        !(own === 'packages/cli' && target === 'apps/api/src/content/public.ts')
-      )
+      if (own.startsWith('packages/') && target.startsWith('apps/'))
         report(file, 'shared packages cannot depend on applications');
       if (file.startsWith('api/') && (file !== 'api/index.ts' || !deploymentImports.has(target)))
         report(file, 'the root api directory is only the thin Vercel adapter');

@@ -2,7 +2,7 @@ import type {
   LessonPayload,
   LessonReviewPayload,
   LessonRunPayload,
-} from '@academy/contracts/lessons';
+} from '@academy/aesop/api/lessons';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 export const lessonQueryOptions = (conceptId: string | null) =>

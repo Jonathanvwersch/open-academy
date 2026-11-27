@@ -1,4 +1,4 @@
-import type { ExercisePayload } from '@academy/contracts/exercises';
+import type { ExercisePayload } from '@academy/aesop/api/exercises';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 export const exerciseQueryOptions = (exerciseId: string | null) =>

@@ -82,14 +82,15 @@ Your source files stay on your machine and aren't committed. [Writing your first
 
 ## Project layout
 
-| Path                                    | What's there                                                     |
-| --------------------------------------- | ---------------------------------------------------------------- |
-| `apps/web`                              | The React app                                                    |
-| `apps/api`                              | The API: loading content, grading, mastery, scheduling, tutor    |
-| `packages/cli`                          | The `academy` CLI                                                |
-| `packages/contracts`, `packages/shared` | Types and helpers used by both the web app and the API           |
-| `content`                               | The example course pack (maths and AI)                           |
-| `labs`                                  | Starter code and tests for the programming projects in that pack |
+| Path                                | What's there                                                     |
+| ----------------------------------- | ---------------------------------------------------------------- |
+| `apps/web`                          | The React app                                                    |
+| `apps/api`                          | The API: loading content, grading, mastery, scheduling, tutor    |
+| `packages/aesop/src/cli`            | The `academy` authoring and memory-simulation CLI                |
+| `packages/aesop/src/simulator`      | The learner simulator and its audit rules                        |
+| `packages/aesop`, `packages/shared` | The learning engine, API types, and shared helpers               |
+| `content`                           | The example course pack (maths and AI)                           |
+| `labs`                              | Starter code and tests for the programming projects in that pack |
 
 [Architecture](docs/architecture.md) and [Content format](docs/CONTENT_FORMAT.md) go into more detail.
 

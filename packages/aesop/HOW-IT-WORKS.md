@@ -296,6 +296,8 @@ The simulator has two drivers:
 
 Choose a driver with `--driver direct` or `--driver http`. Both drivers use the same simulated clock. Each request gets its own random numbers. The seed comes from the learner, the day, the request and how many times that same request came before on that day. The direct driver gives these random numbers to the engine. It does not change the global random function.
 
+Run the memory simulation with `pnpm academy simulate`. The API runner also accepts `--driver http` with `pnpm --filter @academy/api simulate`. Both commands accept `--days`, `--profiles`, `--courses` and `--out`, and write `report.json` and `report.md` to the output directory.
+
 The in-memory store copies two PostgreSQL details, so that both drivers see the same values. Decimal numbers that PostgreSQL keeps with single precision are rounded in the same way. JSON values have their keys in the order that PostgreSQL gives them. The direct driver makes IDs that look like the IDs that PostgreSQL makes.
 
 When you change the engine, run both drivers on the same code. Remove `generatedAt` and `runtimeMs` from both reports. The two reports must then be the same, byte for byte.

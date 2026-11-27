@@ -1,4 +1,4 @@
-import type { AuthPayload } from '@academy/contracts/auth';
+import type { AuthPayload } from '@academy/aesop/api/auth';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 export const authQueryOptions = () =>

@@ -52,10 +52,11 @@ export const deploymentImports = new Set(['apps/api/dist-vercel/server.mjs']);
 
 export const browserForbiddenPackages = new Set(['@academy/aesop']);
 
-export const sharedPackageDependencies = new Set(['zod', '@academy/contracts', '@academy/shared']);
+export const sharedPackageDependencies = new Set(['zod', '@academy/shared']);
 
+// tsx launches the Academy CLI bin, so it stays out of the source dependency allowlist.
 export const aesopDependencies = new Set([
-  '@academy/contracts',
+  '@academy/aesop',
   '@academy/shared',
   'mathjs',
   'ts-fsrs',
@@ -65,4 +66,14 @@ export const aesopDependencies = new Set([
 
 export const aesopBuiltins = new Set(['node:crypto', 'node:fs/promises', 'node:path']);
 
-export const cliDependencies = new Set(['@academy/api', '@academy/aesop', 'tsx', 'yaml']);
+// The authoring CLI uses Node process and filesystem APIs; engine modules remain browser-safe.
+export const cliBuiltins = new Set([
+  'node:child_process',
+  'node:fs',
+  'node:path',
+  'node:url',
+  'node:util',
+]);
+
+// Only the simulator CLI writes reports; keep filesystem access out of simulator drivers.
+export const simulatorBuiltins = new Set(['node:fs/promises', 'node:path', 'node:url']);

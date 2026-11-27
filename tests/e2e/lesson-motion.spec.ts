@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { LessonPayload, LessonReviewPayload } from '@academy/contracts/lessons';
+import type { LessonPayload, LessonReviewPayload } from '@academy/aesop/api/lessons';
 import { expect, test } from '@playwright/test';
 import { parse } from 'yaml';
 import { env } from '../../apps/api/src/config.js';

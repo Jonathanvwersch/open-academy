@@ -1,3 +1,4 @@
+import type { ProgressMasteryState, ProgressSubjectPayload } from '@academy/aesop/api/progress';
 import { orderCourseIdsBySubject } from '@academy/aesop/course/course-order';
 import { courseTopicState } from '@academy/aesop/course/course-payload';
 import { subjectForCourse } from '@academy/aesop/course/index';
@@ -5,7 +6,6 @@ import type { ContentIndex } from '@academy/aesop/course/types';
 import { filterMasteryRecordsForContent } from '@academy/aesop/graph/content-filters';
 import { type MasteryRecord, masteryRank } from '@academy/aesop/memory/types';
 import { buildProgress } from '@academy/aesop/progress/progress';
-import type { ProgressMasteryState, ProgressSubjectPayload } from '@academy/contracts/progress';
 import { and, desc, eq } from 'drizzle-orm';
 import { drizzleLearnerStore } from '../../db/learner-store.js';
 import {

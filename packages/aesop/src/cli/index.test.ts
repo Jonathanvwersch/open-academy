@@ -17,8 +17,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { parse, stringify } from 'yaml';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const cli = join(root, 'packages/cli/src/index.ts');
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const cli = join(root, 'packages/aesop/src/cli/index.ts');
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -81,7 +81,7 @@ describe('academy CLI', () => {
     expect(noArguments.stdout).toBe(rootHelp.stdout);
     const helpLines = rootHelp.stdout.trim().split('\n');
     expect(helpLines[0]).toBe('Usage:');
-    expect(helpLines.slice(1)).toHaveLength(10);
+    expect(helpLines.slice(1)).toHaveLength(11);
     expect(helpLines.slice(1).every((line) => line.startsWith('  '))).toBe(true);
     expect(rootHelp.stdout).toContain('--pack');
     expect(rootHelp.stdout).toContain('--requires');
@@ -94,6 +94,61 @@ describe('academy CLI', () => {
     expect(run(['weights', 'verify', '--help']).stdout.trim()).toBe(
       'academy weights verify <uses.yaml> [--pack <dir>]',
     );
+  });
+
+  it('runs simulations with the memory driver', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      const out = join(parent, 'simulation-output');
+      cpSync(join(root, 'tests/fixtures/content'), pack, { recursive: true });
+      const result = runFromPack(
+        [
+          'simulate',
+          '--days',
+          '1',
+          '--profiles',
+          'average,scenario-p14-fallback',
+          '--courses',
+          'fixture-course',
+          '--out',
+          out,
+        ],
+        pack,
+      );
+      expect(result.status).toBe(0);
+      expect(existsSync(join(out, 'report.json'))).toBe(true);
+      expect(existsSync(join(out, 'report.md'))).toBe(true);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('prints simulate help without starting a run', () => {
+    const parent = temporaryDirectory();
+    const out = join(parent, 'simulation-output');
+    const help =
+      'academy simulate [--days <n>] [--profiles <list|all>] [--out <dir>] [--courses <list>]';
+    try {
+      const shortHelp = run([
+        'simulate',
+        '-h',
+        '--days',
+        '1',
+        '--profiles',
+        'average',
+        '--out',
+        out,
+      ]);
+      const longHelp = run(['simulate', '--help']);
+      expect(shortHelp.status).toBe(0);
+      expect(longHelp.status).toBe(0);
+      expect(shortHelp.stdout.trim()).toBe(help);
+      expect(longHelp.stdout.trim()).toBe(help);
+      expect(existsSync(out)).toBe(false);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
   });
 
   it('verifies encompassing weights against every eligible question and prerequisite step', () => {
@@ -670,7 +725,7 @@ describe('academy CLI', () => {
         avoid?: unknown[];
       };
       const starterNotation = parse(
-        readFileSync(join(root, 'packages/cli/template/notation.yaml'), 'utf8'),
+        readFileSync(join(root, 'packages/aesop/src/cli/template/notation.yaml'), 'utf8'),
       ) as typeof notation;
       const sumTerm = starterNotation.terms.find(({ id }) => id === 'sum');
       const nablaTerm = starterNotation.terms.find(({ id }) => id === 'nabla');

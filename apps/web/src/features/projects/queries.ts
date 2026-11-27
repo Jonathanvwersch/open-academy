@@ -1,4 +1,4 @@
-import type { ProjectPayload } from '@academy/contracts/projects';
+import type { ProjectPayload } from '@academy/aesop/api/projects';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
 export const projectQueryOptions = (projectId: string) =>

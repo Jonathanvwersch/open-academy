@@ -1,4 +1,4 @@
-import type { LessonBlockKind, LessonPrerequisite } from '@academy/contracts/lessons';
+import type { LessonBlockKind, LessonPrerequisite } from '@academy/aesop/api/lessons';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import * as React from 'react';

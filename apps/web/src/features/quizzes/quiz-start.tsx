@@ -1,4 +1,4 @@
-import type { QuizPayload } from '@academy/contracts/quizzes';
+import type { QuizPayload } from '@academy/aesop/api/quizzes';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '../../components/ui/button.js';

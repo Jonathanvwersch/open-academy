@@ -52,7 +52,7 @@ Do not include keys, learner exports or private source documents in issues and p
 
 - Read the `AGENTS.md` in the folder you're changing. Each one is short and lists that area's rules.
 - Web features live in `apps/web/src/features/<feature>`, and API features in `apps/api/src/features/<feature>`. Grading, mastery and scheduling rules are in `apps/api/src/learning`.
-- Types shared between the web app and the API go in `packages/contracts`.
+- Browser-safe API types shared between the web app and the API go in `packages/aesop/src/api`.
 - Don't change an existing topic, lesson or question ID. Learner progress is keyed on them.
 - Database changes need a migration: `pnpm db:generate`.
 

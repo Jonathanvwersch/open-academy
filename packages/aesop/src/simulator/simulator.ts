@@ -1,3 +1,6 @@
+import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/aesop/api/course';
+import type { QuizPayload } from '@academy/aesop/api/quizzes';
+import type { SessionActivity, SessionPayload, TodayPayload } from '@academy/aesop/api/sessions';
 import type { ContentEdge, ContentIndex } from '@academy/aesop/course/types';
 import { filterSchedulerStateForContent } from '@academy/aesop/graph/content-filters';
 import { topicIsComplete } from '@academy/aesop/graph/course-status';
@@ -40,22 +43,15 @@ import {
   QUIZ_XP_WINDOW,
   quizTargetSeconds,
 } from '@academy/aesop/quizzes/mixed-quiz';
-import type { CourseCatalogPayload, CoursePayload, LearnPayload } from '@academy/contracts/course';
-import type { QuizPayload } from '@academy/contracts/quizzes';
-import type { SessionActivity, SessionPayload, TodayPayload } from '@academy/contracts/sessions';
 import type { Card } from 'ts-fsrs';
 import { createEmptyCard, fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
-import type {
-  AuditReviewCardInsert,
-  SimulatorAudit,
-  SimulatorFixtures,
-} from './learner-simulation-audit.js';
+import type { AuditReviewCardInsert, SimulatorAudit, SimulatorFixtures } from './audit.js';
 import {
   decisionSeed,
   type SimulatorDriver,
   type SimulatorDriverFactory,
   seededRandom,
-} from './learner-simulation-driver.js';
+} from './driver.js';
 import {
   auditPlacementGrants,
   emptyPlacementAuditState,
@@ -64,8 +60,8 @@ import {
   recordLessonRunsAtWithdrawal,
   recordOverplacement,
   type SimulationPlacementGrantEvidence,
-} from './learner-simulation-placement.js';
-import { answerFor, exerciseFor, wrongAnswerFor } from './learner-simulation-support.js';
+} from './placement.js';
+import { answerFor, exerciseFor, wrongAnswerFor } from './support.js';
 
 export const simulationProfiles = [
   'diligent',
@@ -6197,4 +6193,4 @@ export function renderMarkdownReport(report: LearnerSimulationReport): string {
 export {
   type SimulatedApiFailure,
   SimulatedApiFailureError,
-} from './learner-simulation-driver.js';
+} from './driver.js';

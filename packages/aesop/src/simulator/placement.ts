@@ -1,6 +1,6 @@
 import type { ContentIndex } from '@academy/aesop/course/types';
 import { applyPlacementGrantOutcome } from '@academy/aesop/placement/grant-commands';
-import type { SimulatorAudit } from './learner-simulation-audit.js';
+import type { SimulatorAudit } from './audit.js';
 
 export type PlacementInvariantId = 'P20' | 'P21' | 'P22' | 'P23';
 
