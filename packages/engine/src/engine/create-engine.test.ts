@@ -287,12 +287,17 @@ test('paper summary accepts memory activity IDs and advances from current sessio
   if (!activity || !nextActivity) throw new Error('Session activities did not insert');
   expect(activity.id).toMatch(/^activity-/);
 
+  const judgementValue = {
+    criteria: [{ id: 'summary', judgement: 'met' as const, evidence: 'It states the main point.' }],
+    feedback_md: 'Clear summary.',
+  };
+  type JudgementResult = { judgement: typeof judgementValue } | { reason: string };
   let signalJudgeStarted!: () => void;
-  let resolveJudgement!: (result: { judgement: unknown } | { reason: string }) => void;
+  let resolveJudgement!: (result: JudgementResult) => void;
   const judgeStarted = new Promise<void>((resolve) => {
     signalJudgeStarted = resolve;
   });
-  const judgement = new Promise<{ judgement: unknown } | { reason: string }>((resolve) => {
+  const judgement = new Promise<JudgementResult>((resolve) => {
     resolveJudgement = resolve;
   });
   const learner = createEngine({ content: async () => index, store }).learner({
@@ -316,8 +321,8 @@ test('paper summary accepts memory activity IDs and advances from current sessio
     { ids: [nextActivity.id] },
     { status: 'completed', completedAt: now },
   );
-  resolveJudgement({ judgement: { score: 1 } });
-  expect(await submitted).toMatchObject({ status: 200, body: { judgement: { score: 1 } } });
+  resolveJudgement({ judgement: judgementValue });
+  expect(await submitted).toMatchObject({ status: 200, body: { judgement: judgementValue } });
   expect(await store.listActivities(learnerId, { ids: [nextActivity.id] })).toMatchObject([
     { status: 'completed' },
   ]);

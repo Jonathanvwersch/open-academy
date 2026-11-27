@@ -137,10 +137,7 @@ async function gradeAttempt(
         })
       : { reason: 'Tutor grading is disabled.' };
     if ('judgement' in judged) {
-      const judgement = judged.judgement as {
-        criteria: Array<{ id: string; judgement: 'met' | 'partial' | 'missing' }>;
-        feedback_md: string;
-      };
+      const judgement = judged.judgement;
       const criteria = new Map(judgement.criteria.map((entry) => [entry.id, entry.judgement]));
       return {
         status: 'graded',

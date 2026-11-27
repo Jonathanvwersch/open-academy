@@ -126,7 +126,19 @@ export type EngineJudgeExplanation = (input: {
   rubric: IndexedPaper['summary']['rubric'];
   exemplar: IndexedPaper['summary']['exemplar'];
   answer: string;
-}) => Promise<{ judgement: unknown } | { reason: string }>;
+}) => Promise<
+  | {
+      judgement: {
+        criteria: Array<{
+          id: string;
+          judgement: 'met' | 'partial' | 'missing';
+          evidence?: string | null;
+        }>;
+        feedback_md: string;
+      };
+    }
+  | { reason: string }
+>;
 
 export type EngineRequest = {
   store: CourseStore;
