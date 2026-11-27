@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { IndexedPaper } from '@open-academy/engine/course/types';
 import { eq } from 'drizzle-orm';
 import type { Hono } from 'hono';
+import { z } from 'zod';
 import { paperFiles } from '../../db/schema.js';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
 import type { PaperFetcher } from './fetcher.js';
@@ -66,6 +67,12 @@ export function registerPaperRoutes(
     return c.json(response.body, response.status);
   });
   api.post('/papers/:id/summary', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    if (
+      !z.object({ activityId: z.string().uuid().optional() }).passthrough().safeParse(body).success
+    ) {
+      return c.json({ error: 'Invalid paper summary' }, 400);
+    }
     const response = await deps
       .learner(c, {
         judgeSummary: async ({ question, rubric, exemplar, answer }) => {
@@ -92,7 +99,7 @@ export function registerPaperRoutes(
       })
       .submitPaperSummary({
         id: c.req.param('id'),
-        body: await c.req.json().catch(() => ({})),
+        body,
       });
     return c.json(response.body, response.status);
   });

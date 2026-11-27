@@ -136,6 +136,57 @@ test('paper summaries save progress and reveal the rubric in the memory store', 
   });
 });
 
+test('paper summary accepts memory activity IDs and advances from current session activities', async () => {
+  const index = await content;
+  const paper = index.papers[0];
+  if (!paper) throw new Error('Missing paper fixture');
+  const learnerId = 'learner';
+  const now = new Date('2026-01-17T12:00:00Z');
+  const store = memoryStore();
+  const session = await store.insertSession(learnerId, sessionRow(now));
+  const [activity, nextActivity] = await store.insertActivities(learnerId, session.id, [
+    activityRow(0, { kind: 'paper', status: 'in_progress' }),
+    activityRow(1, { kind: 'practice', status: 'planned' }),
+  ]);
+  if (!activity || !nextActivity) throw new Error('Session activities did not insert');
+  expect(activity.id).toMatch(/^activity-/);
+
+  let signalJudgeStarted!: () => void;
+  let resolveJudgement!: (result: { judgement: unknown } | { reason: string }) => void;
+  const judgeStarted = new Promise<void>((resolve) => {
+    signalJudgeStarted = resolve;
+  });
+  const judgement = new Promise<{ judgement: unknown } | { reason: string }>((resolve) => {
+    resolveJudgement = resolve;
+  });
+  const learner = createEngine({ content: async () => index, store }).learner({
+    id: learnerId,
+    timeZone: 'UTC',
+    now: () => now,
+    random: () => 0.5,
+    judgeSummary: async () => {
+      signalJudgeStarted();
+      return judgement;
+    },
+  });
+
+  const submitted = learner.submitPaperSummary({
+    id: paper.id,
+    body: { summary: 'A concise summary.', activityId: activity.id },
+  });
+  await judgeStarted;
+  await store.patchActivities(
+    learnerId,
+    { ids: [nextActivity.id] },
+    { status: 'completed', completedAt: now },
+  );
+  resolveJudgement({ judgement: { score: 1 } });
+  expect(await submitted).toMatchObject({ status: 200, body: { judgement: { score: 1 } } });
+  expect(await store.listActivities(learnerId, { ids: [nextActivity.id] })).toMatchObject([
+    { status: 'completed' },
+  ]);
+});
+
 test('a completed lesson is unpinned when its content gains a knowledge point', async () => {
   const originalIndex = await content;
   const fixture = [...originalIndex.lessonsByConcept.entries()].flatMap(([conceptId, lesson]) => {

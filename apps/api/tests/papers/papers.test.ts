@@ -146,6 +146,16 @@ test('paper progress rejects question IDs not in the guide', async () => {
   expect(response.status).toBe(400);
 });
 
+test('paper summary rejects non-UUID activity IDs as invalid summaries', async () => {
+  const response = await app.request('/api/papers/fixture-paper-one/summary', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ summary: 'A concise summary.', activityId: 'activity-1' }),
+  });
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({ error: 'Invalid paper summary' });
+});
+
 test('paper list and detail expose progress state and unknown papers return 404', async () => {
   const initialList = await app.request('/api/papers');
   expect(initialList.status).toBe(200);

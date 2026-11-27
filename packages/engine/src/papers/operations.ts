@@ -103,7 +103,7 @@ export async function submitPaperSummary(
   const body = z
     .object({
       summary: z.string().trim().min(1).max(4000),
-      activityId: z.string().uuid().optional(),
+      activityId: z.string().optional(),
     })
     .strict()
     .safeParse(input);
