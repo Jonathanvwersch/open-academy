@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadContentFromDirectory } from '@open-academy/engine/course/load';
@@ -27,8 +27,12 @@ function argumentsMap(argv: string[]): Map<string, string> {
   return args;
 }
 
-function parseProfiles(value: string | undefined): SimulationProfile[] {
-  if (!value || value === 'all') return [...simulationProfiles];
+function parseProfiles(
+  value: string | undefined,
+  defaultProfiles: readonly SimulationProfile[],
+): SimulationProfile[] {
+  if (!value) return [...defaultProfiles];
+  if (value === 'all') return [...simulationProfiles];
   const requested = value.split(',').map((profile) => profile.trim());
   const invalid = requested.filter(
     (profile) => !simulationProfiles.includes(profile as SimulationProfile),
@@ -47,7 +51,11 @@ function parsePositiveInteger(value: string | undefined, fallback: number): numb
 
 export async function runSimulateCli(
   argv: string[],
-  options: { contentDir: string; drivers: Record<string, SimulatorDriverFactory> },
+  options: {
+    contentDir: string;
+    drivers: Record<string, SimulatorDriverFactory>;
+    scenarioContentDir?: string;
+  },
 ): Promise<void> {
   const args = argumentsMap(argv);
   const requestedDriver = args.get('driver') ?? 'direct';
@@ -59,18 +67,38 @@ export async function runSimulateCli(
     throw new Error(`Unknown driver ${requestedDriver}; expected ${names.join(' or ')}`);
   }
   const days = parsePositiveInteger(args.get('days'), 400);
-  const profiles = parseProfiles(args.get('profiles'));
+  const scenarioContentDir =
+    options.scenarioContentDir ?? resolve(repositoryRoot, 'tests/fixtures/content');
+  const hasScenarioContent = await stat(scenarioContentDir)
+    .then((stats) => stats.isDirectory())
+    .catch(() => false);
+  const defaultProfiles = hasScenarioContent
+    ? simulationProfiles
+    : simulationProfiles.filter(
+        (profile) =>
+          !scriptedScenarioProfiles.includes(profile as (typeof scriptedScenarioProfiles)[number]),
+      );
+  const profiles = parseProfiles(args.get('profiles'), defaultProfiles);
+  const requestedScenarioProfiles = profiles.filter((profile) =>
+    scriptedScenarioProfiles.includes(profile as (typeof scriptedScenarioProfiles)[number]),
+  );
+  if (!hasScenarioContent && requestedScenarioProfiles.length > 0) {
+    const label = requestedScenarioProfiles.length === 1 ? 'Scenario profile' : 'Scenario profiles';
+    const verb = requestedScenarioProfiles.length === 1 ? 'requires' : 'require';
+    throw new Error(
+      `${label} ${requestedScenarioProfiles.join(', ')} ${verb} tests/fixtures/content from the Open Academy source checkout.`,
+    );
+  }
   const out = resolve(args.get('out') ?? 'simulation-output');
   const courseIds = args
     .get('courses')
     ?.split(',')
     .map((courseId) => courseId.trim());
   const content = await loadContentFromDirectory(options.contentDir);
-  const scenarioContent = profiles.some((profile) =>
-    scriptedScenarioProfiles.includes(profile as (typeof scriptedScenarioProfiles)[number]),
-  )
-    ? await loadContentFromDirectory(resolve(repositoryRoot, 'tests/fixtures/content'))
-    : undefined;
+  const scenarioContent =
+    requestedScenarioProfiles.length > 0
+      ? await loadContentFromDirectory(scenarioContentDir)
+      : undefined;
   const report = await simulateLearners(driver, content, {
     profiles,
     days,

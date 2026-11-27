@@ -1,4 +1,4 @@
-#!/usr/bin/env -S tsx
+#!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import {
   copyFileSync,
@@ -30,6 +30,7 @@ import { verifyWeights } from './weights.js';
 const cliRoot = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(cliRoot, '../../../..');
 const templateRoot = join(cliRoot, 'template');
+const resourceRoot = existsSync(join(repoRoot, 'apps/api')) ? repoRoot : templateRoot;
 const options = {
   help: { type: 'boolean', short: 'h' },
   pack: { type: 'string' },
@@ -39,6 +40,14 @@ const options = {
   course: { type: 'string' },
   unit: { type: 'string' },
   kind: { type: 'string' },
+} as const;
+const simulateOptions = {
+  ...options,
+  courses: { type: 'string' },
+  days: { type: 'string' },
+  driver: { type: 'string' },
+  out: { type: 'string' },
+  profiles: { type: 'string' },
 } as const;
 
 const helpText: Record<string, string> = {
@@ -55,7 +64,7 @@ const helpText: Record<string, string> = {
   'sources list': 'academy sources list [--pack <dir>]',
   'weights verify': 'academy weights verify <uses.yaml> [--pack <dir>]',
   simulate:
-    'academy simulate [--days <n>] [--profiles <list|all>] [--out <dir>] [--courses <list>]',
+    'academy simulate [dir] [--pack <dir>] [--days <n>] [--profiles <list|all>] [--out <dir>] [--courses <list>]',
 };
 
 function showHelp(command = 'root') {
@@ -649,10 +658,7 @@ async function init(directory: string, title: string) {
   if (!title.trim()) fail('Pass a non-empty --title.');
   if (fileIsNonempty(directory)) fail(`Refusing to initialize non-empty directory: ${directory}`);
   mkdirSync(directory, { recursive: true });
-  const agents = readFileSync(join(templateRoot, 'AGENTS.md'), 'utf8').replaceAll(
-    '{{ACADEMY}}',
-    repoRoot,
-  );
+  const agents = readFileSync(join(templateRoot, 'AGENTS.md'), 'utf8');
   writeFileSync(join(directory, 'AGENTS.md'), agents);
   cpSync(join(templateRoot, '.agents'), join(directory, '.agents'), { recursive: true });
   const writeLessonDirectory = join(directory, '.agents/skills/write-lesson');
@@ -662,13 +668,13 @@ async function init(directory: string, title: string) {
     const file = `.agents/skills/${skill}/SKILL.md`;
     const destination = join(directory, file);
     mkdirSync(dirname(destination), { recursive: true });
-    writeFileSync(destination, packSkillText(readFileSync(join(repoRoot, file), 'utf8')));
+    writeFileSync(destination, packSkillText(readFileSync(join(resourceRoot, file), 'utf8')));
   }
   for (const [source, target] of [
     ['content/lessons/gradient-descent.yaml', 'lesson.yaml'],
     ['content/exercises/gradient-descent.yaml', 'exercises.yaml'],
   ]) {
-    copyFileSync(join(repoRoot, source), join(referenceDirectory, target));
+    copyFileSync(join(resourceRoot, source), join(referenceDirectory, target));
   }
   for (const [source, target] of [
     ['docs/CONTENT_FORMAT.md', 'CONTENT_FORMAT.md'],
@@ -676,7 +682,7 @@ async function init(directory: string, title: string) {
   ]) {
     writeFileSync(
       join(referenceDirectory, target),
-      packSkillText(readFileSync(join(repoRoot, source), 'utf8')),
+      packSkillText(readFileSync(join(resourceRoot, source), 'utf8')),
     );
   }
   const courseId = `${slug(title)}-basics`;
@@ -706,7 +712,7 @@ async function init(directory: string, title: string) {
   writeFileSync(join(directory, 'sources', '.gitignore'), '*\n!index.yaml\n!.gitignore\n');
   writeFileSync(
     join(directory, 'README.md'),
-    `This folder is a course pack for ${title}.\nRun \`academy dev\` to launch Open Academy with this pack.\nRun \`academy check\` to validate the pack.\nRunning the CLI: \`academy\` means \`CONTENT_DIR=. pnpm --dir "${repoRoot}" academy\`; run it from this folder, for example \`CONTENT_DIR=. pnpm --dir "${repoRoot}" academy check\`.\nUse a separate database per pack, or give every topic an ID that's unique across your packs.\n`,
+    `This folder is a course pack for ${title}.\nRun \`academy dev\` from the Open Academy source checkout to launch this pack.\nRun \`academy check\` to validate the pack.\nRun the CLI from this folder with \`npx academy\`, for example \`npx academy check .\`.\nUse a separate database per pack, or give every topic an ID that's unique across your packs.\n`,
   );
   if ((await check(directory)) !== 0) fail('Generated course pack did not pass academy check.');
 }
@@ -1067,8 +1073,9 @@ async function main() {
   }
   if (command === 'simulate') {
     if (args.includes('--help') || args.includes('-h')) return showHelp(command);
+    const parsed = parseArgs({ args, options: simulateOptions, allowPositionals: true });
     return runSimulateCli(args, {
-      contentDir: packPath([]),
+      contentDir: packPath(parsed.positionals, parsed.values.pack),
       drivers: { direct: directMemoryDriver },
     });
   }
@@ -1141,6 +1148,8 @@ async function main() {
     return;
   }
   if (command === 'dev') {
+    if (!existsSync(join(repoRoot, 'apps/api')))
+      fail('academy dev runs the Open Academy app and needs its source checkout');
     requirePack(directory);
     const child = spawn('pnpm', ['dev'], {
       cwd: repoRoot,

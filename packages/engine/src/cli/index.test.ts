@@ -102,9 +102,10 @@ describe('academy CLI', () => {
       const pack = join(parent, 'pack');
       const out = join(parent, 'simulation-output');
       cpSync(join(root, 'tests/fixtures/content'), pack, { recursive: true });
-      const result = runFromPack(
+      const result = runWithInitCwd(
         [
           'simulate',
+          pack,
           '--days',
           '1',
           '--profiles',
@@ -114,7 +115,7 @@ describe('academy CLI', () => {
           '--out',
           out,
         ],
-        pack,
+        parent,
       );
       expect(result.status).toBe(0);
       expect(existsSync(join(out, 'report.json'))).toBe(true);
@@ -128,7 +129,7 @@ describe('academy CLI', () => {
     const parent = temporaryDirectory();
     const out = join(parent, 'simulation-output');
     const help =
-      'academy simulate [--days <n>] [--profiles <list|all>] [--out <dir>] [--courses <list>]';
+      'academy simulate [dir] [--pack <dir>] [--days <n>] [--profiles <list|all>] [--out <dir>] [--courses <list>]';
     try {
       const shortHelp = run([
         'simulate',
@@ -568,11 +569,11 @@ describe('academy CLI', () => {
         '.agents/skills/set-weights/SKILL.md',
       ];
       const agents = readFileSync(join(pack, 'AGENTS.md'), 'utf8');
-      expect(agents).toContain(`CONTENT_DIR=. pnpm --dir "${root}" academy check`);
+      expect(agents).toContain('npx academy check .');
       expect(agents).not.toContain('{{ACADEMY}}');
       expect(agents).toContain('.agents/skills/set-weights/SKILL.md');
       const readme = readFileSync(join(pack, 'README.md'), 'utf8');
-      expect(readme).toContain(`CONTENT_DIR=. pnpm --dir "${root}" academy check`);
+      expect(readme).toContain('npx academy check .');
       for (const file of templateFiles) expect(existsSync(join(pack, file))).toBe(true);
       const transformedFiles = [
         '.agents/skills/write-lesson/SKILL.md',

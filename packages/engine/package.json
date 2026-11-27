@@ -9,8 +9,11 @@
     "HOW-IT-WORKS.md",
     "CHANGELOG.md"
   ],
+  "bin": {
+    "academy": "./dist/cli/index.js"
+  },
   "scripts": {
-    "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.build.json",
+    "build": "node -e \"const fs=require('node:fs'),path=require('node:path');fs.rmSync('dist',{recursive:true,force:true});fs.cpSync('src/cli/template','dist/cli/template',{recursive:true});for(const file of ['.agents/skills/write-lesson/SKILL.md','.agents/skills/write-questions/SKILL.md','.agents/skills/set-weights/SKILL.md','content/lessons/gradient-descent.yaml','content/exercises/gradient-descent.yaml','docs/CONTENT_FORMAT.md','docs/design/lesson-standard.md']){const dest=path.join('dist/cli/template',file);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(path.join('../..',file),dest)}\" && tsc -p tsconfig.build.json",
     "prepack": "pnpm build",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
