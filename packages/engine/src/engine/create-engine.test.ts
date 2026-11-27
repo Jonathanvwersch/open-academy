@@ -4,10 +4,44 @@ import { loadContentFromDirectory } from '../course/load.js';
 import { activityRow, sessionRow } from '../store/learner-store.contract.js';
 import { memoryStore } from '../store/memory-store.js';
 import { createEngine } from './create-engine.js';
+import type { EngineHintContext } from './types.js';
 
 const content = loadContentFromDirectory(
   fileURLToPath(new URL('../../../../content', import.meta.url)),
 );
+
+test('partial settings updates preserve earlier edits for a reused learner', async () => {
+  const index = await content;
+  const learnerId = 'settings-learner';
+  const now = new Date('2026-01-17T12:00:00Z');
+  const store = memoryStore({
+    settings: new Map([
+      [
+        learnerId,
+        {
+          activeCourseId: null,
+          studySetInitializedAt: null,
+          startDate: '2026-01-17',
+          timeZone: 'UTC',
+          prefs: {},
+        },
+      ],
+    ]),
+  });
+  const learner = createEngine({ content: async () => index, store }).learner({
+    id: learnerId,
+    timeZone: 'UTC',
+    now: () => now,
+    random: () => 0.5,
+  });
+
+  await learner.saveSettings({ body: { scheduleMinutes: 90 } });
+  await learner.saveSettings({ body: { quizTimeMultiplier: 2 } });
+
+  expect(await store.getSettings(learnerId)).toMatchObject({
+    prefs: { scheduleMinutes: 90, quizTimeMultiplier: 2 },
+  });
+});
 
 test('hints and quiz reviews accept memory-issued activity and attempt IDs', async () => {
   const index = await content;
@@ -96,6 +130,108 @@ test('hints and quiz reviews accept memory-issued activity and attempt IDs', asy
   });
 });
 
+test('hint prompts include the previous answer only when a retry remains', async () => {
+  const index = await content;
+  const exercise = index.exercises.find(
+    ({ type, role, hints }) => type === 'explain' && role !== 'recall' && hints.length === 0,
+  );
+  if (!exercise) throw new Error('Missing unanswered explain exercise fixture');
+  const concept = index.conceptsById.get(exercise.concept);
+  const lesson = index.lessonsByConcept.get(exercise.concept);
+  const now = new Date('2026-01-17T12:00:00Z');
+  const learnerId = 'hint-prompt-learner';
+  const answer = { text: 'I multiplied the rates in the wrong order.' };
+  const basePrompt = {
+    conceptTitle: concept?.title ?? exercise.concept,
+    objectives: concept?.objectives.map(({ text }) => text) ?? [],
+    lessonSummary:
+      lesson?.blocks
+        .filter((block) => block.kind === 'summary')
+        .map((block) => block.md)
+        .join('\n') ?? '',
+    exercisePrompt: exercise.prompt,
+    exerciseLabel: 'Current question',
+    exerciseOptions: [],
+    answerKey: '',
+    hintLevel: 1,
+    authoredHints: [],
+    page: 'none',
+    page_content: '',
+  };
+
+  const getPrompt = async (withWrongAnswer: boolean) => {
+    const store = memoryStore();
+    if (withWrongAnswer) {
+      await store.insertAttempt(learnerId, {
+        id: 'attempt-hint-prompt',
+        sessionId: null,
+        activityId: null,
+        exerciseId: exercise.id,
+        exerciseVersion: exercise.contentVersion,
+        conceptId: exercise.concept,
+        dimension: exercise.dimension,
+        mode: 'practice',
+        answer,
+        correct: 0,
+        credit: 0,
+        hintsUsed: 0,
+        attemptNo: 1,
+        gradedBy: 'deterministic',
+        feedback: { message: 'The intermediate units should cancel.' },
+        mistakeCategory: 'incomplete_reasoning',
+        durationMs: null,
+        createdAt: now,
+      });
+    }
+    let captured: EngineHintContext | undefined;
+    const learner = createEngine({
+      content: async () => index,
+      store,
+      tutorEnabled: true,
+    }).learner({
+      id: learnerId,
+      timeZone: 'UTC',
+      now: () => now,
+      random: () => 0.5,
+      generateHint: async (input) => {
+        captured = input;
+        return { kind: 'ok', text: 'Follow the units through the chain.' };
+      },
+    });
+    expect(await learner.hint({ body: { exerciseId: exercise.id } })).toMatchObject({
+      status: 200,
+      body: { text: 'Follow the units through the chain.' },
+    });
+    if (!captured) throw new Error('Hint prompt was not generated');
+    return captured;
+  };
+
+  expect(await getPrompt(false)).toEqual({
+    prompt: {
+      ...basePrompt,
+      learnerAnswer: '',
+      graderVerdict: 'No prior answer.',
+      graderFeedback: '',
+      solution: '',
+      recentMistakes: [],
+      problem_status: 'unanswered',
+    },
+    level: 'nudge',
+  });
+  expect(await getPrompt(true)).toEqual({
+    prompt: {
+      ...basePrompt,
+      learnerAnswer: answer.text,
+      graderVerdict: 'incorrect',
+      graderFeedback: 'The intermediate units should cancel.\nThe learner has one more try.',
+      solution: '',
+      recentMistakes: ['incomplete_reasoning'],
+      problem_status: 'retrying',
+    },
+    level: 'nudge',
+  });
+});
+
 test('paper summaries save progress and reveal the rubric in the memory store', async () => {
   const index = await content;
   const paper = index.papers[0];
@@ -151,12 +287,17 @@ test('paper summary accepts memory activity IDs and advances from current sessio
   if (!activity || !nextActivity) throw new Error('Session activities did not insert');
   expect(activity.id).toMatch(/^activity-/);
 
+  const judgementValue = {
+    criteria: [{ id: 'summary', judgement: 'met' as const, evidence: 'It states the main point.' }],
+    feedback_md: 'Clear summary.',
+  };
+  type JudgementResult = { judgement: typeof judgementValue } | { reason: string };
   let signalJudgeStarted!: () => void;
-  let resolveJudgement!: (result: { judgement: unknown } | { reason: string }) => void;
+  let resolveJudgement!: (result: JudgementResult) => void;
   const judgeStarted = new Promise<void>((resolve) => {
     signalJudgeStarted = resolve;
   });
-  const judgement = new Promise<{ judgement: unknown } | { reason: string }>((resolve) => {
+  const judgement = new Promise<JudgementResult>((resolve) => {
     resolveJudgement = resolve;
   });
   const learner = createEngine({ content: async () => index, store }).learner({
@@ -164,7 +305,7 @@ test('paper summary accepts memory activity IDs and advances from current sessio
     timeZone: 'UTC',
     now: () => now,
     random: () => 0.5,
-    judgeSummary: async () => {
+    judgeExplanation: async () => {
       signalJudgeStarted();
       return judgement;
     },
@@ -180,8 +321,8 @@ test('paper summary accepts memory activity IDs and advances from current sessio
     { ids: [nextActivity.id] },
     { status: 'completed', completedAt: now },
   );
-  resolveJudgement({ judgement: { score: 1 } });
-  expect(await submitted).toMatchObject({ status: 200, body: { judgement: { score: 1 } } });
+  resolveJudgement({ judgement: judgementValue });
+  expect(await submitted).toMatchObject({ status: 200, body: { judgement: judgementValue } });
   expect(await store.listActivities(learnerId, { ids: [nextActivity.id] })).toMatchObject([
     { status: 'completed' },
   ]);

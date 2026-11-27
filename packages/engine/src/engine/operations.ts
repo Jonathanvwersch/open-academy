@@ -10,6 +10,7 @@ import {
 import { readExercise } from '../course/exercise-reads.js';
 import { getLearnHome } from '../course/learn-home.js';
 import { conceptDetail, planWeek, studyMap } from '../course/learning-reads.js';
+import { restartTopic, updateLearningFocus } from '../course/progress-commands.js';
 import { serializeExercise } from '../course/serialize.js';
 import type { GradeResult } from '../lessons/grading/types.js';
 import {
@@ -54,6 +55,7 @@ import {
   replanSessionOperation,
   sessionById,
 } from './sessions.js';
+import { saveSettingsOperation, settingsOperation } from './settings.js';
 import { type EngineOperation, type EngineRequest, type EngineResult, respond } from './types.js';
 
 export async function runEngineOperation(
@@ -136,6 +138,10 @@ export async function runEngineOperation(
       return respond(await getLearnHome(store, await courseInput(request)));
     case 'courseCatalog':
       return respond(await getCourseCatalog(store, await courseInput(request)));
+    case 'settings':
+      return settingsOperation(request);
+    case 'saveSettings':
+      return saveSettingsOperation(request, operation.body);
     case 'course': {
       if (operation.courseId === undefined) {
         return respond(await getCourse(store, await courseInput(request), operation.course));
@@ -152,6 +158,58 @@ export async function runEngineOperation(
       if (typeof courseId !== 'string') return respond({ error: 'Invalid courseId' }, 400);
       if (!content.coursesById.has(courseId)) return respond({ error: 'Unknown course' }, 404);
       return respond(await setActiveCourse(store, userId, courseId));
+    }
+    case 'setFocus': {
+      const body = z
+        .object({ subjectId: z.string().nullable() })
+        .strict()
+        .safeParse(operation.body);
+      if (!body.success) return respond({ error: 'Invalid focus subject' }, 400);
+      const { subjectId } = body.data;
+      if (
+        subjectId !== null &&
+        !content.curriculum?.subjects?.some((subject) => subject.id === subjectId)
+      ) {
+        return respond({ error: 'Unknown focus subject' }, 400);
+      }
+      await updateLearningFocus(
+        store,
+        { userId, content, subjectId, now: request.now() },
+        {
+          settings: () => repo.settings(),
+          activeSession: (now) => repo.activeSession(now),
+          session: (id) => repo.session(id),
+          schedulerState: (now, index) => repo.schedulerState(now, index),
+        },
+      );
+      return respond({ focusSubjectId: subjectId });
+    }
+    case 'restartTopic':
+      if (!content.conceptsById.has(operation.conceptId)) {
+        return respond({ error: 'Concept not found' }, 404);
+      }
+      await restartTopic(store, { userId, conceptId: operation.conceptId, content });
+      return respond({ conceptId: operation.conceptId });
+    case 'setEnrollment': {
+      if (!content.coursesById.has(operation.courseId)) {
+        return respond({ error: 'Course not found' }, 404);
+      }
+      const body =
+        operation.body && typeof operation.body === 'object'
+          ? (operation.body as { status?: unknown })
+          : null;
+      if (body?.status !== 'active' && body?.status !== 'paused') {
+        return respond({ error: 'Invalid enrollment status' }, 400);
+      }
+      const enrollment = await repo.courseEnrollment(operation.courseId);
+      if (!enrollment) {
+        return respond(
+          { error: body.status === 'active' ? 'Start this course first' : 'Course is not active' },
+          409,
+        );
+      }
+      await repo.setCourseEnrollmentStatus(operation.courseId, body.status);
+      return respond({ id: operation.courseId, status: body.status });
     }
     case 'startCourse': {
       if (operation.courseId !== undefined && !content.coursesById.has(operation.courseId)) {

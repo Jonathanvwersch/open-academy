@@ -1,6 +1,16 @@
 import { z } from 'zod';
+import type { TutorPrompt } from '../api/tutor.js';
+import { onScreenOptions } from '../course/option-order.js';
+import { serializedOptionOrder } from '../course/serialize.js';
 import type { EngineRequest, EngineResult } from '../engine/types.js';
 import { respond } from '../engine/types.js';
+import {
+  formatGraderFeedback,
+  graderVerdictFor,
+  tutorAnswerFor,
+  tutorAnswerKeyFor,
+  tutorSolutionFor,
+} from '../tutor/feedback-context.js';
 import { hintsSincePreviousAttempt } from './hint-evidence.js';
 import { attemptAllowsRetry } from './retry.js';
 
@@ -88,16 +98,46 @@ export async function hintOperation(request: EngineRequest, input: unknown): Pro
     const priorAttempt = recentAttempts.find((attempt) => attempt.exerciseId === exercise.id);
     const retrying = priorAttempt ? attemptAllowsRetry(priorAttempt) : false;
     const problemStatus = !priorAttempt ? 'unanswered' : retrying ? 'retrying' : 'answered';
+    const concept = request.content.conceptsById.get(exercise.concept);
+    const lesson = request.content.lessonsByConcept.get(exercise.concept);
+    const optionTexts =
+      exercise.type === 'mc'
+        ? onScreenOptions(
+            serializedOptionOrder(exercise.options, request.userId, exercise.id),
+            exercise.id,
+          )
+        : exercise.type === 'debug'
+          ? onScreenOptions(exercise.fix_options, exercise.id)
+          : [];
+    const prompt: TutorPrompt = {
+      conceptTitle: concept?.title ?? exercise.concept,
+      objectives: concept?.objectives.map((objective) => objective.text) ?? [],
+      lessonSummary:
+        lesson?.blocks
+          .filter((block) => block.kind === 'summary')
+          .map((block) => block.md)
+          .join('\n') ?? '',
+      exercisePrompt: exercise.prompt,
+      exerciseLabel: 'Current question',
+      exerciseOptions: optionTexts.map(
+        ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
+      ),
+      answerKey: tutorAnswerKeyFor(exercise, optionTexts),
+      learnerAnswer: priorAttempt ? tutorAnswerFor(exercise, priorAttempt.answer) : '',
+      graderVerdict: priorAttempt ? graderVerdictFor(priorAttempt.correct) : 'No prior answer.',
+      graderFeedback: priorAttempt ? formatGraderFeedback(priorAttempt.feedback, retrying) : '',
+      hintLevel: level,
+      authoredHints,
+      solution: problemStatus === 'answered' ? tutorSolutionFor(exercise) : '',
+      recentMistakes,
+      problem_status: problemStatus,
+      page: 'none',
+      page_content: '',
+    };
     const result = request.generateHint
       ? await request.generateHint({
-          userId: request.userId,
-          exercise,
-          level,
-          hints: authoredHints,
-          recentMistakes,
-          priorAttempt,
-          retrying,
-          problemStatus,
+          prompt,
+          level: level === 1 ? 'nudge' : level === 2 ? 'hint' : 'worked_step',
         })
       : { kind: 'disabled' as const };
     if (result.kind === 'disabled') generationDisabled = true;

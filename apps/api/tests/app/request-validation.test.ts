@@ -109,6 +109,18 @@ test('settings reject impossible dates before changing learner preferences', asy
   }
 });
 
+test('settings updates return the settings view', async () => {
+  const response = await app.request('/api/settings', {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ scheduleMinutes: 90 }),
+  });
+  expect(response.status).toBe(200);
+  const settings = await response.json();
+  expect(settings).toEqual(await (await app.request('/api/settings')).json());
+  expect(settings).not.toHaveProperty('displayName');
+});
+
 test('replanning preserves sparse activity positions without unique-index failures', async () => {
   const [session] = await db
     .insert(studySessions)

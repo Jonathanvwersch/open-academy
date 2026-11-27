@@ -58,6 +58,10 @@ export function httpRequestFor(operation: SimulatorOperation): SimulatorHttpRequ
       return { method: 'GET', path: '/learn' };
     case 'courseCatalog':
       return { method: 'GET', path: '/courses' };
+    case 'settings':
+      return { method: 'GET', path: '/settings' };
+    case 'saveSettings':
+      return { method: 'PUT', path: '/settings', body: operation.body };
     case 'course':
       return {
         method: 'GET',
@@ -68,6 +72,19 @@ export function httpRequestFor(operation: SimulatorOperation): SimulatorHttpRequ
       };
     case 'setActiveCourse':
       return { method: 'PUT', path: '/course/active', body: operation.body };
+    case 'setFocus':
+      return { method: 'PUT', path: '/focus', body: operation.body };
+    case 'restartTopic':
+      return {
+        method: 'POST',
+        path: `/concepts/${encodeURIComponent(operation.conceptId)}/restart`,
+      };
+    case 'setEnrollment':
+      return {
+        method: 'PUT',
+        path: `/courses/${encodeURIComponent(operation.courseId)}/enrollment`,
+        body: operation.body,
+      };
     case 'startCourse':
       return {
         method: 'POST',

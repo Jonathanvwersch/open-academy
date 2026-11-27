@@ -5,6 +5,7 @@ import type { Hono } from 'hono';
 import { z } from 'zod';
 import { paperFiles } from '../../db/schema.js';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
+import { judgeExplanation } from '../tutor/judge-explanation.js';
 import type { PaperFetcher } from './fetcher.js';
 import { defaultPaperFetcher } from './fetcher.js';
 
@@ -74,29 +75,7 @@ export function registerPaperRoutes(
       return c.json({ error: 'Invalid paper summary' }, 400);
     }
     const response = await deps
-      .learner(c, {
-        judgeSummary: async ({ question, rubric, exemplar, answer }) => {
-          const service = deps.tutor(c);
-          if (!service) return { reason: 'Tutor grading is disabled.' };
-          try {
-            const result = await service.gradeExplanation({
-              question,
-              rubric,
-              exemplar,
-              answer,
-            });
-            if (result.status === 'ok' && result.value) return { judgement: result.value };
-            return {
-              reason:
-                result.status === 'budget_exceeded'
-                  ? 'Tutor grading limit reached.'
-                  : 'Tutor grading failed.',
-            };
-          } catch {
-            return { reason: 'Tutor grading failed.' };
-          }
-        },
-      })
+      .learner(c, { judgeExplanation: judgeExplanation(deps.tutor(c)) })
       .submitPaperSummary({
         id: c.req.param('id'),
         body,

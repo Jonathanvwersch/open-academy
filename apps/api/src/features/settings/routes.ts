@@ -1,17 +1,16 @@
-import type { Hono } from 'hono';
+import type { EngineResult } from '@open-academy/engine/engine/create-engine';
+import type { Context, Hono } from 'hono';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
-import { featureRequest } from '../../http/feature-service.js';
-import { getSettings, putSettings } from './service.js';
+
+const send = (context: Context<ApiEnv>, result: EngineResult) =>
+  context.json(result.body, result.status);
+
 export function registerSettingsRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
   api.get('/settings', async (context) => {
-    const response = await getSettings(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    return send(context, await deps.learner(context).settings());
   });
   api.put('/settings', async (context) => {
-    const response = await putSettings(
-      deps,
-      featureRequest(context, deps, await context.req.json().catch(() => ({}))),
-    );
-    return context.json(response.body, response.status);
+    const body = await context.req.json().catch(() => ({}));
+    return send(context, await deps.learner(context).saveSettings({ body }));
   });
 }

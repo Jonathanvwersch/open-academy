@@ -1,8 +1,7 @@
-import type { TutorContextInput } from '../api/tutor.js';
-import type { ContentIndex, IndexedExercise, IndexedPaper } from '../course/types.js';
+import type { TutorContextInput, TutorPrompt } from '../api/tutor.js';
+import type { ContentIndex, IndexedPaper } from '../course/types.js';
 import type { gradeExercise } from '../lessons/grading/index.js';
 import type { GradeResult } from '../lessons/grading/types.js';
-import type { Attempt } from '../store/core-store.js';
 import type { CourseStore } from '../store/course-store.js';
 import type { EngineLearnerRepository } from './repository.js';
 
@@ -28,8 +27,13 @@ export type EngineOperation =
   | { kind: 'lessonQuizReview'; conceptId: string; attemptId: string }
   | { kind: 'learn' }
   | { kind: 'courseCatalog' }
+  | { kind: 'settings' }
+  | { kind: 'saveSettings'; body: unknown }
   | { kind: 'course'; courseId?: string; course?: string }
   | { kind: 'setActiveCourse'; body: unknown }
+  | { kind: 'setFocus'; body: unknown }
+  | { kind: 'restartTopic'; conceptId: string }
+  | { kind: 'setEnrollment'; courseId: string; body: unknown }
   | { kind: 'startCourse'; courseId?: string; body: unknown }
   | { kind: 'createSession'; body: unknown }
   | { kind: 'session'; sessionId: string }
@@ -96,14 +100,8 @@ export type EngineHasTutorReply = (
 ) => Promise<boolean>;
 
 export type EngineHintContext = {
-  userId: string;
-  exercise: IndexedExercise;
-  level: number;
-  hints: string[];
-  recentMistakes: string[];
-  priorAttempt: Attempt | undefined;
-  retrying: boolean;
-  problemStatus: 'unanswered' | 'retrying' | 'answered';
+  prompt: TutorPrompt;
+  level: 'nudge' | 'hint' | 'worked_step';
 };
 
 export type EngineGenerateHint = (
@@ -123,12 +121,24 @@ export type EngineTutorPaper = (
   | undefined
 >;
 
-export type EngineJudgeSummary = (input: {
+export type EngineJudgeExplanation = (input: {
   question: string;
   rubric: IndexedPaper['summary']['rubric'];
   exemplar: IndexedPaper['summary']['exemplar'];
   answer: string;
-}) => Promise<{ judgement: unknown } | { reason: string }>;
+}) => Promise<
+  | {
+      judgement: {
+        criteria: Array<{
+          id: string;
+          judgement: 'met' | 'partial' | 'missing';
+          evidence?: string | null;
+        }>;
+        feedback_md: string;
+      };
+    }
+  | { reason: string }
+>;
 
 export type EngineRequest = {
   store: CourseStore;
@@ -142,7 +152,7 @@ export type EngineRequest = {
   hasTutorReply: EngineHasTutorReply;
   generateHint?: EngineGenerateHint;
   tutorPaper?: EngineTutorPaper;
-  judgeSummary?: EngineJudgeSummary;
+  judgeExplanation?: EngineJudgeExplanation;
   fsrsFuzz: boolean;
   tutorEnabled: boolean;
   repo: EngineLearnerRepository;

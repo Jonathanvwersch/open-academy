@@ -120,8 +120,8 @@ export async function submitPaperSummary(
   }
 
   const now = request.now();
-  const judged = request.judgeSummary
-    ? await request.judgeSummary({
+  const judged = request.judgeExplanation
+    ? await request.judgeExplanation({
         question: content.summary.prompt,
         rubric: content.summary.rubric,
         exemplar: content.summary.exemplar,

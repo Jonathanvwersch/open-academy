@@ -1,6 +1,5 @@
-import { instantiateExercise, isTemplate } from '@open-academy/engine/course/templates';
-import type { ContentIndex } from '@open-academy/engine/course/types';
 import type { EngineHasTutorReply, EngineResult } from '@open-academy/engine/engine/create-engine';
+import { answerFor } from '@open-academy/engine/simulator/support';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
@@ -193,21 +192,13 @@ export function registerLessonRunRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
         )
         .limit(1);
       if (!row) return context.json({ error: 'Lesson problem not found' }, 404);
-      const exercise = resolvedExercise(
-        await deps.content(),
-        row.problem.exerciseId,
-        row.problem.seed,
-      );
-      if (!exercise) return context.json({ error: 'Exercise not found' }, 404);
-      const answer =
-        exercise.type === 'mc'
-          ? exercise.multi
-            ? exercise.options.filter((option) => option.correct).map((option) => option.id)
-            : exercise.options.find((option) => option.correct)?.id
-          : 'answer' in exercise
-            ? exercise.answer
-            : undefined;
-      return context.json({ answer });
+      const content = await deps.content();
+      if (!content.exercisesById.has(row.problem.exerciseId)) {
+        return context.json({ error: 'Exercise not found' }, 404);
+      }
+      return context.json({
+        answer: answerFor(content, row.problem.exerciseId, row.problem.seed ?? 0),
+      });
     });
 
     api.get('/test/lesson-quiz-items/:id/answer', async (context) => {
@@ -224,25 +215,13 @@ export function registerLessonRunRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
         )
         .limit(1);
       if (!row) return context.json({ error: 'Quiz item not found' }, 404);
-      const exercise = resolvedExercise(await deps.content(), row.item.exerciseId, row.item.seed);
-      if (!exercise) return context.json({ error: 'Exercise not found' }, 404);
-      const answer =
-        exercise.type === 'mc'
-          ? exercise.multi
-            ? exercise.options.filter((option) => option.correct).map((option) => option.id)
-            : exercise.options.find((option) => option.correct)?.id
-          : 'answer' in exercise
-            ? exercise.answer
-            : undefined;
-      return context.json({ answer });
+      const content = await deps.content();
+      if (!content.exercisesById.has(row.item.exerciseId)) {
+        return context.json({ error: 'Exercise not found' }, 404);
+      }
+      return context.json({
+        answer: answerFor(content, row.item.exerciseId, row.item.seed ?? 0),
+      });
     });
   }
-}
-
-function resolvedExercise(index: ContentIndex, exerciseId: string, seed: number | null) {
-  const exercise = index.exercisesById.get(exerciseId);
-  if (!exercise) return undefined;
-  return isTemplate(exercise) && seed !== null
-    ? instantiateExercise(exercise, seed).exercise
-    : exercise;
 }

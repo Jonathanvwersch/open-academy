@@ -264,6 +264,10 @@ A _withdrawn_ grant gives no credit.
 
 [Ours] The engine prepares context for Fable. Fable cannot see recall questions or placement questions. Before a final answer, Fable gets the authored hints and no solution. After a wrong answer with a retry left, Fable also gets the learner's answer, the verdict and the feedback. After a final answer, Fable gets the learner's answer, the verdict, the feedback and the solution, and no hints. Fable sees options in the same order as they appear on the screen.
 
+[Ours] The engine builds a hint prompt from the exercise, its authored hints, recent mistakes and any prior answer. It sends the solution only after a final answer.
+
+[Ours] For an explain answer, the host judges the text with the authored rubric. The engine scores the returned criteria and uses its grader if the host cannot judge the answer.
+
 ## 13. What the engine does not do
 
 The engine does not use a database, HTTP or an AI model. The host app does these jobs:

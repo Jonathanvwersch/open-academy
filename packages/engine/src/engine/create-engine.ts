@@ -8,7 +8,7 @@ import type {
   EngineGenerateHint,
   EngineGrade,
   EngineHasTutorReply,
-  EngineJudgeSummary,
+  EngineJudgeExplanation,
   EngineLearner,
   EngineOperation,
   EngineResult,
@@ -21,7 +21,7 @@ export type {
   EngineGradeResult,
   EngineHasTutorReply,
   EngineHintContext,
-  EngineJudgeSummary,
+  EngineJudgeExplanation,
   EngineLearner,
   EngineOperation,
   EngineResult,
@@ -46,7 +46,7 @@ export type EngineLearnerOptions = {
   hasTutorReply?: EngineHasTutorReply;
   generateHint?: EngineGenerateHint;
   tutorPaper?: EngineTutorPaper;
-  judgeSummary?: EngineJudgeSummary;
+  judgeExplanation?: EngineJudgeExplanation;
   settings?: Settings;
 };
 
@@ -68,7 +68,7 @@ export function createEngine(options: CreateEngineOptions) {
       hasTutorReply = async () => false,
       generateHint,
       tutorPaper,
-      judgeSummary,
+      judgeExplanation,
       settings,
     }: EngineLearnerOptions): EngineLearner {
       const contentPromise = options.content();
@@ -87,7 +87,7 @@ export function createEngine(options: CreateEngineOptions) {
         hasTutorReply,
         ...(generateHint ? { generateHint } : {}),
         ...(tutorPaper ? { tutorPaper } : {}),
-        ...(judgeSummary ? { judgeSummary } : {}),
+        ...(judgeExplanation ? { judgeExplanation } : {}),
         fsrsFuzz,
         tutorEnabled,
         repo: new EngineLearnerRepository(
@@ -113,8 +113,13 @@ export function createEngine(options: CreateEngineOptions) {
         today: () => call({ kind: 'today' }),
         learn: () => call({ kind: 'learn' }),
         courseCatalog: () => call({ kind: 'courseCatalog' }),
+        settings: () => call({ kind: 'settings' }),
+        saveSettings: (input) => call({ kind: 'saveSettings', ...input }),
         course: (input) => call({ kind: 'course', ...input }),
         setActiveCourse: (input) => call({ kind: 'setActiveCourse', ...input }),
+        setFocus: (input) => call({ kind: 'setFocus', ...input }),
+        restartTopic: (input) => call({ kind: 'restartTopic', ...input }),
+        setEnrollment: (input) => call({ kind: 'setEnrollment', ...input }),
         startCourse: (input) => call({ kind: 'startCourse', ...input }),
         createSession: (input) => call({ kind: 'createSession', ...input }),
         session: (input) => call({ kind: 'session', ...input }),
