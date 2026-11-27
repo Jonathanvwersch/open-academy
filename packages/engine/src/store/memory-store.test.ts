@@ -34,6 +34,25 @@ describeLearnerStoreContract('memoryStore', async (options) => {
           ],
         ])
       : undefined,
+    projectSubmissions: options?.seedCourseProgress
+      ? new Map([
+          [
+            learnerId,
+            [
+              {
+                projectId: 'z',
+                results: { tests: [{ id: 'older', passed: false }] },
+                createdAt: new Date('2026-01-17T12:00:00Z'),
+              },
+              {
+                projectId: 'a',
+                results: { tests: [{ id: 'newer', passed: true }] },
+                createdAt: new Date('2026-01-18T12:00:00Z'),
+              },
+            ],
+          ],
+        ])
+      : undefined,
     settings: new Map([
       [learnerId, settings],
       [otherLearnerId, settings],

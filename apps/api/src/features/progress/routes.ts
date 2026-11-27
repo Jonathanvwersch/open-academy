@@ -1,10 +1,12 @@
-import type { Hono } from 'hono';
+import type { EngineResult } from '@open-academy/engine/engine/create-engine';
+import type { Context, Hono } from 'hono';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
-import { featureRequest } from '../../http/feature-service.js';
-import { getProgress } from './service.js';
+
+const send = (context: Context<ApiEnv>, result: EngineResult) =>
+  context.json(result.body, result.status);
+
 export function registerProgressRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
   api.get('/progress', async (context) => {
-    const response = await getProgress(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    return send(context, await deps.learner(context).progress());
   });
 }

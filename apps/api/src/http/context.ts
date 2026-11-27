@@ -1,5 +1,6 @@
 import type { ContentIndex } from '@open-academy/engine/course/types';
 import type {
+  EngineGenerateHint,
   EngineGrade,
   EngineHasTutorReply,
   EngineLearner,
@@ -24,5 +25,6 @@ export interface ApiServices {
     context: Context<ApiEnv>,
     grade?: EngineGrade,
     hasTutorReply?: EngineHasTutorReply,
+    generateHint?: EngineGenerateHint,
   ) => EngineLearner;
 }

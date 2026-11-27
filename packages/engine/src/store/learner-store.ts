@@ -44,6 +44,10 @@ export interface MasteryEventRecord {
   createdAt: Date;
 }
 
+export type StoredMasteryEvent = MasteryEventRecord & { id: string; userId: string };
+
+export type MasteryEventQuery = { conceptId?: string; limit?: number };
+
 export interface OpenRemediationFlag {
   id: string;
   conceptId: string;
@@ -61,6 +65,7 @@ export interface LearnerStore {
   /** Upsert on (learnerId, conceptId, dimension). */
   saveMastery(learnerId: string, record: MasteryRecord): Promise<void>;
   addMasteryEvent(learnerId: string, event: MasteryEventRecord): Promise<void>;
+  listMasteryEvents(learnerId: string, query?: MasteryEventQuery): Promise<StoredMasteryEvent[]>;
   listTopicSpeedEvidence(
     learnerId: string,
     conceptIds?: readonly string[],

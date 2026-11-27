@@ -2,14 +2,28 @@ import type { Dimension } from '../course/schemas.js';
 import { startOfNextCalendarDay } from '../memory/fsrs.js';
 import { TOPIC_SPEED_DECAY, TOPIC_SPEED_POLICY, type TopicSpeedEvidence } from '../memory/speed.js';
 import type { MasteryRecord } from '../memory/types.js';
-import type { Attempt, AttemptQuery, Enrollment, Settings, XpEvent } from './core-store.js';
+import type {
+  Attempt,
+  AttemptQuery,
+  Enrollment,
+  HintEventInput,
+  HintEventReceipt,
+  Settings,
+  XpEvent,
+} from './core-store.js';
 import {
   type CourseProjectProgress,
+  type CourseProjectSubmission,
   type CourseStore,
   compareCompletedActivities,
 } from './course-store.js';
 import { collectTimedQuizItemKeys, type TimedQuizItem, type TimedQuizRun } from './flow-store.js';
-import type { MasteryEventRecord, OpenRemediationFlag, StoredReviewCard } from './learner-store.js';
+import type {
+  MasteryEventQuery,
+  OpenRemediationFlag,
+  StoredMasteryEvent,
+  StoredReviewCard,
+} from './learner-store.js';
 import type {
   FlagQuery,
   LessonProblem,
@@ -49,7 +63,7 @@ export type MemoryLearnerStore = CourseStore & {
 type LearnerState = {
   mastery: Map<string, MasteryRecord>;
   topicSpeed: Map<string, TopicSpeedEvidence>;
-  events: MasteryEventRecord[];
+  events: StoredMasteryEvent[];
   cards: Map<string, StoredReviewCard>;
   reviewLogs: ReviewLogEntry[];
   diagnosticRuns: Map<string, DiagnosticRun>;
@@ -68,10 +82,19 @@ type LearnerState = {
   timedQuizItems: Map<string, TimedQuizItem[]>;
 };
 
-type Hint = { exerciseId: string; activityId: string | null; createdAt: Date; level: number };
+type Hint = {
+  exerciseId: string;
+  activityId: string | null;
+  createdAt: Date;
+  level: number;
+  id?: string;
+  source?: HintEventInput['source'];
+  text?: string;
+};
 type SeededProjections = Pick<SchedulerFacts, 'lessonRuns' | 'paperProgress'> & {
   projectProgress?: CourseProjectProgress[];
 };
+type SeededProjectSubmission = CourseProjectSubmission;
 
 function jsonWithSortedKeys(value: unknown) {
   return JSON.stringify(value, (_, item) =>
@@ -88,6 +111,7 @@ function jsonWithSortedKeys(value: unknown) {
 type MemorySeed = {
   settings?: ReadonlyMap<string, Settings>;
   hints?: ReadonlyMap<string, readonly Hint[]>;
+  projectSubmissions?: ReadonlyMap<string, readonly SeededProjectSubmission[]>;
   schedulerProjections?: ReadonlyMap<string, SeededProjections>;
 };
 
@@ -95,13 +119,16 @@ type StoreState = {
   learners: Map<string, LearnerState>;
   settings: Map<string, Settings>;
   hints: Map<string, readonly Hint[]>;
+  projectSubmissions: Map<string, readonly SeededProjectSubmission[]>;
   revisions: Map<string, number>;
   schedulerProjections: Map<string, SeededProjections>;
 };
 
 type IdCounters = {
   cardCount: number;
+  masteryEventCount: number;
   reviewLogCount: number;
+  hintEventCount: number;
   diagnosticCount: number;
   grantCount: number;
   flagCount: number;
@@ -164,12 +191,15 @@ export function memoryStore(seed: MemorySeed = {}): MemoryLearnerStore {
       learners: new Map(),
       settings: structuredClone(new Map(seed.settings)),
       hints: structuredClone(new Map(seed.hints)),
+      projectSubmissions: structuredClone(new Map(seed.projectSubmissions)),
       revisions: new Map(),
       schedulerProjections: structuredClone(new Map(seed.schedulerProjections)),
     },
     {
       cardCount: 0,
+      masteryEventCount: 0,
       reviewLogCount: 0,
+      hintEventCount: 0,
       diagnosticCount: 0,
       grantCount: 0,
       flagCount: 0,
@@ -437,6 +467,13 @@ function scopedStore(
           .map(({ activityId, createdAt, level }) => ({ activityId, createdAt, level })),
       });
     },
+    async insertHintEvent(learnerId, event: HintEventInput): Promise<HintEventReceipt> {
+      assertOpen();
+      const inserted = { ...structuredClone(event), id: `hint-event-${++ids.hintEventCount}` };
+      data.hints.set(learnerId, [...(data.hints.get(learnerId) ?? []), inserted]);
+      markWrite(learnerId);
+      return { id: inserted.id };
+    },
     async listXpEvents(learnerId, query) {
       assertOpen();
       return structuredClone(
@@ -582,8 +619,21 @@ function scopedStore(
     },
     async addMasteryEvent(learnerId, event) {
       assertOpen();
-      stateFor(learnerId).events.push(structuredClone(event));
+      stateFor(learnerId).events.push({
+        ...structuredClone(event),
+        id: `mastery-event-${++ids.masteryEventCount}`,
+        userId: learnerId,
+      });
       markWrite(learnerId);
+    },
+    async listMasteryEvents(learnerId, query: MasteryEventQuery = {}) {
+      assertOpen();
+      return structuredClone(
+        (data.learners.get(learnerId)?.events ?? [])
+          .filter((event) => query.conceptId === undefined || event.conceptId === query.conceptId)
+          .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+          .slice(0, query.limit),
+      );
     },
     async listTopicSpeedEvidence(learnerId, conceptIds) {
       assertOpen();
@@ -1338,6 +1388,15 @@ function scopedStore(
         [...(data.schedulerProjections.get(learnerId)?.projectProgress ?? [])].sort((a, b) =>
           compare(a.projectId, b.projectId),
         ),
+      );
+    },
+    async listProjectSubmissions(learnerId, query = {}) {
+      assertOpen();
+      return structuredClone(
+        [...(data.projectSubmissions.get(learnerId) ?? [])]
+          .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+          .slice(0, query.limit)
+          .map(({ projectId, results, createdAt }) => ({ projectId, results, createdAt })),
       );
     },
     async listPaperProgress(learnerId) {

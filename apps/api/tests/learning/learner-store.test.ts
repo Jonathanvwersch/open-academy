@@ -9,6 +9,7 @@ import {
   hintEvents,
   paperProgress,
   projectProgress,
+  projectSubmissions,
   remediationFlags,
   reviewCards,
   sessionActivities,
@@ -41,6 +42,24 @@ describeLearnerStoreContract('drizzleLearnerStore', async (options) => {
     await db.insert(paperProgress).values([
       { userId: learnerId, paperId: 'z' },
       { userId: learnerId, paperId: 'a', completedAt: new Date('2026-01-17T12:00:00Z') },
+    ]);
+    await db.insert(projectSubmissions).values([
+      {
+        userId: learnerId,
+        projectId: 'z',
+        results: { tests: [{ id: 'older', passed: false }] },
+        passed: 0,
+        total: 1,
+        createdAt: new Date('2026-01-17T12:00:00Z'),
+      },
+      {
+        userId: learnerId,
+        projectId: 'a',
+        results: { tests: [{ id: 'newer', passed: true }] },
+        passed: 1,
+        total: 1,
+        createdAt: new Date('2026-01-18T12:00:00Z'),
+      },
     ]);
   }
   const [{ id: sessionId }] = await db

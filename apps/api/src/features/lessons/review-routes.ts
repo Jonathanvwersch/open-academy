@@ -1,14 +1,21 @@
-import type { Hono } from 'hono';
+import type { EngineResult } from '@open-academy/engine/engine/create-engine';
+import type { Context, Hono } from 'hono';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
-import { featureRequest } from '../../http/feature-service.js';
-import { getLessonsByConceptId, getLessonsByConceptIdReview } from './review-service.js';
+
+const send = (context: Context<ApiEnv>, result: EngineResult) =>
+  context.json(result.body, result.status);
+
 export function registerLessonsRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
   api.get('/lessons/:conceptId', async (context) => {
-    const response = await getLessonsByConceptId(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    return send(
+      context,
+      await deps.learner(context).lesson({ conceptId: context.req.param('conceptId') }),
+    );
   });
   api.get('/lessons/:conceptId/review', async (context) => {
-    const response = await getLessonsByConceptIdReview(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    return send(
+      context,
+      await deps.learner(context).lessonReview({ conceptId: context.req.param('conceptId') }),
+    );
   });
 }

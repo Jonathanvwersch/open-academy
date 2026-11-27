@@ -1,27 +1,10 @@
-import { getLessonPrerequisites } from '@open-academy/engine/course/index';
-import { serializeExercise } from '@open-academy/engine/course/serialize';
-import {
-  formatTemplateNumber,
-  instantiateExercise,
-  isTemplate,
-} from '@open-academy/engine/course/templates';
-import type {
-  ContentIndex,
-  IndexedExercise,
-  IndexedLesson,
-} from '@open-academy/engine/course/types';
+import { instantiateExercise, isTemplate } from '@open-academy/engine/course/templates';
+import type { ContentIndex } from '@open-academy/engine/course/types';
 import type { EngineHasTutorReply, EngineResult } from '@open-academy/engine/engine/create-engine';
-import { answerDisplay, answerText } from '@open-academy/engine/lessons/answer-display';
-import { answerOptionsFor } from '@open-academy/engine/lessons/answer-options';
-import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '@open-academy/engine/lessons/grading/multiple-choice';
-import { resolveLessonExercise } from '@open-academy/engine/lessons/run-commands';
-import type { LessonRuntime } from '@open-academy/engine/lessons/run-recovery';
-import { readLessonState } from '@open-academy/engine/lessons/run-state';
-import type { LessonRun } from '@open-academy/engine/store/lesson-store';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
-import { drizzleLearnerStore, readPassedLessonQuizItems } from '../../db/learner-store.js';
+import type { drizzleLearnerStore } from '../../db/learner-store.js';
 import {
   lessonProblems,
   lessonQuizAttempts,
@@ -30,43 +13,12 @@ import {
   tutorMessages,
 } from '../../db/schema.js';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
-import { fsrsFuzzEnabled } from '../../learning/fsrs-fuzz.js';
-import { resolveLessonCourse } from './course-context.js';
 
 type LessonContext = Context<ApiEnv>;
 const send = (context: LessonContext, result: EngineResult) =>
   context.json(result.body, result.status);
 
-function correctAnswerDisplay(exercise: IndexedExercise): string {
-  if (exercise.type === 'mc') {
-    return exercise.options
-      .filter((option) => option.correct)
-      .map((option) => option.text)
-      .join('\n');
-  }
-  if (exercise.type === 'numeric') {
-    return 'answer' in exercise ? formatTemplateNumber(exercise.answer) : '';
-  }
-  if ('answer' in exercise) return answerText(exercise.answer);
-  if ('accept' in exercise) return exercise.accept.join(', ');
-  if (exercise.type === 'explain') return exercise.exemplar;
-  if (exercise.type === 'debug') {
-    return exercise.fix_options
-      .filter((option) => option.correct)
-      .map((option) => option.text)
-      .join('\n');
-  }
-  return '';
-}
-
 export function registerLessonRunRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
-  const store = drizzleLearnerStore(deps.db);
-  const runtime = (context: LessonContext): LessonRuntime => ({
-    now: () => deps.requestNow(context),
-    random: () => Math.random(),
-    newId: () => crypto.randomUUID(),
-    enableFsrsFuzz: fsrsFuzzEnabled(),
-  });
   const lessonFor = async (conceptId: string) => {
     const index = await deps.content();
     const lesson = index.lessonsByConcept.get(conceptId);
@@ -88,132 +40,16 @@ export function registerLessonRunRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
     return !!reply;
   };
 
-  const runState = async (
-    context: LessonContext,
-    lesson: IndexedLesson,
-    index: ContentIndex,
-    run: LessonRun,
-  ) => {
-    const userId = context.get('userId');
-    const snapshot = await readLessonState(store, userId, run, lesson, index, runtime(context));
-    if (!snapshot) return null;
-    ({ run } = snapshot);
-    const { derived, lastAttempt, practicePending, needsProgressSync, retry, currentQuiz } =
-      snapshot;
-    const point = lesson.knowledge_points?.find((item) => item.id === derived.currentPointId);
-    const buildInstance = resolveLessonExercise;
-    const pendingRow = derived.pending;
-    const pendingExercise = pendingRow ? index.exercisesById.get(pendingRow.exerciseId) : undefined;
-    const pendingInstance =
-      pendingExercise && pendingRow ? buildInstance(pendingExercise, pendingRow.seed) : undefined;
-    const lastRow = derived.lastAnswered;
-    const lastExercise = lastRow ? index.exercisesById.get(lastRow.exerciseId) : undefined;
-    const lastInstance =
-      lastExercise && lastRow ? buildInstance(lastExercise, lastRow.seed) : undefined;
-    const attemptFeedback = (lastAttempt?.feedback as { message?: string } | null)?.message;
-    const lastAnswerOptions =
-      lastAttempt && lastInstance
-        ? answerOptionsFor(lastInstance, lastAttempt.answer, true)
-        : undefined;
-    const feedback =
-      lastInstance?.type === 'mc' && attemptFeedback === MULTIPLE_CHOICE_FALLBACK_FEEDBACK
-        ? ''
-        : (attemptFeedback ??
-          (lastRow?.correct === 1 ? 'Correct.' : MULTIPLE_CHOICE_FALLBACK_FEEDBACK));
-    const practiceExercise = practicePending
-      ? index.exercisesById.get(practicePending.exerciseId)
-      : undefined;
-    const practiceInstance =
-      practiceExercise && practicePending
-        ? buildInstance(practiceExercise, practicePending.seed)
-        : undefined;
-    const quiz = currentQuiz
-      ? {
-          ...snapshot.quiz,
-          current: {
-            attemptId: currentQuiz.attemptId,
-            items: currentQuiz.items.map((item) => {
-              const indexed = index.exercisesById.get(item.exerciseId);
-              const instance = indexed ? buildInstance(indexed, item.seed) : undefined;
-              return {
-                id: item.id,
-                position: item.position,
-                exercise: instance ? serializeExercise(instance, userId) : null,
-                answered: item.answeredAt !== null,
-                ...(item.answeredAt !== null ? { answer: item.answer } : {}),
-                locked: item.attemptId !== null,
-              };
-            }),
-          },
-        }
-      : snapshot.quiz;
-    return {
-      id: run.id,
-      ...(needsProgressSync ? { needsProgressSync: true } : {}),
-      status: run.status === 'needs_retry' ? 'needs_retry' : derived.status,
-      ...(retry ? { retry: { ...retry, after: retry.after?.toISOString() ?? null } } : {}),
-      ...(derived.halted ? { halted: derived.halted } : {}),
-      where_this_fits: lesson.where_this_fits,
-      prerequisites: getLessonPrerequisites(index, lesson.concept),
-      points: snapshot.points,
-      currentPointId: derived.currentPointId,
-      currentPoint: point
-        ? {
-            id: point.id,
-            title: point.title,
-            tldr: point.tldr,
-            explain: point.explain,
-            worked: point.worked,
-          }
-        : undefined,
-      pending: pendingRow,
-      pendingProblem:
-        pendingRow && pendingInstance
-          ? { ...pendingRow, exercise: serializeExercise(pendingInstance, userId) }
-          : undefined,
-      pendingPracticeProblem:
-        practicePending && practiceInstance
-          ? { ...practicePending, exercise: serializeExercise(practiceInstance, userId) }
-          : undefined,
-      lastAnswered: lastInstance ? lastRow : undefined,
-      lastAnsweredProblem:
-        lastRow && lastInstance
-          ? {
-              ...lastRow,
-              activityId: lastAttempt?.activityId ?? null,
-              exercise: serializeExercise(lastInstance, userId),
-              result: {
-                correct: lastRow.correct,
-                attemptNo: lastAttempt?.attemptNo ?? 1,
-                feedback,
-                solution: lastInstance.solution,
-                yourAnswer: answerDisplay(lastInstance, lastAttempt?.answer),
-                correctAnswer: correctAnswerDisplay(lastInstance),
-                ...(lastAnswerOptions ? { answerOptions: lastAnswerOptions } : {}),
-              },
-            }
-          : undefined,
-      xpEarned: snapshot.xpEarned,
-      quiz,
-    };
-  };
-
   api.get('/lessons/:conceptId/run', async (context) => {
     const conceptId = context.req.param('conceptId');
-    const resolved = await lessonFor(conceptId);
-    if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
-    const run = await store.getLessonRun(context.get('userId'), { conceptId });
-    return context.json({
-      course: await resolveLessonCourse(
-        deps.db,
-        deps.withRepo(context),
-        resolved.index,
-        context.get('userId'),
+    const activityId = context.req.query('activityId');
+    return send(
+      context,
+      await deps.learner(context).lessonRun({
         conceptId,
-        context.req.query('activityId'),
-      ),
-      run: run ? await runState(context, resolved.lesson, resolved.index, run) : null,
-    });
+        ...(activityId === undefined ? {} : { activityId }),
+      }),
+    );
   });
 
   api.post('/lessons/:conceptId/run', async (context) => {
@@ -331,40 +167,13 @@ export function registerLessonRunRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
   });
 
   api.get('/lessons/:conceptId/quiz/:attemptId/review', async (context) => {
-    if (!z.string().uuid().safeParse(context.req.param('attemptId')).success)
-      return context.json({ error: 'Quiz attempt not found' }, 404);
-    const conceptId = context.req.param('conceptId');
-    const resolved = await lessonFor(conceptId);
-    if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
-    const userId = context.get('userId');
-    const attemptId = context.req.param('attemptId').toLowerCase();
-    const rows = await readPassedLessonQuizItems(deps.db, userId, conceptId, attemptId);
-    if (!rows) {
-      return context.json({ error: 'Quiz review is available after passing' }, 403);
-    }
-    const items = rows.flatMap((item) => {
-      const indexed = resolved.index.exercisesById.get(item.exerciseId);
-      const exercise = indexed ? resolveLessonExercise(indexed, item.seed) : undefined;
-      if (!exercise) return [];
-      return [
-        {
-          id: item.id,
-          position: item.position,
-          pointId: item.knowledgePointId,
-          title:
-            resolved.lesson.knowledge_points?.find((point) => point.id === item.knowledgePointId)
-              ?.title ?? item.knowledgePointId,
-          exercise: serializeExercise(exercise, context.get('userId')),
-          yourAnswer: answerDisplay(exercise, item.answer),
-          correctAnswer: correctAnswerDisplay(exercise),
-          answerOptions: answerOptionsFor(exercise, item.answer, true),
-          solution: exercise.solution ?? '',
-          correct: item.correct,
-          durationMs: item.durationMs,
-        },
-      ];
-    });
-    return context.json({ attemptId, items });
+    return send(
+      context,
+      await deps.learner(context).lessonQuizReview({
+        conceptId: context.req.param('conceptId'),
+        attemptId: context.req.param('attemptId'),
+      }),
+    );
   });
 
   if (process.env.ACADEMY_E2E === '1') {

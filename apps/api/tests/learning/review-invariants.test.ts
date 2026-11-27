@@ -19,7 +19,7 @@ import {
   SCHEDULER_CONFIG,
   sessionBudget,
 } from '@open-academy/engine/planner/scheduler';
-import { localDateKey, sessionKindForDate } from '@open-academy/engine/progress/xp';
+import { localDateKey, sessionKindForDate, shiftLocalDate } from '@open-academy/engine/progress/xp';
 import {
   answerFor as answerForExercise,
   seededWrongAnswerFor as seededWrongAnswerForExercise,
@@ -44,7 +44,6 @@ import {
   users,
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
-import { shiftLocalDate } from '../../src/http/request-context.js';
 import { fsrsFuzzEnabled } from '../../src/learning/fsrs-fuzz.js';
 
 const db = createDb(env.TEST_DATABASE_URL);

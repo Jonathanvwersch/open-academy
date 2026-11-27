@@ -7,9 +7,19 @@ import {
   startActiveCourseFromBeginning,
   startCourseFromBeginning,
 } from '../course/course-reads.js';
+import { readExercise } from '../course/exercise-reads.js';
 import { getLearnHome } from '../course/learn-home.js';
+import { conceptDetail, planWeek, studyMap } from '../course/learning-reads.js';
 import { serializeExercise } from '../course/serialize.js';
 import type { GradeResult } from '../lessons/grading/types.js';
+import {
+  readLesson,
+  readLessonQuizReview,
+  readLessonReview,
+  readLessonRun,
+} from '../lessons/reads.js';
+import { hintOperation } from '../memory/hint-operations.js';
+import { readReviews } from '../memory/review-reads.js';
 import {
   getPlacementRun,
   placementNext,
@@ -18,6 +28,7 @@ import {
 } from '../placement/diagnostic-commands.js';
 import { loadHomePlan } from '../planner/home-plan.js';
 import { endSession } from '../planner/session-commands.js';
+import { readProgress } from '../progress/progress.js';
 import {
   answerQuiz,
   finalizeQuiz,
@@ -30,6 +41,7 @@ import { exerciseAttempt, placementAnswer, placementCommand } from './attempts.j
 import { lessonOperation } from './lessons.js';
 import type { EngineLearnerRepository } from './repository.js';
 import {
+  activeSession,
   activityProgressOperation,
   createSessionOperation,
   replanSessionOperation,
@@ -55,6 +67,62 @@ export async function runEngineOperation(
           request.tutorEnabled,
         ),
       );
+    case 'progress':
+      return respond(
+        await readProgress(store, {
+          userId,
+          content,
+          timeZone: request.timeZone,
+          now: request.now,
+          studyCourseIds: () => repo.studyCourseIds(content),
+        }),
+      );
+    case 'reviews': {
+      const now = request.now();
+      const studyCourseIds = await repo.studyCourseIds(content);
+      return respond(
+        await readReviews(store, {
+          userId,
+          content,
+          now,
+          timeZone: request.timeZone,
+          studyCourseIds,
+          activeCourseId: () => repo.activeCourseId(),
+        }),
+      );
+    }
+    case 'studyMap':
+      return respond(
+        await studyMap(store, {
+          userId,
+          content,
+          courseIds: await repo.studyCourseIds(content),
+        }),
+      );
+    case 'concept': {
+      const payload = await conceptDetail(store, {
+        userId,
+        content,
+        conceptId: operation.conceptId,
+      });
+      return payload ? respond(payload) : respond({ error: 'Concept not found' }, 404);
+    }
+    case 'planWeek':
+      return respond(planWeek(content, await repo.schedulerState(request.now(), content)));
+    case 'lesson':
+      return readLesson(request, operation.conceptId);
+    case 'lessonReview':
+      return readLessonReview(request, operation.conceptId);
+    case 'exercise':
+      return readExercise(request, operation.id);
+    case 'hint':
+      return hintOperation(request, operation.id, operation.body);
+    case 'activeSession':
+      return activeSession(request);
+    case 'lessonRun':
+      return readLessonRun(request, operation.conceptId, operation.activityId);
+    case 'lessonQuizReview':
+      return readLessonQuizReview(request, operation.conceptId, operation.attemptId);
     case 'learn':
       return respond(await getLearnHome(store, await courseInput(request)));
     case 'courseCatalog':

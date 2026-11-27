@@ -5,6 +5,7 @@ import type { CourseStore } from '../store/course-store.js';
 import { runEngineOperation } from './operations.js';
 import { EngineLearnerRepository, engineUser } from './repository.js';
 import type {
+  EngineGenerateHint,
   EngineGrade,
   EngineHasTutorReply,
   EngineLearner,
@@ -13,9 +14,11 @@ import type {
 } from './types.js';
 
 export type {
+  EngineGenerateHint,
   EngineGrade,
   EngineGradeResult,
   EngineHasTutorReply,
+  EngineHintContext,
   EngineLearner,
   EngineOperation,
   EngineResult,
@@ -37,6 +40,7 @@ export type EngineLearnerOptions = {
   random: () => number;
   grade?: EngineGrade;
   hasTutorReply?: EngineHasTutorReply;
+  generateHint?: EngineGenerateHint;
   settings?: Settings;
 };
 
@@ -56,6 +60,7 @@ export function createEngine(options: CreateEngineOptions) {
       random,
       grade: learnerGrade,
       hasTutorReply = async () => false,
+      generateHint,
       settings,
     }: EngineLearnerOptions): EngineLearner {
       const contentPromise = options.content();
@@ -72,6 +77,7 @@ export function createEngine(options: CreateEngineOptions) {
         newId,
         grade: learnerGrade ?? grade,
         hasTutorReply,
+        ...(generateHint ? { generateHint } : {}),
         fsrsFuzz,
         tutorEnabled,
         repo: new EngineLearnerRepository(
@@ -112,6 +118,18 @@ export function createEngine(options: CreateEngineOptions) {
         answerLessonQuiz: (input) => call({ kind: 'answerLessonQuiz', ...input }),
         submitLessonQuiz: (input) => call({ kind: 'submitLessonQuiz', ...input }),
         exerciseAttempt: (input) => call({ kind: 'exerciseAttempt', ...input }),
+        progress: () => call({ kind: 'progress' }),
+        reviews: () => call({ kind: 'reviews' }),
+        studyMap: () => call({ kind: 'studyMap' }),
+        concept: (input) => call({ kind: 'concept', ...input }),
+        planWeek: () => call({ kind: 'planWeek' }),
+        lesson: (input) => call({ kind: 'lesson', ...input }),
+        lessonReview: (input) => call({ kind: 'lessonReview', ...input }),
+        exercise: (input) => call({ kind: 'exercise', ...input }),
+        hint: (input) => call({ kind: 'hint', ...input }),
+        activeSession: () => call({ kind: 'activeSession' }),
+        lessonRun: (input) => call({ kind: 'lessonRun', ...input }),
+        lessonQuizReview: (input) => call({ kind: 'lessonQuizReview', ...input }),
         startPlacement: (input) => call({ kind: 'startPlacement', ...input }),
         placementNext: (input) => call({ kind: 'placementNext', ...input }),
         placementAnswer: (input) => call({ kind: 'placementAnswer', ...input }),

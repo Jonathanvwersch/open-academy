@@ -1,6 +1,7 @@
-import type { ContentIndex } from '../course/types.js';
+import type { ContentIndex, IndexedExercise } from '../course/types.js';
 import type { gradeExercise } from '../lessons/grading/index.js';
 import type { GradeResult } from '../lessons/grading/types.js';
+import type { Attempt } from '../store/core-store.js';
 import type { CourseStore } from '../store/course-store.js';
 import type { EngineLearnerRepository } from './repository.js';
 
@@ -11,6 +12,18 @@ export type EngineResult = {
 
 export type EngineOperation =
   | { kind: 'today' }
+  | { kind: 'progress' }
+  | { kind: 'reviews' }
+  | { kind: 'studyMap' }
+  | { kind: 'concept'; conceptId: string }
+  | { kind: 'planWeek' }
+  | { kind: 'lesson'; conceptId: string }
+  | { kind: 'lessonReview'; conceptId: string }
+  | { kind: 'exercise'; id: string }
+  | { kind: 'hint'; id: string; body: unknown }
+  | { kind: 'activeSession' }
+  | { kind: 'lessonRun'; conceptId: string; activityId?: string }
+  | { kind: 'lessonQuizReview'; conceptId: string; attemptId: string }
   | { kind: 'learn' }
   | { kind: 'courseCatalog' }
   | { kind: 'course'; courseId?: string; course?: string }
@@ -73,6 +86,21 @@ export type EngineHasTutorReply = (
   problemId: string,
 ) => Promise<boolean>;
 
+export type EngineHintContext = {
+  userId: string;
+  exercise: IndexedExercise;
+  level: number;
+  hints: string[];
+  recentMistakes: string[];
+  priorAttempt: Attempt | undefined;
+  retrying: boolean;
+  problemStatus: 'unanswered' | 'retrying' | 'answered';
+};
+
+export type EngineGenerateHint = (
+  input: EngineHintContext,
+) => Promise<{ kind: 'ok'; text: string } | { kind: 'disabled' | 'unavailable' }>;
+
 export type EngineRequest = {
   store: CourseStore;
   userId: string;
@@ -83,6 +111,7 @@ export type EngineRequest = {
   newId: () => string;
   grade: EngineGrade;
   hasTutorReply: EngineHasTutorReply;
+  generateHint?: EngineGenerateHint;
   fsrsFuzz: boolean;
   tutorEnabled: boolean;
   repo: EngineLearnerRepository;

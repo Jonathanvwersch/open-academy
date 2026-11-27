@@ -2,8 +2,6 @@ import type { EngineResult } from '@open-academy/engine/engine/create-engine';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { ApiEnv, ApiServices } from '../../http/context.js';
-import { featureRequest } from '../../http/feature-service.js';
-import { getSessionsActive } from './service.js';
 
 const send = (context: Context<ApiEnv>, result: EngineResult) =>
   context.json(result.body, result.status);
@@ -21,8 +19,7 @@ export function registerSessionsRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
     );
   });
   api.get('/sessions/active', async (context) => {
-    const response = await getSessionsActive(deps, featureRequest(context, deps));
-    return context.json(response.body, response.status);
+    return send(context, await deps.learner(context).activeSession());
   });
   api.get('/sessions/:id', async (context) => {
     const sessionId = context.req.param('id');

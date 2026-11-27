@@ -1,5 +1,9 @@
 import type { ContentIndex } from '@open-academy/engine/course/types';
-import type { EngineGrade, EngineHasTutorReply } from '@open-academy/engine/engine/create-engine';
+import type {
+  EngineGenerateHint,
+  EngineGrade,
+  EngineHasTutorReply,
+} from '@open-academy/engine/engine/create-engine';
 import { EngineLearnerRepository, type EngineUser } from '@open-academy/engine/engine/repository';
 import { localDateKey } from '@open-academy/engine/progress/xp';
 import { asc, eq } from 'drizzle-orm';
@@ -107,6 +111,7 @@ export function createApiRoutes(deps: {
     context: Context<ApiEnv>,
     grade?: EngineGrade,
     hasTutorReply?: EngineHasTutorReply,
+    generateHint?: EngineGenerateHint,
   ) =>
     engine.learner({
       id: context.get('userId'),
@@ -122,6 +127,7 @@ export function createApiRoutes(deps: {
       },
       ...(grade ? { grade } : {}),
       ...(hasTutorReply ? { hasTutorReply } : {}),
+      ...(generateHint ? { generateHint } : {}),
     });
   const services = { db, content, withRepo, tutor, requestNow, learner, tutorProvider };
   registerLessonRunRoutes(api, {
