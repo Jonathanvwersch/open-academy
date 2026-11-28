@@ -1,4 +1,4 @@
-import type { LessonQuizEvidence, QuizQuestion } from '@open-academy/engine';
+import type { LessonQuizEvidence, QuizQuestion } from '@open-academy/engine/store';
 import { sql } from 'drizzle-orm';
 import {
   type AnyPgColumn,

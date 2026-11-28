@@ -2,7 +2,7 @@
 
 - Node 24, pnpm 12.16.1, strict TypeScript and ESM. Run workspace commands from this root.
 - `apps/web` is the React/Vite learner app; `apps/api` is the Hono API. Read the owning app's `AGENTS.md` before editing it.
-- The `packages/engine` package owns browser-safe API shapes and pure content and learning rules; `packages/shared` owns small cross-app helpers. Production consumers use only `@open-academy/engine`, `@open-academy/engine/api`, `@open-academy/engine/node`, `@open-academy/engine/simulator`, or `@open-academy/engine/testing`; only tests may import `@open-academy/engine/internal/*`. Engine source uses relative imports.
+- The `packages/engine` package owns browser-safe API shapes and pure content and learning rules; `packages/shared` owns small cross-app helpers. Production consumers use only `@open-academy/engine`, `@open-academy/engine/api`, `@open-academy/engine/node`, `@open-academy/engine/simulator`, `@open-academy/engine/store`, or `@open-academy/engine/testing`; only tests may import `@open-academy/engine/internal/*`. Engine source uses relative imports.
 - Put components, queries, mutations, fixtures and detailed docs with their owning feature. `apps/web/src/features/lessons` is the frontend example. API use cases accept plain inputs; Hono stays in route modules.
 - Shared UI/helpers cannot import features. Features cannot import web routes or app composition. Cross-feature imports use public modules listed in `scripts/architecture/policy.mjs`; keep dependencies acyclic.
 - Use kebab-case for new folders and files. Preserve tool-required names (`AGENTS.md`, TanStack file routes/generated files), existing migration identifiers and Python snake_case.
