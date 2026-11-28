@@ -244,7 +244,7 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           } else if (internal && !isTest) {
             report(file, 'engine internal imports are test-only');
           } else if (!internal && !enginePublicEntries.has(request)) {
-            report(file, 'engine imports must use one of the five public entries');
+            report(file, 'engine imports must use one of the six public entries');
           }
         }
         if (

@@ -53,6 +53,7 @@ export const enginePublicEntries = new Set([
   '@open-academy/engine/api',
   '@open-academy/engine/node',
   '@open-academy/engine/simulator',
+  '@open-academy/engine/store',
   '@open-academy/engine/testing',
 ]);
 export const browserForbiddenPackages = new Set(['@open-academy/engine']);

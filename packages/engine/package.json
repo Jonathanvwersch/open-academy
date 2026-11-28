@@ -22,6 +22,7 @@
     "./api": "./src/api/index.ts",
     "./node": "./src/node.ts",
     "./simulator": "./src/simulator/index.ts",
+    "./store": "./src/store/index.ts",
     "./testing": "./src/testing.ts",
     "./internal/*": "./src/*.ts"
   },
@@ -43,6 +44,10 @@
       "./simulator": {
         "types": "./dist/simulator/index.d.ts",
         "import": "./dist/simulator/index.js"
+      },
+      "./store": {
+        "types": "./dist/store/index.d.ts",
+        "import": "./dist/store/index.js"
       },
       "./testing": {
         "types": "./dist/testing.d.ts",

@@ -24,6 +24,7 @@ function fixture(files, run) {
         './api': './src/api/index.ts',
         './node': './src/node.ts',
         './simulator': './src/simulator/index.ts',
+        './store': './src/store/index.ts',
         './testing': './src/testing.ts',
         './internal/*': './src/*.ts',
       },
@@ -40,6 +41,7 @@ function fixture(files, run) {
       'export interface Lesson {id:string}; export function onScreenOptions() {};',
     'packages/engine/src/node.ts': 'export const value = 1;',
     'packages/engine/src/simulator/index.ts': 'export const value = 1;',
+    'packages/engine/src/store/index.ts': 'export interface CourseStore {};',
     'packages/engine/src/testing.ts': 'export const value = 1;',
     'packages/engine/src/course/types.ts': 'export type ContentIndex = {};',
     'packages/engine/src/planner/scheduler.ts': 'export const schedule = 1;',
@@ -83,7 +85,7 @@ test('permits public engine entries and relative imports within the engine', () 
   fixture(
     {
       'apps/api/src/learning/scheduler.ts':
-        "import '@open-academy/engine'; import '@open-academy/engine/api'; import '@open-academy/engine/node'; import '@open-academy/engine/simulator'; import '@open-academy/engine/testing';",
+        "import '@open-academy/engine'; import '@open-academy/engine/api'; import '@open-academy/engine/node'; import '@open-academy/engine/simulator'; import '@open-academy/engine/store'; import '@open-academy/engine/testing';",
       'packages/engine/src/course/load.ts':
         "import {createHash} from 'node:crypto'; import {readFile} from 'node:fs/promises'; import {resolve} from 'node:path'; export {createHash,readFile,resolve};",
       'packages/engine/src/cli/index.ts':
@@ -238,7 +240,7 @@ test('rejects deep engine imports from production source and self-imports from t
     (errors) =>
       assert.ok(
         errors.some((error) =>
-          error.includes('engine imports must use one of the five public entries'),
+          error.includes('engine imports must use one of the six public entries'),
         ),
         errors.join('\n'),
       ),

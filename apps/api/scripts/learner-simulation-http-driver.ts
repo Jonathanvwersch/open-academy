@@ -1,5 +1,5 @@
 import type { ContentIndex } from '@open-academy/engine';
-import { EngineLearnerRepository, localDateKey } from '@open-academy/engine';
+import { localDateKey } from '@open-academy/engine';
 import {
   type ApiResult,
   type AuditActivityReviewLog,
@@ -22,6 +22,7 @@ import {
   type SimulatorOperation,
   setImplicitRepetitionTrace,
 } from '@open-academy/engine/simulator';
+import { EngineLearnerRepository } from '@open-academy/engine/store';
 import { and, asc, desc, eq, exists, inArray, notInArray, sql } from 'drizzle-orm';
 import { createApp } from '../src/app.js';
 import type { Database } from '../src/db/client.js';

@@ -1,5 +1,6 @@
 import type { ContentIndex } from '@open-academy/engine';
-import { EngineLearnerRepository, type EngineUser, localDateKey } from '@open-academy/engine';
+import { localDateKey } from '@open-academy/engine';
+import { EngineLearnerRepository, type EngineUser } from '@open-academy/engine/store';
 import { asc, eq } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
